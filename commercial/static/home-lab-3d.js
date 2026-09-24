@@ -1869,12 +1869,7 @@ class HomeLabHouse3D {
         return;
       }
       const anchor = box.getCenter(new THREE.Vector3());
-      const boxSize = box.getSize(new THREE.Vector3());
-      // Solid-fuel heating belongs visually to the chimney/smoke base, not to
-      // the same roof label stack used by renewables.
-      anchor.y = key === "solidHeat"
-        ? box.min.y + boxSize.y * 0.18
-        : box.max.y;
+      anchor.y = box.max.y;
       const towardAnchor = anchor.clone().sub(this.camera.position);
       const projected = anchor.clone().project(this.camera);
       const isInFront = cameraDirection.dot(towardAnchor) > 0;
@@ -1890,19 +1885,9 @@ class HomeLabHouse3D {
 
       button.hidden = !visible;
       if (!visible) return;
-      const mobileHomeOffset = this.isMobile && this.mode === "home"
-        ? {
-            pv:{x:-58, y:-70},
-            solarThermal:{x:58, y:-46},
-            solidHeat:{x:0, y:-4},
-          }[key]
-        : null;
-      const roofLift = this.isMobile && this.mode !== "home" &&
-        (key === "pv" || key === "solarThermal") ? 24 : 0;
-      const sourceX = x + (mobileHomeOffset?.x || 0);
-      const sourceY = y + (mobileHomeOffset?.y || 0) - roofLift;
-      const safeX = this.isMobile ? clamp(sourceX, 56, width - 56) : sourceX;
-      const safeY = this.isMobile ? clamp(sourceY, 42, height - 86) : sourceY;
+      const safeX = this.isMobile ? clamp(x, 56, width - 56) : x;
+      const roofLift = this.isMobile && (key === "pv" || key === "solarThermal") ? 24 : 0;
+      const safeY = this.isMobile ? clamp(y - roofLift, 42, height - 86) : y;
       button.style.transform = `translate3d(${safeX}px, ${safeY}px, 0) translate(-50%, -118%)`;
       const label = button.querySelector("[data-hln-equipment-label]");
       if (label) label.textContent = this.equipmentBadgeText(key);
