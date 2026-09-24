@@ -643,7 +643,7 @@ try {
 
   await page.waitForFunction(
     () => {
-      const hotspot = document.querySelector('[data-hln-3d-hotspot="wall"]');
+      const hotspot = document.querySelector('[data-hln3d-hotspot="wall"]');
       const legacy = document.querySelector('.hln-zone-wall');
       const visible = (node) => {
         if (!(node instanceof HTMLElement)) return false;
@@ -659,7 +659,7 @@ try {
     {timeout:30000}
   );
   await page.evaluate(() => {
-    const hotspot = document.querySelector('[data-hln-3d-hotspot="wall"]');
+    const hotspot = document.querySelector('[data-hln3d-hotspot="wall"]');
     const legacy = document.querySelector('.hln-zone-wall');
     const visible = (node) => {
       if (!(node instanceof HTMLElement)) return false;
