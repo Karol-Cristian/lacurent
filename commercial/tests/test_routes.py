@@ -1964,7 +1964,7 @@ def test_home_lab_gameified_controls_are_separate_from_technical_mode() -> None:
     assert 'new Set(["wall", "roof", "windows"])' in js3d.text
     assert 'button.classList.add("is-gameified")' in js3d.text
     assert 'button.classList.add("is-discoverable")' in js3d.text
-    assert '"solidHeat": "Încălzire"' in js3d.text
+    assert 'solidHeat: "Încălzire"' in js3d.text
     assert '["home", "site"].includes(this.mode)' in js3d.text
     assert 'data-hln-3d-add-rail' in js3d.text
     assert 'pvButton.hidden = Boolean(detail.pvEnabled)' in js3d.text
