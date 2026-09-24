@@ -552,18 +552,32 @@ try {
   await page.setViewportSize({width:390,height:844});
   await page.goto(baseUrl + "/home-lab-next", {waitUntil:"networkidle", timeout:30000});
   await expectVisible("[data-home-lab-next]");
+  await page.waitForFunction(
+    () => document.querySelector(".hln-live-summary")?.classList.contains("is-fresh"),
+    null,
+    {timeout:30000}
+  );
   const mobileDock = await page.evaluate(() => {
     const dock = document.querySelector(".hln-dock");
     const benefits = document.querySelector(".hln-dock-benefits");
     const back = document.querySelector("#hlnDockBack");
     const cta = document.querySelector("#hlnDockCta");
     const ctaLabel = cta?.querySelector("span");
+    const status = document.querySelector(".hln-live-calc-status");
+    const genericSystems = document.querySelector(".hln-house-visual-home .hln-hotspot-systems");
+    const locationLabel = document.querySelector(".hln-hotspot-location span");
+    const geometryLabel = document.querySelector(".hln-hotspot-house span");
+    const envelopeLabel = document.querySelector(".hln-hotspot-envelope span");
     if (!(dock instanceof HTMLElement) ||
         !(benefits instanceof HTMLElement) ||
         !(back instanceof HTMLElement) ||
         !(cta instanceof HTMLElement) ||
-        !(ctaLabel instanceof HTMLElement)) {
-      throw new Error("Mobile dock is incomplete");
+        !(ctaLabel instanceof HTMLElement) ||
+        !(status instanceof HTMLElement) ||
+        !(locationLabel instanceof HTMLElement) ||
+        !(geometryLabel instanceof HTMLElement) ||
+        !(envelopeLabel instanceof HTMLElement)) {
+      throw new Error("Mobile dock/home declutter is incomplete");
     }
     const backBox = back.getBoundingClientRect();
     const ctaBox = cta.getBoundingClientRect();
@@ -578,17 +592,27 @@ try {
       mobileLabel:ctaLabel.dataset.mobileLabel,
       dockBackground:dockStyle.backgroundColor,
       dockBorder:dockStyle.borderTopWidth,
+      freshStatusDisplay:getComputedStyle(status).display,
+      genericSystemsExists:Boolean(genericSystems),
+      mobileLabels:[
+        locationLabel.dataset.mobileLabel,
+        geometryLabel.dataset.mobileLabel,
+        envelopeLabel.dataset.mobileLabel,
+      ],
     };
   });
   if (mobileDock.benefitsDisplay !== "none" ||
       mobileDock.backDisplay !== "none" ||
       mobileDock.backWidth !== 0 ||
       !mobileDock.ctaVisible ||
-      mobileDock.ctaWidth > 200 ||
+      mobileDock.ctaWidth > 155 ||
       Math.abs(mobileDock.ctaRight - 376) > 2 ||
       mobileDock.mobileLabel !== "Îmbunătățiri" ||
       mobileDock.dockBackground !== "rgba(0, 0, 0, 0)" ||
-      mobileDock.dockBorder !== "0px") {
+      mobileDock.dockBorder !== "0px" ||
+      mobileDock.freshStatusDisplay !== "none" ||
+      mobileDock.genericSystemsExists ||
+      JSON.stringify(mobileDock.mobileLabels) !== JSON.stringify(["Locație","Geometrie","Anvelopă"])) {
     throw new Error("Mobile dock is not compact/right-aligned on Casa mea: " + JSON.stringify(mobileDock));
   }
 
