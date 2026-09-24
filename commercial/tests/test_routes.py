@@ -401,9 +401,9 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next26" in response.text
+    assert "/static/home-lab-next.css?v=next27" in response.text
     assert "/static/home-lab-next.js?v=next49" in response.text
-    assert "/static/home-lab-3d.css?v=3d28" in response.text
+    assert "/static/home-lab-3d.css?v=3d29" in response.text
     assert 'aria-label="Schiță conceptuală a casei"' not in response.text
     assert 'aria-label="Casă cu zone de îmbunătățire"' not in response.text
 
@@ -459,10 +459,10 @@ def test_home_lab_energy_strip_labels_references_and_sen_source() -> None:
     assert 'data-hln-measure="pv"' in response.text
     assert 'data-hln-measure="solar_thermal"' in response.text
     assert 'id="hlnHomePvKwp"' in response.text
-    assert "5 categorii" in response.text
-    assert 'data-hln-editor-open="renewables"' in response.text
+    assert "4 categorii" in response.text
+    assert 'data-hln-window-affordance' in response.text
+    assert 'data-hln-editor-open="renewables"' not in response.text
     assert 'data-hln-editor="renewables"' in response.text
-    assert 'id="hlnRenewablesSummary"' in response.text
     assert 'id="hlnHomeLocationMap"' in response.text
     assert 'id="hlnDockHomeClass"' in response.text
     assert 'id="hlnDockHomeCost"' in response.text
@@ -1651,7 +1651,8 @@ def test_home_lab_3d_orientation_is_semantic_and_independent_from_camera_orbit()
     assert "focusOrientation(" not in source
     assert 'this.setCompassOrientation(detail.orientation)' in source
     assert 'detail.focus === "pv" || detail.focus === "solarThermal"' in source
-    assert 'this.focusPart("roof", false)' in source
+    assert "this.controls.enableZoom = false" in source
+    assert "restoreBaselineCamera()" in source
     assert "this.rebuildRenovationLayer(part)" not in source
 
 
@@ -1670,7 +1671,8 @@ def test_home_lab_mobile_house_first_controls_keep_context_visible() -> None:
     assert css.status_code == 200
     source = css.text
     assert ".hln-hotspot span,.hln-zone span{display:inline}" in source
-    assert "backdrop-filter:blur(11px)" in source
+    assert "backdrop-filter:blur(3px)" in source
+    assert ".hln-editor textarea{font-size:16px}" in source
     assert "height:min(82dvh,760px)" in source
 
     css3d = client.get("/static/home-lab-3d.css")
