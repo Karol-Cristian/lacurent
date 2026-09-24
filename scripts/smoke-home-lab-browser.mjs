@@ -253,7 +253,28 @@ try {
   }
 
   await page.locator('.hln-config-row[data-hln-editor-open="house"]').click();
-  await expectVisible('[data-hln-editor="house"]');
+  try {
+    await expectVisible('[data-hln-editor="house"]');
+  } catch (error) {
+    const editorState = await page.evaluate(() => {
+      const editor = document.querySelector("#hlnEditor");
+      return {
+        editorHidden: editor?.hidden,
+        editorMode: editor?.dataset?.hlnEditorMode || null,
+        editorClass: editor?.className || null,
+        visibleSections: [...document.querySelectorAll("[data-hln-editor]")].map(node => ({
+          name: node.dataset.hlnEditor,
+          hidden: node.hidden,
+        })),
+      };
+    });
+    throw new Error(
+      "Technical house editor did not open. state=" + JSON.stringify(editorState) +
+      " pageErrors=" + JSON.stringify(pageErrors) +
+      " consoleErrors=" + JSON.stringify(consoleErrors) +
+      " cause=" + String(error)
+    );
+  }
   await page.locator("#hlnArea").fill("130");
   await page.locator("#hlnArea").press("Tab");
   await page.locator(".hln-editor-done").click();
