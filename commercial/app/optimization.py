@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field, root_validator
 
 from .cost_curves import ParametricCostCurveV1, curve_cost_per_basis
 from .engine import calculate
+from .extended_costs import SystemCostCurveV1, system_curve_cost
 from .methodology import methodology
 from .models import BuildingInput, model_to_dict
 from .pricing import estimate_energy_cost
@@ -72,7 +73,9 @@ class ParametricMeasuresV1(BaseModel):
     window_replacement_fraction: float = Field(default=0, ge=0, le=1)
     window_target_u_w_m2k: float = Field(default=0.9, gt=0, le=6)
     pv_added_kwp: float = Field(default=0, ge=0, le=100)
+    pv_performance_ratio: float | None = Field(default=None, gt=0, le=1)
     solar_thermal_added_m2: float = Field(default=0, ge=0, le=100)
+    solar_thermal_system_efficiency: float | None = Field(default=None, gt=0, le=1)
 
 
 class OptimizationCandidateRequestV1(BaseModel):
@@ -110,6 +113,7 @@ class CandidateEvaluationV1(BaseModel):
     payback_years: float | None = None
     roi_percent_per_year: float | None = None
     final_energy_kwh: float
+    design_heat_load_kw: float | None = None
     primary_specific_kwh_m2: float
     co2_total_kg: float
     co2_specific_kg_m2: float
@@ -326,56 +330,135 @@ def parametric_capex(
         )
 
     if measures.window_replacement_fraction > 0:
-        item = _catalog_item(catalog, "windows")
-        if item.get("unit") != "lei_per_m2":
-            raise ValueError("Window cost catalog entry must use lei_per_m2.")
         affected_area = _envelope_area(baseline_result, "windows") * float(
             measures.window_replacement_fraction
         )
-        capex = affected_area * float(item["cost_lei"])
-        lines.append(
-            _cost_line(
-                family="windows",
-                capex_lei=capex,
-                parameter_value=float(measures.window_replacement_fraction),
-                parameter_unit="replacement_fraction",
-                item=item,
+        raw_curve = (
+            catalog.get("parametric_curves", {}).get("windows")
+            if isinstance(catalog.get("parametric_curves"), dict)
+            else None
+        )
+        if raw_curve is not None:
+            curve = ParametricCostCurveV1(**raw_curve)
+            target_resistance = 1.0 / float(measures.window_target_u_w_m2k)
+            capex = affected_area * curve_cost_per_basis(
+                curve,
+                target_resistance,
+                require_installed_total=True,
             )
-        )
-        warnings.append(
-            "windows: the current planning catalog prices replacement area, not a continuous "
-            "Uw product-performance curve. Product-level window pricing is still required."
-        )
+            lines.append(
+                CostLineV1(
+                    family="windows",
+                    capex_lei=round(capex, 2),
+                    parameter_value=round(float(measures.window_target_u_w_m2k), 6),
+                    parameter_unit="target_Uw_W/m2K",
+                    source_kind="product_derived_parametric_curve",
+                    confidence="market_derived",
+                    catalog_unit="lei_per_m2_as_function_of_1_over_Uw",
+                    note=(
+                        f"{curve.source_product_count} window-product observations; "
+                        f"replacement_fraction={float(measures.window_replacement_fraction):.4f}."
+                    ),
+                )
+            )
+        else:
+            item = _catalog_item(catalog, "windows")
+            if item.get("unit") != "lei_per_m2":
+                raise ValueError("Window cost catalog entry must use lei_per_m2.")
+            capex = affected_area * float(item["cost_lei"])
+            lines.append(
+                _cost_line(
+                    family="windows",
+                    capex_lei=capex,
+                    parameter_value=float(measures.window_replacement_fraction),
+                    parameter_unit="replacement_fraction",
+                    item=item,
+                )
+            )
+            warnings.append(
+                "windows: planning fallback uses a flat lei/m2 rate; product-derived Uw cost "
+                "curve should replace it before commercial recommendation."
+            )
 
     if measures.pv_added_kwp > 0:
-        item = _catalog_item(catalog, "pv")
-        if item.get("unit") != "lei_per_kwp":
-            raise ValueError("PV cost catalog entry must use lei_per_kwp.")
-        capex = float(measures.pv_added_kwp) * float(item["cost_lei"])
-        lines.append(
-            _cost_line(
-                family="pv",
-                capex_lei=capex,
-                parameter_value=float(measures.pv_added_kwp),
-                parameter_unit="kWp_added",
-                item=item,
-            )
+        raw_curve = (
+            catalog.get("system_curves", {}).get("pv")
+            if isinstance(catalog.get("system_curves"), dict)
+            else None
         )
+        if raw_curve is not None:
+            curve = SystemCostCurveV1(**raw_curve)
+            capex = system_curve_cost(
+                curve,
+                float(measures.pv_added_kwp),
+                require_installed_total=True,
+            )
+            lines.append(
+                CostLineV1(
+                    family="pv",
+                    capex_lei=round(capex, 2),
+                    parameter_value=round(float(measures.pv_added_kwp), 6),
+                    parameter_unit="kWp_added",
+                    source_kind="product_derived_system_curve",
+                    confidence="market_derived",
+                    catalog_unit="lei_total_as_function_of_kWp",
+                    note=f"{curve.source_product_count} PV module products.",
+                )
+            )
+        else:
+            item = _catalog_item(catalog, "pv")
+            if item.get("unit") != "lei_per_kwp":
+                raise ValueError("PV cost catalog entry must use lei_per_kwp.")
+            capex = float(measures.pv_added_kwp) * float(item["cost_lei"])
+            lines.append(
+                _cost_line(
+                    family="pv",
+                    capex_lei=capex,
+                    parameter_value=float(measures.pv_added_kwp),
+                    parameter_unit="kWp_added",
+                    item=item,
+                )
+            )
 
     if measures.solar_thermal_added_m2 > 0:
-        item = _catalog_item(catalog, "solar_thermal")
-        if item.get("unit") != "lei_per_m2":
-            raise ValueError("Solar-thermal cost catalog entry must use lei_per_m2.")
-        capex = float(measures.solar_thermal_added_m2) * float(item["cost_lei"])
-        lines.append(
-            _cost_line(
-                family="solar_thermal",
-                capex_lei=capex,
-                parameter_value=float(measures.solar_thermal_added_m2),
-                parameter_unit="m2_added",
-                item=item,
-            )
+        raw_curve = (
+            catalog.get("system_curves", {}).get("solar_thermal")
+            if isinstance(catalog.get("system_curves"), dict)
+            else None
         )
+        if raw_curve is not None:
+            curve = SystemCostCurveV1(**raw_curve)
+            capex = system_curve_cost(
+                curve,
+                float(measures.solar_thermal_added_m2),
+                require_installed_total=True,
+            )
+            lines.append(
+                CostLineV1(
+                    family="solar_thermal",
+                    capex_lei=round(capex, 2),
+                    parameter_value=round(float(measures.solar_thermal_added_m2), 6),
+                    parameter_unit="m2_added",
+                    source_kind="product_derived_system_curve",
+                    confidence="market_derived",
+                    catalog_unit="lei_total_as_function_of_collector_area",
+                    note=f"{curve.source_product_count} solar-thermal products.",
+                )
+            )
+        else:
+            item = _catalog_item(catalog, "solar_thermal")
+            if item.get("unit") != "lei_per_m2":
+                raise ValueError("Solar-thermal cost catalog entry must use lei_per_m2.")
+            capex = float(measures.solar_thermal_added_m2) * float(item["cost_lei"])
+            lines.append(
+                _cost_line(
+                    family="solar_thermal",
+                    capex_lei=capex,
+                    parameter_value=float(measures.solar_thermal_added_m2),
+                    parameter_unit="m2_added",
+                    item=item,
+                )
+            )
 
     return round(sum(line.capex_lei for line in lines), 2), lines, warnings
 
@@ -472,6 +555,8 @@ def apply_parametric_measures(
         pv["installed_power_kwp"] = new_pv
         pv.setdefault("orientation", "south")
         pv.setdefault("tilt_degrees", 30)
+        if measures.pv_performance_ratio is not None:
+            pv["performance_ratio"] = float(measures.pv_performance_ratio)
 
     solar = renewables.setdefault("solar_thermal", {})
     current_solar = (
@@ -485,8 +570,24 @@ def apply_parametric_measures(
         solar["collector_area_m2"] = new_solar
         solar.setdefault("orientation", "south")
         solar.setdefault("tilt_degrees", 45)
+        if measures.solar_thermal_system_efficiency is not None:
+            solar["system_efficiency"] = float(
+                measures.solar_thermal_system_efficiency
+            )
 
     return BuildingInput(**payload), warnings
+
+
+def _design_heat_load_kw(result: Any) -> float | None:
+    design_temperature = result.climate.get("winter_design_temperature_c")
+    if design_temperature is None:
+        return None
+    delta_t = max(
+        float(result.input.indoor_design_temperature_c)
+        - float(design_temperature),
+        0.0,
+    )
+    return round(float(result.heat_loss_w_k) * delta_t / 1000.0, 4)
 
 
 def evaluate_parametric_candidate(
@@ -555,6 +656,7 @@ def evaluate_parametric_candidate(
         payback_years=None if payback is None else round(payback, 4),
         roi_percent_per_year=None if roi is None else round(roi, 4),
         final_energy_kwh=round(float(candidate_result.total_final_energy_kwh), 3),
+        design_heat_load_kw=_design_heat_load_kw(candidate_result),
         primary_specific_kwh_m2=round(
             float(candidate_result.primary_energy.specific_kwh_m2),
             3,
@@ -803,7 +905,9 @@ def _measure_signature(measures: ParametricMeasuresV1) -> tuple[float, ...]:
             measures.window_replacement_fraction,
             measures.window_target_u_w_m2k,
             measures.pv_added_kwp,
+            measures.pv_performance_ratio or 0.0,
             measures.solar_thermal_added_m2,
+            measures.solar_thermal_system_efficiency or 0.0,
         )
     )
 
