@@ -29,6 +29,7 @@ from .optimization import (
     OptimizationSearchBoundsV1,
     OptimizationSearchRequestV1,
     OptimizationSelectionRequestV1,
+    OptimizationSelectionV1,
     evaluate_parametric_candidate,
     _fallback_refinement_seed,
     run_parametric_optimization,
@@ -48,6 +49,7 @@ from .heating_optimization import (
     HeatingBranchSummaryV1,
     heating_branch_plan,
     heating_planning_options,
+    evaluate_heating_branch_candidate,
     run_heating_branch_optimization,
     run_mixed_heating_optimization,
 )
@@ -2320,6 +2322,68 @@ def _home_lab_optimizer_success_payload(
     }
 
 
+def _optimizer_candidate_summary(
+    candidate: CandidateEvaluationV1,
+    *,
+    branch_id: str,
+) -> dict[str, Any]:
+    """Compact transport record used between phased optimizer requests."""
+
+    return {
+        "candidate_id": candidate.candidate_id,
+        "branch_id": branch_id,
+        "parameters": model_to_dict(candidate.parameters),
+        "capex_lei": float(candidate.capex_lei),
+        "baseline_annual_bill_lei": float(candidate.baseline_annual_bill_lei),
+        "annual_bill_lei": float(candidate.annual_bill_lei),
+        "annual_saving_lei": float(candidate.annual_saving_lei),
+        "payback_years": (
+            None if candidate.payback_years is None else float(candidate.payback_years)
+        ),
+        "roi_percent_per_year": (
+            None
+            if candidate.roi_percent_per_year is None
+            else float(candidate.roi_percent_per_year)
+        ),
+    }
+
+
+def _optimizer_candidate_from_summary(raw: dict[str, Any]) -> CandidateEvaluationV1:
+    """Rehydrate only the scalar fields needed by the exact policy selector."""
+
+    # Backward compatibility for a stale client that still sends the old full
+    # CandidateEvaluationV1 payload.
+    if "final_energy_kwh" in raw and "primary_specific_kwh_m2" in raw:
+        return CandidateEvaluationV1(**raw)
+
+    return CandidateEvaluationV1(
+        candidate_id=str(raw["candidate_id"]),
+        parameters=ParametricMeasuresV1(**(raw.get("parameters") or {})),
+        capex_lei=float(raw["capex_lei"]),
+        baseline_annual_bill_lei=float(raw["baseline_annual_bill_lei"]),
+        annual_bill_lei=float(raw["annual_bill_lei"]),
+        annual_saving_lei=float(raw["annual_saving_lei"]),
+        payback_years=(
+            None
+            if raw.get("payback_years") is None
+            else float(raw["payback_years"])
+        ),
+        roi_percent_per_year=(
+            None
+            if raw.get("roi_percent_per_year") is None
+            else float(raw["roi_percent_per_year"])
+        ),
+        final_energy_kwh=0.0,
+        primary_specific_kwh_m2=0.0,
+        co2_total_kg=0.0,
+        co2_specific_kg_m2=0.0,
+        energy_class="summary",
+        resulting_configuration=None,
+        cost_breakdown=[],
+        commercialization_status="pending_product_catalog",
+    )
+
+
 @app.post("/api/optimization/home-lab/plan")
 async def home_lab_optimization_plan_api(request: Request) -> JSONResponse:
     form = dict(await request.form())
@@ -2386,7 +2450,7 @@ async def home_lab_optimization_branch_api(request: Request) -> JSONResponse:
             if not isinstance(decoded_prior, list):
                 raise ValueError("Candidații anteriori trebuie să fie o listă.")
             prior_candidates = [
-                CandidateEvaluationV1(**item)
+                _optimizer_candidate_from_summary(item)
                 for item in decoded_prior
                 if isinstance(item, dict)
             ]
@@ -2422,7 +2486,8 @@ async def home_lab_optimization_branch_api(request: Request) -> JSONResponse:
                 "branch": model_to_dict(result.branch),
                 "selection": model_to_dict(result.selection),
                 "candidates": [
-                    model_to_dict(item) for item in result.candidates
+                    _optimizer_candidate_summary(item, branch_id=branch_id)
+                    for item in result.candidates
                 ],
                 "candidateCount": int(result.candidate_count),
                 "parametricEvaluations": int(result.parametric_evaluations),
@@ -2488,12 +2553,9 @@ async def home_lab_optimization_finalize_api(request: Request) -> JSONResponse:
             candidate_rows = item.get("candidates") or []
             for candidate_raw in candidate_rows:
                 if isinstance(candidate_raw, dict):
-                    finalists.append(CandidateEvaluationV1(**candidate_raw))
-            if not candidate_rows:
-                selection_raw = item.get("selection") or {}
-                selected_raw = selection_raw.get("selected")
-                if selected_raw:
-                    finalists.append(CandidateEvaluationV1(**selected_raw))
+                    finalists.append(
+                        _optimizer_candidate_from_summary(candidate_raw)
+                    )
 
         branch_summaries = list(branch_summaries_by_id.values())
 
@@ -2511,12 +2573,15 @@ async def home_lab_optimization_finalize_api(request: Request) -> JSONResponse:
                 status_code=422,
             )
 
-        selection = select_optimization_candidate(optimization_request, finalists)
-        if selection.selected is None:
+        compact_selection = select_optimization_candidate(
+            optimization_request,
+            finalists,
+        )
+        if compact_selection.selected is None:
             return JSONResponse(
                 {
                     "error": "Nicio ramură finalistă nu satisface regula economică aleasă.",
-                    "selection": model_to_dict(selection),
+                    "selection": model_to_dict(compact_selection),
                     "evaluated_candidates": evaluated_candidates,
                     "parametric_evaluations": parametric_evaluations,
                     "heating_branch_evaluations": heating_branch_evaluations,
@@ -2524,6 +2589,44 @@ async def home_lab_optimization_finalize_api(request: Request) -> JSONResponse:
                 },
                 status_code=422,
             )
+
+        selected_compact = compact_selection.selected
+        selected_summary = next(
+            (
+                raw
+                for item in decoded
+                if isinstance(item, dict)
+                for raw in (item.get("candidates") or [])
+                if isinstance(raw, dict)
+                and str(raw.get("candidate_id", raw.get("candidateId", "")))
+                == selected_compact.candidate_id
+            ),
+            None,
+        )
+        if selected_summary is None:
+            raise ValueError("Candidatul economic selectat nu mai poate fi localizat.")
+
+        selected_branch_id = str(
+            selected_summary.get("branch_id")
+            or selected_summary.get("branchId")
+            or "keep-current-heating"
+        )
+        selected_full = evaluate_heating_branch_candidate(
+            optimization_request,
+            branch_id=selected_branch_id,
+            measures=selected_compact.parameters,
+            catalog=await _optimizer_cost_catalog(request),
+        )
+        selection = OptimizationSelectionV1(
+            mode=compact_selection.mode,
+            selected=selected_full,
+            candidate_count=compact_selection.candidate_count,
+            feasible_count=compact_selection.feasible_count,
+            pareto_count=compact_selection.pareto_count,
+            auto_horizons_years=compact_selection.auto_horizons_years,
+            rationale=compact_selection.rationale,
+            warnings=compact_selection.warnings,
+        )
 
         payload = _home_lab_optimizer_success_payload(
             mode=mode,
