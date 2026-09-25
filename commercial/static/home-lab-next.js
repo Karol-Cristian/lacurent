@@ -3005,20 +3005,23 @@
           }
 
           const phaseSummariesByBatch = new Map();
-          let nextBatchIndex = 0;
           let completedInPhase = 0;
           let phaseFinalFailures = 0;
           let phaseRecoveredRetries = 0;
-          const phaseParallelism = Math.min(adaptiveBranchParallelism, phaseOffsets.length);
 
-          const updateParallelPhaseProgress = () => {
+          const updateParallelPhaseProgress = waveText => {
             setStatus(
-              `Optimizez ${index + 1}/${runnableIds.length}: ${branchLabel} · ${readablePhase} ${completedInPhase}/${phaseOffsets.length}…`
+              \`Ramura \${index + 1}/\${runnableIds.length} · faza \${phaseIndex + 1}/\${phases.length} · \${readablePhase} · \${completedInPhase}/\${phaseOffsets.length}\`
             );
             setOptimizationNote(
-              `<strong>${escapeHtml(settings.label)}</strong>
-               <span>Ramura ${index + 1}/${runnableIds.length}: ${escapeHtml(branchLabel)} · ${escapeHtml(readablePhase)}.</span>
-               <small>${completedEvaluations} recalculări terminate · 1 candidat/request · până la ${phaseParallelism} requesturi simultan · ${evaluationsPerBranch} evaluări per ramură.</small>`
+              \`<strong>\${escapeHtml(settings.label)}</strong>
+               <span>Ramura \${index + 1}/\${runnableIds.length}: \${escapeHtml(branchLabel)} · faza \${phaseIndex + 1}/\${phases.length}: \${escapeHtml(readablePhase)}.</span>
+               <small>Candidați procesați \${completedInPhase}/\${phaseOffsets.length} în fază · \${processedCandidates}/\${plannedCandidates} total · concurență \${adaptiveBranchParallelism}/\${configuredBranchParallelism}\${waveText ? " · " + escapeHtml(waveText) : ""}.</small>\`
+            );
+            setOptimizerConsoleProgress(
+              processedCandidates,
+              plannedCandidates,
+              \`\${processedCandidates}/\${plannedCandidates} procesați · \${completedEvaluations} calculați · \${failedMicroBatches.length} faulturi · concurență \${adaptiveBranchParallelism}/\${configuredBranchParallelism}\`
             );
           };
 
@@ -3031,9 +3034,25 @@
 
             const phaseOffset = phaseOffsets[batchIndex];
             const candidateTrace = phaseCandidateByOffset.get(Number(phaseOffset)) || null;
+            const candidateId = candidateTrace?.candidate_id || \`TRACE-\${branchId}-\${phase}-\${phaseOffset}\`;
+            const candidateParameters = candidateTrace?.parameters || null;
+            const candidateStartedAt = performance.now();
             const body = optimizerBody();
             const formPayload = Object.fromEntries(body.entries());
             let branchCall = null;
+
+            appendOptimizerConsole(
+              "run",
+              "RUN",
+              \`B \${index + 1}/\${runnableIds.length} · P \${phaseIndex + 1}/\${phases.length} · C \${batchIndex + 1}/\${phaseOffsets.length} · \${candidateId}\`
+            );
+            appendOptimizerConsole(
+              "param",
+              "PARAM",
+              candidateParameters
+                ? optimizerConsoleCandidateParameters(candidateParameters)
+                : \`branch=\${branchId} | phase=\${phase} | offset=\${phaseOffset}\`
+            );
 
             try {
               branchCall = await fetchOptimizerWithRetry(
@@ -3052,24 +3071,43 @@
                 optimizerAbortController?.signal || null,
                 OPTIMIZER_REQUEST_TIMEOUT_MS,
                 branchMaxAttempts,
-                false
+                false,
+                {
+                  onRetry: ({nextAttempt, maxAttempts, delayMs, reason}) => {
+                    const reasonText = reason?.type === "http"
+                      ? \`HTTP \${reason.status}\`
+                      : (reason?.name || "network");
+                    appendOptimizerConsole(
+                      "retry",
+                      "RETRY",
+                      \`\${candidateId} · \${reasonText} · încercarea \${nextAttempt}/\${maxAttempts} în \${Math.round(delayMs)} ms\`
+                    );
+                  },
+                }
               );
             } catch (error) {
               if (error?.name === "AbortError" || runToken !== optimizerRunToken) throw error;
               const transientTransport = error?.name === "TimeoutError" || error?.name === "TypeError";
               if (!transientTransport) throw error;
               phaseFinalFailures += 1;
-              const warning = `Ramura „${branchLabel}” / ${readablePhase} / candidat ${candidateTrace?.candidate_id || batchIndex + 1} a fost păstrat pentru reexecuție după ${error?.name || "network"}.`;
+              const attempts = Number(error?.attemptCount || branchMaxAttempts);
+              const elapsedMs = performance.now() - candidateStartedAt;
+              appendOptimizerConsole(
+                "fail",
+                "FAIL",
+                \`\${candidateId} · \${error?.name || "network"} după \${attempts} încercări · \${Math.round(elapsedMs)} ms · păstrat pentru reexecuție\`
+              );
+              const warning = \`Ramura „\${branchLabel}” / \${readablePhase} / candidat \${candidateId} a fost păstrat pentru reexecuție după \${error?.name || "network"}.\`;
               failedMicroBatches.push({
                 candidateId:candidateTrace?.candidate_id || null,
-                candidateParameters:candidateTrace?.parameters || null,
+                candidateParameters,
                 branchId,
                 branchLabel,
                 phase,
                 batchIndex,
                 phaseOffset,
                 status:null,
-                attempts:Number(error?.attemptCount || branchMaxAttempts),
+                attempts,
                 reason:error?.name || "transport_error",
               });
               branchResults.push({
@@ -3098,17 +3136,24 @@
               const status = Number(branchCall.response?.status || 0);
               if (OPTIMIZER_TRANSIENT_RETRY_STATUSES.has(status)) {
                 phaseFinalFailures += 1;
-                const warning = `Ramura „${branchLabel}” / ${readablePhase} / candidat ${candidateTrace?.candidate_id || batchIndex + 1} a fost păstrat pentru reexecuție după HTTP ${status || "tranzitoriu"} repetat.`;
+                const attempts = Number(branchCall.attemptCount || 1);
+                const elapsedMs = performance.now() - candidateStartedAt;
+                appendOptimizerConsole(
+                  "fail",
+                  "FAIL",
+                  \`\${candidateId} · HTTP \${status || "?"} după \${attempts} încercări · \${Math.round(elapsedMs)} ms · păstrat pentru reexecuție\`
+                );
+                const warning = \`Ramura „\${branchLabel}” / \${readablePhase} / candidat \${candidateId} a fost păstrat pentru reexecuție după HTTP \${status || "tranzitoriu"} repetat.\`;
                 failedMicroBatches.push({
                   candidateId:candidateTrace?.candidate_id || null,
-                  candidateParameters:candidateTrace?.parameters || null,
+                  candidateParameters,
                   branchId,
                   branchLabel,
                   phase,
                   batchIndex,
                   phaseOffset,
                   status,
-                  attempts:Number(branchCall.attemptCount || 1),
+                  attempts,
                   reason:"transient_http",
                 });
                 branchResults.push({
@@ -3124,7 +3169,7 @@
               }
               throw new Error(
                 branchCall.payload?.error
-                || `Ramura „${branchLabel}” / ${readablePhase} / candidat ${candidateTrace?.candidate_id || batchIndex + 1} nu a putut fi calculată (HTTP ${status || "?"}).`
+                || \`Ramura „\${branchLabel}” / \${readablePhase} / candidat \${candidateId} nu a putut fi calculată (HTTP \${status || "?"}).\`
               );
             }
 
@@ -3133,29 +3178,104 @@
               ? branchCall.payload.candidateSummaries
               : [];
             phaseSummariesByBatch.set(batchIndex, batchSummaries);
-            completedEvaluations += Number(branchCall.payload.parametricEvaluations || 0);
+            const evaluatedNow = Number(branchCall.payload.parametricEvaluations || 0);
+            completedEvaluations += evaluatedNow;
+
+            const summary = batchSummaries[0] || null;
+            const elapsedMs = performance.now() - candidateStartedAt;
+            const resultText = summary
+              ? \`CAPEX \${fmt(Number(summary.capex_lei || 0))} lei | factură \${fmt(Number(summary.annual_bill_lei || 0))} lei/an | economie \${fmt(Number(summary.annual_saving_lei || 0))} lei/an\`
+              : (evaluatedNow > 0 ? "calculat, dar eliminat de constrângerile tehnice/economice" : "fără candidat tehnic păstrat");
+            appendOptimizerConsole(
+              "ok",
+              "OK",
+              \`\${candidateId} · \${Math.round(elapsedMs)} ms · \${resultText}\`
+            );
           };
 
-          updateParallelPhaseProgress();
-          const workers = Array.from({length:phaseParallelism}, (_, workerIndex) => (
-            (async () => {
-              if (workerIndex > 0 && branchStartStaggerMs > 0) {
+          let waveCursor = 0;
+          while (waveCursor < phaseOffsets.length) {
+            if (runToken !== optimizerRunToken) return;
+            const waveParallelism = Math.max(
+              1,
+              Math.min(adaptiveBranchParallelism, phaseOffsets.length - waveCursor)
+            );
+            const waveIndexes = Array.from(
+              {length:waveParallelism},
+              (_, position) => waveCursor + position
+            );
+            const firstCandidate = waveIndexes[0] + 1;
+            const lastCandidate = waveIndexes[waveIndexes.length - 1] + 1;
+            const failuresBeforeWave = phaseFinalFailures;
+            const retriesBeforeWave = phaseRecoveredRetries;
+
+            appendOptimizerConsole(
+              "info",
+              "WAVE",
+              \`\${branchLabel} · \${readablePhase} · candidați \${firstCandidate}–\${lastCandidate}/\${phaseOffsets.length} · concurență \${waveParallelism}\`
+            );
+            updateParallelPhaseProgress(
+              \`rulează candidații \${firstCandidate}–\${lastCandidate}/\${phaseOffsets.length}\`
+            );
+
+            await Promise.all(waveIndexes.map(async (batchIndex, wavePosition) => {
+              if (wavePosition > 0 && branchStartStaggerMs > 0) {
                 await new Promise(resolve => window.setTimeout(
                   resolve,
-                  workerIndex * branchStartStaggerMs
+                  wavePosition * branchStartStaggerMs
                 ));
               }
-              while (true) {
-                const batchIndex = nextBatchIndex;
-                nextBatchIndex += 1;
-                if (batchIndex >= phaseOffsets.length) return;
+              try {
                 await runOnePhaseCandidate(batchIndex);
+              } finally {
                 completedInPhase += 1;
-                updateParallelPhaseProgress();
+                processedCandidates += 1;
+                updateParallelPhaseProgress(
+                  \`ultimul val \${firstCandidate}–\${lastCandidate}/\${phaseOffsets.length}\`
+                );
               }
-            })()
-          ));
-          await Promise.all(workers);
+            }));
+
+            const waveFailures = phaseFinalFailures - failuresBeforeWave;
+            const waveRetries = phaseRecoveredRetries - retriesBeforeWave;
+            const previousParallelism = adaptiveBranchParallelism;
+
+            if (waveFailures > 0) {
+              adaptiveBranchParallelism = 1;
+              cleanWaveStreak = 0;
+              appendOptimizerConsole(
+                "retry",
+                "THROTTLE",
+                \`Fault în val: concurență \${previousParallelism} → 1 imediat pentru următorul val.\`
+              );
+            } else if (waveRetries > 0) {
+              adaptiveBranchParallelism = Math.max(1, adaptiveBranchParallelism - 1);
+              cleanWaveStreak = 0;
+              if (adaptiveBranchParallelism !== previousParallelism) {
+                appendOptimizerConsole(
+                  "retry",
+                  "THROTTLE",
+                  \`Retry detectat: concurență \${previousParallelism} → \${adaptiveBranchParallelism} pentru următorul val.\`
+                );
+              }
+            } else {
+              cleanWaveStreak += 1;
+              if (
+                cleanWaveStreak >= cleanWavesBeforeRampUp
+                && adaptiveBranchParallelism < configuredBranchParallelism
+              ) {
+                adaptiveBranchParallelism += 1;
+                cleanWaveStreak = 0;
+                appendOptimizerConsole(
+                  "info",
+                  "RAMP",
+                  \`Două valuri curate: concurență \${previousParallelism} → \${adaptiveBranchParallelism}.\`
+                );
+              }
+            }
+
+            waveCursor += waveIndexes.length;
+          }
 
           // Preserve deterministic candidate ordering for refinement seed
           // selection even though requests finish out of order.
@@ -3164,12 +3284,6 @@
             phaseSummariesCollected.push(...(phaseSummariesByBatch.get(batchIndex) || []));
           }
           priorCandidateSummaries.push(...phaseSummariesCollected);
-
-          if (phaseFinalFailures > 0) {
-            adaptiveBranchParallelism = Math.max(1, Math.floor(adaptiveBranchParallelism / 2));
-          } else if (phaseRecoveredRetries === 0 && adaptiveBranchParallelism < configuredBranchParallelism) {
-            adaptiveBranchParallelism += 1;
-          }
         }
       }
 
