@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Home Lab Editorial — experiment | LaCurent</title>
+  <meta name="robots" content="noindex,nofollow">
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
+  <link rel="stylesheet" href="/static/home-lab-editorial.css?v=1">
+  <link rel="stylesheet" href="/static/privacy-consent.css?v=privacy1">
+</head>
+<body>
+  <header class="ed-header">
+    <a class="ed-brand" href="/home-lab-editorial" aria-label="LaCurent Home Lab">
+      <span class="ed-mark">LC</span>
+      <span>Home Lab <small>experiment</small></span>
+    </a>
+    <div class="ed-progress" aria-live="polite">
+      <span id="edStepNumber">01</span><i></i><span id="edStepName">Start</span>
+    </div>
+  </header>
+
+  <main class="ed-shell" data-editorial-lab>
+    <form id="edForm" autocomplete="off">
+      <input type="hidden" name="project_name" value="Home Lab Editorial">
+      <input type="hidden" name="locality_id" id="localityId" value="{{ values.locality_id }}">
+      <input type="hidden" name="solar_mode" value="normative_hsol">
+      <input type="hidden" name="solar_orientation" value="south">
+      <input type="hidden" name="solar_glazing_type_id" value="triple_low_e_faces_2_and_5">
+      <input type="hidden" name="solar_glazing_gn" value="">
+      <input type="hidden" name="heating_chain_enabled" value="on">
+      <input type="hidden" name="heating_generator_type" value="condensing_gas_boiler">
+      <input type="hidden" name="heating_emitter_type" value="radiators_high_temp">
+      <input type="hidden" name="heating_distribution_type" value="hydronic_insulated">
+      <input type="hidden" name="heating_storage_type" value="none">
+      <input type="hidden" name="heating_control_type" value="room_thermostat">
+      <input type="hidden" name="heating_design_flow_temperature_c" value="">
+      <input type="hidden" name="heating_design_return_temperature_c" value="">
+      <input type="hidden" name="heating_auxiliary_electricity_kwh_year" value="">
+      <input type="hidden" name="cooling_enabled" value="">
+      <input type="hidden" name="cooling_seer" value="4">
+      <input type="hidden" name="cooling_setpoint_c" value="26">
+      <input type="hidden" name="dhw_enabled" value="on">
+      <input type="hidden" name="dhw_system_type" value="same_as_heating">
+      <input type="hidden" name="dhw_litres_per_person_day_at_60c" value="50">
+      <input type="hidden" name="expert_dhw_override" value="">
+      <input type="hidden" name="pv_enabled" id="pvEnabled" value="">
+      <input type="hidden" name="pv_orientation" value="south">
+      <input type="hidden" name="pv_tilt_degrees" value="30">
+      <input type="hidden" name="pv_performance_ratio" value="0.82">
+      <input type="hidden" name="solar_thermal_enabled" value="">
+      <input type="hidden" name="solar_thermal_collector_area_m2" value="4">
+      <input type="hidden" name="solar_thermal_orientation" value="south">
+      <input type="hidden" name="solar_thermal_tilt_degrees" value="45">
+      <input type="hidden" name="solar_thermal_system_efficiency" value="0.45">
+
+      <section class="ed-page is-active" data-page="intro" data-label="Start">
+        <div class="ed-copy">
+          <p class="ed-eyebrow">Analiză energetică a locuinței</p>
+          <h1>Spune-ne cum este casa.<br>Calculul vine după.</h1>
+          <p class="ed-lead">Fără dashboard-uri și fără rezultate intermediare. Introduci datele esențiale, alegi obiectivul, iar LaCurent îți explică rezultatul într-un raport liniar.</p>
+          <button class="ed-primary" type="button" data-next>Începe analiza <span>→</span></button>
+        </div>
+      </section>
+
+      <section class="ed-page" data-page="house" data-label="Casa">
+        <div class="ed-form-page">
+          <p class="ed-eyebrow">01 · Casa</p>
+          <h2>Unde este și cât de mare este?</h2>
+          <p class="ed-hint">Atât avem nevoie pentru geometria de bază și profilul climatic.</p>
+
+          <label class="ed-field ed-wide">
+            <span>Localitate</span>
+            <input name="locality" id="localityInput" value="{{ values.locality }}" placeholder="ex. Cluj-Napoca" required>
+          </label>
+
+          <input type="hidden" name="building_type" value="residential_individual">
+
+          <div class="ed-grid">
+            <label class="ed-field"><span>Lungime</span><div><input type="number" name="building_length_m" value="10" min="2" step="0.5" required><em>m</em></div></label>
+            <label class="ed-field"><span>Lățime</span><div><input type="number" name="building_width_m" value="8" min="2" step="0.5" required><em>m</em></div></label>
+            <label class="ed-field"><span>Niveluri încălzite</span><div><input type="number" name="heated_levels" value="2" min="1" max="5" step="1" required></div></label>
+            <label class="ed-field"><span>Înălțime medie</span><div><input type="number" name="average_height_m" value="2.7" min="1.8" max="5" step="0.1" required><em>m</em></div></label>
+            <label class="ed-field"><span>Ferestre</span><div><input type="number" name="house_window_area_m2" value="20" min="1" step="0.5" required><em>m²</em></div></label>
+            <label class="ed-field"><span>An construcție</span><div><input type="number" name="construction_year" value="2005" min="1800" max="2035" step="1" required></div></label>
+          </div>
+          <input type="hidden" name="house_door_area_m2" value="2.2">
+          <input type="hidden" name="indoor_design_temperature_c" value="21">
+
+          <div class="ed-actions"><button type="button" class="ed-back" data-back>Înapoi</button><button type="button" class="ed-primary" data-next>Continuă <span>→</span></button></div>
+        </div>
+      </section>
+
+      <section class="ed-page" data-page="envelope" data-label="Anvelopa">
+        <div class="ed-form-page">
+          <p class="ed-eyebrow">02 · Anvelopa</p>
+          <h2>Cât de bine este protejată casa?</h2>
+          <p class="ed-hint">Alegem un profil fizic de pornire. Detaliile tehnice rămân în raport.</p>
+
+          <div class="ed-choice-list" data-choice-group="insulation_profile">
+            <button type="button" data-value="poor"><b>Slab izolată</b><span>Construcție veche sau fără termoizolație relevantă.</span></button>
+            <button type="button" class="is-selected" data-value="average"><b>Izolație medie</b><span>Termoizolație și ferestre uzuale.</span></button>
+            <button type="button" data-value="good"><b>Bine izolată</b><span>Anvelopă modernizată și ferestre performante.</span></button>
+            <button type="button" data-value="very_good"><b>Foarte bine izolată</b><span>Nivel apropiat de construcțiile eficiente actuale.</span></button>
+          </div>
+          <input type="hidden" name="insulation_profile" value="average">
+
+          <label class="ed-field ed-wide ed-top-gap">
+            <span>Ventilație</span>
+            <select name="ventilation_type">
+              <option value="natural">Naturală</option>
+              <option value="mechanical">Mecanică fără recuperare</option>
+              <option value="heat_recovery">Cu recuperare de căldură</option>
+            </select>
+          </label>
+
+          <div class="ed-actions"><button type="button" class="ed-back" data-back>Înapoi</button><button type="button" class="ed-primary" data-next>Continuă <span>→</span></button></div>
+        </div>
+      </section>
+
+      <section class="ed-page" data-page="systems" data-label="Instalații">
+        <div class="ed-form-page">
+          <p class="ed-eyebrow">03 · Instalații</p>
+          <h2>Cu ce încălzești acum?</h2>
+          <p class="ed-hint">Sistemul actual este baseline-ul. Optimizerul poate propune altul dacă are sens tehnic și economic.</p>
+
+          <label class="ed-field ed-wide">
+            <span>Sistem principal de încălzire</span>
+            <select name="heating_choice" id="heatingChoice">
+              <option value="condensing_gas_boiler">Centrală în condensare pe gaz</option>
+              <option value="gas_boiler">Centrală clasică pe gaz</option>
+              <option value="electric_resistance">Încălzire electrică directă</option>
+              <option value="electric_boiler">Centrală electrică</option>
+              <option value="heat_pump">Pompă de căldură</option>
+              <option value="wood_stove">Sobă / șemineu pe lemne</option>
+              <option value="wood_boiler">Centrală pe lemne</option>
+              <option value="pellet_boiler">Centrală pe peleți</option>
+              <option value="district_heat">Termoficare</option>
+            </select>
+          </label>
+
+          <div class="ed-grid ed-top-gap">
+            <label class="ed-field"><span>Persoane</span><div><input type="number" name="dhw_occupants" value="4" min="1" max="20" step="1"><em>ACM</em></div></label>
+            <label class="ed-field"><span>Panouri fotovoltaice</span><button type="button" class="ed-toggle" id="pvToggle" aria-pressed="false"><i></i><span>Nu</span></button></label>
+          </div>
+          <label class="ed-field ed-wide is-muted" id="pvPowerField">
+            <span>Putere fotovoltaică instalată</span>
+            <div><input type="number" name="pv_installed_power_kwp" value="5" min="0" max="100" step="0.5" disabled><em>kWp</em></div>
+          </label>
+
+          <div class="ed-actions"><button type="button" class="ed-back" data-back>Înapoi</button><button type="button" class="ed-primary" data-next>Continuă <span>→</span></button></div>
+        </div>
+      </section>
+
+      <section class="ed-page" data-page="goal" data-label="Obiectiv">
+        <div class="ed-form-page">
+          <p class="ed-eyebrow">04 · Obiectiv</p>
+          <h2>Ce vrei să optimizeze?</h2>
+          <p class="ed-hint">Nu îți arătăm zeci de scenarii. Alegi regula economică, noi evaluăm configurațiile.</p>
+
+          <div class="ed-choice-list" data-choice-group="_optimization_mode">
+            <button type="button" class="is-selected" data-value="auto_economic"><b>Cea mai bună soluție economică</b><span>Compară automat orizonturile economice disponibile.</span></button>
+            <button type="button" data-value="investment_budget"><b>Buget maxim</b><span>Caută cea mai bună soluție în limita investiției.</span></button>
+            <button type="button" data-value="annual_bill_target"><b>Factură anuală țintă</b><span>Caută configurația necesară pentru factura dorită.</span></button>
+            <button type="button" data-value="max_payback_years"><b>Recuperare maximă</b><span>Limitează perioada de recuperare a investiției.</span></button>
+          </div>
+          <input type="hidden" name="_optimization_mode" value="auto_economic">
+
+          <div class="ed-conditional" id="goalValueWrap" hidden>
+            <label class="ed-field ed-wide">
+              <span id="goalValueLabel">Valoare</span>
+              <div><input id="goalValue" type="number" min="0" step="100"><em id="goalValueUnit">lei</em></div>
+            </label>
+          </div>
+
+          <div class="ed-actions"><button type="button" class="ed-back" data-back>Înapoi</button><button type="button" class="ed-primary" id="runAnalysis">Rulează analiza <span>→</span></button></div>
+        </div>
+      </section>
+    </form>
+
+    <section class="ed-page" data-page="run" data-label="Calcul">
+      <div class="ed-run-card">
+        <div class="ed-spinner" aria-hidden="true"></div>
+        <p class="ed-eyebrow">Optimizer LaCurent</p>
+        <h2>Calcul în desfășurare</h2>
+        <p class="ed-hint">Fereastra rămâne aici până când toate etapele s-au încheiat.</p>
+        <div class="ed-run-steps" id="runSteps">
+          <div data-run-stage="baseline"><i></i><span>Model termic inițial</span><b>în așteptare</b></div>
+          <div data-run-stage="plan"><i></i><span>Plan parametric</span><b>în așteptare</b></div>
+          <div data-run-stage="branches"><i></i><span>Sisteme de încălzire</span><b>în așteptare</b></div>
+          <div data-run-stage="finalize"><i></i><span>Verificare și selecție</span><b>în așteptare</b></div>
+        </div>
+        <div class="ed-terminal" id="runLog" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="ed-page" data-page="done" data-label="Gata">
+      <div class="ed-copy ed-done">
+        <div class="ed-done-mark">✓</div>
+        <p class="ed-eyebrow">Calcul finalizat</p>
+        <h1>Analiza este gata.</h1>
+        <p class="ed-lead" id="doneMeta">Configurațiile au fost evaluate și rezultatul a fost verificat.</p>
+        <button class="ed-primary" id="openReport" type="button">Vezi raportul <span>→</span></button>
+        <button class="ed-link" id="showLog" type="button">Vezi jurnalul calculului</button>
+      </div>
+    </section>
+
+    <section class="ed-page ed-report-page" data-page="report" data-label="Raport">
+      <article class="ed-report" id="report">
+        <header>
+          <p class="ed-eyebrow">Raport LaCurent</p>
+          <h1>Analiza casei tale</h1>
+          <p id="reportIntro">Rezultatele apar aici după calcul.</p>
+        </header>
+        <div id="reportBody"></div>
+        <footer class="ed-report-footer">
+          <button type="button" class="ed-back" id="reportBack">← Înapoi la rezultat</button>
+          <p>Metodologia, ipotezele și sursele sunt afișate în raport, nu în timpul configurării.</p>
+        </footer>
+      </article>
+    </section>
+
+    <section class="ed-page" data-page="error" data-label="Eroare">
+      <div class="ed-copy ed-done">
+        <div class="ed-error-mark">!</div>
+        <p class="ed-eyebrow">Calcul întrerupt</p>
+        <h1>Nu am putut termina analiza.</h1>
+        <p class="ed-lead" id="errorText">A apărut o eroare.</p>
+        <button class="ed-primary" type="button" id="tryAgain">Reîncearcă</button>
+        <button class="ed-link" type="button" id="errorLog">Vezi jurnalul calculului</button>
+      </div>
+    </section>
+
+    <dialog class="ed-log-dialog" id="logDialog">
+      <div><b>Jurnal calcul</b><button type="button" id="closeLog" aria-label="Închide">×</button></div>
+      <pre id="logDialogBody"></pre>
+    </dialog>
+  </main>
+
+  {% include "_legal_footer.html" %}
+  {% include "_privacy_controls.html" %}
+  <script src="/static/privacy-consent.js?v=privacy1"></script>
+  <script src="/static/home-lab-editorial.js?v=1"></script>
+</body>
+</html>
