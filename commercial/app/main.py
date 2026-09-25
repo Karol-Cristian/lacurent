@@ -45,6 +45,7 @@ from .full_commercialization import (
 from .heating_optimization import (
     HeatingBranchSummaryV1,
     heating_branch_plan,
+    heating_planning_options,
     run_heating_branch_optimization,
     run_mixed_heating_optimization,
 )
@@ -2212,15 +2213,38 @@ def _home_lab_optimizer_success_payload(
     selected_heating = next(
         (
             {
-                "label": line.note.split(". ", 1)[0] if line.note else "Sistem de încălzire",
+                "label": line.note.split(":", 1)[0] if line.note else "Sistem de încălzire",
                 "capexLei": float(line.capex_lei),
+                "requiredPowerKw": selected.design_heat_load_kw,
                 "ratedPowerKw": float(line.parameter_value),
+                "oversizeKw": (
+                    None
+                    if selected.design_heat_load_kw is None
+                    else max(float(line.parameter_value) - float(selected.design_heat_load_kw), 0.0)
+                ),
+                "oversizePercent": (
+                    None
+                    if selected.design_heat_load_kw is None or float(selected.design_heat_load_kw) <= 1e-9
+                    else 100.0 * max(
+                        float(line.parameter_value) - float(selected.design_heat_load_kw),
+                        0.0,
+                    ) / float(selected.design_heat_load_kw)
+                ),
                 "sourceKind": line.source_kind,
                 "sourceUrl": line.source_url,
                 "confidence": line.confidence,
                 "optionId": line.product_id,
+                "technologyId": next(
+                    (
+                        product.technology_id
+                        for product in heating_planning_options()
+                        if product.id == line.product_id
+                    ),
+                    None,
+                ),
                 "equipmentPriceLei": line.material_subtotal_lei,
                 "installationAllowanceLei": line.nonmaterial_subtotal_lei,
+                "sizingBasis": "design_heat_load_at_normative_winter_design_temperature",
             }
             for line in selected.cost_breakdown
             if line.family == "heating"

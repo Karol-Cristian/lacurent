@@ -4101,7 +4101,7 @@
       return;
     }
 
-    const selectedId = optimizationMeta.selectedHeating?.optionId || "keep-current-heating";
+    const selectedId = optimizationMeta.selectedHeating?.technologyId || "keep-current-heating";
     node.innerHTML = `<div class="hln-strategy-list">${branches.map((branch,index) => {
       const eligible = Boolean(branch.eligible);
       const selected = String(branch.branch_id || "") === String(selectedId);
@@ -4129,7 +4129,7 @@
           <div>
             <strong>${escapeHtml(branch.label || branch.branch_id || "Sistem")}</strong>
             <small>${escapeHtml(status)} · ${escapeHtml(detail)}</small>
-            <small>CAPEX fix ramură: ${fmt(Number(branch.fixed_capex_lei || 0))} lei</small>
+            <small>${branch.sizing_mode === "design_load_recalculated_per_candidate" ? "CAPEX minim reper" : "CAPEX ramură"}: ${fmt(Number(branch.fixed_capex_lei || 0))} lei${branch.min_product_power_kw != null && branch.max_product_power_kw != null ? ` · plajă catalog ${fmt(branch.min_product_power_kw,1)}–${fmt(branch.max_product_power_kw,1)} kW` : ""}</small>
           </div>
         </article>
       `;
@@ -4453,7 +4453,7 @@
         strategy.innerHTML = `
           <div class="hln-strategy-lead">
             <strong>${escapeHtml(optimizationMeta.label || "Optimizare economică")} · amortizare ${payback}</strong>
-            <span>CAPEX parametric ${fmt(optimizationMeta.capexLei)} lei · economie anuală ${fmt(optimizationMeta.annualSavingLei)} lei/an · încălzire: ${escapeHtml(optimizationMeta.selectedHeating?.label || "sistemul actual")}. Regula utilizatorului: ${escapeHtml(optimizationMeta.economicMode || "auto_economic")}.</span>
+            <span>CAPEX parametric ${fmt(optimizationMeta.capexLei)} lei · economie anuală ${fmt(optimizationMeta.annualSavingLei)} lei/an · încălzire: ${escapeHtml(optimizationMeta.selectedHeating?.label || "sistemul actual")}${optimizationMeta.selectedHeating?.requiredPowerKw != null ? ` · necesar ${fmt(optimizationMeta.selectedHeating.requiredPowerKw,2)} kW → treaptă ${fmt(optimizationMeta.selectedHeating.ratedPowerKw,2)} kW` : ""}. Regula utilizatorului: ${escapeHtml(optimizationMeta.economicMode || "auto_economic")}.</span>
           </div>
           ${selected.length ? `<div class="hln-strategy-list">${selected.map((item,index) => `
             <article><b>${index + 1}</b><div><strong>${escapeHtml(item.label || item.family)}</strong><small>parametru brut ${fmt(item.parameterValue,3)} ${escapeHtml(item.parameterUnit || "")} · CAPEX planificat ${fmt(item.capexLei)} lei</small></div></article>
