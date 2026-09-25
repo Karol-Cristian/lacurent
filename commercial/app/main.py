@@ -2347,6 +2347,36 @@ def _home_lab_optimizer_success_payload(
         ),
         None,
     )
+    heat_pump_profile: dict[str, Any] | None = None
+    if selected_heating is not None and selected_heating.get("optionId"):
+        matched_product = next(
+            (
+                product
+                for product in heating_planning_options()
+                if product.id == selected_heating["optionId"]
+            ),
+            None,
+        )
+        if matched_product is not None:
+            heat_pump_profile = heat_pump_monthly_performance_profile(
+                selected.resulting_configuration,
+                matched_product,
+                list(final_result.monthly),
+            )
+            if heat_pump_profile is not None:
+                heat_pump_profile["engine_performance_kind"] = (
+                    final_result.heating_system.generator_performance_kind
+                )
+                heat_pump_profile["engine_performance_value"] = float(
+                    final_result.heating_system.generator_performance
+                )
+                heat_pump_profile["effective_system_performance"] = float(
+                    final_result.heating_system.effective_system_performance
+                )
+                heat_pump_profile["performance_source"] = (
+                    final_result.heating_system.performance_source
+                )
+
     feasible_total = sum(int(item.feasible_candidates) for item in branches)
     optimization_payload = {
         "kind": "parametric_economic",
@@ -2368,6 +2398,7 @@ def _home_lab_optimizer_success_payload(
         ),
         "selected": active_rows,
         "selectedHeating": selected_heating,
+        "heatPumpPerformanceProfile": heat_pump_profile,
         "evaluatedCandidates": int(evaluated_candidates),
         "calculationTimeMs": calculation_time_ms,
         "parametricEvaluations": int(parametric_evaluations),
