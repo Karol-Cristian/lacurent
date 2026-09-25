@@ -2361,12 +2361,14 @@
       return Number.isFinite(parsed) ? parsed.toFixed(digits) : "n/a";
     };
     const windows = Number(raw.window_replacement_fraction);
+    const heatRecovery = Number(raw.ventilation_heat_recovery_efficiency_target);
     return [
       `wallR+${number(raw.wall_added_r_m2k_w)}`,
       `roofR+${number(raw.roof_added_r_m2k_w)}`,
       `floorR+${number(raw.floor_added_r_m2k_w)}`,
       `windows=${Number.isFinite(windows) ? (windows * 100).toFixed(1) : "n/a"}%`,
       `Uw=${number(raw.window_target_u_w_m2k,2)}`,
+      `HRV=${Number.isFinite(heatRecovery) ? (heatRecovery * 100).toFixed(1) : "n/a"}%`,
       `PV+${number(raw.pv_added_kwp)}kWp`,
       `solar+${number(raw.solar_thermal_added_m2)}m²`,
     ].join(" | ");
@@ -3226,6 +3228,16 @@
             completedEvaluations += evaluatedNow;
 
             const summary = batchSummaries[0] || null;
+            const calculationStages = Array.isArray(branchCall.payload.calculationStages)
+              ? branchCall.payload.calculationStages
+              : [];
+            for (const stage of calculationStages) {
+              appendOptimizerConsole(
+                "info",
+                String(stage?.stage || "CALC").slice(0,18),
+                stage?.detail || ""
+              );
+            }
             const elapsedMs = performance.now() - candidateStartedAt;
             const resultText = summary
               ? `CAPEX ${fmt(Number(summary.capex_lei || 0))} lei | factură ${fmt(Number(summary.annual_bill_lei || 0))} lei/an | economie ${fmt(Number(summary.annual_saving_lei || 0))} lei/an`
@@ -4864,6 +4876,12 @@
         `${fmt(100 * Number(raw.window_replacement_fraction),1)}% din suprafață · Uw țintă ${fmt(raw.window_target_u_w_m2k,3)} W/m²K`
       );
     }
+    if (Number(raw.ventilation_heat_recovery_efficiency_target) > 1e-9) {
+      push(
+        "Ventilație",
+        `recuperare căldură țintă ${fmt(100 * Number(raw.ventilation_heat_recovery_efficiency_target),1)}%`
+      );
+    }
     if (Number(raw.pv_added_kwp) > 1e-9) push("Fotovoltaice", `+${fmt(raw.pv_added_kwp,3)} kWp`);
     if (Number(raw.solar_thermal_added_m2) > 1e-9) push("Solar termic", `+${fmt(raw.solar_thermal_added_m2,3)} m² colector`);
     return rows;
@@ -4929,6 +4947,10 @@
     const windows = Number(raw.window_replacement_fraction);
     if (Number.isFinite(windows) && windows > 1e-9) {
       parts.push(`ferestre ${fmt(windows * 100,1)}% · Uw ${fmt(raw.window_target_u_w_m2k,2)} W/m²K`);
+    }
+    const heatRecovery = Number(raw.ventilation_heat_recovery_efficiency_target);
+    if (Number.isFinite(heatRecovery) && heatRecovery > 1e-9) {
+      parts.push(`ventilație HRV ${fmt(heatRecovery * 100,1)}%`);
     }
     push("PV +", raw.pv_added_kwp, " kWp");
     push("solar termic +", raw.solar_thermal_added_m2, " m²");
