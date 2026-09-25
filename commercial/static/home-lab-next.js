@@ -3288,6 +3288,16 @@
       }
 
       setStatus("Compar rezultatele ramurilor…");
+      appendOptimizerConsole(
+        "info",
+        "FINAL",
+        `Compar ${completedEvaluations} rezultate calculate din ${processedCandidates} candidați procesați.`
+      );
+      setOptimizerConsoleProgress(
+        processedCandidates,
+        plannedCandidates,
+        `Finalizez selecția · ${completedEvaluations} calculați · ${failedMicroBatches.length} candidați de reexecutat`
+      );
       const partialSearchText = failedMicroBatches.length
         ? ` · ${failedMicroBatches.length} micro-loturi omise după faulturi tranzitorii`
         : "";
@@ -3361,9 +3371,28 @@
          <small>${escapeHtml(searchDepth + retryText + partialText)} · ${optimizationMeta.feasibleCandidates || 0} eligibile · ${escapeHtml(paretoText)}. ${escapeHtml(commercialNote)}</small>`,
         optimizationMeta.partialSearch ? "warn" : (Number(optimizationMeta.annualSavingLei) > 0 ? "good" : "warn")
       );
+      appendOptimizerConsole(
+        optimizationMeta.partialSearch ? "retry" : "ok",
+        optimizationMeta.partialSearch ? "DONE*" : "DONE",
+        optimizationMeta.partialSearch
+          ? `Rezultat final cu ${failedMicroBatches.length} candidați păstrați pentru reexecuție.`
+          : "Toți candidații planificați au fost procesați fără fault final."
+      );
+      finishOptimizerConsole(
+        "done",
+        optimizationMeta.partialSearch
+          ? `Finalizat parțial · ${failedMicroBatches.length} candidați de reexecutat`
+          : `Finalizat · ${completedEvaluations} recalculări`
+      );
       showScreen("report");
     } catch (error) {
       if (error?.name === "AbortError" || runToken !== optimizerRunToken) return;
+      appendOptimizerConsole(
+        "fail",
+        "FATAL",
+        error?.message || "Eroare necunoscută în optimizer."
+      );
+      finishOptimizerConsole("error", error?.message || "Optimizer oprit de o eroare.");
       scenarioResultState = scenarioResult ? "stale" : "empty";
       setOptimizationNote(
         `<strong>Optimizarea nu a putut fi finalizată.</strong><span>${escapeHtml(error?.message || "Eroare necunoscută")}</span>`,
