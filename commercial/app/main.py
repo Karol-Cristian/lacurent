@@ -52,6 +52,10 @@ from .heating_optimization import (
     run_heating_branch_optimization,
     run_mixed_heating_optimization,
 )
+from .heating_catalog_store import (
+    cached_heating_catalog_from_d1,
+    seed_heating_catalog_payload,
+)
 from .pricing import energy_prices, estimate_energy_cost, home_lab_price_overview
 from .personal_blog import router as personal_blog_router
 from .cost_curves import (
@@ -1760,6 +1764,32 @@ async def _optimizer_cost_catalog(request: Request) -> dict[str, Any]:
     return {**roi_cost_basis_seed(), "source": "seed_fallback"}
 
 
+async def _optimizer_heating_catalog(request: Request) -> dict[str, Any]:
+    """Return the canonical heating catalog from D1, with a deterministic CI fallback."""
+    env = request.scope.get("env")
+    db = getattr(env, "DB", None) if env is not None else None
+    if db is not None:
+        payload = await cached_heating_catalog_from_d1(db)
+        if payload is not None:
+            return payload
+    return seed_heating_catalog_payload()
+
+
+@app.get("/api/heating-products")
+async def heating_products_api(request: Request) -> JSONResponse:
+    payload = await _optimizer_heating_catalog(request)
+    return JSONResponse(
+        payload,
+        headers={
+            "Cache-Control": (
+                "public, max-age=900"
+                if payload.get("source") == "d1"
+                else "public, max-age=300"
+            )
+        },
+    )
+
+
 @app.post("/api/optimization/cost-curves/wall")
 async def wall_cost_curve_api(
     payload: WallCostCurveRequestV1,
@@ -2326,7 +2356,8 @@ async def home_lab_optimization_plan_api(request: Request) -> JSONResponse:
     form = dict(await request.form())
     try:
         mode, _, optimization_request = _home_lab_optimization_request_from_form(form)
-        branches = heating_branch_plan(optimization_request)
+        heating_catalog = await _optimizer_heating_catalog(request)
+        branches = heating_branch_plan(optimization_request, heating_catalog)
         runnable = [item for item in branches if item.eligible]
         return JSONResponse(
             {
@@ -2399,16 +2430,19 @@ async def home_lab_optimization_branch_api(request: Request) -> JSONResponse:
                     "Nu există un candidat anterior disponibil pentru refinement."
                 )
 
+        cost_catalog = await _optimizer_cost_catalog(request)
+        heating_catalog = await _optimizer_heating_catalog(request)
         started = time.perf_counter()
         result = run_heating_branch_optimization(
             optimization_request,
             branch_id=branch_id,
             bounds=OptimizationSearchBoundsV1(),
-            catalog=await _optimizer_cost_catalog(request),
+            catalog=cost_catalog,
             max_evaluations=4,
             search_phase=search_phase,
             refinement_seed=refinement_seed,
             phase_candidate_offset=phase_offset,
+            heating_catalog=heating_catalog,
         )
         elapsed_ms = round((time.perf_counter() - started) * 1000.0, 1)
         return JSONResponse(
@@ -2575,7 +2609,8 @@ async def home_lab_parametric_optimization_api(request: Request) -> JSONResponse
             )
 
         optimization_request = OptimizationRequestV1(**request_kwargs)
-        legacy_plan = heating_branch_plan(optimization_request)
+        heating_catalog = await _optimizer_heating_catalog(request)
+        legacy_plan = heating_branch_plan(optimization_request, heating_catalog)
         legacy_runnable = [item for item in legacy_plan if item.eligible]
         if len(legacy_runnable) > 1:
             return JSONResponse(
@@ -2589,12 +2624,14 @@ async def home_lab_parametric_optimization_api(request: Request) -> JSONResponse
                 },
                 status_code=409,
             )
+        cost_catalog = await _optimizer_cost_catalog(request)
         optimization_started = time.perf_counter()
         mixed_result = run_mixed_heating_optimization(
             optimization_request,
             bounds=OptimizationSearchBoundsV1(),
-            catalog=await _optimizer_cost_catalog(request),
+            catalog=cost_catalog,
             max_evaluations_per_branch=24,
+            heating_catalog=heating_catalog,
         )
         optimization_elapsed_ms = round(
             (time.perf_counter() - optimization_started) * 1000.0,
