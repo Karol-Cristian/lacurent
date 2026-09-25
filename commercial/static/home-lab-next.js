@@ -231,10 +231,13 @@
   let optimizerRunToken = 0;
   let optimizerEvaluationCount = 0;
   let optimizerLastRemoteRequestAt = 0;
+  let optimizerRestartCooldownUntil = 0;
+  let optimizerRequestGapMs = 750;
   const OPTIMIZER_MAX_ENGINE_EVALUATIONS = 16;
-  const OPTIMIZER_MIN_REQUEST_GAP_MS = 160;
+  const OPTIMIZER_MIN_REQUEST_GAP_MS = 750;
+  const OPTIMIZER_RESTART_COOLDOWN_MS = 2500;
   const LIVE_REQUEST_TIMEOUT_MS = 8000;
-  const OPTIMIZER_REQUEST_TIMEOUT_MS = 12000;
+  const OPTIMIZER_REQUEST_TIMEOUT_MS = 25000;
   const optimizerCandidateCache = new Map();
   const OPTIMIZER_CANDIDATE_CACHE_MAX = 192;
   let homeResultState = homeResult ? "stale" : "empty";
@@ -1386,6 +1389,10 @@
     if (optimizerAbortController) {
       optimizerAbortController.abort();
       optimizerAbortController = null;
+      optimizerRestartCooldownUntil = Math.max(
+        optimizerRestartCooldownUntil,
+        Date.now() + OPTIMIZER_RESTART_COOLDOWN_MS
+      );
     }
   }
 
@@ -1532,15 +1539,50 @@
     }
   }
 
-  const OPTIMIZER_TRANSIENT_RETRY_STATUSES = new Set([500, 502, 503, 504]);
-  const OPTIMIZER_TRANSIENT_RETRY_DELAYS_MS = [180, 450, 900];
+  const OPTIMIZER_TRANSIENT_RETRY_STATUSES = new Set([429, 500, 502, 503, 504]);
+  const OPTIMIZER_TRANSIENT_RETRY_DELAYS_MS = [1000, 2500, 5000, 8000];
+
+  async function waitForOptimizerRequestSlot(parentSignal = null) {
+    if (parentSignal?.aborted) {
+      const abortError = new Error("Optimizer oprit");
+      abortError.name = "AbortError";
+      throw abortError;
+    }
+    const earliestStart = Math.max(
+      optimizerLastRemoteRequestAt + Math.max(OPTIMIZER_MIN_REQUEST_GAP_MS, optimizerRequestGapMs),
+      optimizerRestartCooldownUntil
+    );
+    const waitMs = Math.max(0, earliestStart - Date.now());
+    if (waitMs > 0) {
+      await new Promise((resolve, reject) => {
+        const timer = window.setTimeout(() => {
+          if (parentSignal) parentSignal.removeEventListener("abort", onAbort);
+          resolve();
+        }, waitMs);
+        const onAbort = () => {
+          window.clearTimeout(timer);
+          if (parentSignal) parentSignal.removeEventListener("abort", onAbort);
+          const abortError = new Error("Optimizer oprit");
+          abortError.name = "AbortError";
+          reject(abortError);
+        };
+        if (parentSignal) parentSignal.addEventListener("abort", onAbort, {once:true});
+      });
+    }
+    if (parentSignal?.aborted) {
+      const abortError = new Error("Optimizer oprit");
+      abortError.name = "AbortError";
+      throw abortError;
+    }
+    optimizerLastRemoteRequestAt = Date.now();
+  }
 
   async function fetchOptimizerWithRetry(
     url,
     options = {},
     parentSignal = null,
     timeoutMs = OPTIMIZER_REQUEST_TIMEOUT_MS,
-    maxAttempts = 4
+    maxAttempts = 5
   ) {
     let lastResult = null;
     let lastError = null;
@@ -1553,6 +1595,7 @@
       }
 
       try {
+        await waitForOptimizerRequestSlot(parentSignal);
         const result = await fetchWithTimeout(url, options, parentSignal, timeoutMs);
         lastResult = result;
         const status = Number(result?.response?.status || 0);
@@ -1666,17 +1709,7 @@
       throw new Error(`Bugetul de calcul al optimizerului a fost atins (${OPTIMIZER_MAX_ENGINE_EVALUATIONS} evaluări). Ajustează datele sau costurile și încearcă din nou.`);
     }
 
-    const elapsedSincePreviousRequest = Date.now() - optimizerLastRemoteRequestAt;
-    const remainingGap = Math.max(0, OPTIMIZER_MIN_REQUEST_GAP_MS - elapsedSincePreviousRequest);
-    if (remainingGap > 0) {
-      await new Promise(resolve => window.setTimeout(resolve, remainingGap));
-    }
-    if (optimizerAbortController?.signal.aborted) {
-      const abortError = new Error("Optimizer oprit");
-      abortError.name = "AbortError";
-      throw abortError;
-    }
-    optimizerLastRemoteRequestAt = Date.now();
+    await waitForOptimizerRequestSlot(optimizerAbortController?.signal || null);
     optimizerEvaluationCount += 1;
 
     const {response, payload} = await fetchWithTimeout(
@@ -2282,7 +2315,6 @@
     calculateToken += 1;
     cancelOptimizerRun();
     optimizerEvaluationCount = 0;
-    optimizerLastRemoteRequestAt = 0;
     optimizerAbortController = new AbortController();
     scenarioResultState = "pending";
     renderAll();
@@ -2638,6 +2670,10 @@
       }
 
       const plan = planCall.payload;
+      optimizerRequestGapMs = Math.max(
+        OPTIMIZER_MIN_REQUEST_GAP_MS,
+        Number(plan.requestGapMs || OPTIMIZER_MIN_REQUEST_GAP_MS)
+      );
       const allBranches = Array.isArray(plan.branches) ? plan.branches : [];
       const runnableIds = Array.isArray(plan.runBranchIds) ? plan.runBranchIds : [];
       if (!runnableIds.length) {
