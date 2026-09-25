@@ -21,6 +21,7 @@ from .home_lab_images import HOME_LAB_IMAGE_BYTES
 from .methodology import climate_data, methodology, resolve_locality
 from .models import BuildingInput, building_from_json, model_to_dict, model_to_json
 from .optimization import (
+    CandidateEvaluationV1,
     OptimizationCandidateRequestV1,
     OptimizationMode,
     OptimizationRequestV1,
@@ -41,7 +42,12 @@ from .full_commercialization import (
     FullProductBackedOptimizationRequestV1,
     run_full_product_backed_optimization,
 )
-from .heating_optimization import run_mixed_heating_optimization
+from .heating_optimization import (
+    HeatingBranchSummaryV1,
+    heating_branch_plan,
+    run_heating_branch_optimization,
+    run_mixed_heating_optimization,
+)
 from .pricing import energy_prices, estimate_energy_cost, home_lab_price_overview
 from .personal_blog import router as personal_blog_router
 from .cost_curves import (
@@ -2145,6 +2151,284 @@ def _optimizer_measure_rows(candidate: Any) -> list[dict[str, Any]]:
             }
         )
     return rows
+
+
+def _home_lab_optimization_request_from_form(
+    form: dict[str, Any],
+) -> tuple[OptimizationMode, BuildingInput, OptimizationRequestV1]:
+    raw_mode = str(form.pop("_optimization_mode", "") or "").strip()
+    try:
+        mode = OptimizationMode(raw_mode)
+    except ValueError as exc:
+        raise ValueError("Modul de optimizare economică nu este valid.") from exc
+
+    building = build_input_from_form(form)
+    request_kwargs: dict[str, Any] = {
+        "baseline": building,
+        "mode": mode,
+    }
+    if mode == OptimizationMode.investment_budget:
+        request_kwargs["investment_budget_lei"] = parse_optional_float(
+            form.get("_investment_budget_lei")
+        )
+    elif mode == OptimizationMode.annual_bill_target:
+        request_kwargs["annual_bill_target_lei"] = parse_optional_float(
+            form.get("_annual_bill_target_lei")
+        )
+    elif mode == OptimizationMode.max_payback_years:
+        request_kwargs["max_payback_years"] = parse_optional_float(
+            form.get("_max_payback_years")
+        )
+    return mode, building, OptimizationRequestV1(**request_kwargs)
+
+
+def _home_lab_optimizer_success_payload(
+    *,
+    mode: OptimizationMode,
+    form: dict[str, Any],
+    selection: Any,
+    branches: list[HeatingBranchSummaryV1],
+    evaluated_candidates: int,
+    parametric_evaluations: int,
+    heating_branch_evaluations: int,
+    warnings: list[str],
+    calculation_time_ms: float | None = None,
+    pareto_scope: str = "all_candidates",
+) -> dict[str, Any]:
+    selected = selection.selected
+    if selected is None or selected.resulting_configuration is None:
+        raise ValueError("Nu există nicio soluție fezabilă pentru regula economică aleasă.")
+
+    final_result = calculate(selected.resulting_configuration, include_reference=False)
+    raw_measures = model_to_dict(selected.parameters)
+    commercial_ready = (
+        selected.commercialization_status == "commercialized"
+        or (
+            selected.commercialization_status == "raw_only"
+            and float(selected.capex_lei) <= 1e-9
+        )
+    )
+    active_rows = _optimizer_measure_rows(selected)
+    selected_heating = next(
+        (
+            {
+                "label": line.note.split(". ", 1)[0] if line.note else "Sistem de încălzire",
+                "capexLei": float(line.capex_lei),
+                "ratedPowerKw": float(line.parameter_value),
+                "sourceKind": line.source_kind,
+                "sourceUrl": line.source_url,
+                "confidence": line.confidence,
+                "optionId": line.product_id,
+                "equipmentPriceLei": line.material_subtotal_lei,
+                "installationAllowanceLei": line.nonmaterial_subtotal_lei,
+            }
+            for line in selected.cost_breakdown
+            if line.family == "heating"
+        ),
+        None,
+    )
+    feasible_total = sum(int(item.feasible_candidates) for item in branches)
+    optimization_payload = {
+        "kind": "parametric_economic",
+        "mode": "parametric_economic",
+        "economicMode": mode.value,
+        "label": _home_lab_optimizer_label(mode, form),
+        "rationale": selection.rationale,
+        "capexLei": float(selected.capex_lei),
+        "annualSavingLei": float(selected.annual_saving_lei),
+        "roiPercentPerYear": (
+            None
+            if selected.roi_percent_per_year is None
+            else float(selected.roi_percent_per_year)
+        ),
+        "paybackYears": (
+            None
+            if selected.payback_years is None
+            else float(selected.payback_years)
+        ),
+        "selected": active_rows,
+        "selectedHeating": selected_heating,
+        "evaluatedCandidates": int(evaluated_candidates),
+        "calculationTimeMs": calculation_time_ms,
+        "parametricEvaluations": int(parametric_evaluations),
+        "heatingBranchEvaluations": int(heating_branch_evaluations),
+        "feasibleCandidates": int(feasible_total or selection.feasible_count),
+        "paretoSolutions": int(selection.pareto_count),
+        "paretoScope": pareto_scope,
+        "heatingBranches": [model_to_dict(item) for item in branches],
+        "rawSolution": raw_measures,
+        "rawEvaluation": {
+            "candidateId": selected.candidate_id,
+            "annualBillLei": float(selected.annual_bill_lei),
+            "baselineAnnualBillLei": float(selected.baseline_annual_bill_lei),
+            "finalEnergyKwh": float(selected.final_energy_kwh),
+            "primarySpecificKwhM2": float(selected.primary_specific_kwh_m2),
+            "co2TotalKg": float(selected.co2_total_kg),
+            "co2SpecificKgM2": float(selected.co2_specific_kg_m2),
+            "energyClass": selected.energy_class,
+            "designHeatLoadKw": selected.design_heat_load_kw,
+        },
+        "resultingConfiguration": model_to_dict(selected.resulting_configuration),
+        "commercialSolution": None,
+        "commercializationStatus": selected.commercialization_status,
+        "commercialReady": commercial_ready,
+        "commercialMessage": (
+            "Soluția nu necesită discretizare comercială."
+            if commercial_ready
+            else (
+                "Catalogul comercial complet nu este încă atașat acestei rulări. "
+                "Rezultatul de mai jos este optimul parametric; raportul nu inventează "
+                "grosimi, module, ferestre sau echipamente comerciale."
+            )
+        ),
+        "discretization": [],
+        "costSource": selected.cost_source,
+        "costCatalogVersion": selected.cost_catalog_version,
+        "warnings": [*warnings, *selected.warnings],
+        "autoHorizonsYears": selection.auto_horizons_years,
+        "executionMode": "sharded_by_heating_branch",
+    }
+    return {
+        "scenario": embed_lab_result_payload(final_result),
+        "optimization": optimization_payload,
+    }
+
+
+@app.post("/api/optimization/home-lab/plan")
+async def home_lab_optimization_plan_api(request: Request) -> JSONResponse:
+    form = dict(await request.form())
+    try:
+        mode, _, optimization_request = _home_lab_optimization_request_from_form(form)
+        branches = heating_branch_plan(optimization_request)
+        runnable = [item for item in branches if item.eligible]
+        return JSONResponse(
+            {
+                "economicMode": mode.value,
+                "label": _home_lab_optimizer_label(mode, form),
+                "branches": [model_to_dict(item) for item in branches],
+                "runBranchIds": [item.branch_id for item in runnable],
+                "evaluationsPerBranch": 24,
+            }
+        )
+    except Exception as exc:
+        return JSONResponse({"error": user_error(exc)}, status_code=422)
+
+
+@app.post("/api/optimization/home-lab/branch")
+async def home_lab_optimization_branch_api(request: Request) -> JSONResponse:
+    form = dict(await request.form())
+    branch_id = str(form.pop("_heating_branch_id", "") or "").strip()
+    if not branch_id:
+        return JSONResponse({"error": "Lipsește ramura de încălzire."}, status_code=422)
+    try:
+        _, _, optimization_request = _home_lab_optimization_request_from_form(form)
+        started = time.perf_counter()
+        result = run_heating_branch_optimization(
+            optimization_request,
+            branch_id=branch_id,
+            bounds=OptimizationSearchBoundsV1(),
+            catalog=await _optimizer_cost_catalog(request),
+            max_evaluations=24,
+        )
+        elapsed_ms = round((time.perf_counter() - started) * 1000.0, 1)
+        return JSONResponse(
+            {
+                "branch": model_to_dict(result.branch),
+                "selection": model_to_dict(result.selection),
+                "candidateCount": int(result.candidate_count),
+                "parametricEvaluations": int(result.parametric_evaluations),
+                "calculationTimeMs": elapsed_ms,
+                "warnings": result.warnings,
+            }
+        )
+    except Exception as exc:
+        return JSONResponse({"error": user_error(exc)}, status_code=422)
+
+
+@app.post("/api/optimization/home-lab/finalize")
+async def home_lab_optimization_finalize_api(request: Request) -> JSONResponse:
+    form = dict(await request.form())
+    raw_results = str(form.pop("_branch_results_json", "") or "").strip()
+    if not raw_results:
+        return JSONResponse({"error": "Lipsesc rezultatele ramurilor de încălzire."}, status_code=422)
+    try:
+        mode, _, optimization_request = _home_lab_optimization_request_from_form(form)
+        decoded = json.loads(raw_results)
+        if not isinstance(decoded, list):
+            raise ValueError("Rezultatele ramurilor trebuie să fie o listă.")
+
+        branch_summaries: list[HeatingBranchSummaryV1] = []
+        finalists: list[CandidateEvaluationV1] = []
+        evaluated_candidates = 0
+        parametric_evaluations = 0
+        heating_branch_evaluations = 0
+        warnings: list[str] = []
+        total_elapsed_ms = 0.0
+
+        for item in decoded:
+            if not isinstance(item, dict):
+                continue
+            branch = HeatingBranchSummaryV1(**(item.get("branch") or {}))
+            branch_summaries.append(branch)
+            evaluated_candidates += int(item.get("candidateCount") or branch.accepted_candidates)
+            branch_evals = int(item.get("parametricEvaluations") or branch.evaluated_candidates)
+            parametric_evaluations += branch_evals
+            if branch.branch_id != "keep-current-heating":
+                heating_branch_evaluations += branch_evals
+            total_elapsed_ms += float(item.get("calculationTimeMs") or 0.0)
+            warnings.extend(str(value) for value in (item.get("warnings") or []))
+
+            selection_raw = item.get("selection") or {}
+            selected_raw = selection_raw.get("selected")
+            if selected_raw:
+                finalists.append(CandidateEvaluationV1(**selected_raw))
+
+        if not finalists:
+            selection = select_optimization_candidate(optimization_request, [])
+            return JSONResponse(
+                {
+                    "error": "Nu există nicio soluție care satisface condiția economică aleasă în ramurile analizate.",
+                    "selection": model_to_dict(selection),
+                    "evaluated_candidates": evaluated_candidates,
+                    "parametric_evaluations": parametric_evaluations,
+                    "heating_branch_evaluations": heating_branch_evaluations,
+                    "heating_branches": [model_to_dict(item) for item in branch_summaries],
+                },
+                status_code=422,
+            )
+
+        selection = select_optimization_candidate(optimization_request, finalists)
+        if selection.selected is None:
+            return JSONResponse(
+                {
+                    "error": "Nicio ramură finalistă nu satisface regula economică aleasă.",
+                    "selection": model_to_dict(selection),
+                    "evaluated_candidates": evaluated_candidates,
+                    "parametric_evaluations": parametric_evaluations,
+                    "heating_branch_evaluations": heating_branch_evaluations,
+                    "heating_branches": [model_to_dict(item) for item in branch_summaries],
+                },
+                status_code=422,
+            )
+
+        payload = _home_lab_optimizer_success_payload(
+            mode=mode,
+            form=form,
+            selection=selection,
+            branches=branch_summaries,
+            evaluated_candidates=evaluated_candidates,
+            parametric_evaluations=parametric_evaluations,
+            heating_branch_evaluations=heating_branch_evaluations,
+            warnings=[
+                "Optimizerul a rulat ramurile de încălzire în requesturi separate pentru a păstra profunzimea căutării fără a depăși limita CPU a Worker-ului.",
+                *warnings,
+            ],
+            calculation_time_ms=round(total_elapsed_ms, 1),
+            pareto_scope="branch_finalists",
+        )
+        return JSONResponse(payload)
+    except Exception as exc:
+        return JSONResponse({"error": user_error(exc)}, status_code=422)
 
 
 @app.post("/api/optimization/home-lab")
