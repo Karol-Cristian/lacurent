@@ -972,6 +972,7 @@ def commercialize_heating_finalist(
     *,
     original_building: BuildingInput,
     heating_catalog: dict[str, Any] | None = None,
+    branch_id: str | None = None,
 ) -> tuple[CandidateEvaluationV1, HeatingPlanningOptionV1 | None, list[str]]:
     """Match one raw economic finalist to a real generator and recalculate once.
 
@@ -980,7 +981,19 @@ def commercialize_heating_finalist(
     finalist instead of once for every Halton/axis/refinement point.
     """
 
-    technology_id = _technology_id_from_candidate(candidate)
+    if branch_id == "keep-current-heating":
+        return candidate, None, [
+            "Păstrează sistemul actual: finalistul nu necesită achiziția unui generator nou."
+        ]
+    if branch_id in SUPPLEMENTAL_TECHNICAL_HEATING_BRANCHES:
+        return candidate, None, [
+            (
+                f"{SUPPLEMENTAL_TECHNICAL_HEATING_BRANCHES[branch_id]['label']}: "
+                "ramură tehnică fără catalog comercial source-backed; nu se inventează un produs finalist."
+            )
+        ]
+
+    technology_id = branch_id or _technology_id_from_candidate(candidate)
     if technology_id is None or candidate.resulting_configuration is None:
         return candidate, None, []
 
