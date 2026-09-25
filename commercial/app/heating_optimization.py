@@ -945,6 +945,189 @@ def _rebase_candidate(
     )
     return CandidateEvaluationV1(**data)
 
+def _technology_id_from_candidate(
+    candidate: CandidateEvaluationV1,
+) -> str | None:
+    building = candidate.resulting_configuration
+    if building is None or building.heating.details is None:
+        return None
+    generator = building.heating.details.generator_type
+    mapping = {
+        HeatingGeneratorType.condensing_gas_boiler: "condensing-gas",
+        HeatingGeneratorType.heat_pump_air_water: "heat-pump-air-water",
+        HeatingGeneratorType.electric_boiler: "electric-boiler",
+        HeatingGeneratorType.pellet_boiler: "pellet-boiler",
+    }
+    return mapping.get(generator)
+
+
+def commercialize_heating_finalist(
+    candidate: CandidateEvaluationV1,
+    *,
+    original_building: BuildingInput,
+    heating_catalog: dict[str, Any] | None = None,
+) -> tuple[CandidateEvaluationV1, HeatingPlanningOptionV1 | None, list[str]]:
+    """Match one raw economic finalist to a real generator and recalculate once.
+
+    This is deliberately outside the raw search loop. The expensive
+    manufacturer-specific performance check therefore runs at most for the
+    finalist instead of once for every Halton/axis/refinement point.
+    """
+
+    technology_id = _technology_id_from_candidate(candidate)
+    if technology_id is None or candidate.resulting_configuration is None:
+        return candidate, None, []
+
+    technology = next(
+        (
+            item
+            for item in heating_technologies(heating_catalog)
+            if item.id == technology_id
+        ),
+        None,
+    )
+    if technology is None:
+        return candidate, None, [
+            f"{technology_id}: nu există încă un catalog comercial pentru discretizarea finalistului."
+        ]
+
+    required_power_kw = _required_generator_power_kw(candidate)
+    if required_power_kw is None:
+        return candidate, None, [
+            f"{technology.label}: necesarul de putere nu este disponibil pentru selecția produsului."
+        ]
+    product = _select_sized_product(
+        original_building,
+        technology,
+        required_power_kw,
+    )
+    if product is None:
+        return candidate, None, [
+            (
+                f"{technology.label}: niciun produs din catalog nu acoperă necesarul "
+                f"final recalculat de {required_power_kw:.2f} kW."
+            )
+        ]
+
+    raw_building = candidate.resulting_configuration
+    building_data = model_to_dict(raw_building)
+    product_heating = HeatingInput(
+        system_type=product.system_type,
+        carrier=product.carrier,
+        efficiency=product.efficiency,
+        scop=product.scop,
+        details=HeatingSystemDetails(
+            **_heating_details_for_product(raw_building, product)
+        ),
+        cost_profile=product.cost_profile,
+    )
+    building_data["heating"] = model_to_dict(product_heating)
+    building_data["dhw"] = _dhw_for_product(raw_building, product)
+
+    product_assumptions: list[str] = []
+    if product.generator_type == HeatingGeneratorType.heat_pump_air_water:
+        estimated_scop, hp_assumptions = _estimated_heat_pump_scop(
+            raw_building,
+            product,
+        )
+        product_assumptions.extend(hp_assumptions)
+        if estimated_scop is not None:
+            building_data["heating"]["scop"] = float(estimated_scop)
+
+    product_building = BuildingInput(**building_data)
+    result = calculate(product_building, include_reference=False)
+    priced = estimate_energy_cost(result)
+    if not priced.get("complete"):
+        return candidate, None, [
+            f"{product.label}: factura anuală nu a putut fi evaluată după discretizare."
+        ]
+
+    lines = [
+        line
+        for line in candidate.cost_breakdown
+        if line.family != "heating"
+    ]
+    lines.append(
+        CostLineV1(
+            family="heating",
+            capex_lei=round(product.installed_capex_lei, 2),
+            parameter_value=float(product.rated_power_kw),
+            parameter_unit="kW_rated",
+            source_kind=product.source_kind,
+            source_url=product.source_url,
+            confidence=product.confidence,
+            catalog_unit="finalist_product_plus_installation_allowance",
+            note=(
+                f"{product.label}: produs real ales numai după optimizarea parametrică; "
+                f"necesar final {required_power_kw:.2f} kW → treaptă comercială "
+                f"{product.rated_power_kw:.2f} kW. {product.note}"
+            ),
+            product_id=product.id,
+            quantity=1,
+            quantity_unit="system",
+            material_subtotal_lei=round(float(product.equipment_price_lei), 2),
+            nonmaterial_subtotal_lei=round(
+                float(product.installation_allowance_lei),
+                2,
+            ),
+        )
+    )
+
+    capex = sum(float(line.capex_lei) for line in lines)
+    annual_bill = float(priced["priced_total_lei"])
+    saving = float(candidate.baseline_annual_bill_lei) - annual_bill
+    payback = capex / saving if capex > 0 and saving > 0 else None
+    roi = 100.0 * saving / capex if capex > 0 else None
+    all_active_exact = all(
+        line.family == "heating" or line.product_id is not None
+        for line in lines
+        if line.capex_lei > 1e-9
+    )
+
+    data = model_to_dict(candidate)
+    data.update(
+        {
+            "candidate_id": _stable_mixed_id(
+                candidate.candidate_id,
+                technology_id,
+                product.id,
+            ),
+            "capex_lei": round(capex, 2),
+            "annual_bill_lei": round(annual_bill, 2),
+            "annual_saving_lei": round(saving, 2),
+            "payback_years": None if payback is None else round(payback, 4),
+            "roi_percent_per_year": None if roi is None else round(roi, 4),
+            "final_energy_kwh": round(float(result.total_final_energy_kwh), 3),
+            "primary_specific_kwh_m2": round(
+                float(result.primary_energy.specific_kwh_m2),
+                3,
+            ),
+            "co2_total_kg": round(float(result.co2.total_kg), 3),
+            "co2_specific_kg_m2": round(
+                float(result.co2.specific_kg_m2),
+                3,
+            ),
+            "energy_class": result.energy_class,
+            "resulting_configuration": model_to_dict(product_building),
+            "cost_breakdown": [model_to_dict(line) for line in lines],
+            "commercialization_status": (
+                "commercialized"
+                if all_active_exact
+                else "partially_discretized"
+            ),
+            "assumptions": [
+                *candidate.assumptions,
+                *product_assumptions,
+                (
+                    "Heating product matching ran after raw economic selection and "
+                    "the complete house was recalculated once with the selected SKU."
+                ),
+            ],
+        }
+    )
+    return CandidateEvaluationV1(**data), product, product_assumptions
+
+
 def _branch_request(
     request: OptimizationRequestV1,
     branch_baseline: BuildingInput,
