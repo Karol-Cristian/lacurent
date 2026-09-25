@@ -16,9 +16,13 @@ page.on("console", message => {
 });
 page.on("requestfailed", request => {
   try {
-    if (new URL(request.url()).origin === baseOrigin) {
+    const url = new URL(request.url());
+    const errorText = request.failure()?.errorText || "request failed";
+    const benignClientAbort =
+      request.method() === "GET" && errorText === "net::ERR_ABORTED";
+    if (url.origin === baseOrigin && !benignClientAbort) {
       sameOriginRequestFailures.push(
-        `${request.method()} ${request.url()} :: ${request.failure()?.errorText || "request failed"}`
+        `${request.method()} ${request.url()} :: ${errorText}`
       );
     }
   } catch (_) {
