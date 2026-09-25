@@ -36,12 +36,16 @@ def test_home_lab_auto_optimizer_returns_report_payload_and_traceability() -> No
     meta = body["optimization"]
     assert meta["kind"] == "parametric_economic"
     assert meta["economicMode"] == "auto_economic"
-    assert 1 <= meta["evaluatedCandidates"] <= 24
+    assert meta["evaluatedCandidates"] > 24
+    assert meta["parametricEvaluations"] >= meta["evaluatedCandidates"]
+    assert meta["heatingBranchEvaluations"] > 0
+    assert len(meta["heatingBranches"]) >= 2
     assert meta["feasibleCandidates"] >= 1
     assert meta["paretoSolutions"] >= 1
     assert isinstance(meta["rawSolution"], dict)
     assert "commercialReady" in meta
     assert "commercialMessage" in meta
+    assert "selectedHeating" in meta
 
 
 def test_home_lab_bill_target_uses_exactly_that_economic_mode() -> None:

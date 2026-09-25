@@ -826,6 +826,8 @@ def test_home_lab_exposes_four_single_constraint_parametric_objectives() -> None
     assert 'body.set("_annual_bill_target_lei"' in source
     assert 'body.set("_max_payback_years"' in source
     assert '"/api/optimization/home-lab"' in source
+    assert "heatingBranchEvaluations" in source
+    assert "selectedHeating" in source
     assert '["economic-auto","economic-budget","economic-bill","economic-payback"].includes(action)' in source
     assert "isFinancialOptimizationMeta" in source
     assert 'const buttons = $("[data-hln-smart-config]")' not in source
@@ -2521,3 +2523,15 @@ def test_home_lab_report_3d_stage_is_contained_by_positioned_wrapper() -> None:
     assert response.status_code == 200
     css = response.text.replace("\n", "")
     assert ".hln-report-3d-wrap{position:relative;" in css
+
+
+def test_home_lab_report_exposes_heating_branch_traceability() -> None:
+    response = client.get("/home-lab-next")
+    assert response.status_code == 200
+    assert 'id="hlnReportHeatingBranches"' in response.text
+
+    js = client.get("/static/home-lab-next.js")
+    assert js.status_code == 200
+    assert "renderHeatingBranchTraceability" in js.text
+    assert "heatingBranches" in js.text
+    assert "rejected_for_capacity" in js.text

@@ -2523,7 +2523,37 @@
     if (Number.isFinite(floorU)) scenarioOverrides.floorU = floorU;
     if (Number.isFinite(windowU)) scenarioOverrides.windowU = windowU;
 
+    const heating = resulting?.heating || {};
+    const heatingDetails = heating?.details || {};
+    const generator = String(heatingDetails.generator_type || "");
+    const heatingMap = {
+      condensing_gas_boiler:"condensing_gas_boiler",
+      gas_boiler:"gas_boiler",
+      heat_pump_air_water:"heat_pump",
+      heat_pump_ground_water:"heat_pump",
+      heat_pump_air_air:"heat_pump",
+      electric_boiler:"electric_boiler",
+      electric_direct:"electric_resistance",
+      pellet_boiler:"pellet_boiler",
+      wood_boiler:"wood_boiler",
+      wood_stove:"wood_stove",
+      district_heat:"district_heat",
+    };
+    const mappedHeating = heatingMap[generator]
+      || (heating.system_type === "heat_pump" ? "heat_pump" : null)
+      || (heating.system_type === "condensing_gas_boiler" ? "condensing_gas_boiler" : null)
+      || (heating.system_type === "gas_boiler" ? "gas_boiler" : null)
+      || (heating.system_type === "district_heat" ? "district_heat" : null)
+      || (heating.system_type === "electric_resistance" ? "electric_resistance" : null);
+    if (mappedHeating) scenarioState.heating = mappedHeating;
+    if (generator.startsWith("heat_pump_")) scenarioState.heatPumpSource = generator;
+    if (heatingDetails.emitter_type) scenarioState.heatingEmitter = heatingDetails.emitter_type;
+    if (heatingDetails.distribution_type) scenarioState.heatingDistribution = heatingDetails.distribution_type;
+    if (heatingDetails.storage_type) scenarioState.heatingStorage = heatingDetails.storage_type;
+    if (heatingDetails.control_type) scenarioState.heatingControl = heatingDetails.control_type;
+
     measures = optimizerMeasuresFromRaw(raw);
+    if (meta?.selectedHeating && !measures.includes("heating")) measures.push("heating");
   }
 
   async function configureParametricEconomicOptimizer(action) {
@@ -2574,10 +2604,18 @@
       const commercialNote = optimizationMeta.commercialReady
         ? "Soluția este deja implementabilă în forma raportată."
         : "Raportul separă optimul brut de discretizarea comercială încă indisponibilă.";
+      const heatingChoice = optimizationMeta.selectedHeating?.label || "păstrează sistemul actual";
+      const elapsed = Number(optimizationMeta.calculationTimeMs);
+      const elapsedText = Number.isFinite(elapsed)
+        ? ` · ${fmt(elapsed / 1000, 1)} s calcul backend`
+        : "";
+      const searchDepth = optimizationMeta.parametricEvaluations
+        ? `${optimizationMeta.parametricEvaluations} recalculări parametrice · ${optimizationMeta.heatingBranchEvaluations || 0} în ramuri alternative de încălzire${elapsedText}`
+        : `${optimizationMeta.evaluatedCandidates || 0} configurații evaluate${elapsedText}`;
       setOptimizationNote(
         `<strong>${escapeHtml(optimizationMeta.label || settings.label)}</strong>
-         <span>CAPEX ${fmt(optimizationMeta.capexLei)} lei · economie anuală ${fmt(optimizationMeta.annualSavingLei)} lei/an · ${optimizationMeta.paybackYears == null ? "fără amortizare pozitivă" : "amortizare " + fmt(optimizationMeta.paybackYears,1) + " ani"}.</span>
-         <small>${optimizationMeta.evaluatedCandidates || 0} configurații evaluate · ${optimizationMeta.feasibleCandidates || 0} eligibile · ${optimizationMeta.paretoSolutions || 0} pe frontiera Pareto. ${escapeHtml(commercialNote)}</small>`,
+         <span>CAPEX ${fmt(optimizationMeta.capexLei)} lei · economie anuală ${fmt(optimizationMeta.annualSavingLei)} lei/an · ${optimizationMeta.paybackYears == null ? "fără amortizare pozitivă" : "amortizare " + fmt(optimizationMeta.paybackYears,1) + " ani"} · ${escapeHtml(heatingChoice)}.</span>
+         <small>${escapeHtml(searchDepth)} · ${optimizationMeta.feasibleCandidates || 0} eligibile · ${optimizationMeta.paretoSolutions || 0} pe frontiera Pareto. ${escapeHtml(commercialNote)}</small>`,
         Number(optimizationMeta.annualSavingLei) > 0 ? "good" : "warn"
       );
       showScreen("report");
@@ -3975,6 +4013,41 @@
     return rows;
   }
 
+  function renderHeatingBranchTraceability() {
+    const node = $("#hlnReportHeatingBranches");
+    if (!node) return;
+    const branches = Array.isArray(optimizationMeta?.heatingBranches)
+      ? optimizationMeta.heatingBranches
+      : [];
+    if (optimizationMeta?.kind !== "parametric_economic" || !branches.length) {
+      node.innerHTML = '<p class="hln-report-empty">Acest scenariu nu a rulat o comparație mixtă a sistemelor de încălzire.</p>';
+      return;
+    }
+
+    const selectedId = optimizationMeta.selectedHeating?.optionId || "keep-current-heating";
+    node.innerHTML = `<div class="hln-strategy-list">${branches.map((branch,index) => {
+      const eligible = Boolean(branch.eligible);
+      const selected = String(branch.branch_id || "") === String(selectedId);
+      const status = selected
+        ? "SELECTAT"
+        : eligible
+          ? `${Number(branch.accepted_candidates || 0)} candidați tehnici valizi`
+          : "EXCLUS";
+      const detail = eligible
+        ? `${Number(branch.evaluated_candidates || 0)} recalculări · ${Number(branch.rejected_for_capacity || 0)} eliminate pentru putere insuficientă`
+        : (branch.note || "Infrastructură sau compatibilitate neconfirmată.");
+      return `
+        <article class="${selected ? "is-selected" : ""}">
+          <b>${index + 1}</b>
+          <div>
+            <strong>${escapeHtml(branch.label || branch.branch_id || "Sistem")}</strong>
+            <small>${escapeHtml(status)} · ${escapeHtml(detail)}</small>
+          </div>
+        </article>
+      `;
+    }).join("")}</div>`;
+  }
+
   function renderOptimizerTraceability() {
     const commercial = $("#hlnReportCommercialSolution");
     const rawNode = $("#hlnReportRawSolution");
@@ -4010,9 +4083,13 @@
     rawNode.innerHTML = rawRows.length
       ? `<div class="hln-raw-optimizer-grid">${rawRows.join("")}</div>`
       : '<p class="hln-report-empty">Optimizerul a păstrat casa fără intervenții.</p>';
+    const heatingTrace = optimizationMeta.parametricEvaluations
+      ? `${optimizationMeta.parametricEvaluations} recalculări parametrice, dintre care ${optimizationMeta.heatingBranchEvaluations || 0} în ramuri alternative de încălzire · `
+      : "";
     trace.textContent =
-      `${optimizationMeta.evaluatedCandidates || 0} configurații evaluate · ` +
-      `${optimizationMeta.feasibleCandidates || 0} eligibile pentru regula aleasă · ` +
+      heatingTrace +
+      `${optimizationMeta.evaluatedCandidates || 0} candidați tehnici păstrați · ` +
+      `${optimizationMeta.feasibleCandidates || 0} eligibili pentru regula aleasă · ` +
       `${optimizationMeta.paretoSolutions || 0} soluții nedominante. ` +
       `${optimizationMeta.rationale || ""}`;
   }
@@ -4020,6 +4097,7 @@
   function renderReport() {
     if (!homeResult || !scenarioResult) return;
     renderOptimizerTraceability();
+    renderHeatingBranchTraceability();
 
     $("#hlnReportHomeClass").textContent = homeResult.energy_class || "—";
     $("#hlnReportScenarioClass").textContent = scenarioResult.energy_class || "—";
@@ -4287,7 +4365,7 @@
         strategy.innerHTML = `
           <div class="hln-strategy-lead">
             <strong>${escapeHtml(optimizationMeta.label || "Optimizare economică")} · amortizare ${payback}</strong>
-            <span>CAPEX parametric ${fmt(optimizationMeta.capexLei)} lei · economie anuală ${fmt(optimizationMeta.annualSavingLei)} lei/an. Regula utilizatorului: ${escapeHtml(optimizationMeta.economicMode || "auto_economic")}.</span>
+            <span>CAPEX parametric ${fmt(optimizationMeta.capexLei)} lei · economie anuală ${fmt(optimizationMeta.annualSavingLei)} lei/an · încălzire: ${escapeHtml(optimizationMeta.selectedHeating?.label || "sistemul actual")}. Regula utilizatorului: ${escapeHtml(optimizationMeta.economicMode || "auto_economic")}.</span>
           </div>
           ${selected.length ? `<div class="hln-strategy-list">${selected.map((item,index) => `
             <article><b>${index + 1}</b><div><strong>${escapeHtml(item.label || item.family)}</strong><small>parametru brut ${fmt(item.parameterValue,3)} ${escapeHtml(item.parameterUnit || "")} · CAPEX planificat ${fmt(item.capexLei)} lei</small></div></article>

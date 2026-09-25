@@ -433,7 +433,7 @@ try {
   if (!/lei/i.test(optimizerReport.investment) ||
       !/lei\/an/i.test(optimizerReport.saving) ||
       !optimizerReport.raw.trim() ||
-      !/configurații evaluate/i.test(optimizerReport.trace) ||
+      !/(recalculări parametrice|configurații evaluate)/i.test(optimizerReport.trace) ||
       !optimizerReport.commercial.trim()) {
     throw new Error("Direct optimizer report is incomplete: " + JSON.stringify(optimizerReport));
   }

@@ -1302,7 +1302,8 @@ svg{display:block}
 .hln-report-card>header span{font-size:8px;font-weight:900;letter-spacing:.13em;color:#5a806e}
 .hln-report-card>header strong{font-size:15px}
 
-.hln-report-commercial,.hln-report-raw{grid-column:1/-1}
+.hln-report-commercial,.hln-report-raw,.hln-report-heating-search{grid-column:1/-1}
+.hln-report-heating-search .hln-strategy-list article.is-selected{border-color:#9fcab4;background:#eef8f2}
 .hln-report-status-good,.hln-report-status-warn{display:grid;gap:5px;padding:13px 14px;border-radius:13px}
 .hln-report-status-good{border:1px solid #b9d7c6;background:#eef7f1}
 .hln-report-status-warn{border:1px solid #e1c9a3;background:#fbf5ea}
