@@ -1405,7 +1405,7 @@ svg{display:block}
 .hln-report-visual-copy span{font-size:8px;font-weight:900;letter-spacing:.14em;color:#557b68}
 .hln-report-visual-copy strong{font-size:24px;line-height:1.08;color:#203f33}
 .hln-report-visual-copy small{max-width:320px;color:#68766f;font-size:10px;line-height:1.5}
-.hln-report-3d-wrap{min-height:275px;border-radius:17px;overflow:hidden;background:rgba(230,237,232,.72)}
+.hln-report-3d-wrap{position:relative;min-height:275px;border-radius:17px;overflow:hidden;background:rgba(230,237,232,.72)}
 .hln-report-3d{width:100%;height:100%;min-height:275px}
 .hln-report-3d .hln-3d-toolbar,.hln-report-3d [data-hln-3d-explode]{display:none!important}
 
