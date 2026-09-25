@@ -31,6 +31,7 @@ from .optimization import (
     OptimizationSelectionRequestV1,
     evaluate_parametric_candidate,
     compact_refinement_candidate,
+    parametric_phase_candidate_descriptors,
     refinement_seed_from_compact,
     run_parametric_optimization,
     select_optimization_candidate,
@@ -2372,6 +2373,72 @@ async def home_lab_optimization_plan_api(request: Request) -> JSONResponse:
                 "evaluationsPerBranch": 36,
                 "requestGapMs": 250,
                 "restartCooldownMs": 3000,
+                "maxConcurrentBranchRequests": 4,
+                "branchMaxAttempts": 3,
+                "branchStartStaggerMs": 120,
+            }
+        )
+    except Exception as exc:
+        return JSONResponse({"error": user_error(exc)}, status_code=422)
+
+
+@app.post("/api/optimization/home-lab/phase-candidates")
+async def home_lab_optimization_phase_candidates_api(request: Request) -> JSONResponse:
+    raw = await request.json()
+    form = dict(raw.get("form") or {})
+    branch_id = str(raw.get("branchId", "") or "").strip()
+    search_phase = str(raw.get("searchPhase", "") or "").strip()
+    raw_offsets = raw.get("phaseOffsets")
+    offsets = (
+        [int(value) for value in raw_offsets]
+        if isinstance(raw_offsets, list)
+        else list(range(12))
+    )
+    prior_payload = raw.get("priorCandidates")
+
+    if not branch_id:
+        return JSONResponse({"error": "Lipsește ramura de încălzire."}, status_code=422)
+    if search_phase not in {"axis", "halton", "refine"}:
+        return JSONResponse({"error": "Faza optimizerului nu este validă."}, status_code=422)
+
+    try:
+        _, _, optimization_request = _home_lab_optimization_request_from_form(form)
+        refinement_seed = None
+        if search_phase == "refine":
+            if prior_payload in (None, "", []):
+                raise ValueError("Faza de refinement necesită candidații fazelor anterioare.")
+            decoded_prior = (
+                prior_payload
+                if isinstance(prior_payload, list)
+                else json.loads(str(prior_payload))
+            )
+            if not isinstance(decoded_prior, list):
+                raise ValueError("Candidații anteriori trebuie să fie o listă.")
+            refinement_seed = refinement_seed_from_compact(
+                optimization_request,
+                [item for item in decoded_prior if isinstance(item, dict)],
+            )
+            if refinement_seed is None:
+                raise ValueError(
+                    "Nu există un candidat anterior disponibil pentru refinement."
+                )
+
+        descriptors = parametric_phase_candidate_descriptors(
+            OptimizationSearchBoundsV1(),
+            search_phase=search_phase,
+            phase_offsets=offsets,
+            refinement_seed=refinement_seed,
+        )
+        return JSONResponse(
+            {
+                "branchId": branch_id,
+                "searchPhase": search_phase,
+                "candidates": descriptors,
+                "refinementSeed": (
+                    model_to_dict(refinement_seed)
+                    if refinement_seed is not None
+                    else None
+                ),
             }
         )
     except Exception as exc:
