@@ -4028,20 +4028,31 @@
     node.innerHTML = `<div class="hln-strategy-list">${branches.map((branch,index) => {
       const eligible = Boolean(branch.eligible);
       const selected = String(branch.branch_id || "") === String(selectedId);
+      const evaluated = Number(branch.evaluated_candidates || 0);
+      const accepted = Number(branch.accepted_candidates || 0);
+      const rejectedCapacity = Number(branch.rejected_for_capacity || 0);
+      const allRejectedForCapacity = eligible && evaluated > 0 && accepted === 0 && rejectedCapacity > 0;
       const status = selected
         ? "SELECTAT"
-        : eligible
-          ? `${Number(branch.accepted_candidates || 0)} candidați tehnici valizi`
-          : "EXCLUS";
-      const detail = eligible
-        ? `${Number(branch.evaluated_candidates || 0)} recalculări · ${Number(branch.rejected_for_capacity || 0)} eliminate pentru putere insuficientă`
-        : (branch.note || "Infrastructură sau compatibilitate neconfirmată.");
+        : !eligible
+          ? "EXCLUS ÎNAINTE DE CALCUL"
+          : allRejectedForCapacity
+            ? "ELIMINAT · PUTERE INSUFICIENTĂ"
+            : "EVALUAT · NESELECTAT";
+      const detail = selected
+        ? `${evaluated} recalculări · ${accepted} candidați tehnici valizi · sistemul ales de criteriul economic`
+        : !eligible
+          ? (branch.note || "Infrastructură sau compatibilitate neconfirmată.")
+          : allRejectedForCapacity
+            ? `${evaluated} recalculări · toate configurațiile au fost eliminate deoarece puterea nominală nu acoperă sarcina termică recalculată`
+            : `${evaluated} recalculări · ${accepted} candidați tehnici valizi · ramura a fost analizată, dar nu a câștigat criteriul economic ales`;
       return `
         <article class="${selected ? "is-selected" : ""}">
           <b>${index + 1}</b>
           <div>
             <strong>${escapeHtml(branch.label || branch.branch_id || "Sistem")}</strong>
             <small>${escapeHtml(status)} · ${escapeHtml(detail)}</small>
+            <small>CAPEX fix ramură: ${fmt(Number(branch.fixed_capex_lei || 0))} lei</small>
           </div>
         </article>
       `;

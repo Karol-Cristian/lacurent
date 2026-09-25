@@ -2535,3 +2535,14 @@ def test_home_lab_report_exposes_heating_branch_traceability() -> None:
     assert "renderHeatingBranchTraceability" in js.text
     assert "heatingBranches" in js.text
     assert "rejected_for_capacity" in js.text
+
+
+def test_heating_branch_report_uses_explicit_verdict_labels() -> None:
+    response = client.get("/static/home-lab-next.js")
+    assert response.status_code == 200
+    source = response.text
+    assert "SELECTAT" in source
+    assert "EVALUAT · NESELECTAT" in source
+    assert "EXCLUS ÎNAINTE DE CALCUL" in source
+    assert "ELIMINAT · PUTERE INSUFICIENTĂ" in source
+    assert "nu a câștigat criteriul economic ales" in source
