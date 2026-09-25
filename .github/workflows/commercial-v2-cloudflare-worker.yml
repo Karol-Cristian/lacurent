@@ -239,6 +239,7 @@ jobs:
               "/static/favicon.svg": "<svg",
               "/health": '"status":"ok"',
               "/api/market-cost-basis": '"costs"',
+              "/api/heating-products": '"options"',
               "/demo": "Cluj Demonstration House",
               "/static/app.css": ".app-shell",
               "/static/app.js": "initLocationSelector",
@@ -946,6 +947,67 @@ jobs:
               market_cost_payload.get("source"),
               market_cost_payload.get("catalog_version"),
               len(market_costs),
+          )
+
+          status, _, heating_catalog_body = open_url(apex + "/api/heating-products")
+          if status != 200:
+              raise AssertionError(f"/api/heating-products returned HTTP {status}")
+          heating_catalog = json.loads(heating_catalog_body)
+          if heating_catalog.get("source") != "d1":
+              raise AssertionError(
+                  "Production heating product catalog did not come from D1: "
+                  f"{heating_catalog.get('source')!r}"
+              )
+          products = heating_catalog.get("options") or []
+          if len(products) != 31:
+              raise AssertionError(
+                  f"Production D1 heating catalog expected 31 products, got {len(products)}"
+              )
+          category_counts = {}
+          for product in products:
+              technology_id = str(product.get("technology_id") or "")
+              category_counts[technology_id] = category_counts.get(technology_id, 0) + 1
+              if not str(product.get("external_id") or "").strip():
+                  raise AssertionError(
+                      f"Heating product {product.get('id')!r} lost its canonical external_id."
+                  )
+          expected_category_counts = {
+              "heat-pump-air-water": 8,
+              "condensing-gas": 8,
+              "electric-boiler": 8,
+              "pellet-boiler": 7,
+          }
+          if category_counts != expected_category_counts:
+              raise AssertionError(
+                  f"Production D1 heating category counts mismatch: {category_counts}"
+              )
+          performance_points = heating_catalog.get("heat_pump_performance_points") or []
+          if len(performance_points) < 17:
+              raise AssertionError(
+                  "Production D1 heat-pump performance catalog is incomplete: "
+                  f"{len(performance_points)} operating points"
+              )
+          if not all(float(point.get("cop") or 0) > 1 for point in performance_points):
+              raise AssertionError("Production D1 heat-pump catalog contains an invalid COP.")
+          labels = " ".join(str(product.get("label") or "") for product in products)
+          for expected_model in (
+              "Mitsubishi Electric Ecodan PUZ-SWM80VAA",
+              "Daikin Altherma 3 M EBLA08E3V3",
+              "LG THERMA V",
+              "NIBE S2125-8",
+              "Ariston Nimbus",
+          ):
+              if expected_model not in labels:
+                  raise AssertionError(
+                      f"Production D1 heating catalog lost model {expected_model!r}."
+                  )
+          print(
+              "/api/heating-products",
+              status,
+              heating_catalog.get("source"),
+              heating_catalog.get("catalog_version"),
+              len(products),
+              len(performance_points),
           )
 
           form = default_form_values()
