@@ -48,6 +48,41 @@ HYDRONIC_DISTRIBUTIONS = {
     "underfloor",
 }
 
+# Technical branches exist independently from the commercial SKU catalog.
+# These two are intentionally technical-only until source-backed installed-cost
+# curves and real product families are attached. They must still be simulated
+# so the user can compare physics without pretending a market price exists.
+SUPPLEMENTAL_TECHNICAL_HEATING_BRANCHES: dict[str, dict[str, Any]] = {
+    "heat-pump-air-air": {
+        "label": "Pompă de căldură aer-aer",
+        "system_type": HeatingSystemType.heat_pump,
+        "generator_type": HeatingGeneratorType.heat_pump_air_air,
+        "carrier": Carrier.electricity,
+        "cost_profile": "electricity",
+        "requires_hydronic": False,
+        "economic_eligible": False,
+        "note": (
+            "Ramură tehnică calculată parametric. Catalogul comercial/costul instalat "
+            "pentru aer-aer nu este încă source-backed, deci nu poate câștiga selecția "
+            "economică până la atașarea costului."
+        ),
+    },
+    "heat-pump-ground-water": {
+        "label": "Pompă de căldură sol-apă",
+        "system_type": HeatingSystemType.heat_pump,
+        "generator_type": HeatingGeneratorType.heat_pump_ground_water,
+        "carrier": Carrier.electricity,
+        "cost_profile": "electricity",
+        "requires_hydronic": True,
+        "economic_eligible": False,
+        "note": (
+            "Ramură tehnică calculată parametric. Captarea geotermală și costul instalat "
+            "depind de teren/foraj și nu sunt încă source-backed în catalog; ramura nu "
+            "poate câștiga selecția economică până la completarea datelor."
+        ),
+    },
+}
+
 
 class HeatPumpPerformancePointV1(BaseModel):
     product_id: str
@@ -140,6 +175,8 @@ class HeatingBranchSummaryV1(BaseModel):
     label: str
     fixed_capex_lei: float
     eligible: bool
+    economic_eligible: bool = True
+    commercialization_mode: str = "product_catalog"
     evaluated_candidates: int = 0
     accepted_candidates: int = 0
     rejected_for_capacity: int = 0
