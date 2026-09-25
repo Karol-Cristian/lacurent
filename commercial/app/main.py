@@ -49,6 +49,7 @@ from .full_commercialization import (
 )
 from .heating_optimization import (
     HeatingBranchSummaryV1,
+    apply_supplemental_heating_technology,
     commercialize_heating_finalist,
     heating_branch_plan,
     heating_planning_options,
@@ -2418,13 +2419,25 @@ async def home_lab_optimization_plan_api(request: Request) -> JSONResponse:
         mode, _, optimization_request = _home_lab_optimization_request_from_form(form)
         heating_catalog = await _optimizer_heating_catalog(request)
         branches = heating_branch_plan(optimization_request, heating_catalog)
-        runnable = [item for item in branches if item.eligible]
+        runnable = [
+            item
+            for item in branches
+            if item.eligible and item.economic_eligible
+        ]
+        technical_previews = [
+            item
+            for item in branches
+            if item.eligible and not item.economic_eligible
+        ]
         return JSONResponse(
             {
                 "economicMode": mode.value,
                 "label": _home_lab_optimizer_label(mode, form),
                 "branches": [model_to_dict(item) for item in branches],
                 "runBranchIds": [item.branch_id for item in runnable],
+                "technicalPreviewBranchIds": [
+                    item.branch_id for item in technical_previews
+                ],
                 "searchPhases": ["axis", "halton", "refine"],
                 "evaluationsPerPhase": 12,
                 "microBatchSize": 1,
