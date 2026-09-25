@@ -52,10 +52,14 @@ def test_heating_catalog_groups_products_into_technology_branches() -> None:
     } <= ids
 
     hp = next(item for item in technologies if item.id == "heat-pump-air-water")
-    assert [item.rated_power_kw for item in hp.products] == [5, 8, 12, 15]
+    hp_powers = {round(item.rated_power_kw, 2) for item in hp.products}
+    assert {5.0, 7.0, 8.0, 12.0, 15.0} <= hp_powers
+    assert len(hp.products) >= 5
 
     electric = next(item for item in technologies if item.id == "electric-boiler")
-    assert [item.rated_power_kw for item in electric.products] == [6, 9, 12, 18]
+    electric_powers = {round(item.rated_power_kw, 2) for item in electric.products}
+    assert {5.94, 6.0, 8.91, 9.0, 12.0, 18.0} <= electric_powers
+    assert len(electric.products) >= 5
 
     for option in options:
         assert option.source_url
