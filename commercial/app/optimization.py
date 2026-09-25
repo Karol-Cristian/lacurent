@@ -187,7 +187,7 @@ class OptimizationSearchResultV1(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
-@lru_cache(maxsize=96)
+@lru_cache(maxsize=32)
 def _cached_baseline_evaluation_serialized(
     serialized_building: str,
 ) -> tuple[Any, dict[str, Any]]:
