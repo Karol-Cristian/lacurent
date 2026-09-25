@@ -31,8 +31,8 @@ def _run_sharded(payload: dict[str, str]) -> tuple[dict, dict]:
     plan = plan_response.json()
     assert plan["searchPhases"] == ["axis", "halton", "refine"]
     assert plan["evaluationsPerPhase"] == 12
-    assert plan["microBatchSize"] == 2
-    assert plan["phaseOffsets"] == [0, 2, 4, 6, 8, 10]
+    assert plan["microBatchSize"] == 1
+    assert plan["phaseOffsets"] == list(range(12))
     assert plan["evaluationsPerBranch"] == 36
     assert plan["runBranchIds"]
 
@@ -162,7 +162,7 @@ def test_refinement_payload_is_compact_and_seedable() -> None:
 
     summaries: list[dict] = []
     for phase in ("axis", "halton"):
-        for phase_offset in (0, 2, 4, 6, 8, 10):
+        for phase_offset in range(12):
             response = client.post(
                 "/api/optimization/home-lab/branch",
                 json={
