@@ -34,6 +34,7 @@ def _catalog() -> dict:
             "roof": {"cost_lei": 8, "unit": "lei_per_m2_per_cm"},
             "floor": {"cost_lei": 11, "unit": "lei_per_m2_per_cm"},
             "windows": {"cost_lei": 1000, "unit": "lei_per_m2"},
+            "ventilation": {"cost_lei": 8000, "unit": "lei_total"},
             "pv": {"cost_lei": 4000, "unit": "lei_per_kwp"},
             "solar_thermal": {"cost_lei": 2650, "unit": "lei_per_m2"},
         },
