@@ -824,7 +824,7 @@ def test_home_lab_roi_reconciles_visible_capex_and_avoids_request_bursts() -> No
     assert "Două valuri curate: concurență" in source
     assert 'id="hlnOptimizerConsole"' in response.text
     assert "candidateParameters" in source
-    assert "până la ${phaseParallelism} requesturi simultan" in source
+    assert "concurență ${adaptiveBranchParallelism}/${configuredBranchParallelism}" in source
 
 
 def test_home_lab_exposes_four_single_constraint_parametric_objectives() -> None:
