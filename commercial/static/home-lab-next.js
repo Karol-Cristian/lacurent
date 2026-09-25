@@ -233,6 +233,11 @@
   let optimizerLastRemoteRequestAt = 0;
   let optimizerRestartCooldownUntil = 0;
   let optimizerRequestGapMs = 250;
+  let optimizerConsoleStartedAt = 0;
+  let optimizerConsolePlanned = 0;
+  let optimizerConsoleCompleted = 0;
+  let optimizerConsoleLines = [];
+  const OPTIMIZER_CONSOLE_MAX_LINES = 180;
   const OPTIMIZER_MAX_ENGINE_EVALUATIONS = 16;
   const OPTIMIZER_MIN_REQUEST_GAP_MS = 250;
   const OPTIMIZER_RESTART_COOLDOWN_MS = 3000;
@@ -1583,7 +1588,8 @@
     parentSignal = null,
     timeoutMs = OPTIMIZER_REQUEST_TIMEOUT_MS,
     maxAttempts = 5,
-    useGlobalPacing = true
+    useGlobalPacing = true,
+    hooks = null
   ) {
     let lastResult = null;
     let lastError = null;
@@ -1595,6 +1601,11 @@
         throw abortError;
       }
 
+      if (typeof hooks?.onAttempt === "function") {
+        hooks.onAttempt({attempt, maxAttempts});
+      }
+
+      let retryReason = null;
       try {
         if (useGlobalPacing) await waitForOptimizerRequestSlot(parentSignal);
         let result;
@@ -1613,6 +1624,7 @@
         if (!retryableStatus || attempt >= maxAttempts) {
           return {...result, attemptCount:attempt};
         }
+        retryReason = {type:"http", status};
       } catch (error) {
         if (error?.name === "AbortError" && parentSignal?.aborted) throw error;
         const retryableError = error?.name === "TimeoutError" || error?.name === "TypeError";
@@ -1621,11 +1633,21 @@
           throw error;
         }
         lastError = error;
+        retryReason = {type:"transport", name:error?.name || "network"};
       }
 
       const delay = OPTIMIZER_TRANSIENT_RETRY_DELAYS_MS[
         Math.min(attempt - 1, OPTIMIZER_TRANSIENT_RETRY_DELAYS_MS.length - 1)
       ];
+      if (typeof hooks?.onRetry === "function") {
+        hooks.onRetry({
+          attempt,
+          nextAttempt:attempt + 1,
+          maxAttempts,
+          delayMs:delay,
+          reason:retryReason,
+        });
+      }
       await new Promise(resolve => window.setTimeout(resolve, delay));
     }
 
@@ -2324,6 +2346,117 @@
     node.classList.toggle("is-warn", kind === "warn");
   }
 
+  function optimizerConsoleElapsed() {
+    if (!optimizerConsoleStartedAt) return "00:00.0";
+    const elapsedMs = Math.max(0, Date.now() - optimizerConsoleStartedAt);
+    const minutes = Math.floor(elapsedMs / 60000);
+    const seconds = Math.floor((elapsedMs % 60000) / 1000);
+    const tenths = Math.floor((elapsedMs % 1000) / 100);
+    return `${String(minutes).padStart(2,"0")}:${String(seconds).padStart(2,"0")}.${tenths}`;
+  }
+
+  function optimizerConsoleCandidateParameters(raw = {}) {
+    const number = (value, digits = 3) => {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed.toFixed(digits) : "n/a";
+    };
+    const windows = Number(raw.window_replacement_fraction);
+    return [
+      `wallR+${number(raw.wall_added_r_m2k_w)}`,
+      `roofR+${number(raw.roof_added_r_m2k_w)}`,
+      `floorR+${number(raw.floor_added_r_m2k_w)}`,
+      `windows=${Number.isFinite(windows) ? (windows * 100).toFixed(1) : "n/a"}%`,
+      `Uw=${number(raw.window_target_u_w_m2k,2)}`,
+      `PV+${number(raw.pv_added_kwp)}kWp`,
+      `solar+${number(raw.solar_thermal_added_m2)}m²`,
+    ].join(" | ");
+  }
+
+  function renderOptimizerConsole() {
+    const panel = $("#hlnOptimizerConsole");
+    const output = $("#hlnOptimizerConsoleOutput");
+    const progress = $("#hlnOptimizerConsoleProgress");
+    const progressBar = $("#hlnOptimizerConsoleProgressBar");
+    if (!panel || !output || !progress || !progressBar) return;
+
+    panel.hidden = !optimizerConsoleStartedAt;
+    const planned = Math.max(0, Number(optimizerConsolePlanned || 0));
+    const completed = Math.max(0, Number(optimizerConsoleCompleted || 0));
+    progress.textContent = planned ? `${completed} / ${planned}` : "0 / 0";
+    progressBar.style.width = planned
+      ? `${Math.min(100, 100 * completed / planned).toFixed(1)}%`
+      : "0%";
+
+    output.innerHTML = optimizerConsoleLines.map(line => (
+      `<div class="hln-optimizer-console-line is-${escapeHtml(line.kind || "info")}">` +
+      `<time>${escapeHtml(line.elapsed || "00:00.0")}</time>` +
+      `<b>${escapeHtml(line.tag || "INFO")}</b>` +
+      `<span>${escapeHtml(line.message || "")}</span>` +
+      `</div>`
+    )).join("");
+    output.scrollTop = output.scrollHeight;
+  }
+
+  function resetOptimizerConsole(label = "optimizer") {
+    optimizerConsoleStartedAt = Date.now();
+    optimizerConsolePlanned = 0;
+    optimizerConsoleCompleted = 0;
+    optimizerConsoleLines = [];
+    const panel = $("#hlnOptimizerConsole");
+    const state = $("#hlnOptimizerConsoleState");
+    const footer = $("#hlnOptimizerConsoleFooter");
+    if (panel) {
+      panel.hidden = false;
+      panel.classList.remove("is-error","is-done","is-collapsed");
+    }
+    const toggle = $("#hlnOptimizerConsoleToggle");
+    if (toggle) {
+      toggle.textContent = "Restrânge";
+      toggle.setAttribute("aria-expanded","true");
+    }
+    if (state) state.textContent = "RUNNING";
+    if (footer) footer.textContent = `Pornit · ${label}`;
+    appendOptimizerConsole("info","START",`PS LaCurent:\\optimizer> ${label}`);
+    window.requestAnimationFrame(() => {
+      panel?.scrollIntoView({behavior:"smooth", block:"center"});
+    });
+  }
+
+  function appendOptimizerConsole(kind, tag, message) {
+    if (!optimizerConsoleStartedAt) optimizerConsoleStartedAt = Date.now();
+    optimizerConsoleLines.push({
+      kind:kind || "info",
+      tag:tag || "INFO",
+      message:String(message || ""),
+      elapsed:optimizerConsoleElapsed(),
+    });
+    if (optimizerConsoleLines.length > OPTIMIZER_CONSOLE_MAX_LINES) {
+      optimizerConsoleLines = optimizerConsoleLines.slice(-OPTIMIZER_CONSOLE_MAX_LINES);
+    }
+    renderOptimizerConsole();
+  }
+
+  function setOptimizerConsoleProgress(completed, planned, footerText = "") {
+    optimizerConsoleCompleted = Math.max(0, Number(completed || 0));
+    optimizerConsolePlanned = Math.max(0, Number(planned || 0));
+    const footer = $("#hlnOptimizerConsoleFooter");
+    if (footer && footerText) footer.textContent = footerText;
+    renderOptimizerConsole();
+  }
+
+  function finishOptimizerConsole(kind = "done", message = "") {
+    const panel = $("#hlnOptimizerConsole");
+    const state = $("#hlnOptimizerConsoleState");
+    const footer = $("#hlnOptimizerConsoleFooter");
+    if (panel) {
+      panel.classList.toggle("is-error", kind === "error");
+      panel.classList.toggle("is-done", kind !== "error");
+    }
+    if (state) state.textContent = kind === "error" ? "FAULT" : "DONE";
+    if (footer && message) footer.textContent = message;
+    renderOptimizerConsole();
+  }
+
   function beginOptimizerRun() {
     clearTimeout(calculateTimer);
     calculateTimer = 0;
@@ -2656,6 +2789,8 @@
     if (!baselineSaved || !homeResult) return;
     const settings = parametricOptimizerUiSettings(action);
     const runToken = beginOptimizerRun();
+    resetOptimizerConsole(settings.label);
+    appendOptimizerConsole("info","PLAN","Construiesc ramurile și spațiul de căutare.");
     const buttons = $$("[data-hln-smart-config]");
     buttons.forEach(button => button.disabled = true);
     setOptimizerBusy(true);
@@ -2720,11 +2855,40 @@
       const evaluationsPerBranch = Number(plan.evaluationsPerBranch || (phases.length * evaluationsPerPhase));
       const configuredBranchParallelism = Math.max(
         1,
-        Math.min(4, Number(plan.maxConcurrentBranchRequests || 4))
+        Math.min(3, Number(plan.maxConcurrentBranchRequests || 3))
       );
+      const initialBranchParallelism = Math.max(
+        1,
+        Math.min(
+          configuredBranchParallelism,
+          Number(plan.initialConcurrentBranchRequests || Math.min(2, configuredBranchParallelism))
+        )
+      );
+      const cleanWavesBeforeRampUp = Math.max(1, Number(plan.cleanWavesBeforeRampUp || 2));
       const branchMaxAttempts = Math.max(1, Math.min(3, Number(plan.branchMaxAttempts || 3)));
-      const branchStartStaggerMs = Math.max(0, Number(plan.branchStartStaggerMs || 120));
-      let adaptiveBranchParallelism = configuredBranchParallelism;
+      const branchStartStaggerMs = Math.max(0, Number(plan.branchStartStaggerMs || 140));
+      let adaptiveBranchParallelism = initialBranchParallelism;
+      let cleanWaveStreak = 0;
+      let processedCandidates = 0;
+      const plannedPhaseCandidates = Array.isArray(plan.phaseOffsets) && plan.phaseOffsets.length
+        ? plan.phaseOffsets.length
+        : evaluationsPerPhase;
+      let plannedCandidates = runnableIds.length * phases.length * plannedPhaseCandidates;
+      setOptimizerConsoleProgress(
+        processedCandidates,
+        plannedCandidates,
+        `0 procesați · ${completedEvaluations} calculați · concurență ${adaptiveBranchParallelism}/${configuredBranchParallelism}`
+      );
+      appendOptimizerConsole(
+        "info",
+        "PLAN",
+        `${runnableIds.length} ramuri × ${phases.length} faze × ${plannedPhaseCandidates} candidați = ${plannedCandidates} puncte planificate.`
+      );
+      appendOptimizerConsole(
+        "info",
+        "POOL",
+        `Pornesc cu ${adaptiveBranchParallelism} requesturi simultan; maxim ${configuredBranchParallelism}; ${branchMaxAttempts} încercări/candidat.`
+      );
       const phaseLabel = {
         axis:"probe axe",
         halton:"explorare Halton",
@@ -2737,6 +2901,11 @@
         const branch = branchById.get(branchId) || {};
         const branchLabel = branch.label || branchId;
         const priorCandidateSummaries = [];
+        appendOptimizerConsole(
+          "info",
+          "BRANCH",
+          `[${index + 1}/${runnableIds.length}] ${branchLabel} (${branchId})`
+        );
 
         const phaseOffsets = Array.isArray(plan.phaseOffsets) && plan.phaseOffsets.length
           ? plan.phaseOffsets.map(value => Number(value || 0))
@@ -2747,12 +2916,28 @@
           if (runToken !== optimizerRunToken) return;
           const phase = String(phases[phaseIndex]);
           const readablePhase = phaseLabel[phase] || phase;
+          appendOptimizerConsole(
+            "info",
+            "PHASE",
+            `[${phaseIndex + 1}/${phases.length}] ${readablePhase} · ${phaseOffsets.length} candidați · concurență curentă ${adaptiveBranchParallelism}`
+          );
           const fixedRefinementSeed = phase === "refine"
             ? [...priorCandidateSummaries]
             : [];
 
           if (phase === "refine" && !fixedRefinementSeed.length) {
             const warning = `Ramura „${branchLabel}” nu are candidați validați pentru refinement; faza locală a fost omisă.`;
+            plannedCandidates = Math.max(processedCandidates, plannedCandidates - phaseOffsets.length);
+            appendOptimizerConsole(
+              "retry",
+              "SKIP",
+              `[${index + 1}/${runnableIds.length}] ${branchLabel} · refinement omis: nu există seed valid.`
+            );
+            setOptimizerConsoleProgress(
+              processedCandidates,
+              plannedCandidates,
+              `${processedCandidates} procesați · ${completedEvaluations} calculați · ${failedMicroBatches.length + 1} faulturi`
+            );
             failedMicroBatches.push({
               candidateId:null,
               candidateParameters:null,
@@ -2805,32 +2990,79 @@
               for (const descriptor of (traceCall.payload.candidates || [])) {
                 phaseCandidateByOffset.set(Number(descriptor.phase_offset), descriptor);
               }
+              appendOptimizerConsole(
+                "info",
+                "TRACE",
+                `${branchLabel} · ${readablePhase}: ${phaseCandidateByOffset.size}/${phaseOffsets.length} descriptori pregătiți înainte de calcul.`
+              );
             }
           } catch (error) {
             if (error?.name === "AbortError" || runToken !== optimizerRunToken) throw error;
+            appendOptimizerConsole(
+              "retry",
+              "TRACE",
+              `${branchLabel} · ${readablePhase}: descriptorii nu au putut fi preluați; continui cu branch/phase/offset determinist.`
+            );
             // Trace preview must never prevent optimization. The fallback key
             // branch/phase/offset remains deterministic and rerunnable.
           }
 
           const phaseSummariesByBatch = new Map();
-          let nextBatchIndex = 0;
+          const phaseFailedBatchIndexes = new Set();
           let completedInPhase = 0;
           let phaseFinalFailures = 0;
           let phaseRecoveredRetries = 0;
-          const phaseParallelism = Math.min(adaptiveBranchParallelism, phaseOffsets.length);
 
-          const updateParallelPhaseProgress = () => {
+          const recordPhaseFailure = failure => {
+            phaseFailedBatchIndexes.add(failure.batchIndex);
+            const existingIndex = failedMicroBatches.findIndex(item => (
+              item.branchId === failure.branchId
+              && item.phase === failure.phase
+              && item.batchIndex === failure.batchIndex
+            ));
+            if (existingIndex >= 0) {
+              const existing = failedMicroBatches[existingIndex];
+              failedMicroBatches[existingIndex] = {
+                ...existing,
+                ...failure,
+                attempts:Number(existing.attempts || 0) + Number(failure.attempts || 0),
+              };
+              return;
+            }
+            failedMicroBatches.push(failure);
+          };
+
+          const clearPhaseFailure = batchIndex => {
+            phaseFailedBatchIndexes.delete(batchIndex);
+            for (let i = failedMicroBatches.length - 1; i >= 0; i -= 1) {
+              const item = failedMicroBatches[i];
+              if (
+                item.branchId === branchId
+                && item.phase === phase
+                && item.batchIndex === batchIndex
+              ) {
+                failedMicroBatches.splice(i, 1);
+              }
+            }
+          };
+
+          const updateParallelPhaseProgress = waveText => {
             setStatus(
-              `Optimizez ${index + 1}/${runnableIds.length}: ${branchLabel} · ${readablePhase} ${completedInPhase}/${phaseOffsets.length}…`
+              `Ramura ${index + 1}/${runnableIds.length} · faza ${phaseIndex + 1}/${phases.length} · ${readablePhase} · ${completedInPhase}/${phaseOffsets.length}`
             );
             setOptimizationNote(
               `<strong>${escapeHtml(settings.label)}</strong>
-               <span>Ramura ${index + 1}/${runnableIds.length}: ${escapeHtml(branchLabel)} · ${escapeHtml(readablePhase)}.</span>
-               <small>${completedEvaluations} recalculări terminate · 1 candidat/request · până la ${phaseParallelism} requesturi simultan · ${evaluationsPerBranch} evaluări per ramură.</small>`
+               <span>Ramura ${index + 1}/${runnableIds.length}: ${escapeHtml(branchLabel)} · faza ${phaseIndex + 1}/${phases.length}: ${escapeHtml(readablePhase)}.</span>
+               <small>Candidați procesați ${completedInPhase}/${phaseOffsets.length} în fază · ${processedCandidates}/${plannedCandidates} total · concurență ${adaptiveBranchParallelism}/${configuredBranchParallelism}${waveText ? " · " + escapeHtml(waveText) : ""}.</small>`
+            );
+            setOptimizerConsoleProgress(
+              processedCandidates,
+              plannedCandidates,
+              `${processedCandidates}/${plannedCandidates} procesați · ${completedEvaluations} calculați · ${failedMicroBatches.length} faulturi · concurență ${adaptiveBranchParallelism}/${configuredBranchParallelism}`
             );
           };
 
-          const runOnePhaseCandidate = async batchIndex => {
+          const runOnePhaseCandidate = async (batchIndex, {recovery = false} = {}) => {
             if (runToken !== optimizerRunToken) {
               const abortError = new Error("Optimizer oprit");
               abortError.name = "AbortError";
@@ -2839,9 +3071,25 @@
 
             const phaseOffset = phaseOffsets[batchIndex];
             const candidateTrace = phaseCandidateByOffset.get(Number(phaseOffset)) || null;
+            const candidateId = candidateTrace?.candidate_id || `TRACE-${branchId}-${phase}-${phaseOffset}`;
+            const candidateParameters = candidateTrace?.parameters || null;
+            const candidateStartedAt = performance.now();
             const body = optimizerBody();
             const formPayload = Object.fromEntries(body.entries());
             let branchCall = null;
+
+            appendOptimizerConsole(
+              "run",
+              recovery ? "RECOVER" : "RUN",
+              `B ${index + 1}/${runnableIds.length} · P ${phaseIndex + 1}/${phases.length} · C ${batchIndex + 1}/${phaseOffsets.length} · ${candidateId}`
+            );
+            appendOptimizerConsole(
+              "param",
+              "PARAM",
+              candidateParameters
+                ? optimizerConsoleCandidateParameters(candidateParameters)
+                : `branch=${branchId} | phase=${phase} | offset=${phaseOffset}`
+            );
 
             try {
               branchCall = await fetchOptimizerWithRetry(
@@ -2860,24 +3108,50 @@
                 optimizerAbortController?.signal || null,
                 OPTIMIZER_REQUEST_TIMEOUT_MS,
                 branchMaxAttempts,
-                false
+                false,
+                {
+                  onAttempt: ({attempt, maxAttempts}) => {
+                    appendOptimizerConsole(
+                      "run",
+                      "TRY",
+                      `${candidateId} · încercarea ${attempt}/${maxAttempts}${recovery ? " · recovery serial" : ""}`
+                    );
+                  },
+                  onRetry: ({nextAttempt, maxAttempts, delayMs, reason}) => {
+                    const reasonText = reason?.type === "http"
+                      ? `HTTP ${reason.status}`
+                      : (reason?.name || "network");
+                    appendOptimizerConsole(
+                      "retry",
+                      "RETRY",
+                      `${candidateId} · ${reasonText} · încercarea ${nextAttempt}/${maxAttempts} în ${Math.round(delayMs)} ms`
+                    );
+                  },
+                }
               );
             } catch (error) {
               if (error?.name === "AbortError" || runToken !== optimizerRunToken) throw error;
               const transientTransport = error?.name === "TimeoutError" || error?.name === "TypeError";
               if (!transientTransport) throw error;
               phaseFinalFailures += 1;
-              const warning = `Ramura „${branchLabel}” / ${readablePhase} / candidat ${candidateTrace?.candidate_id || batchIndex + 1} a fost păstrat pentru reexecuție după ${error?.name || "network"}.`;
-              failedMicroBatches.push({
+              const attempts = Number(error?.attemptCount || branchMaxAttempts);
+              const elapsedMs = performance.now() - candidateStartedAt;
+              appendOptimizerConsole(
+                "fail",
+                "FAIL",
+                `${candidateId} · ${error?.name || "network"} după ${attempts} încercări · ${Math.round(elapsedMs)} ms · păstrat pentru reexecuție`
+              );
+              const warning = `Ramura „${branchLabel}” / ${readablePhase} / candidat ${candidateId} a fost păstrat pentru reexecuție după ${error?.name || "network"}.`;
+              recordPhaseFailure({
                 candidateId:candidateTrace?.candidate_id || null,
-                candidateParameters:candidateTrace?.parameters || null,
+                candidateParameters,
                 branchId,
                 branchLabel,
                 phase,
                 batchIndex,
                 phaseOffset,
                 status:null,
-                attempts:Number(error?.attemptCount || branchMaxAttempts),
+                attempts,
                 reason:error?.name || "transport_error",
               });
               branchResults.push({
@@ -2889,7 +3163,7 @@
                 calculationTimeMs:0,
                 warnings:[warning],
               });
-              return;
+              return false;
             }
 
             const recoveredRetries = Math.max(0, Number(branchCall.attemptCount || 1) - 1);
@@ -2906,17 +3180,24 @@
               const status = Number(branchCall.response?.status || 0);
               if (OPTIMIZER_TRANSIENT_RETRY_STATUSES.has(status)) {
                 phaseFinalFailures += 1;
-                const warning = `Ramura „${branchLabel}” / ${readablePhase} / candidat ${candidateTrace?.candidate_id || batchIndex + 1} a fost păstrat pentru reexecuție după HTTP ${status || "tranzitoriu"} repetat.`;
-                failedMicroBatches.push({
+                const attempts = Number(branchCall.attemptCount || 1);
+                const elapsedMs = performance.now() - candidateStartedAt;
+                appendOptimizerConsole(
+                  "fail",
+                  "FAIL",
+                  `${candidateId} · HTTP ${status || "?"} după ${attempts} încercări · ${Math.round(elapsedMs)} ms · păstrat pentru reexecuție`
+                );
+                const warning = `Ramura „${branchLabel}” / ${readablePhase} / candidat ${candidateId} a fost păstrat pentru reexecuție după HTTP ${status || "tranzitoriu"} repetat.`;
+                recordPhaseFailure({
                   candidateId:candidateTrace?.candidate_id || null,
-                  candidateParameters:candidateTrace?.parameters || null,
+                  candidateParameters,
                   branchId,
                   branchLabel,
                   phase,
                   batchIndex,
                   phaseOffset,
                   status,
-                  attempts:Number(branchCall.attemptCount || 1),
+                  attempts,
                   reason:"transient_http",
                 });
                 branchResults.push({
@@ -2928,11 +3209,11 @@
                   calculationTimeMs:0,
                   warnings:[warning],
                 });
-                return;
+                return false;
               }
               throw new Error(
                 branchCall.payload?.error
-                || `Ramura „${branchLabel}” / ${readablePhase} / candidat ${candidateTrace?.candidate_id || batchIndex + 1} nu a putut fi calculată (HTTP ${status || "?"}).`
+                || `Ramura „${branchLabel}” / ${readablePhase} / candidat ${candidateId} nu a putut fi calculată (HTTP ${status || "?"}).`
               );
             }
 
@@ -2941,29 +3222,144 @@
               ? branchCall.payload.candidateSummaries
               : [];
             phaseSummariesByBatch.set(batchIndex, batchSummaries);
-            completedEvaluations += Number(branchCall.payload.parametricEvaluations || 0);
+            const evaluatedNow = Number(branchCall.payload.parametricEvaluations || 0);
+            completedEvaluations += evaluatedNow;
+
+            const summary = batchSummaries[0] || null;
+            const elapsedMs = performance.now() - candidateStartedAt;
+            const resultText = summary
+              ? `CAPEX ${fmt(Number(summary.capex_lei || 0))} lei | factură ${fmt(Number(summary.annual_bill_lei || 0))} lei/an | economie ${fmt(Number(summary.annual_saving_lei || 0))} lei/an`
+              : (evaluatedNow > 0 ? "calculat, dar eliminat de constrângerile tehnice/economice" : "fără candidat tehnic păstrat");
+            if (recovery && phaseFailedBatchIndexes.has(batchIndex)) {
+              clearPhaseFailure(batchIndex);
+              appendOptimizerConsole(
+                "ok",
+                "RECOVERED",
+                `${candidateId} · reintrat în competiție după reexecuție serială.`
+              );
+            }
+            appendOptimizerConsole(
+              "ok",
+              "OK",
+              `${candidateId} · ${Math.round(elapsedMs)} ms · ${resultText}`
+            );
+            return true;
           };
 
-          updateParallelPhaseProgress();
-          const workers = Array.from({length:phaseParallelism}, (_, workerIndex) => (
-            (async () => {
-              if (workerIndex > 0 && branchStartStaggerMs > 0) {
+          let waveCursor = 0;
+          while (waveCursor < phaseOffsets.length) {
+            if (runToken !== optimizerRunToken) return;
+            const waveParallelism = Math.max(
+              1,
+              Math.min(adaptiveBranchParallelism, phaseOffsets.length - waveCursor)
+            );
+            const waveIndexes = Array.from(
+              {length:waveParallelism},
+              (_, position) => waveCursor + position
+            );
+            const firstCandidate = waveIndexes[0] + 1;
+            const lastCandidate = waveIndexes[waveIndexes.length - 1] + 1;
+            const failuresBeforeWave = phaseFinalFailures;
+            const retriesBeforeWave = phaseRecoveredRetries;
+
+            appendOptimizerConsole(
+              "info",
+              "WAVE",
+              `${branchLabel} · ${readablePhase} · candidați ${firstCandidate}–${lastCandidate}/${phaseOffsets.length} · concurență ${waveParallelism}`
+            );
+            updateParallelPhaseProgress(
+              `rulează candidații ${firstCandidate}–${lastCandidate}/${phaseOffsets.length}`
+            );
+
+            await Promise.all(waveIndexes.map(async (batchIndex, wavePosition) => {
+              if (wavePosition > 0 && branchStartStaggerMs > 0) {
                 await new Promise(resolve => window.setTimeout(
                   resolve,
-                  workerIndex * branchStartStaggerMs
+                  wavePosition * branchStartStaggerMs
                 ));
               }
-              while (true) {
-                const batchIndex = nextBatchIndex;
-                nextBatchIndex += 1;
-                if (batchIndex >= phaseOffsets.length) return;
+              try {
                 await runOnePhaseCandidate(batchIndex);
+              } finally {
                 completedInPhase += 1;
-                updateParallelPhaseProgress();
+                processedCandidates += 1;
+                updateParallelPhaseProgress(
+                  `ultimul val ${firstCandidate}–${lastCandidate}/${phaseOffsets.length}`
+                );
               }
-            })()
-          ));
-          await Promise.all(workers);
+            }));
+
+            const waveFailures = phaseFinalFailures - failuresBeforeWave;
+            const waveRetries = phaseRecoveredRetries - retriesBeforeWave;
+            const previousParallelism = adaptiveBranchParallelism;
+
+            if (waveFailures > 0) {
+              adaptiveBranchParallelism = 1;
+              cleanWaveStreak = 0;
+              appendOptimizerConsole(
+                "retry",
+                "THROTTLE",
+                `Fault în val: concurență ${previousParallelism} → 1 imediat pentru următorul val; cooldown 1,2 s.`
+              );
+              await new Promise(resolve => window.setTimeout(resolve, 1200));
+            } else if (waveRetries > 0) {
+              adaptiveBranchParallelism = Math.max(1, adaptiveBranchParallelism - 1);
+              cleanWaveStreak = 0;
+              if (adaptiveBranchParallelism !== previousParallelism) {
+                appendOptimizerConsole(
+                  "retry",
+                  "THROTTLE",
+                  `Retry detectat: concurență ${previousParallelism} → ${adaptiveBranchParallelism} pentru următorul val; cooldown 0,5 s.`
+                );
+              }
+              await new Promise(resolve => window.setTimeout(resolve, 500));
+            } else {
+              cleanWaveStreak += 1;
+              if (
+                cleanWaveStreak >= cleanWavesBeforeRampUp
+                && adaptiveBranchParallelism < configuredBranchParallelism
+              ) {
+                adaptiveBranchParallelism += 1;
+                cleanWaveStreak = 0;
+                appendOptimizerConsole(
+                  "info",
+                  "RAMP",
+                  `Două valuri curate: concurență ${previousParallelism} → ${adaptiveBranchParallelism}.`
+                );
+              }
+            }
+
+            waveCursor += waveIndexes.length;
+          }
+
+          if (phaseFailedBatchIndexes.size) {
+            adaptiveBranchParallelism = 1;
+            cleanWaveStreak = 0;
+            const recoveryIndexes = [...phaseFailedBatchIndexes].sort((a,b) => a - b);
+            appendOptimizerConsole(
+              "retry",
+              "RECOVERY",
+              `${recoveryIndexes.length} candidat${recoveryIndexes.length === 1 ? "" : "i"} cu fault: reexecuție serială înainte de a continua.`
+            );
+            await new Promise(resolve => window.setTimeout(resolve, 1500));
+            for (let recoveryIndex = 0; recoveryIndex < recoveryIndexes.length; recoveryIndex += 1) {
+              const batchIndex = recoveryIndexes[recoveryIndex];
+              appendOptimizerConsole(
+                "retry",
+                "RECOVERY",
+                `[${recoveryIndex + 1}/${recoveryIndexes.length}] C ${batchIndex + 1}/${phaseOffsets.length} · concurență 1`
+              );
+              await runOnePhaseCandidate(batchIndex, {recovery:true});
+              if (phaseFailedBatchIndexes.has(batchIndex)) {
+                appendOptimizerConsole(
+                  "fail",
+                  "PENDING",
+                  `C ${batchIndex + 1}/${phaseOffsets.length} rămâne în lista de reexecuție după recovery.`
+                );
+              }
+              await new Promise(resolve => window.setTimeout(resolve, 500));
+            }
+          }
 
           // Preserve deterministic candidate ordering for refinement seed
           // selection even though requests finish out of order.
@@ -2972,18 +3368,22 @@
             phaseSummariesCollected.push(...(phaseSummariesByBatch.get(batchIndex) || []));
           }
           priorCandidateSummaries.push(...phaseSummariesCollected);
-
-          if (phaseFinalFailures > 0) {
-            adaptiveBranchParallelism = Math.max(1, Math.floor(adaptiveBranchParallelism / 2));
-          } else if (phaseRecoveredRetries === 0 && adaptiveBranchParallelism < configuredBranchParallelism) {
-            adaptiveBranchParallelism += 1;
-          }
         }
       }
 
       setStatus("Compar rezultatele ramurilor…");
+      appendOptimizerConsole(
+        "info",
+        "FINAL",
+        `Compar ${completedEvaluations} rezultate calculate din ${processedCandidates} candidați procesați.`
+      );
+      setOptimizerConsoleProgress(
+        processedCandidates,
+        plannedCandidates,
+        `Finalizez selecția · ${completedEvaluations} calculați · ${failedMicroBatches.length} candidați de reexecutat`
+      );
       const partialSearchText = failedMicroBatches.length
-        ? ` · ${failedMicroBatches.length} micro-loturi omise după faulturi tranzitorii`
+        ? ` · ${failedMicroBatches.length} candidați păstrați pentru reexecuție după faulturi tranzitorii`
         : "";
       setOptimizationNote(
         `<strong>${escapeHtml(settings.label)}</strong><span>Aplic criteriul economic final peste toți candidații validați.</span><small>${completedEvaluations} recalculări parametrice finalizate${escapeHtml(partialSearchText)}.</small>`
@@ -3055,9 +3455,28 @@
          <small>${escapeHtml(searchDepth + retryText + partialText)} · ${optimizationMeta.feasibleCandidates || 0} eligibile · ${escapeHtml(paretoText)}. ${escapeHtml(commercialNote)}</small>`,
         optimizationMeta.partialSearch ? "warn" : (Number(optimizationMeta.annualSavingLei) > 0 ? "good" : "warn")
       );
+      appendOptimizerConsole(
+        optimizationMeta.partialSearch ? "retry" : "ok",
+        optimizationMeta.partialSearch ? "DONE*" : "DONE",
+        optimizationMeta.partialSearch
+          ? `Rezultat final cu ${failedMicroBatches.length} candidați păstrați pentru reexecuție.`
+          : "Toți candidații planificați au fost procesați fără fault final."
+      );
+      finishOptimizerConsole(
+        "done",
+        optimizationMeta.partialSearch
+          ? `Finalizat parțial · ${failedMicroBatches.length} candidați de reexecutat`
+          : `Finalizat · ${completedEvaluations} recalculări`
+      );
       showScreen("report");
     } catch (error) {
       if (error?.name === "AbortError" || runToken !== optimizerRunToken) return;
+      appendOptimizerConsole(
+        "fail",
+        "FATAL",
+        error?.message || "Eroare necunoscută în optimizer."
+      );
+      finishOptimizerConsole("error", error?.message || "Optimizer oprit de o eroare.");
       scenarioResultState = scenarioResult ? "stale" : "empty";
       setOptimizationNote(
         `<strong>Optimizarea nu a putut fi finalizată.</strong><span>${escapeHtml(error?.message || "Eroare necunoscută")}</span>`,
@@ -5751,6 +6170,15 @@
     if (event.persisted) resetAdaptiveIntros();
   });
   window.requestAnimationFrame(syncPersistentStackHeight);
+
+  $("#hlnOptimizerConsoleToggle")?.addEventListener("click", () => {
+    const panel = $("#hlnOptimizerConsole");
+    const toggle = $("#hlnOptimizerConsoleToggle");
+    if (!panel || !toggle) return;
+    const collapsed = panel.classList.toggle("is-collapsed");
+    toggle.textContent = collapsed ? "Extinde" : "Restrânge";
+    toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+  });
 
   root.addEventListener("pointerdown", event => {
     collapseAdaptiveIntroFor(event.target);

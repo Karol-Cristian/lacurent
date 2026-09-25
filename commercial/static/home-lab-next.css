@@ -1275,6 +1275,103 @@ svg{display:block}
 .hln-optimization-note.is-good{border-color:#b9d7c6;background:#eef7f1}
 .hln-optimization-note.is-warn{border-color:#e1c9a3;background:#fbf5ea}
 
+.hln-optimizer-console{
+  width:100%;
+  margin:0 0 16px;
+  overflow:hidden;
+  border:1px solid #202b28;
+  border-radius:16px;
+  background:#0d1412;
+  color:#d7e6df;
+  box-shadow:0 16px 38px rgba(11,18,15,.18);
+  font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+.hln-optimizer-console>header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  min-height:46px;
+  padding:9px 12px;
+  border-bottom:1px solid #26332f;
+  background:#111b18;
+}
+.hln-optimizer-console>header>div:first-child,
+.hln-optimizer-console-meta{display:flex;align-items:center;gap:8px;min-width:0}
+.hln-optimizer-console>header strong{font-size:11px;color:#eef8f3}
+.hln-optimizer-console>header small{font-size:8px;color:#7f9b90;text-transform:uppercase;letter-spacing:.09em}
+.hln-optimizer-console-led{
+  display:block;width:9px;height:9px;border-radius:50%;background:#5ed391;
+  box-shadow:0 0 0 4px rgba(94,211,145,.10),0 0 12px rgba(94,211,145,.48)
+}
+.hln-optimizer-console-meta span{font-size:9px;color:#9db1a9;white-space:nowrap}
+.hln-optimizer-console-meta b{
+  padding:4px 7px;border:1px solid #345246;border-radius:999px;background:#16251f;color:#7ee0a7;
+  font-size:7px;letter-spacing:.10em
+}
+.hln-optimizer-console.is-error .hln-optimizer-console-led{background:#ff7b6f;box-shadow:0 0 0 4px rgba(255,123,111,.10),0 0 12px rgba(255,123,111,.45)}
+.hln-optimizer-console.is-error .hln-optimizer-console-meta b{border-color:#674038;background:#2c1b18;color:#ff9d94}
+.hln-optimizer-console.is-done .hln-optimizer-console-meta b{color:#9ce7b7}
+.hln-optimizer-console-progress{height:3px;background:#17211e}
+.hln-optimizer-console-progress i{
+  display:block;width:0;height:100%;background:#5ed391;transition:width .18s ease
+}
+.hln-optimizer-console-output{
+  width:100%;
+  min-height:190px;
+  max-height:330px;
+  overflow:auto;
+  padding:11px 12px 14px;
+  background:
+    linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px) 0 0/100% 22px,
+    #0d1412;
+  color:#c8d8d1;
+  font-size:9px;
+  line-height:1.55;
+  scrollbar-color:#395148 #0d1412;
+  overscroll-behavior:contain;
+}
+.hln-optimizer-console.is-collapsed .hln-optimizer-console-output,
+.hln-optimizer-console.is-collapsed .hln-optimizer-console-progress{display:none}
+.hln-optimizer-console-line{
+  display:grid;grid-template-columns:auto auto minmax(0,1fr);gap:8px;align-items:start;
+  min-width:0;padding:2px 0;white-space:normal;overflow-wrap:anywhere
+}
+.hln-optimizer-console-line time{color:#62796f}
+.hln-optimizer-console-line b{min-width:44px;color:#79dca1;font-weight:850}
+.hln-optimizer-console-line span{min-width:0}
+.hln-optimizer-console-line.is-run b{color:#74b8ff}
+.hln-optimizer-console-line.is-ok b{color:#6ee39c}
+.hln-optimizer-console-line.is-retry b{color:#ffc866}
+.hln-optimizer-console-line.is-fail b{color:#ff8c82}
+.hln-optimizer-console-line.is-info b{color:#9fb2aa}
+.hln-optimizer-console-line.is-param span{color:#8da79c}
+.hln-optimizer-console>footer{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  min-height:39px;padding:8px 11px;border-top:1px solid #26332f;background:#101916
+}
+.hln-optimizer-console>footer span{
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#789187;font-size:8px
+}
+.hln-optimizer-console>footer button{
+  flex:0 0 auto;padding:4px 7px;border:1px solid #344740;border-radius:8px;background:#17231f;color:#a5bbb2;
+  font-family:inherit;font-size:7px;font-weight:800
+}
+@media(max-width:760px){
+  .hln-optimizer-console{
+    width:calc(100% + 4px);
+    margin-left:-2px;
+    border-radius:14px;
+  }
+  .hln-optimizer-console>header{align-items:flex-start;padding:9px 10px}
+  .hln-optimizer-console>header small{display:none}
+  .hln-optimizer-console-meta{gap:5px}
+  .hln-optimizer-console-output{min-height:220px;max-height:42dvh;padding:10px;font-size:8px}
+  .hln-optimizer-console-line{grid-template-columns:auto auto minmax(0,1fr);gap:5px}
+  .hln-optimizer-console-line b{min-width:38px}
+}
+@media print{.hln-optimizer-console{display:none!important}}
+
 /* Step 04 report */
 .hln-report-screen{background:linear-gradient(180deg,#f8f7f3 0,#f4f6f2 100%)}
 .hln-report-heading{align-items:flex-end}
