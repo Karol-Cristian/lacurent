@@ -3,6 +3,8 @@ from __future__ import annotations
 import math
 
 import pytest
+
+import commercial.app.optimization as optimization_module
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
@@ -36,6 +38,7 @@ def _catalog() -> dict:
             "roof": {"cost_lei": 8, "unit": "lei_per_m2_per_cm"},
             "floor": {"cost_lei": 11, "unit": "lei_per_m2_per_cm"},
             "windows": {"cost_lei": 1000, "unit": "lei_per_m2"},
+            "ventilation": {"cost_lei": 8000, "unit": "lei_total"},
             "pv": {"cost_lei": 4000, "unit": "lei_per_kwp"},
             "solar_thermal": {"cost_lei": 2650, "unit": "lei_per_m2"},
         },
@@ -123,6 +126,33 @@ def test_added_wall_r_is_applied_directly_to_whole_wall_u() -> None:
     assert new_wall.u_value_w_m2k == pytest.approx(expected_u)
     assert model_to_dict(baseline) != model_to_dict(candidate)
     assert warnings == []
+
+
+def test_ventilation_heat_recovery_is_a_raw_optimizer_variable() -> None:
+    baseline = demo_building()
+    measures = ParametricMeasuresV1(
+        ventilation_heat_recovery_efficiency_target=0.75,
+    )
+
+    candidate, warnings = apply_parametric_measures(baseline, measures)
+
+    assert candidate.ventilation.heat_recovery_efficiency == pytest.approx(0.75)
+    assert candidate.ventilation.air_changes_per_hour == pytest.approx(
+        baseline.ventilation.air_changes_per_hour
+    )
+    assert any("Ventilation heat recovery is optimized" in item for item in warnings)
+
+    baseline_result = calculate(baseline, include_reference=False)
+    capex, lines, cost_warnings = parametric_capex(
+        baseline_result,
+        measures,
+        _catalog(),
+    )
+    ventilation_line = next(item for item in lines if item.family == "ventilation")
+    assert capex == pytest.approx(8000)
+    assert ventilation_line.parameter_value == pytest.approx(0.75)
+    assert ventilation_line.parameter_unit == "heat_recovery_efficiency_target"
+    assert any("optimizerul variază parametrul fizic" in item for item in cost_warnings)
 
 
 def test_wall_capex_is_continuous_in_added_r_not_commercial_steps() -> None:
@@ -439,3 +469,35 @@ def test_compact_refinement_seed_matches_full_candidate_selection() -> None:
         assert compact_seed.wall_added_r_m2k_w == pytest.approx(
             full.parameters.wall_added_r_m2k_w
         )
+
+
+def test_optimizer_baseline_cache_reuses_identical_building(monkeypatch: pytest.MonkeyPatch) -> None:
+    optimization_module._cached_baseline_evaluation_serialized.cache_clear()
+    calls = {"count": 0}
+    real_calculate = optimization_module.calculate
+
+    def counted_calculate(*args, **kwargs):
+        calls["count"] += 1
+        return real_calculate(*args, **kwargs)
+
+    monkeypatch.setattr(optimization_module, "calculate", counted_calculate)
+
+    baseline = demo_building()
+    first_result, first_cost = optimization_module.cached_baseline_evaluation(baseline)
+    second_result, second_cost = optimization_module.cached_baseline_evaluation(baseline)
+
+    assert calls["count"] == 1
+    assert first_result.total_final_energy_kwh == pytest.approx(
+        second_result.total_final_energy_kwh
+    )
+    assert first_cost["priced_total_lei"] == pytest.approx(second_cost["priced_total_lei"])
+
+    changed_payload = model_to_dict(baseline)
+    changed_payload["indoor_design_temperature_c"] = (
+        float(changed_payload["indoor_design_temperature_c"]) + 1.0
+    )
+    changed = optimization_module.BuildingInput(**changed_payload)
+    optimization_module.cached_baseline_evaluation(changed)
+    assert calls["count"] == 2
+
+    optimization_module._cached_baseline_evaluation_serialized.cache_clear()

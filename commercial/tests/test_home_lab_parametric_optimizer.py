@@ -40,6 +40,19 @@ def _run_sharded(payload: dict[str, str]) -> tuple[dict, dict]:
     assert plan["branchMaxAttempts"] == 3
     assert plan["branchStartStaggerMs"] == 140
     assert plan["runBranchIds"]
+    branch_ids = {item["branch_id"] for item in plan["branches"]}
+    assert "heat-pump-air-air" in branch_ids
+    assert "heat-pump-ground-water" in branch_ids
+    air_air = next(item for item in plan["branches"] if item["branch_id"] == "heat-pump-air-air")
+    ground = next(item for item in plan["branches"] if item["branch_id"] == "heat-pump-ground-water")
+    assert air_air["economic_eligible"] is False
+    assert ground["economic_eligible"] is False
+    assert set(plan["technicalPreviewBranchIds"]) >= {
+        "heat-pump-air-air",
+        "heat-pump-ground-water",
+    }
+    assert "heat-pump-air-air" not in plan["runBranchIds"]
+    assert "heat-pump-ground-water" not in plan["runBranchIds"]
 
     results = [
         {
@@ -52,7 +65,7 @@ def _run_sharded(payload: dict[str, str]) -> tuple[dict, dict]:
             "warnings": [],
         }
         for branch in plan["branches"]
-        if not branch["eligible"]
+        if (not branch["eligible"]) or (branch.get("economic_eligible") is False)
     ]
 
     for branch_id in plan["runBranchIds"]:
@@ -76,8 +89,19 @@ def _run_sharded(payload: dict[str, str]) -> tuple[dict, dict]:
                 assert body["branch"]["branch_id"] == branch_id
                 assert body["searchPhase"] == phase
                 assert body["phaseOffset"] == phase_offset
-                assert 0 <= body["parametricEvaluations"] <= plan["microBatchSize"]
+                assert 0 <= body["parametricEvaluations"] <= plan["microBatchSize"] + 1
                 assert isinstance(body["candidates"], list)
+                assert isinstance(body["calculationStages"], list)
+                if body["candidates"]:
+                    stages = {item["stage"] for item in body["calculationStages"]}
+                    assert {
+                        "ANVELOPĂ",
+                        "VENTILAȚIE",
+                        "ÎNCĂLZIRE",
+                        "REGENERABILE",
+                        "BILANȚ",
+                        "ECONOMIC",
+                    } <= stages
                 results.append(body)
                 assert isinstance(body["candidateSummaries"], list)
                 assert all("resulting_configuration" not in item for item in body["candidateSummaries"])
@@ -114,11 +138,22 @@ def test_home_lab_auto_optimizer_runs_phased_and_returns_traceability() -> None:
     assert len(meta["heatingBranches"]) == len(plan["branches"])
     assert meta["feasibleCandidates"] >= 1
     assert meta["paretoSolutions"] >= 1
-    assert meta["paretoScope"] == "all_phased_candidates"
+    assert meta["paretoScope"] == "raw_all_then_bounded_commercial_recheck"
     assert isinstance(meta["rawSolution"], dict)
+    assert "ventilation_heat_recovery_efficiency_target" in meta["rawSolution"]
+    assert isinstance(meta["commercialEvaluation"], dict)
     assert "commercialReady" in meta
     assert "commercialMessage" in meta
     assert "selectedHeating" in meta
+    assert isinstance(meta["technicalHeatingAlternatives"], list)
+    preview_ids = {
+        item["branchId"] for item in meta["technicalHeatingAlternatives"]
+    }
+    assert {
+        "heat-pump-air-air",
+        "heat-pump-ground-water",
+    } <= preview_ids
+    assert all(item["costKnown"] is False for item in meta["technicalHeatingAlternatives"])
 
 
 def test_home_lab_bill_target_phased_mode_preserves_constraint() -> None:

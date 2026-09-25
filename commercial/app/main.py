@@ -32,6 +32,7 @@ from .optimization import (
     evaluate_parametric_candidate,
     compact_refinement_candidate,
     parametric_phase_candidate_descriptors,
+    pareto_frontier,
     refinement_seed_from_compact,
     run_parametric_optimization,
     select_optimization_candidate,
@@ -48,6 +49,8 @@ from .full_commercialization import (
 )
 from .heating_optimization import (
     HeatingBranchSummaryV1,
+    apply_supplemental_heating_technology,
+    commercialize_heating_finalist,
     heating_branch_plan,
     heating_planning_options,
     run_heating_branch_optimization,
@@ -2160,6 +2163,7 @@ def _optimizer_measure_rows(candidate: Any) -> list[dict[str, Any]]:
         "roof": "Izolație acoperiș / pod",
         "floor": "Izolație pardoseală",
         "windows": "Ferestre",
+        "ventilation": "Ventilație cu recuperare",
         "pv": "Fotovoltaice",
         "solar_thermal": "Solar termic",
         "heating": "Sistem de încălzire",
@@ -2229,13 +2233,16 @@ def _home_lab_optimizer_success_payload(
     warnings: list[str],
     calculation_time_ms: float | None = None,
     pareto_scope: str = "all_candidates",
+    raw_selected: CandidateEvaluationV1 | None = None,
+    technical_heating_alternatives: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     selected = selection.selected
     if selected is None or selected.resulting_configuration is None:
         raise ValueError("Nu există nicio soluție fezabilă pentru regula economică aleasă.")
 
+    raw_selected = raw_selected or selected
     final_result = calculate(selected.resulting_configuration, include_reference=False)
-    raw_measures = model_to_dict(selected.parameters)
+    raw_measures = model_to_dict(raw_selected.parameters)
     commercial_ready = (
         selected.commercialization_status == "commercialized"
         or (
@@ -2250,17 +2257,34 @@ def _home_lab_optimizer_success_payload(
                 "label": line.note.split(":", 1)[0] if line.note else "Sistem de încălzire",
                 "capexLei": float(line.capex_lei),
                 "requiredPowerKw": selected.design_heat_load_kw,
-                "ratedPowerKw": float(line.parameter_value),
+                "planningPowerKw": float(line.parameter_value),
+                "ratedPowerKw": (
+                    float(line.parameter_value)
+                    if line.product_id is not None
+                    else None
+                ),
                 "oversizeKw": (
                     None
-                    if selected.design_heat_load_kw is None
-                    else max(float(line.parameter_value) - float(selected.design_heat_load_kw), 0.0)
+                    if (
+                        line.product_id is None
+                        or selected.design_heat_load_kw is None
+                    )
+                    else max(
+                        float(line.parameter_value)
+                        - float(selected.design_heat_load_kw),
+                        0.0,
+                    )
                 ),
                 "oversizePercent": (
                     None
-                    if selected.design_heat_load_kw is None or float(selected.design_heat_load_kw) <= 1e-9
+                    if (
+                        line.product_id is None
+                        or selected.design_heat_load_kw is None
+                        or float(selected.design_heat_load_kw) <= 1e-9
+                    )
                     else 100.0 * max(
-                        float(line.parameter_value) - float(selected.design_heat_load_kw),
+                        float(line.parameter_value)
+                        - float(selected.design_heat_load_kw),
                         0.0,
                     ) / float(selected.design_heat_load_kw)
                 ),
@@ -2314,29 +2338,67 @@ def _home_lab_optimizer_success_payload(
         "paretoSolutions": int(selection.pareto_count),
         "paretoScope": pareto_scope,
         "heatingBranches": [model_to_dict(item) for item in branches],
+        "technicalHeatingAlternatives": technical_heating_alternatives or [],
         "rawSolution": raw_measures,
         "rawEvaluation": {
+            "candidateId": raw_selected.candidate_id,
+            "annualBillLei": float(raw_selected.annual_bill_lei),
+            "baselineAnnualBillLei": float(raw_selected.baseline_annual_bill_lei),
+            "finalEnergyKwh": float(raw_selected.final_energy_kwh),
+            "primarySpecificKwhM2": float(raw_selected.primary_specific_kwh_m2),
+            "co2TotalKg": float(raw_selected.co2_total_kg),
+            "co2SpecificKgM2": float(raw_selected.co2_specific_kg_m2),
+            "energyClass": raw_selected.energy_class,
+            "designHeatLoadKw": raw_selected.design_heat_load_kw,
+        },
+        "commercialEvaluation": {
             "candidateId": selected.candidate_id,
             "annualBillLei": float(selected.annual_bill_lei),
-            "baselineAnnualBillLei": float(selected.baseline_annual_bill_lei),
+            "capexLei": float(selected.capex_lei),
+            "annualSavingLei": float(selected.annual_saving_lei),
             "finalEnergyKwh": float(selected.final_energy_kwh),
             "primarySpecificKwhM2": float(selected.primary_specific_kwh_m2),
-            "co2TotalKg": float(selected.co2_total_kg),
             "co2SpecificKgM2": float(selected.co2_specific_kg_m2),
             "energyClass": selected.energy_class,
             "designHeatLoadKw": selected.design_heat_load_kw,
         },
         "resultingConfiguration": model_to_dict(selected.resulting_configuration),
-        "commercialSolution": None,
+        "commercialSolution": (
+            {
+                "items": [
+                    {
+                        "family": "heating",
+                        "label": selected_heating["label"],
+                        "detail": (
+                            f"Produs real selectat după optimizarea parametrică · "
+                            f"{selected_heating['ratedPowerKw']:.2f} kW · "
+                            f"CAPEX {selected_heating['capexLei']:.0f} lei"
+                        ),
+                    }
+                ]
+            }
+            if selected_heating is not None
+            and selected_heating.get("optionId")
+            else None
+        ),
         "commercializationStatus": selected.commercialization_status,
         "commercialReady": commercial_ready,
         "commercialMessage": (
             "Soluția nu necesită discretizare comercială."
             if commercial_ready
             else (
-                "Catalogul comercial complet nu este încă atașat acestei rulări. "
-                "Rezultatul de mai jos este optimul parametric; raportul nu inventează "
-                "grosimi, module, ferestre sau echipamente comerciale."
+                (
+                    "Generatorul finalist a fost discretizat la un produs real; "
+                    "celelalte familii active rămân parametrice până la atașarea "
+                    "catalogului complet de produse. "
+                )
+                if selected_heating is not None
+                and selected_heating.get("optionId")
+                else (
+                    "Catalogul comercial complet nu este încă atașat acestei rulări. "
+                    "Rezultatul de mai jos este optimul parametric; raportul nu inventează "
+                    "grosimi, module, ferestre sau echipamente comerciale."
+                )
             )
         ),
         "discretization": [],
@@ -2359,13 +2421,25 @@ async def home_lab_optimization_plan_api(request: Request) -> JSONResponse:
         mode, _, optimization_request = _home_lab_optimization_request_from_form(form)
         heating_catalog = await _optimizer_heating_catalog(request)
         branches = heating_branch_plan(optimization_request, heating_catalog)
-        runnable = [item for item in branches if item.eligible]
+        runnable = [
+            item
+            for item in branches
+            if item.eligible and item.economic_eligible
+        ]
+        technical_previews = [
+            item
+            for item in branches
+            if item.eligible and not item.economic_eligible
+        ]
         return JSONResponse(
             {
                 "economicMode": mode.value,
                 "label": _home_lab_optimizer_label(mode, form),
                 "branches": [model_to_dict(item) for item in branches],
                 "runBranchIds": [item.branch_id for item in runnable],
+                "technicalPreviewBranchIds": [
+                    item.branch_id for item in technical_previews
+                ],
                 "searchPhases": ["axis", "halton", "refine"],
                 "evaluationsPerPhase": 12,
                 "microBatchSize": 1,
@@ -2447,6 +2521,74 @@ async def home_lab_optimization_phase_candidates_api(request: Request) -> JSONRe
         return JSONResponse({"error": user_error(exc)}, status_code=422)
 
 
+def _optimizer_candidate_stage_trace(
+    candidate: CandidateEvaluationV1 | None,
+) -> list[dict[str, str]]:
+    if candidate is None or candidate.resulting_configuration is None:
+        return []
+
+    measures = candidate.parameters
+    building = candidate.resulting_configuration
+    ventilation = building.ventilation
+    heating = building.heating
+    details = heating.details
+    pv = building.renewables.pv
+    solar = building.renewables.solar_thermal
+
+    envelope_detail = (
+        f"pereți ΔR={measures.wall_added_r_m2k_w:.3f} m²K/W · "
+        f"pod ΔR={measures.roof_added_r_m2k_w:.3f} · "
+        f"pardoseală ΔR={measures.floor_added_r_m2k_w:.3f} · "
+        f"ferestre={100.0 * measures.window_replacement_fraction:.1f}% "
+        f"la Uw={measures.window_target_u_w_m2k:.2f} W/m²K"
+    )
+    ventilation_detail = (
+        f"n={ventilation.air_changes_per_hour:.3f} 1/h · "
+        f"recuperare={100.0 * ventilation.heat_recovery_efficiency:.1f}% · "
+        "pierderile de ventilație sunt incluse în recalcularea completă"
+    )
+    generator = (
+        details.generator_type.value
+        if details is not None and details.generator_type is not None
+        else heating.system_type.value
+    )
+    emitter = (
+        details.emitter_type.value
+        if details is not None
+        else "implicit"
+    )
+    heating_detail = (
+        f"generator={generator} · emitere={emitter} · "
+        f"necesar design="
+        f"{candidate.design_heat_load_kw:.3f} kW"
+        if candidate.design_heat_load_kw is not None
+        else f"generator={generator} · emitere={emitter} · necesar design=n/a"
+    )
+    renewable_detail = (
+        f"PV={float(pv.installed_power_kwp if pv.enabled else 0.0):.3f} kWp · "
+        f"solar termic={float(solar.collector_area_m2 if solar.enabled else 0.0):.3f} m²"
+    )
+    balance_detail = (
+        f"energie finală={candidate.final_energy_kwh:.1f} kWh/an · "
+        f"energie primară={candidate.primary_specific_kwh_m2:.1f} kWh/m²·an · "
+        f"CO₂={candidate.co2_specific_kg_m2:.1f} kg/m²·an · "
+        f"clasa={candidate.energy_class}"
+    )
+    economic_detail = (
+        f"CAPEX={candidate.capex_lei:.2f} lei · "
+        f"factură={candidate.annual_bill_lei:.2f} lei/an · "
+        f"economie={candidate.annual_saving_lei:.2f} lei/an"
+    )
+    return [
+        {"stage": "ANVELOPĂ", "detail": envelope_detail},
+        {"stage": "VENTILAȚIE", "detail": ventilation_detail},
+        {"stage": "ÎNCĂLZIRE", "detail": heating_detail},
+        {"stage": "REGENERABILE", "detail": renewable_detail},
+        {"stage": "BILANȚ", "detail": balance_detail},
+        {"stage": "ECONOMIC", "detail": economic_detail},
+    ]
+
+
 @app.post("/api/optimization/home-lab/branch")
 async def home_lab_optimization_branch_api(request: Request) -> JSONResponse:
     content_type = str(request.headers.get("content-type", "") or "").lower()
@@ -2526,6 +2668,9 @@ async def home_lab_optimization_branch_api(request: Request) -> JSONResponse:
                 "candidateSummaries": [
                     compact_refinement_candidate(item) for item in result.candidates
                 ],
+                "calculationStages": _optimizer_candidate_stage_trace(
+                    result.candidates[0] if result.candidates else None
+                ),
                 "candidateCount": int(result.candidate_count),
                 "parametricEvaluations": int(result.parametric_evaluations),
                 "searchPhase": result.search_phase,
@@ -2559,6 +2704,7 @@ async def home_lab_optimization_finalize_api(request: Request) -> JSONResponse:
 
         branch_summaries_by_id: dict[str, HeatingBranchSummaryV1] = {}
         finalists: list[CandidateEvaluationV1] = []
+        finalist_branch_by_candidate_id: dict[str, str] = {}
         evaluated_candidates = 0
         parametric_evaluations = 0
         heating_branch_evaluations = 0
@@ -2589,14 +2735,25 @@ async def home_lab_optimization_finalize_api(request: Request) -> JSONResponse:
             warnings.extend(str(value) for value in (item.get("warnings") or []))
 
             candidate_rows = item.get("candidates") or []
-            for candidate_raw in candidate_rows:
-                if isinstance(candidate_raw, dict):
-                    finalists.append(CandidateEvaluationV1(**candidate_raw))
-            if not candidate_rows:
-                selection_raw = item.get("selection") or {}
-                selected_raw = selection_raw.get("selected")
-                if selected_raw:
-                    finalists.append(CandidateEvaluationV1(**selected_raw))
+            if branch.economic_eligible:
+                for candidate_raw in candidate_rows:
+                    if isinstance(candidate_raw, dict):
+                        parsed_candidate = CandidateEvaluationV1(**candidate_raw)
+                        finalists.append(parsed_candidate)
+                        finalist_branch_by_candidate_id[parsed_candidate.candidate_id] = branch.branch_id
+                if not candidate_rows:
+                    selection_raw = item.get("selection") or {}
+                    selected_raw = selection_raw.get("selected")
+                    if selected_raw:
+                        parsed_candidate = CandidateEvaluationV1(**selected_raw)
+                        finalists.append(parsed_candidate)
+                        finalist_branch_by_candidate_id[parsed_candidate.candidate_id] = branch.branch_id
+            elif candidate_rows:
+                warnings.append(
+                    f"{branch.label}: ramura a fost calculată tehnic, dar nu a intrat "
+                    "în selecția economică deoarece nu are încă un cost instalat "
+                    "source-backed."
+                )
 
         branch_summaries = list(branch_summaries_by_id.values())
 
@@ -2628,6 +2785,128 @@ async def home_lab_optimization_finalize_api(request: Request) -> JSONResponse:
                 status_code=422,
             )
 
+        # Raw physics/economics decide the finalist set first. Only then do we
+        # touch real generator SKUs. Recheck a small Pareto-bounded set so that
+        # commercial capacity/price rounding can change the winner without
+        # dragging product-level recalculation through every Halton point.
+        raw_selection = selection
+        raw_selected = selection.selected
+        ordered_rechecks: list[CandidateEvaluationV1] = [raw_selected]
+        for item in pareto_frontier(finalists):
+            if item.candidate_id == raw_selected.candidate_id:
+                continue
+            ordered_rechecks.append(item)
+            if len(ordered_rechecks) >= 6:
+                break
+
+        technical_heating_alternatives: list[dict[str, Any]] = []
+        raw_config = raw_selected.resulting_configuration
+        if raw_config is not None:
+            for branch in branch_summaries:
+                if not branch.eligible or branch.economic_eligible:
+                    continue
+                try:
+                    preview_building = apply_supplemental_heating_technology(
+                        raw_config,
+                        branch.branch_id,
+                    )
+                    preview_result = calculate(
+                        preview_building,
+                        include_reference=False,
+                    )
+                    preview_cost = estimate_energy_cost(preview_result)
+                    if not preview_cost.get("complete"):
+                        raise ValueError("cost anual incomplet")
+                    technical_heating_alternatives.append(
+                        {
+                            "branchId": branch.branch_id,
+                            "label": branch.label,
+                            "annualBillLei": round(
+                                float(preview_cost["priced_total_lei"]),
+                                2,
+                            ),
+                            "finalEnergyKwh": round(
+                                float(preview_result.total_final_energy_kwh),
+                                3,
+                            ),
+                            "primarySpecificKwhM2": round(
+                                float(
+                                    preview_result.primary_energy.specific_kwh_m2
+                                ),
+                                3,
+                            ),
+                            "co2SpecificKgM2": round(
+                                float(preview_result.co2.specific_kg_m2),
+                                3,
+                            ),
+                            "energyClass": preview_result.energy_class,
+                            "designHeatLoadKw": raw_selected.design_heat_load_kw,
+                            "costKnown": False,
+                            "economicEligible": False,
+                            "basis": (
+                                "aceeași casă raw finalistă; se schimbă numai "
+                                "tehnologia de încălzire"
+                            ),
+                        }
+                    )
+                    existing_summary = branch_summaries_by_id.get(
+                        branch.branch_id
+                    )
+                    if existing_summary is not None:
+                        updated = model_to_dict(existing_summary)
+                        updated["evaluated_candidates"] = max(
+                            int(existing_summary.evaluated_candidates),
+                            1,
+                        )
+                        updated["accepted_candidates"] = max(
+                            int(existing_summary.accepted_candidates),
+                            1,
+                        )
+                        branch_summaries_by_id[branch.branch_id] = (
+                            HeatingBranchSummaryV1(**updated)
+                        )
+                except Exception as preview_exc:
+                    warnings.append(
+                        f"{branch.label}: preview-ul tehnic pe finalistul raw "
+                        f"nu a putut fi calculat ({user_error(preview_exc)})."
+                    )
+            branch_summaries = list(branch_summaries_by_id.values())
+
+        heating_catalog = await _optimizer_heating_catalog(request)
+        commercial_rechecks: list[CandidateEvaluationV1] = []
+        commercial_recheck_count = 0
+        for raw_candidate in ordered_rechecks:
+            commercial_candidate, matched_product, product_warnings = (
+                commercialize_heating_finalist(
+                    raw_candidate,
+                    original_building=optimization_request.baseline,
+                    heating_catalog=heating_catalog,
+                    branch_id=finalist_branch_by_candidate_id.get(
+                        raw_candidate.candidate_id
+                    ),
+                )
+            )
+            warnings.extend(product_warnings)
+            commercial_rechecks.append(commercial_candidate)
+            if matched_product is not None:
+                commercial_recheck_count += 1
+
+        commercial_selection = select_optimization_candidate(
+            optimization_request,
+            commercial_rechecks,
+        )
+        if commercial_selection.selected is not None:
+            selection = commercial_selection
+        warnings.append(
+            (
+                f"Raw-first pipeline: {len(finalists)} candidați economici au fost "
+                f"selectați în spațiul parametric; {len(ordered_rechecks)} finaliști "
+                f"Pareto au intrat în etapa comercială, iar "
+                f"{commercial_recheck_count} au primit o treaptă reală de generator "
+                "și recalculare completă."
+            )
+        )
+
         payload = _home_lab_optimizer_success_payload(
             mode=mode,
             form=form,
@@ -2641,7 +2920,9 @@ async def home_lab_optimization_finalize_api(request: Request) -> JSONResponse:
                 *warnings,
             ],
             calculation_time_ms=round(total_elapsed_ms, 1),
-            pareto_scope="all_phased_candidates",
+            pareto_scope="raw_all_then_bounded_commercial_recheck",
+            raw_selected=raw_selected,
+            technical_heating_alternatives=technical_heating_alternatives,
         )
         return JSONResponse(payload)
     except Exception as exc:

@@ -2361,12 +2361,14 @@
       return Number.isFinite(parsed) ? parsed.toFixed(digits) : "n/a";
     };
     const windows = Number(raw.window_replacement_fraction);
+    const heatRecovery = Number(raw.ventilation_heat_recovery_efficiency_target);
     return [
       `wallR+${number(raw.wall_added_r_m2k_w)}`,
       `roofR+${number(raw.roof_added_r_m2k_w)}`,
       `floorR+${number(raw.floor_added_r_m2k_w)}`,
       `windows=${Number.isFinite(windows) ? (windows * 100).toFixed(1) : "n/a"}%`,
       `Uw=${number(raw.window_target_u_w_m2k,2)}`,
+      `HRV=${Number.isFinite(heatRecovery) ? (heatRecovery * 100).toFixed(1) : "n/a"}%`,
       `PV+${number(raw.pv_added_kwp)}kWp`,
       `solar+${number(raw.solar_thermal_added_m2)}m²`,
     ].join(" | ");
@@ -2830,12 +2832,15 @@
       );
       const allBranches = Array.isArray(plan.branches) ? plan.branches : [];
       const runnableIds = Array.isArray(plan.runBranchIds) ? plan.runBranchIds : [];
+      const technicalPreviewIds = Array.isArray(plan.technicalPreviewBranchIds)
+        ? plan.technicalPreviewBranchIds
+        : [];
       if (!runnableIds.length) {
         throw new Error("Nu există nicio ramură tehnică eligibilă pentru optimizare.");
       }
       const branchById = new Map(allBranches.map(item => [String(item.branch_id || ""), item]));
       const branchResults = allBranches
-        .filter(item => !item.eligible)
+        .filter(item => !item.eligible || item.economic_eligible === false)
         .map(item => ({
           branch:item,
           selection:{selected:null},
@@ -2882,7 +2887,7 @@
       appendOptimizerConsole(
         "info",
         "PLAN",
-        `${runnableIds.length} ramuri × ${phases.length} faze × ${plannedPhaseCandidates} candidați = ${plannedCandidates} puncte planificate.`
+        `${runnableIds.length} ramuri economice × ${phases.length} faze × ${plannedPhaseCandidates} candidați = ${plannedCandidates} puncte planificate; + ${technicalPreviewIds.length} alternative tehnice evaluate o singură dată pe finalistul raw.`
       );
       appendOptimizerConsole(
         "info",
@@ -3226,6 +3231,16 @@
             completedEvaluations += evaluatedNow;
 
             const summary = batchSummaries[0] || null;
+            const calculationStages = Array.isArray(branchCall.payload.calculationStages)
+              ? branchCall.payload.calculationStages
+              : [];
+            for (const stage of calculationStages) {
+              appendOptimizerConsole(
+                "info",
+                String(stage?.stage || "CALC").slice(0,18),
+                stage?.detail || ""
+              );
+            }
             const elapsedMs = performance.now() - candidateStartedAt;
             const resultText = summary
               ? `CAPEX ${fmt(Number(summary.capex_lei || 0))} lei | factură ${fmt(Number(summary.annual_bill_lei || 0))} lei/an | economie ${fmt(Number(summary.annual_saving_lei || 0))} lei/an`
@@ -3374,6 +3389,11 @@
       setStatus("Compar rezultatele ramurilor…");
       appendOptimizerConsole(
         "info",
+        "RAW",
+        `Căutarea tehnică s-a încheiat: compar ${completedEvaluations} rezultate fără selecție SKU în bucla parametrică.`
+      );
+      appendOptimizerConsole(
+        "info",
         "FINAL",
         `Compar ${completedEvaluations} rezultate calculate din ${processedCandidates} candidați procesați.`
       );
@@ -3389,6 +3409,11 @@
         `<strong>${escapeHtml(settings.label)}</strong><span>Aplic criteriul economic final peste toți candidații validați.</span><small>${completedEvaluations} recalculări parametrice finalizate${escapeHtml(partialSearchText)}.</small>`
       );
 
+      appendOptimizerConsole(
+        "info",
+        "PRODUCT",
+        "Selectez finaliștii Pareto și abia acum încerc maparea pe produse reale + recalcularea finalistului."
+      );
       const finalizeBody = optimizerBody();
       const finalizeForm = Object.fromEntries(finalizeBody.entries());
       const finalCall = await fetchOptimizerWithRetry(
@@ -3410,6 +3435,32 @@
       const payload = finalCall.payload;
       if (!response.ok || !payload || payload.error) {
         throw new Error(payload?.error || `Optimizer indisponibil (HTTP ${response.status || "?"}).`);
+      }
+
+      const technicalAlternatives = Array.isArray(
+        payload.optimization?.technicalHeatingAlternatives
+      ) ? payload.optimization.technicalHeatingAlternatives : [];
+      for (const alternative of technicalAlternatives) {
+        appendOptimizerConsole(
+          "info",
+          "TECH",
+          `${alternative.label || alternative.branchId} · finalist raw neschimbat · factură ${fmt(Number(alternative.annualBillLei || 0))} lei/an · energie ${fmt(Number(alternative.finalEnergyKwh || 0))} kWh/an · cost comercial încă necunoscut`
+        );
+      }
+
+      const matchedHeating = payload.optimization?.selectedHeating;
+      if (matchedHeating?.optionId) {
+        appendOptimizerConsole(
+          "ok",
+          "PRODUCT",
+          `${matchedHeating.label} · necesar ${fmt(Number(matchedHeating.requiredPowerKw || 0),2)} kW → produs ${fmt(Number(matchedHeating.ratedPowerKw || 0),2)} kW`
+        );
+      } else {
+        appendOptimizerConsole(
+          "info",
+          "PRODUCT",
+          "Finalistul nu a necesitat sau nu a avut încă o mapare comercială completă."
+        );
       }
 
       scenarioResult = payload.scenario;
@@ -4864,6 +4915,12 @@
         `${fmt(100 * Number(raw.window_replacement_fraction),1)}% din suprafață · Uw țintă ${fmt(raw.window_target_u_w_m2k,3)} W/m²K`
       );
     }
+    if (Number(raw.ventilation_heat_recovery_efficiency_target) > 1e-9) {
+      push(
+        "Ventilație",
+        `recuperare căldură țintă ${fmt(100 * Number(raw.ventilation_heat_recovery_efficiency_target),1)}%`
+      );
+    }
     if (Number(raw.pv_added_kwp) > 1e-9) push("Fotovoltaice", `+${fmt(raw.pv_added_kwp,3)} kWp`);
     if (Number(raw.solar_thermal_added_m2) > 1e-9) push("Solar termic", `+${fmt(raw.solar_thermal_added_m2,3)} m² colector`);
     return rows;
@@ -4881,34 +4938,71 @@
     }
 
     const selectedId = optimizationMeta.selectedHeating?.technologyId || "keep-current-heating";
+    const technicalAlternatives = new Map(
+      (Array.isArray(optimizationMeta?.technicalHeatingAlternatives)
+        ? optimizationMeta.technicalHeatingAlternatives
+        : []
+      ).map(item => [String(item.branchId || ""), item])
+    );
     node.innerHTML = `<div class="hln-strategy-list">${branches.map((branch,index) => {
       const eligible = Boolean(branch.eligible);
-      const selected = String(branch.branch_id || "") === String(selectedId);
+      const economicEligible = branch.economic_eligible !== false;
+      const selected = economicEligible
+        && String(branch.branch_id || "") === String(selectedId);
       const evaluated = Number(branch.evaluated_candidates || 0);
       const accepted = Number(branch.accepted_candidates || 0);
       const rejectedCapacity = Number(branch.rejected_for_capacity || 0);
-      const allRejectedForCapacity = eligible && evaluated > 0 && accepted === 0 && rejectedCapacity > 0;
+      const technicalPreview = technicalAlternatives.get(String(branch.branch_id || "")) || null;
+      const allRejectedForCapacity = eligible
+        && economicEligible
+        && evaluated > 0
+        && accepted === 0
+        && rejectedCapacity > 0;
+
       const status = selected
         ? "SELECTAT"
         : !eligible
           ? "EXCLUS ÎNAINTE DE CALCUL"
-          : allRejectedForCapacity
-            ? "ELIMINAT · PUTERE INSUFICIENTĂ"
-            : "EVALUAT · NESELECTAT";
+          : !economicEligible
+            ? "EVALUAT TEHNIC · COST COMERCIAL LIPSĂ"
+            : allRejectedForCapacity
+              ? "ELIMINAT · NECESAR PESTE PLAJA CATALOGULUI"
+              : "EVALUAT · NESELECTAT";
+
       const detail = selected
-        ? `${evaluated} recalculări · ${accepted} candidați tehnici valizi · sistemul ales de criteriul economic`
+        ? `${evaluated} recalculări parametrice · ${accepted} candidați tehnici valizi · produsul real este atașat doar după selecția finalistului`
         : !eligible
           ? (branch.note || "Infrastructură sau compatibilitate neconfirmată.")
-          : allRejectedForCapacity
-            ? `${evaluated} recalculări · toate configurațiile au fost eliminate deoarece puterea nominală nu acoperă sarcina termică recalculată`
-            : `${evaluated} recalculări · ${accepted} candidați tehnici valizi · ramura a fost analizată, dar nu a câștigat criteriul economic ales`;
+          : !economicEligible
+            ? (
+                technicalPreview
+                  ? `preview tehnic pe finalistul raw · factură ${fmt(Number(technicalPreview.annualBillLei || 0))} lei/an · energie ${fmt(Number(technicalPreview.finalEnergyKwh || 0))} kWh/an · EP ${fmt(Number(technicalPreview.primarySpecificKwhM2 || 0),1)} kWh/m²·an · clasa ${escapeHtml(technicalPreview.energyClass || "—")}`
+                  : `ramură tehnică disponibilă, dar preview-ul nu a putut fi calculat în această rulare`
+              )
+            : allRejectedForCapacity
+              ? `${evaluated} recalculări · necesarul termic recalculat a depășit domeniul acoperit de datele comerciale disponibile`
+              : `${evaluated} recalculări parametrice · ${accepted} candidați tehnici valizi · ramura a intrat în comparația economică, dar nu a fost selectată`;
+
+      let commercialLine = "";
+      if (!economicEligible) {
+        commercialLine = "CAPEX comercial: în așteptare · fără valoare inventată";
+      } else if (branch.branch_id === "keep-current-heating") {
+        commercialLine = "CAPEX încălzire: 0 lei · sistem existent";
+      } else {
+        const range = branch.min_product_power_kw != null && branch.max_product_power_kw != null
+          ? ` · observații catalog ${fmt(branch.min_product_power_kw,1)}–${fmt(branch.max_product_power_kw,1)} kW`
+          : "";
+        commercialLine =
+          `Curbă CAPEX parametrică în kW${range} · produs/SKU doar la finaliști`;
+      }
+
       return `
         <article class="${selected ? "is-selected" : ""}">
           <b>${index + 1}</b>
           <div>
             <strong>${escapeHtml(branch.label || branch.branch_id || "Sistem")}</strong>
             <small>${escapeHtml(status)} · ${escapeHtml(detail)}</small>
-            <small>${branch.sizing_mode === "design_load_recalculated_per_candidate" ? "CAPEX minim reper" : "CAPEX ramură"}: ${fmt(Number(branch.fixed_capex_lei || 0))} lei${branch.min_product_power_kw != null && branch.max_product_power_kw != null ? ` · plajă catalog ${fmt(branch.min_product_power_kw,1)}–${fmt(branch.max_product_power_kw,1)} kW` : ""}</small>
+            <small>${escapeHtml(commercialLine)}</small>
           </div>
         </article>
       `;
@@ -4929,6 +5023,10 @@
     const windows = Number(raw.window_replacement_fraction);
     if (Number.isFinite(windows) && windows > 1e-9) {
       parts.push(`ferestre ${fmt(windows * 100,1)}% · Uw ${fmt(raw.window_target_u_w_m2k,2)} W/m²K`);
+    }
+    const heatRecovery = Number(raw.ventilation_heat_recovery_efficiency_target);
+    if (Number.isFinite(heatRecovery) && heatRecovery > 1e-9) {
+      parts.push(`ventilație HRV ${fmt(heatRecovery * 100,1)}%`);
     }
     push("PV +", raw.pv_added_kwp, " kWp");
     push("solar termic +", raw.solar_thermal_added_m2, " m²");
@@ -4987,13 +5085,29 @@
     }
 
     const commercialSolution = optimizationMeta.commercialSolution;
-    if (optimizationMeta.commercialReady && commercialSolution) {
-      const items = Array.isArray(commercialSolution.items) ? commercialSolution.items : [];
-      commercial.innerHTML = items.length
-        ? `<div class="hln-strategy-list">${items.map((item,index) => `
-            <article><b>${index + 1}</b><div><strong>${escapeHtml(item.label || item.family || "Produs")}</strong><small>${escapeHtml(item.detail || "")}</small></div></article>
-          `).join("")}</div>`
-        : '<p class="hln-report-empty">Soluția nu necesită alte produse comerciale.</p>';
+    const commercialItems = Array.isArray(commercialSolution?.items)
+      ? commercialSolution.items
+      : [];
+    if (commercialItems.length) {
+      commercial.innerHTML = `
+        <div class="hln-strategy-list">
+          ${commercialItems.map((item,index) => `
+            <article>
+              <b>${index + 1}</b>
+              <div>
+                <strong>${escapeHtml(item.label || item.family || "Produs")}</strong>
+                <small>${escapeHtml(item.detail || "")}</small>
+              </div>
+            </article>
+          `).join("")}
+        </div>
+        ${optimizationMeta.commercialReady ? "" : `
+          <div class="hln-report-status-warn">
+            <strong>Discretizare comercială parțială.</strong>
+            <span>${escapeHtml(optimizationMeta.commercialMessage || "Unele familii rămân parametrice.")}</span>
+          </div>
+        `}
+      `;
     } else if (optimizationMeta.commercialReady) {
       commercial.innerHTML = '<div class="hln-report-status-good"><strong>Soluție implementabilă fără discretizare suplimentară.</strong></div>';
     } else {
@@ -5295,7 +5409,7 @@
         strategy.innerHTML = `
           <div class="hln-strategy-lead">
             <strong>${escapeHtml(optimizationMeta.label || "Optimizare economică")} · amortizare ${payback}</strong>
-            <span>CAPEX parametric ${fmt(optimizationMeta.capexLei)} lei · economie anuală ${fmt(optimizationMeta.annualSavingLei)} lei/an · încălzire: ${escapeHtml(optimizationMeta.selectedHeating?.label || "sistemul actual")}${optimizationMeta.selectedHeating?.requiredPowerKw != null ? ` · necesar ${fmt(optimizationMeta.selectedHeating.requiredPowerKw,2)} kW → treaptă ${fmt(optimizationMeta.selectedHeating.ratedPowerKw,2)} kW` : ""}. Regula utilizatorului: ${escapeHtml(optimizationMeta.economicMode || "auto_economic")}.</span>
+            <span>CAPEX parametric ${fmt(optimizationMeta.capexLei)} lei · economie anuală ${fmt(optimizationMeta.annualSavingLei)} lei/an · încălzire: ${escapeHtml(optimizationMeta.selectedHeating?.label || "sistemul actual")}${optimizationMeta.selectedHeating?.requiredPowerKw != null ? ` · necesar ${fmt(optimizationMeta.selectedHeating.requiredPowerKw,2)} kW${optimizationMeta.selectedHeating?.ratedPowerKw != null ? " → produs " + fmt(optimizationMeta.selectedHeating.ratedPowerKw,2) + " kW" : ""}` : ""}. Regula utilizatorului: ${escapeHtml(optimizationMeta.economicMode || "auto_economic")}.</span>
           </div>
           ${selected.length ? `<div class="hln-strategy-list">${selected.map((item,index) => `
             <article><b>${index + 1}</b><div><strong>${escapeHtml(item.label || item.family)}</strong><small>parametru brut ${fmt(item.parameterValue,3)} ${escapeHtml(item.parameterUnit || "")} · CAPEX planificat ${fmt(item.capexLei)} lei</small></div></article>
