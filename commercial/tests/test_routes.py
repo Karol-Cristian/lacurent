@@ -561,8 +561,8 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next360-optimizer-console" in response.text
-    assert "/static/home-lab-next.js?v=next70-v2-worker-safe" in response.text
+    assert "/static/home-lab-next.css?v=next361-cop-fuel" in response.text
+    assert "/static/home-lab-next.js?v=next71-cop-fuel" in response.text
     assert "/static/home-lab-3d.css?v=3d31" in response.text
     assert 'aria-label="Schiță conceptuală a casei"' not in response.text
     assert 'aria-label="Casă cu zone de îmbunătățire"' not in response.text
@@ -1122,6 +1122,44 @@ def test_home_lab_next_normalizes_stale_wood_stove_chain() -> None:
     assert system["control_type"] == "manual"
     assert system["design_flow_temperature_c"] is None
     assert system["design_return_temperature_c"] is None
+
+
+def test_home_lab_next_exposes_firewood_cubic_metres_per_year() -> None:
+    data = demo_form_data()
+    data.update(
+        {
+            "heating_choice": "wood_boiler",
+            "expert_heating_override": "",
+            "cooling_enabled": "",
+        }
+    )
+    response = client.post("/api/home-lab-next/calculate", data=data)
+
+    assert response.status_code == 200
+    fuel = response.json()["annual_fuel_use"]
+    assert fuel["fuel"] == "firewood"
+    assert fuel["unit"] == "m3"
+    assert fuel["quantity"] > 0
+    assert fuel["final_energy_kwh"] > 0
+
+
+def test_home_lab_next_exposes_pellet_kilograms_per_year() -> None:
+    data = demo_form_data()
+    data.update(
+        {
+            "heating_choice": "pellet_boiler",
+            "expert_heating_override": "",
+            "cooling_enabled": "",
+        }
+    )
+    response = client.post("/api/home-lab-next/calculate", data=data)
+
+    assert response.status_code == 200
+    fuel = response.json()["annual_fuel_use"]
+    assert fuel["fuel"] == "pellets"
+    assert fuel["unit"] == "kg"
+    assert fuel["quantity"] > 0
+    assert fuel["final_energy_kwh"] > 0
 
 
 def test_home_lab_next_direct_electric_is_generic_and_ignores_stale_chain_inputs() -> None:
@@ -1957,8 +1995,8 @@ def test_home_lab_issue_359_adaptive_intro_contract() -> None:
     response = client.get("/home-lab-next")
     assert response.status_code == 200
     assert response.text.count('class="hln-screen-intro-copy"') == 2
-    assert "/static/home-lab-next.css?v=next360-optimizer-console" in response.text
-    assert "/static/home-lab-next.js?v=next70-v2-worker-safe" in response.text
+    assert "/static/home-lab-next.css?v=next361-cop-fuel" in response.text
+    assert "/static/home-lab-next.js?v=next71-cop-fuel" in response.text
 
     css = client.get("/static/home-lab-next.css")
     assert css.status_code == 200
@@ -2575,4 +2613,4 @@ def test_heating_branch_report_uses_explicit_verdict_labels() -> None:
 def test_home_lab_next_uses_transient_retry_asset_version() -> None:
     response = client.get("/home-lab-next")
     assert response.status_code == 200
-    assert "/static/home-lab-next.js?v=next70-v2-worker-safe" in response.text
+    assert "/static/home-lab-next.js?v=next71-cop-fuel" in response.text
