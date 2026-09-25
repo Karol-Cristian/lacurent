@@ -1588,7 +1588,8 @@
     parentSignal = null,
     timeoutMs = OPTIMIZER_REQUEST_TIMEOUT_MS,
     maxAttempts = 5,
-    useGlobalPacing = true
+    useGlobalPacing = true,
+    hooks = null
   ) {
     let lastResult = null;
     let lastError = null;
@@ -1600,6 +1601,11 @@
         throw abortError;
       }
 
+      if (typeof hooks?.onAttempt === "function") {
+        hooks.onAttempt({attempt, maxAttempts});
+      }
+
+      let retryReason = null;
       try {
         if (useGlobalPacing) await waitForOptimizerRequestSlot(parentSignal);
         let result;
@@ -1618,6 +1624,7 @@
         if (!retryableStatus || attempt >= maxAttempts) {
           return {...result, attemptCount:attempt};
         }
+        retryReason = {type:"http", status};
       } catch (error) {
         if (error?.name === "AbortError" && parentSignal?.aborted) throw error;
         const retryableError = error?.name === "TimeoutError" || error?.name === "TypeError";
@@ -1626,11 +1633,21 @@
           throw error;
         }
         lastError = error;
+        retryReason = {type:"transport", name:error?.name || "network"};
       }
 
       const delay = OPTIMIZER_TRANSIENT_RETRY_DELAYS_MS[
         Math.min(attempt - 1, OPTIMIZER_TRANSIENT_RETRY_DELAYS_MS.length - 1)
       ];
+      if (typeof hooks?.onRetry === "function") {
+        hooks.onRetry({
+          attempt,
+          nextAttempt:attempt + 1,
+          maxAttempts,
+          delayMs:delay,
+          reason:retryReason,
+        });
+      }
       await new Promise(resolve => window.setTimeout(resolve, delay));
     }
 
