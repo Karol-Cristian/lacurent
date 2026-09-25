@@ -1009,9 +1009,9 @@ jobs:
                   f"{heating_catalog.get('source')!r}"
               )
           products = heating_catalog.get("options") or []
-          if len(products) != 36:
+          if len(products) != 40:
               raise AssertionError(
-                  f"Production D1 heating catalog expected 36 products, got {len(products)}"
+                  f"Production D1 heating catalog expected 40 products, got {len(products)}"
               )
           category_counts = {}
           for product in products:
@@ -1023,7 +1023,7 @@ jobs:
                   )
           expected_category_counts = {
               "heat-pump-air-water": 8,
-              "heat-pump-air-air": 5,
+              "heat-pump-air-air": 9,
               "condensing-gas": 8,
               "electric-boiler": 8,
               "pellet-boiler": 7,
@@ -1033,7 +1033,7 @@ jobs:
                   f"Production D1 heating category counts mismatch: {category_counts}"
               )
           performance_points = heating_catalog.get("heat_pump_performance_points") or []
-          if len(performance_points) < 30:
+          if len(performance_points) < 50:
               raise AssertionError(
                   "Production D1 heat-pump performance catalog is incomplete: "
                   f"{len(performance_points)} operating points"
