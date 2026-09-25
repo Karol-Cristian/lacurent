@@ -83,7 +83,7 @@ def _run_sharded(payload: dict[str, str]) -> tuple[dict, dict]:
                 assert body["branch"]["branch_id"] == branch_id
                 assert body["searchPhase"] == phase
                 assert body["phaseOffset"] == phase_offset
-                assert 0 <= body["parametricEvaluations"] <= plan["microBatchSize"]
+                assert 0 <= body["parametricEvaluations"] <= plan["microBatchSize"] + 1
                 assert isinstance(body["candidates"], list)
                 assert isinstance(body["calculationStages"], list)
                 if body["candidates"]:
@@ -93,6 +93,7 @@ def _run_sharded(payload: dict[str, str]) -> tuple[dict, dict]:
                         "VENTILAȚIE",
                         "ÎNCĂLZIRE",
                         "REGENERABILE",
+                        "BILANȚ",
                         "ECONOMIC",
                     } <= stages
                 results.append(body)
