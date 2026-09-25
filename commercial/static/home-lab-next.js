@@ -1596,7 +1596,15 @@
 
       try {
         await waitForOptimizerRequestSlot(parentSignal);
-        const result = await fetchWithTimeout(url, options, parentSignal, timeoutMs);
+        let result;
+        try {
+          result = await fetchWithTimeout(url, options, parentSignal, timeoutMs);
+        } finally {
+          // Measure the pacing gap from request completion, not request start.
+          // A heavy 2–3 s Worker request therefore still gets a quiet period
+          // before the next optimizer micro-batch starts.
+          optimizerLastRemoteRequestAt = Date.now();
+        }
         lastResult = result;
         const status = Number(result?.response?.status || 0);
         const retryableStatus = OPTIMIZER_TRANSIENT_RETRY_STATUSES.has(status);
@@ -1712,12 +1720,18 @@
     await waitForOptimizerRequestSlot(optimizerAbortController?.signal || null);
     optimizerEvaluationCount += 1;
 
-    const {response, payload} = await fetchWithTimeout(
-      calcUrl,
-      {method:"POST", body},
-      optimizerAbortController?.signal || null,
-      OPTIMIZER_REQUEST_TIMEOUT_MS
-    );
+    let response;
+    let payload;
+    try {
+      ({response, payload} = await fetchWithTimeout(
+        calcUrl,
+        {method:"POST", body},
+        optimizerAbortController?.signal || null,
+        OPTIMIZER_REQUEST_TIMEOUT_MS
+      ));
+    } finally {
+      optimizerLastRemoteRequestAt = Date.now();
+    }
     if (!response.ok || !payload || payload.error) {
       throw new Error(payload?.error || `Calcul candidat indisponibil (HTTP ${response.status || "?"}).`);
     }
