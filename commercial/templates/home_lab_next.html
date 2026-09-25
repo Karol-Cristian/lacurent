@@ -915,7 +915,21 @@
           <div class="hln-report-system-grid">
             <div><small>Lanț</small><strong id="hlnReportHeatingChain">—</strong></div>
             <div><small>Statut calcul</small><strong id="hlnReportHeatingSource">—</strong></div>
+            <div><small>Combustibil anual</small><strong id="hlnReportFuelUse">—</strong></div>
           </div>
+        </section>
+
+        <section class="hln-report-card hln-report-heat-pump-profile" id="hlnReportHeatPumpProfileCard" hidden>
+          <header><span>POMPĂ DE CĂLDURĂ</span><strong>COP lunar vs necesar termic</strong></header>
+          <div class="hln-hp-profile-summary">
+            <div><small>SCOP folosit în calcul</small><strong id="hlnReportHpEngineScop">—</strong></div>
+            <div><small>SCOP declarat produs</small><strong id="hlnReportHpDeclaredScop">—</strong></div>
+            <div><small>SCOP din COP lunar</small><strong id="hlnReportHpModeledScop">—</strong></div>
+            <div><small>COP de referință la +7°C</small><strong id="hlnReportHpReferenceCop">—</strong></div>
+          </div>
+          <div class="hln-hp-profile-legend"><span><i class="is-load"></i> necesar util kWh</span><span><i class="is-cop"></i> COP</span></div>
+          <div id="hlnReportHpCopChart" class="hln-hp-cop-chart"></div>
+          <p id="hlnReportHpCopNote">—</p>
         </section>
 
         <section class="hln-report-card hln-report-heating-search">
@@ -1312,7 +1326,7 @@
     }
   </script>
   <script type="module" src="/static/home-lab-3d.js?v=3d55"></script>
-  <script src="/static/home-lab-next.js?v=next70-v2-worker-safe"></script>
+  <script src="/static/home-lab-next.js?v=next71-cop-fuel"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>
