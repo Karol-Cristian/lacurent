@@ -485,3 +485,33 @@ def test_heating_catalog_can_be_injected_from_d1_shape() -> None:
     assert products[0].performance_points[0].cop == pytest.approx(3.1)
     assert len(technologies) == 1
     assert technologies[0].products[0].equipment_price_lei == pytest.approx(21000)
+
+
+def test_keep_current_finalist_never_selects_a_new_generator_product() -> None:
+    baseline = demo_building()
+    raw = evaluate_parametric_candidate(
+        baseline,
+        ParametricMeasuresV1(window_target_u_w_m2k=0.9),
+        _catalog(),
+    )
+    baseline_bill = float(
+        estimate_energy_cost(calculate(baseline, include_reference=False))["priced_total_lei"]
+    )
+    keep_candidate = _rebase_candidate(
+        raw,
+        original_baseline_bill_lei=baseline_bill,
+        original_building=baseline,
+        technology=None,
+    )
+    assert keep_candidate is not None
+
+    commercial, product, warnings = commercialize_heating_finalist(
+        keep_candidate,
+        original_building=baseline,
+        branch_id="keep-current-heating",
+    )
+
+    assert product is None
+    assert commercial.candidate_id == keep_candidate.candidate_id
+    assert not any(line.family == "heating" for line in commercial.cost_breakdown)
+    assert any("nu necesită achiziția" in item for item in warnings)
