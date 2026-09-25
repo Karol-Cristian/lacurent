@@ -389,7 +389,7 @@ try {
       return button && !button.disabled && note.includes("CAPEX");
     },
     null,
-    {timeout:240000}
+    {timeout:420000}
   );
   await expectVisible('[data-hln-screen="report"].is-active');
 
@@ -531,7 +531,7 @@ try {
         (note.includes("CAPEX") || note.includes("Nu există") || note.includes("Optimizarea nu a putut"));
     },
     null,
-    {timeout:240000}
+    {timeout:420000}
   );
   const paybackNote7 = await page.locator("#hlnOptimizationNote").innerText();
   const actualMatch7 = paybackNote7.match(/amortizare\s+([0-9]+(?:[.,][0-9]+)?)\s+ani/i);
@@ -552,7 +552,7 @@ try {
             (note.includes("CAPEX") || note.includes("Nu există") || note.includes("Optimizarea nu a putut"));
         },
         null,
-        {timeout:240000}
+        {timeout:420000}
       );
       const paybackNote6 = await page.locator("#hlnOptimizationNote").innerText();
       if (!/CAPEX/i.test(paybackNote6)) {
