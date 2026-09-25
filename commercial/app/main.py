@@ -2463,6 +2463,20 @@ async def home_lab_parametric_optimization_api(request: Request) -> JSONResponse
             )
 
         optimization_request = OptimizationRequestV1(**request_kwargs)
+        legacy_plan = heating_branch_plan(optimization_request)
+        legacy_runnable = [item for item in legacy_plan if item.eligible]
+        if len(legacy_runnable) > 1:
+            return JSONResponse(
+                {
+                    "error": (
+                        "Interfața Home Lab a fost actualizată pentru calcul distribuit pe "
+                        "ramuri. Reîncarcă pagina și pornește optimizarea din nou."
+                    ),
+                    "requiresShardedExecution": True,
+                    "runBranchIds": [item.branch_id for item in legacy_runnable],
+                },
+                status_code=409,
+            )
         optimization_started = time.perf_counter()
         mixed_result = run_mixed_heating_optimization(
             optimization_request,
