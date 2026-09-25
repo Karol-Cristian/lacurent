@@ -222,12 +222,31 @@ def main():
     report["checks"].append("higher heating efficiency lowers bill")
     report["cases"]["efficient_boiler"] = compact(efficient_result)
 
-    pv = copy.deepcopy(BASE_FORM)
+    hp = copy.deepcopy(BASE_FORM)
+    hp.update({
+        "heating_choice": "heat_pump",
+        "heating_system_type": "heat_pump",
+        "heating_carrier": "electricity",
+        "heating_cost_profile": "electricity",
+        "heating_efficiency": "",
+        "heating_scop": "3.2",
+        "dhw_system_type": "same_as_heating",
+        "dhw_efficiency": "",
+        "dhw_cop": "3.2",
+        "dhw_carrier": "electricity",
+    })
+    hp_result = calc(PROD, hp)
+    pv = copy.deepcopy(hp)
     pv["pv_enabled"] = "on"
     pv_result = calc(PROD, pv)
-    require(pv_result["annual_cost_lei"] < prod["annual_cost_lei"], "5 kWp PV did not lower annual bill")
-    report["checks"].append("PV lowers annual bill")
-    report["cases"]["pv_5kwp"] = compact(pv_result)
+    require(
+        float(hp_result.get("final_energy_by_carrier", {}).get("electricity", 0)) > 0,
+        "heat-pump control case has no modeled electricity load",
+    )
+    require(pv_result["annual_cost_lei"] < hp_result["annual_cost_lei"], "5 kWp PV did not lower an electricity-consuming house bill")
+    report["checks"].append("PV lowers bill when the house has an electricity load")
+    report["cases"]["heat_pump_no_pv"] = compact(hp_result)
+    report["cases"]["heat_pump_pv_5kwp"] = compact(pv_result)
 
     # 4) New optimizer modes: the baseline bill must be the exact same baseline as direct calculate.
     modes = [
