@@ -80,6 +80,14 @@ def _run_sharded(payload: dict[str, str]) -> tuple[dict, dict]:
             assert body["parametricEvaluations"] <= 12
             assert body["parametricEvaluations"] >= 1
             assert isinstance(body["candidates"], list)
+            for candidate in body["candidates"]:
+                assert "parameters" in candidate
+                assert "branch_id" in candidate
+                assert "capex_lei" in candidate
+                assert "annual_bill_lei" in candidate
+                assert "resulting_configuration" not in candidate
+                assert "cost_breakdown" not in candidate
+                assert "warnings" not in candidate
             results.append(body)
             prior_candidates.extend(body["candidates"])
 
