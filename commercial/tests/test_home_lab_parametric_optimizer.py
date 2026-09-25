@@ -29,13 +29,16 @@ def _run_sharded(payload: dict[str, str]) -> tuple[dict, dict]:
     plan_response = client.post("/api/optimization/home-lab/plan", data=payload)
     assert plan_response.status_code == 200
     plan = plan_response.json()
-    assert plan["evaluationsPerBranch"] == 24
+    assert plan["searchPhases"] == ["axis", "halton", "refine"]
+    assert plan["evaluationsPerPhase"] == 12
+    assert plan["evaluationsPerBranch"] == 36
     assert plan["runBranchIds"]
 
     results = [
         {
             "branch": branch,
             "selection": {"selected": None},
+            "candidates": [],
             "candidateCount": 0,
             "parametricEvaluations": 0,
             "calculationTimeMs": 0,
@@ -44,18 +47,31 @@ def _run_sharded(payload: dict[str, str]) -> tuple[dict, dict]:
         for branch in plan["branches"]
         if not branch["eligible"]
     ]
+
     for branch_id in plan["runBranchIds"]:
-        branch_payload = dict(payload)
-        branch_payload["_heating_branch_id"] = branch_id
-        response = client.post(
-            "/api/optimization/home-lab/branch",
-            data=branch_payload,
-        )
-        assert response.status_code == 200
-        body = response.json()
-        assert body["branch"]["branch_id"] == branch_id
-        assert body["parametricEvaluations"] <= 24
-        results.append(body)
+        prior_candidates: list[dict] = []
+        for phase in plan["searchPhases"]:
+            branch_payload = dict(payload)
+            branch_payload["_heating_branch_id"] = branch_id
+            branch_payload["_search_phase"] = phase
+            if phase == "refine":
+                branch_payload["_prior_candidates_json"] = json.dumps(prior_candidates)
+
+            response = client.post(
+                "/api/optimization/home-lab/branch",
+                data=branch_payload,
+            )
+            assert response.status_code == 200
+            body = response.json()
+            assert body["branch"]["branch_id"] == branch_id
+            assert body["searchPhase"] == phase
+            assert body["parametricEvaluations"] <= 12
+            assert body["parametricEvaluations"] >= 1
+            assert isinstance(body["candidates"], list)
+            results.append(body)
+            prior_candidates.extend(body["candidates"])
+
+        assert len(prior_candidates) >= 18
 
     finalize_payload = dict(payload)
     finalize_payload["_branch_results_json"] = json.dumps(results)
@@ -67,7 +83,7 @@ def _run_sharded(payload: dict[str, str]) -> tuple[dict, dict]:
     return plan, finalize_response.json()
 
 
-def test_home_lab_auto_optimizer_runs_sharded_and_returns_traceability() -> None:
+def test_home_lab_auto_optimizer_runs_phased_and_returns_traceability() -> None:
     payload = _form_payload()
     payload["_optimization_mode"] = "auto_economic"
 
@@ -79,19 +95,19 @@ def test_home_lab_auto_optimizer_runs_sharded_and_returns_traceability() -> None
     assert meta["kind"] == "parametric_economic"
     assert meta["economicMode"] == "auto_economic"
     assert meta["executionMode"] == "sharded_by_heating_branch"
-    assert meta["parametricEvaluations"] >= 24
+    assert meta["parametricEvaluations"] >= 36
     assert meta["heatingBranchEvaluations"] >= 0
     assert len(meta["heatingBranches"]) == len(plan["branches"])
     assert meta["feasibleCandidates"] >= 1
     assert meta["paretoSolutions"] >= 1
-    assert meta["paretoScope"] == "branch_finalists"
+    assert meta["paretoScope"] == "all_phased_candidates"
     assert isinstance(meta["rawSolution"], dict)
     assert "commercialReady" in meta
     assert "commercialMessage" in meta
     assert "selectedHeating" in meta
 
 
-def test_home_lab_bill_target_sharded_mode_preserves_constraint() -> None:
+def test_home_lab_bill_target_phased_mode_preserves_constraint() -> None:
     payload = _form_payload()
     payload["_optimization_mode"] = "annual_bill_target"
     payload["_annual_bill_target_lei"] = "6000"
@@ -103,6 +119,19 @@ def test_home_lab_bill_target_sharded_mode_preserves_constraint() -> None:
         assert body["optimization"]["rawEvaluation"]["annualBillLei"] <= 6000 + 0.01
     else:
         assert "solu" in body["error"].lower() or "ramur" in body["error"].lower()
+
+
+def test_branch_endpoint_rejects_old_unphased_client() -> None:
+    payload = _form_payload()
+    payload["_optimization_mode"] = "auto_economic"
+    payload["_heating_branch_id"] = "keep-current-heating"
+
+    response = client.post("/api/optimization/home-lab/branch", data=payload)
+
+    assert response.status_code == 409
+    body = response.json()
+    assert body["requiresPhasedExecution"] is True
+    assert "Reîncarcă pagina" in body["error"]
 
 
 def test_legacy_monolithic_optimizer_refuses_multi_branch_execution() -> None:

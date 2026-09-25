@@ -2512,7 +2512,7 @@ async def home_lab_optimization_finalize_api(request: Request) -> JSONResponse:
                 *warnings,
             ],
             calculation_time_ms=round(total_elapsed_ms, 1),
-            pareto_scope="branch_finalists",
+            pareto_scope="all_phased_candidates",
         )
         return JSONResponse(payload)
     except Exception as exc:
