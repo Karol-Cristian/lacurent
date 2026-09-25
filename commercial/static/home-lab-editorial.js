@@ -3,25 +3,34 @@
   const form = document.getElementById("edForm");
   if (!root || !form) return;
 
+  const $ = selector => document.querySelector(selector);
   const pages = [...root.querySelectorAll("[data-page]")];
-  const wizardOrder = ["intro", "house", "envelope", "systems", "goal"];
-  const stepNames = {intro:"Start",house:"Casa",envelope:"Anvelopa",systems:"Instalații",goal:"Obiectiv",run:"Calcul",done:"Gata",report:"Raport",error:"Eroare"};
-  const stepNumber = document.getElementById("edStepNumber");
-  const stepName = document.getElementById("edStepName");
-  const runLog = document.getElementById("runLog");
-  const logDialog = document.getElementById("logDialog");
-  const logDialogBody = document.getElementById("logDialogBody");
+  const wizardOrder = ["intro", "house", "envelope", "systems", "renewables", "goal"];
+  const stepNames = {intro:"Start",house:"Casa",envelope:"Anvelopa",systems:"Instalații",renewables:"Regenerabile",goal:"Obiectiv",run:"Calcul",done:"Gata",report:"Raport",error:"Eroare"};
+  const stepNumbers = {intro:"—",house:"01",envelope:"02",systems:"03",renewables:"04",goal:"05",run:"06",done:"07",report:"08",error:"—"};
+  const stepNumber = $("#edStepNumber");
+  const stepName = $("#edStepName");
+  const runLog = $("#runLog");
+  const logDialog = $("#logDialog");
+  const logDialogBody = $("#logDialogBody");
   const stageEls = Object.fromEntries([...document.querySelectorAll("[data-run-stage]")].map(el => [el.dataset.runStage, el]));
-  const localityInput = document.getElementById("localityInput");
-  const localityId = document.getElementById("localityId");
-  const pvToggle = document.getElementById("pvToggle");
-  const pvEnabled = document.getElementById("pvEnabled");
-  const pvPowerField = document.getElementById("pvPowerField");
-  const pvPower = pvPowerField.querySelector("input");
-  const goalWrap = document.getElementById("goalValueWrap");
-  const goalValue = document.getElementById("goalValue");
-  const goalLabel = document.getElementById("goalValueLabel");
-  const goalUnit = document.getElementById("goalValueUnit");
+
+  const WALL_STRUCTURE_PRESETS = Object.freeze({
+    unknown:{lambda:null,defaultThicknessCm:30,fallbackU:1.30},
+    solid_brick:{lambda:0.72,defaultThicknessCm:30},
+    efficient_brick:{lambda:0.32,defaultThicknessCm:30},
+    bca:{lambda:0.18,defaultThicknessCm:30},
+    concrete:{lambda:1.70,defaultThicknessCm:20},
+    wood:{lambda:0.18,defaultThicknessCm:20},
+    stone:{lambda:1.80,defaultThicknessCm:45},
+  });
+  const INSULATION_LAMBDA_W_MK = Object.freeze({
+    generic_040:0.040,eps:0.040,xps:0.035,mineral_wool:0.039,cellulose:0.040,wood_fiber:0.045,
+  });
+  const TOP_BOUNDARY_BASE_U = Object.freeze({
+    unknown:1.00,cold_attic:3.25,heated_attic:1.00,flat_roof:2.25,
+  });
+  const WALL_SURFACE_RESISTANCE_M2K_W = 0.17;
 
   let current = "intro";
   let baselineResult = null;
@@ -36,12 +45,12 @@
   };
   const money = value => value === null || value === undefined ? "—" : fmt(value, 0) + " lei";
   const energy = value => value === null || value === undefined ? "—" : fmt(value, 0) + " kWh/an";
+  const setValue = (id, value) => { const node = document.getElementById(id); if (node) node.value = value == null ? "" : String(value); };
 
   function showPage(name) {
     current = name;
     pages.forEach(page => page.classList.toggle("is-active", page.dataset.page === name));
-    const wizardIndex = wizardOrder.indexOf(name);
-    stepNumber.textContent = wizardIndex >= 0 ? String(wizardIndex + 1).padStart(2, "0") : (name === "run" ? "05" : name === "done" ? "06" : name === "report" ? "07" : "—");
+    stepNumber.textContent = stepNumbers[name] || "—";
     stepName.textContent = stepNames[name] || name;
     window.scrollTo({top:0, behavior:"instant"});
   }
@@ -49,7 +58,7 @@
   function validatePage(name) {
     const page = pages.find(p => p.dataset.page === name);
     if (!page) return true;
-    const fields = [...page.querySelectorAll("input:not([type=hidden]),select")].filter(el => !el.disabled);
+    const fields = [...page.querySelectorAll("input:not([type=hidden]),select")].filter(el => !el.disabled && !el.closest("[hidden]"));
     for (const field of fields) {
       if (!field.checkValidity()) {
         field.reportValidity();
@@ -59,8 +68,222 @@
     return true;
   }
 
+  function insulationLambda(materialId) {
+    return INSULATION_LAMBDA_W_MK[materialId] || INSULATION_LAMBDA_W_MK.generic_040;
+  }
+
+  function insulationU(baseU, centimetres, lambda = 0.040) {
+    const safeLambda = Number(lambda) > 0 ? Number(lambda) : 0.040;
+    const baseR = 1 / Number(baseU);
+    const addedR = Math.max(0, Number(centimetres) || 0) / 100 / safeLambda;
+    return 1 / (baseR + addedR);
+  }
+
+  function wallBaseU() {
+    const preset = WALL_STRUCTURE_PRESETS[$("#wallStructure").value] || WALL_STRUCTURE_PRESETS.unknown;
+    if (!preset.lambda) return preset.fallbackU;
+    const rawThickness = Number($("#wallStructureThickness").value);
+    const thicknessCm = Number.isFinite(rawThickness) && rawThickness > 0
+      ? Math.max(5, Math.min(80, rawThickness))
+      : preset.defaultThicknessCm;
+    return 1 / (WALL_SURFACE_RESISTANCE_M2K_W + (thicknessCm / 100) / preset.lambda);
+  }
+
+  function geometryValues() {
+    const area = Math.max(Number($("#heatedArea").value) || 0, 1);
+    const levels = Math.max(1, Number($("#heatedLevels").value) || 1);
+    const height = Math.max(Number($("#averageHeight").value) || 0, 0.1);
+    const windows = Math.max(Number($("#windowArea").value) || 0, 0);
+    const doors = 2.2;
+    const footprint = area / levels;
+    const aspect = 1.25;
+    const width = Math.sqrt(footprint / aspect);
+    const length = width * aspect;
+    const perimeter = 2 * (length + width);
+    const grossWalls = perimeter * height * levels;
+    return {
+      area,levels,height,windows,doors,footprint,width,length,perimeter,grossWalls,
+      derivedWallArea:Math.max(1,grossWalls-windows-doors),
+      derivedTopArea:footprint,
+      derivedFloorArea:footprint,
+      derivedVolume:area*height,
+    };
+  }
+
+  function updateGeometryDisplay(force = false) {
+    const g = geometryValues();
+    const mappings = [
+      ["#wallArea", g.derivedWallArea, 1],
+      ["#roofArea", g.derivedTopArea, 1],
+      ["#floorArea", g.derivedFloorArea, 1],
+      ["#heatedVolume", g.derivedVolume, 0],
+    ];
+    mappings.forEach(([selector, value, digits]) => {
+      const input = $(selector);
+      if (!input) return;
+      if (force || input.dataset.geomAuto !== "false") {
+        input.dataset.geomAuto = "true";
+        input.value = Number(value).toFixed(digits);
+      }
+    });
+    $("#derivedFootprint").textContent = fmt(g.footprint,1) + " m²";
+    $("#derivedPerimeter").textContent = fmt(g.perimeter,1) + " m";
+    $("#derivedGrossWalls").textContent = fmt(g.grossWalls,1) + " m²";
+    $("#derivedOpenings").textContent = fmt(g.windows + g.doors,1) + " m²";
+    return g;
+  }
+
+  function heatingChainDefaults(type) {
+    if (type === "heat_pump") return {source:"heat_pump_air_water",emitter:"underfloor",distribution:"underfloor",storage:"none",control:"zoned"};
+    if (type === "wood_stove") return {source:"",emitter:"local",distribution:"local",storage:"none",control:"manual"};
+    if (type === "electric_resistance") return {source:"",emitter:"local",distribution:"local",storage:"none",control:"room_thermostat"};
+    if (type === "pellet_boiler") return {source:"",emitter:"radiators_high_temp",distribution:"hydronic_insulated",storage:"buffer_small",control:"room_thermostat"};
+    if (type === "district_heat") return {source:"",emitter:"radiators_high_temp",distribution:"hydronic_insulated",storage:"none",control:"thermostatic_valves"};
+    return {source:"",emitter:"radiators_high_temp",distribution:"hydronic_insulated",storage:"none",control:"room_thermostat"};
+  }
+
+  function applyHeatingDefaults() {
+    const type = $("#heatingChoice").value;
+    const d = heatingChainDefaults(type);
+    if (type === "heat_pump") $("#heatPumpSource").value = d.source;
+    $("#heatingEmitter").value = d.emitter;
+    $("#heatingDistribution").value = d.distribution;
+    $("#heatingStorage").value = d.storage;
+    $("#heatingControl").value = d.control;
+    normalizeHeatingUi();
+  }
+
+  function normalizeHeatingUi() {
+    const type = $("#heatingChoice").value;
+    const source = $("#heatPumpSource").value;
+    const localFixed = type === "wood_stove" || type === "electric_resistance";
+    $("#heatPumpSourceField").hidden = type !== "heat_pump";
+
+    const chainFields = [...document.querySelectorAll("[data-heating-chain-field]")];
+    chainFields.forEach(el => { el.hidden = localFixed; });
+
+    if (localFixed) {
+      const d = heatingChainDefaults(type);
+      $("#heatingEmitter").value = d.emitter;
+      $("#heatingDistribution").value = d.distribution;
+      $("#heatingStorage").value = d.storage;
+      $("#heatingControl").value = d.control;
+      return;
+    }
+
+    const airToAir = type === "heat_pump" && source === "heat_pump_air_air";
+    if (airToAir) {
+      $("#heatingEmitter").value = "air";
+      $("#heatingDistribution").value = "air";
+      $("#heatingStorage").value = "none";
+    } else {
+      const validEmitters = new Set(["radiators_high_temp","radiators_low_temp","underfloor","fan_coils"]);
+      if (!validEmitters.has($("#heatingEmitter").value)) {
+        $("#heatingEmitter").value = heatingChainDefaults(type).emitter;
+      }
+      if ($("#heatingEmitter").value === "underfloor") {
+        $("#heatingDistribution").value = "underfloor";
+      } else if (!["hydronic_insulated","hydronic_uninsulated"].includes($("#heatingDistribution").value)) {
+        $("#heatingDistribution").value = "hydronic_insulated";
+      }
+    }
+
+    const emitterField = $("#heatingEmitter").closest(".ed-field");
+    const distributionField = $("#heatingDistribution").closest(".ed-field");
+    const storageField = $("#heatingStorage").closest(".ed-field");
+    emitterField.hidden = airToAir;
+    distributionField.hidden = airToAir;
+    storageField.hidden = airToAir;
+  }
+
+  function heatingGeneratorType() {
+    const type = $("#heatingChoice").value;
+    if (type === "heat_pump") return $("#heatPumpSource").value || "heat_pump_air_water";
+    return {
+      condensing_gas_boiler:"condensing_gas_boiler",
+      gas_boiler:"gas_boiler",
+      electric_resistance:"electric_direct",
+      electric_boiler:"electric_boiler",
+      district_heat:"district_heat",
+      wood_stove:"wood_stove",
+      wood_boiler:"wood_boiler",
+      pellet_boiler:"pellet_boiler",
+    }[type] || "custom";
+  }
+
+  function syncRenewableVisibility() {
+    $("#pvFields").classList.toggle("is-disabled", !$("#pvEnabled").checked);
+    $("#solarThermalFields").classList.toggle("is-disabled", !$("#solarThermalEnabled").checked);
+  }
+
+  function syncTechnicalForm() {
+    const g = updateGeometryDisplay(false);
+    setValue("techLength", g.length.toFixed(3));
+    setValue("techWidth", g.width.toFixed(3));
+    setValue("techHouseWindows", g.windows);
+    setValue("techGroundPerimeter", g.perimeter.toFixed(3));
+    setValue("techGroundWallThickness", (Math.max(Number($("#wallStructureThickness").value) || 30, 1) / 100).toFixed(3));
+    setValue("techBridgeLength", (g.perimeter * g.levels).toFixed(3));
+
+    const topBoundary = $("#topBoundary").value;
+    const floorBoundary = $("#floorBoundary").value;
+    setValue("techRoofBoundary", topBoundary === "cold_attic" ? "unheated_attic" : "outside_air");
+    setValue("techFloorBoundary", {
+      ground:"ground",
+      unheated_basement:"unheated_basement",
+      outside_air:"outside_air",
+      heated_space:"adjacent_heated_space",
+    }[floorBoundary] || "ground");
+
+    const glazingU = {
+      single_clear_glazing:5.0,
+      double_clear_glazing:2.8,
+      double_low_e_face_3:1.6,
+      triple_low_e_faces_2_and_5:0.9,
+    };
+    setValue("techWallU", insulationU(
+      wallBaseU(),
+      $("#wallIns").value,
+      insulationLambda($("#wallInsulationMaterial").value)
+    ).toFixed(4));
+    setValue("techRoofU", insulationU(
+      Number(TOP_BOUNDARY_BASE_U[topBoundary]) || TOP_BOUNDARY_BASE_U.unknown,
+      $("#roofIns").value,
+      insulationLambda($("#roofInsulationMaterial").value)
+    ).toFixed(4));
+    setValue("techFloorU", insulationU(
+      0.90,
+      $("#floorIns").value,
+      insulationLambda($("#floorInsulationMaterial").value)
+    ).toFixed(4));
+    setValue("techWindowU", glazingU[$("#glazing").value] || 1.6);
+
+    const ventilation = $("#ventilation").value;
+    if (ventilation === "hrv") {
+      setValue("techAch", 0.5); setValue("techHeatRecovery", 0.75);
+    } else if (ventilation === "mechanical") {
+      setValue("techAch", 0.65); setValue("techHeatRecovery", 0);
+    } else {
+      setValue("techAch", 0.5); setValue("techHeatRecovery", 0);
+    }
+
+    normalizeHeatingUi();
+    setValue("techHeatingGenerator", heatingGeneratorType());
+    setValue("techHeatingEmitter", $("#heatingEmitter").value);
+    setValue("techHeatingDistribution", $("#heatingDistribution").value);
+    setValue("techHeatingStorage", $("#heatingStorage").value);
+    setValue("techHeatingControl", $("#heatingControl").value);
+
+    const cooling = $("#cooling").value;
+    setValue("techCoolingEnabled", cooling === "none" ? "" : "on");
+    setValue("techCoolingSeer", cooling === "split" ? 4.2 : 4.0);
+    setValue("techSolarGlazing", $("#glazing").value);
+    setValue("techSolarOrientation", $("#orientation").value);
+  }
+
   document.querySelectorAll("[data-next]").forEach(button => {
     button.addEventListener("click", () => {
+      syncTechnicalForm();
       if (!validatePage(current)) return;
       const i = wizardOrder.indexOf(current);
       if (i >= 0 && i < wizardOrder.length - 1) showPage(wizardOrder[i + 1]);
@@ -85,6 +308,11 @@
     });
   });
 
+  const goalWrap = $("#goalValueWrap");
+  const goalValue = $("#goalValue");
+  const goalLabel = $("#goalValueLabel");
+  const goalUnit = $("#goalValueUnit");
+
   function syncGoalField() {
     const mode = form.elements["_optimization_mode"].value;
     goalValue.removeAttribute("name");
@@ -93,37 +321,42 @@
       goalValue.name = "_investment_budget_lei";
       goalLabel.textContent = "Buget maxim";
       goalUnit.textContent = "lei";
-      goalValue.step = "1000";
-      goalValue.min = "1000";
-      goalValue.value = goalValue.value || "50000";
+      goalValue.step = "1000"; goalValue.min = "1000"; goalValue.removeAttribute("max");
+      if (!goalValue.value) goalValue.value = "50000";
     } else if (mode === "annual_bill_target") {
       goalValue.name = "_annual_bill_target_lei";
       goalLabel.textContent = "Factură anuală țintă";
       goalUnit.textContent = "lei/an";
-      goalValue.step = "100";
-      goalValue.min = "0";
-      goalValue.value = goalValue.value || "3000";
+      goalValue.step = "100"; goalValue.min = "0"; goalValue.removeAttribute("max");
+      if (!goalValue.value) goalValue.value = "3000";
     } else if (mode === "max_payback_years") {
       goalValue.name = "_max_payback_years";
       goalLabel.textContent = "Recuperare în maximum";
       goalUnit.textContent = "ani";
-      goalValue.step = "0.5";
-      goalValue.min = "0.5";
-      goalValue.max = "50";
-      goalValue.value = goalValue.value || "10";
+      goalValue.step = "0.5"; goalValue.min = "0.5"; goalValue.max = "50";
+      if (!goalValue.value) goalValue.value = "10";
     }
   }
 
-  localityInput.addEventListener("input", () => { localityId.value = ""; });
+  $("#localityInput").addEventListener("input", () => { $("#localityId").value = ""; });
 
-  pvToggle.addEventListener("click", () => {
-    const on = pvToggle.getAttribute("aria-pressed") !== "true";
-    pvToggle.setAttribute("aria-pressed", String(on));
-    pvToggle.querySelector("span").textContent = on ? "Da" : "Nu";
-    pvEnabled.value = on ? "on" : "";
-    pvPower.disabled = !on;
-    pvPowerField.classList.toggle("is-muted", !on);
+  ["#heatedArea","#heatedLevels","#averageHeight","#windowArea"].forEach(selector => {
+    $(selector).addEventListener("input", () => { updateGeometryDisplay(false); });
   });
+  document.querySelectorAll("[data-geom-auto]").forEach(input => {
+    input.dataset.geomAuto = "true";
+    input.addEventListener("input", () => { input.dataset.geomAuto = "false"; });
+  });
+  $("#resetGeometry").addEventListener("click", () => {
+    document.querySelectorAll("[data-geom-auto]").forEach(input => { input.dataset.geomAuto = "true"; });
+    updateGeometryDisplay(true);
+  });
+
+  $("#heatingChoice").addEventListener("change", applyHeatingDefaults);
+  $("#heatPumpSource").addEventListener("change", normalizeHeatingUi);
+  $("#heatingEmitter").addEventListener("change", normalizeHeatingUi);
+  $("#pvEnabled").addEventListener("change", syncRenewableVisibility);
+  $("#solarThermalEnabled").addEventListener("change", syncRenewableVisibility);
 
   function log(message) {
     const now = new Date();
@@ -150,6 +383,7 @@
   }
 
   function baseFormData() {
+    syncTechnicalForm();
     return new FormData(form);
   }
 
@@ -168,6 +402,7 @@
   async function postForm(url, data) {
     return readJson(await fetch(url, {method:"POST", body:data, headers:{"Accept":"application/json"}}));
   }
+
   async function postJson(url, data) {
     return readJson(await fetch(url, {
       method:"POST",
@@ -177,6 +412,7 @@
   }
 
   async function runAnalysis() {
+    syncTechnicalForm();
     if (!validatePage("goal")) return;
     resetRunUi();
     baselineResult = null;
@@ -187,7 +423,7 @@
 
     try {
       stage("baseline","active","rulează");
-      log("Construiesc modelul termic al casei actuale.");
+      log("Construiesc modelul termic al casei actuale din setul complet de inputuri Home Lab.");
       baselineResult = await postForm("/api/home-lab-next/calculate", baseFormData());
       stage("baseline","done","gata");
       log(`Baseline gata: ${fmt(baselineResult.final_energy_kwh)} kWh/an · necesar ${fmt(baselineResult.design_heat_load_kw,1)} kW.`);
@@ -209,9 +445,9 @@
         const label = branchMeta?.label || branchId;
         log(`${i + 1}/${branchIds.length} · ${label}: evaluare parametrică.`);
         const result = await postJson("/api/optimization/home-lab/v2/branch", {
-          form: formPayload,
+          form:formPayload,
           branchId,
-          shortlist: lastPlan.shortlist
+          shortlist:lastPlan.shortlist
         });
         branchResults.push(result);
         stage("branches","active",`${i + 1} / ${branchIds.length}`);
@@ -222,12 +458,12 @@
       stage("finalize","active","verifică");
       log("Verific finaliștii cu motorul complet și aplic discretizarea comercială disponibilă.");
       optimizationResult = await postJson("/api/optimization/home-lab/v2/finalize", {
-        form: formPayload,
+        form:formPayload,
         branchResults,
-        representativeEvaluations: lastPlan.representativeEvaluations || 0,
-        representativePoolSize: lastPlan.representativePoolSize || 0,
-        shortlistSize: lastPlan.shortlistSize || 0,
-        priorCalculationTimeMs: Number(lastPlan.calculationTimeMs || 0)
+        representativeEvaluations:lastPlan.representativeEvaluations || 0,
+        representativePoolSize:lastPlan.representativePoolSize || 0,
+        shortlistSize:lastPlan.shortlistSize || 0,
+        priorCalculationTimeMs:Number(lastPlan.calculationTimeMs || 0)
       });
       stage("finalize","done","gata");
       const opt = optimizationResult.optimization || {};
@@ -237,14 +473,14 @@
       const doneBits = [];
       if (opt.evaluatedCandidates != null) doneBits.push(`${opt.evaluatedCandidates} candidați evaluați`);
       if (opt.fullEngineVerifications != null) doneBits.push(`${opt.fullEngineVerifications} verificări finale`);
-      document.getElementById("doneMeta").textContent = doneBits.length ? doneBits.join(" · ") + "." : "Configurațiile au fost evaluate și rezultatul a fost verificat.";
+      $("#doneMeta").textContent = doneBits.length ? doneBits.join(" · ") + "." : "Configurațiile au fost evaluate și rezultatul a fost verificat.";
       showPage("done");
     } catch (error) {
       Object.entries(stageEls).forEach(([name, el]) => {
         if (el.classList.contains("is-active")) stage(name,"error","eroare");
       });
       log("EROARE · " + (error?.message || String(error)));
-      document.getElementById("errorText").textContent = error?.message || "A apărut o eroare neașteptată.";
+      $("#errorText").textContent = error?.message || "A apărut o eroare neașteptată.";
       showPage("error");
     }
   }
@@ -267,15 +503,15 @@
     const measures = opt.selected || [];
     const baselineBill = baselineResult.annual_cost_lei;
     const finalBill = commercial.annualBillLei ?? scenario.annual_cost_lei;
-    const locality = baselineResult.locality || localityInput.value;
+    const locality = baselineResult.locality || $("#localityInput").value;
 
-    document.getElementById("reportIntro").textContent =
-      `Analiza pornește de la locuința din ${locality} și compară intervențiile tehnice prin același motor energetic folosit pentru baseline și pentru verificarea finală.`;
+    $("#reportIntro").textContent =
+      `Analiza pornește de la locuința din ${locality}. Geometria, anvelopa, instalațiile și regenerabilele sunt introduse cu aceeași granularitate ca în Home Lab-ul tehnic.`;
 
     let html = `
       <section class="ed-report-section">
         <h2>Situația actuală</h2>
-        <p>În configurația introdusă, modelul estimează consumul energetic și puterea termică necesară folosind clima locală și anvelopa selectată.</p>
+        <p>Modelul folosește clima locală, geometria, straturile anvelopei și configurația instalațiilor declarate.</p>
         <div class="ed-metrics">
           ${metric("Energie finală", energy(baselineResult.final_energy_kwh))}
           ${metric("Cost anual estimat", money(baselineBill))}
@@ -369,24 +605,28 @@
         ${Array.isArray(opt.warnings) && opt.warnings.length ? `<h3>Limitări / avertismente</h3><ul>${opt.warnings.map(x => `<li>${escapeHtml(x)}</li>`).join("")}</ul>` : ""}
       </section>
     `;
-    document.getElementById("reportBody").innerHTML = html;
+    $("#reportBody").innerHTML = html;
   }
 
-  document.getElementById("runAnalysis").addEventListener("click", runAnalysis);
-  document.getElementById("openReport").addEventListener("click", () => showPage("report"));
-  document.getElementById("reportBack").addEventListener("click", () => showPage("done"));
-  document.getElementById("tryAgain").addEventListener("click", () => showPage("goal"));
+  $("#runAnalysis").addEventListener("click", runAnalysis);
+  $("#openReport").addEventListener("click", () => showPage("report"));
+  $("#reportBack").addEventListener("click", () => showPage("done"));
+  $("#tryAgain").addEventListener("click", () => showPage("goal"));
 
   function openLog() {
     logDialogBody.textContent = logLines.join("\n");
     if (typeof logDialog.showModal === "function") logDialog.showModal();
     else logDialog.setAttribute("open","");
   }
-  document.getElementById("showLog").addEventListener("click", openLog);
-  document.getElementById("errorLog").addEventListener("click", openLog);
-  document.getElementById("closeLog").addEventListener("click", () => logDialog.close());
+  $("#showLog").addEventListener("click", openLog);
+  $("#errorLog").addEventListener("click", openLog);
+  $("#closeLog").addEventListener("click", () => logDialog.close());
   logDialog.addEventListener("click", event => { if (event.target === logDialog) logDialog.close(); });
 
   syncGoalField();
+  updateGeometryDisplay(true);
+  applyHeatingDefaults();
+  syncRenewableVisibility();
+  syncTechnicalForm();
   showPage("intro");
 })();
