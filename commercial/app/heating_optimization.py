@@ -769,20 +769,26 @@ def _planning_heating_capex(
     min_power = float(points[0][0])
     max_power = float(points[-1][0])
     target = max(float(required_power_kw), 0.0)
-    if target > max_power + 1e-9:
-        return None
-
     if target <= min_power + 1e-9:
         return round(float(points[0][1]), 2), min_power, max_power, len(points)
 
     lower_power, lower_cost = points[0]
     upper_power, upper_cost = points[-1]
-    for index in range(1, len(points)):
-        candidate_upper = points[index]
-        if target <= float(candidate_upper[0]) + 1e-9:
-            lower_power, lower_cost = points[index - 1]
-            upper_power, upper_cost = candidate_upper
-            break
+    if target > max_power + 1e-9 and len(points) >= 2:
+        # Raw optimization must not discard a technically valid candidate only
+        # because today's catalog stops at a smaller commercial step. Extend
+        # the market-derived planning curve using the last two observed points;
+        # the finalist product-matching stage remains free to report that no
+        # real SKU covers the resulting design load.
+        lower_power, lower_cost = points[-2]
+        upper_power, upper_cost = points[-1]
+    else:
+        for index in range(1, len(points)):
+            candidate_upper = points[index]
+            if target <= float(candidate_upper[0]) + 1e-9:
+                lower_power, lower_cost = points[index - 1]
+                upper_power, upper_cost = candidate_upper
+                break
 
     span = float(upper_power) - float(lower_power)
     if span <= 1e-9:
