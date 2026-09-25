@@ -2791,7 +2791,7 @@
     const runToken = beginOptimizerRun();
     resetOptimizerConsole(settings.label);
     appendOptimizerConsole("info","PLAN","Construiesc ramurile și spațiul de căutare.");
-    const buttons = $("[data-hln-smart-config]");
+    const buttons = $$("[data-hln-smart-config]");
     buttons.forEach(button => button.disabled = true);
     setOptimizerBusy(true);
     setStatus(settings.working);
