@@ -795,11 +795,20 @@ def _planning_heating_capex(
     if span <= 1e-9:
         interpolated = float(upper_cost)
     else:
-        fraction = (target - float(lower_power)) / span
-        interpolated = float(lower_cost) + fraction * (
+        slope = (
             float(upper_cost) - float(lower_cost)
-        )
-    return round(interpolated, 2), min_power, max_power, len(points)
+        ) / span
+        if target > max_power + 1e-9 and slope < 0:
+            # Never extrapolate a locally cheaper larger SKU into an
+            # economically impossible negative generator price. Above the
+            # observed catalog range, a negative terminal slope is treated as
+            # a flat planning allowance at the last source-backed observation.
+            interpolated = float(upper_cost)
+        else:
+            interpolated = float(lower_cost) + (
+                target - float(lower_power)
+            ) * slope
+    return round(max(interpolated, 0.0), 2), min_power, max_power, len(points)
 
 
 def _rebase_candidate(
