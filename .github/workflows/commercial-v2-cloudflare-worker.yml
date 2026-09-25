@@ -394,6 +394,56 @@ jobs:
           if float(partner_next_payload.get("design_heat_load_kw", 0)) <= 0:
               raise AssertionError("Partner Home Lab Next API did not return design heat load.")
 
+          optimizer_form = dict(lab_form)
+          optimizer_form["_optimization_mode"] = "auto_economic"
+          optimizer_plan = json.loads(post(
+              "/api/optimization/home-lab/v2/plan",
+              optimizer_form,
+          ))
+          if optimizer_plan.get("optimizerVersion") != "v2-worker-safe":
+              raise AssertionError("Worker-safe V2 plan returned the wrong optimizer version.")
+          shortlist = optimizer_plan.get("shortlist") or []
+          run_branch_ids = optimizer_plan.get("runBranchIds") or []
+          if not shortlist or not run_branch_ids:
+              raise AssertionError("Worker-safe V2 plan did not expose shortlist/branches.")
+          if int(optimizer_plan.get("representativeEvaluations") or 0) > 29:
+              raise AssertionError("Worker-safe V2 representative search exceeded its CPU bound.")
+
+          optimizer_branch_results = []
+          for branch_id in run_branch_ids:
+              branch_payload = json.loads(post_json(
+                  "/api/optimization/home-lab/v2/branch",
+                  {
+                      "form": optimizer_form,
+                      "branchId": branch_id,
+                      "shortlist": shortlist,
+                  },
+              ))
+              if branch_payload.get("optimizerVersion") != "v2-worker-safe":
+                  raise AssertionError(f"V2 branch {branch_id} returned the wrong version.")
+              if int(branch_payload.get("fastEvaluations") or 0) > len(shortlist):
+                  raise AssertionError(f"V2 branch {branch_id} exceeded shortlist evaluation bound.")
+              optimizer_branch_results.append(branch_payload)
+
+          optimizer_final = json.loads(post_json(
+              "/api/optimization/home-lab/v2/finalize",
+              {
+                  "form": optimizer_form,
+                  "branchResults": optimizer_branch_results,
+                  "representativeEvaluations": optimizer_plan.get("representativeEvaluations", 0),
+                  "representativePoolSize": optimizer_plan.get("representativePoolSize", 0),
+                  "shortlistSize": len(shortlist),
+                  "priorCalculationTimeMs": optimizer_plan.get("calculationTimeMs", 0),
+              },
+          ))
+          optimizer_meta = optimizer_final.get("optimization") or {}
+          if optimizer_meta.get("optimizerVersion") != "v2-worker-safe":
+              raise AssertionError("Worker-safe V2 finalize returned the wrong optimizer version.")
+          if int(optimizer_meta.get("fullEngineVerifications") or 0) > 3:
+              raise AssertionError("Worker-safe V2 exceeded canonical verification bound.")
+          if float((optimizer_final.get("scenario") or {}).get("final_energy_kwh", 0)) <= 0:
+              raise AssertionError("Worker-safe V2 did not return a valid final scenario.")
+
           scenario_payload = json.loads(post_json(
               "/api/scenarios/wall-insulation",
               {

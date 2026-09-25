@@ -38,8 +38,12 @@ from .optimization import (
     select_optimization_candidate,
 )
 from .optimization_v2 import (
+    V2_WORKER_VERIFICATION_LIMIT,
+    build_worker_safe_plan_v2,
+    evaluate_worker_safe_branch_v2,
     run_physics_informed_optimization,
     select_optimization_candidate_v2,
+    verify_worker_safe_finalists_v2,
 )
 from .commercialization import (
     WallCommercializationRequestV1,
@@ -2416,6 +2420,326 @@ def _home_lab_optimizer_success_payload(
         "scenario": embed_lab_result_payload(final_result),
         "optimization": optimization_payload,
     }
+
+
+
+@app.post("/api/optimization/home-lab/v2/plan")
+async def home_lab_optimization_v2_plan_api(request: Request) -> JSONResponse:
+    """Build the physical shortlist in one CPU-bounded Worker request."""
+
+    form = dict(await request.form())
+    try:
+        mode, _, optimization_request = _home_lab_optimization_request_from_form(form)
+        cost_catalog = await _optimizer_cost_catalog(request)
+        heating_catalog = await _optimizer_heating_catalog(request)
+        started = time.perf_counter()
+        plan = build_worker_safe_plan_v2(
+            optimization_request,
+            bounds=OptimizationSearchBoundsV1(),
+            catalog=cost_catalog,
+            heating_catalog=heating_catalog,
+        )
+        elapsed_ms = round((time.perf_counter() - started) * 1000.0, 1)
+        economic_ids = [
+            item.branch_id
+            for item in plan.branches
+            if item.eligible and item.economic_eligible
+        ]
+        technical_ids = [
+            item.branch_id
+            for item in plan.branches
+            if item.eligible and not item.economic_eligible
+        ]
+        return JSONResponse(
+            {
+                "optimizerVersion": "v2-worker-safe",
+                "economicMode": mode.value,
+                "label": _home_lab_optimizer_label(mode, form),
+                "searchMethod": plan.search_method,
+                "shortlist": [
+                    model_to_dict(item)
+                    for item in plan.shortlist
+                ],
+                "branches": [
+                    model_to_dict(item)
+                    for item in plan.branches
+                ],
+                "runBranchIds": economic_ids,
+                "technicalPreviewBranchIds": technical_ids,
+                "representativeEvaluations": int(
+                    plan.representative_evaluations
+                ),
+                "representativePoolSize": int(
+                    plan.representative_pool_size
+                ),
+                "shortlistSize": len(plan.shortlist),
+                "calculationTimeMs": elapsed_ms,
+                "executionMode": "worker_safe_staged_v2",
+            }
+        )
+    except Exception as exc:
+        return JSONResponse(
+            {
+                "error": user_error(exc),
+                "optimizerVersion": "v2-worker-safe",
+                "stage": "plan",
+            },
+            status_code=422,
+        )
+
+
+@app.post("/api/optimization/home-lab/v2/branch")
+async def home_lab_optimization_v2_branch_api(request: Request) -> JSONResponse:
+    """Evaluate one heating technology over the shared V2 shortlist."""
+
+    try:
+        raw = await request.json()
+        form = dict(raw.get("form") or {})
+        branch_id = str(raw.get("branchId", "") or "").strip()
+        shortlist_raw = raw.get("shortlist") or []
+        if not branch_id:
+            raise ValueError("Lipsește ramura de încălzire V2.")
+        if not isinstance(shortlist_raw, list) or not shortlist_raw:
+            raise ValueError("Lipsește shortlist-ul fizic V2.")
+
+        _, _, optimization_request = _home_lab_optimization_request_from_form(form)
+        shortlist = [
+            ParametricMeasuresV1(**item)
+            for item in shortlist_raw
+            if isinstance(item, dict)
+        ]
+        cost_catalog = await _optimizer_cost_catalog(request)
+        heating_catalog = await _optimizer_heating_catalog(request)
+        started = time.perf_counter()
+        result = evaluate_worker_safe_branch_v2(
+            optimization_request,
+            branch_id=branch_id,
+            shortlist=shortlist,
+            bounds=OptimizationSearchBoundsV1(),
+            catalog=cost_catalog,
+            heating_catalog=heating_catalog,
+        )
+        elapsed_ms = round((time.perf_counter() - started) * 1000.0, 1)
+        return JSONResponse(
+            {
+                "optimizerVersion": "v2-worker-safe",
+                "branch": model_to_dict(result.branch),
+                "candidates": [
+                    model_to_dict(item)
+                    for item in result.candidates
+                ],
+                "candidateCount": len(result.candidates),
+                "fastEvaluations": int(result.fast_evaluations),
+                "calculationTimeMs": elapsed_ms,
+                "searchMethod": result.search_method,
+            }
+        )
+    except Exception as exc:
+        return JSONResponse(
+            {
+                "error": user_error(exc),
+                "optimizerVersion": "v2-worker-safe",
+                "stage": "branch",
+            },
+            status_code=422,
+        )
+
+
+@app.post("/api/optimization/home-lab/v2/finalize")
+async def home_lab_optimization_v2_finalize_api(request: Request) -> JSONResponse:
+    """Rank branch candidates, canonically verify a few, then commercialize."""
+
+    try:
+        raw = await request.json()
+        form = dict(raw.get("form") or {})
+        branch_results = raw.get("branchResults") or []
+        representative_evaluations = int(
+            raw.get("representativeEvaluations") or 0
+        )
+        representative_pool_size = int(
+            raw.get("representativePoolSize") or 0
+        )
+        shortlist_size = int(raw.get("shortlistSize") or 0)
+        if not isinstance(branch_results, list) or not branch_results:
+            raise ValueError("Lipsesc rezultatele ramurilor V2.")
+
+        mode, _, optimization_request = _home_lab_optimization_request_from_form(form)
+        cost_catalog = await _optimizer_cost_catalog(request)
+        heating_catalog = await _optimizer_heating_catalog(request)
+        started = time.perf_counter()
+
+        fast_candidates: list[CandidateEvaluationV1] = []
+        candidate_branch_ids: dict[str, str] = {}
+        branch_summaries_by_id: dict[str, HeatingBranchSummaryV1] = {}
+        branch_fast_evaluations = 0
+        heating_branch_evaluations = 0
+        prior_elapsed_ms = float(raw.get("priorCalculationTimeMs") or 0.0)
+
+        for item in branch_results:
+            if not isinstance(item, dict):
+                continue
+            branch = HeatingBranchSummaryV1(**(item.get("branch") or {}))
+            branch_summaries_by_id[branch.branch_id] = branch
+            branch_evals = int(item.get("fastEvaluations") or 0)
+            branch_fast_evaluations += branch_evals
+            if branch.branch_id != "keep-current-heating":
+                heating_branch_evaluations += branch_evals
+            prior_elapsed_ms += float(item.get("calculationTimeMs") or 0.0)
+            for candidate_raw in item.get("candidates") or []:
+                if not isinstance(candidate_raw, dict):
+                    continue
+                candidate = CandidateEvaluationV1(**candidate_raw)
+                fast_candidates.append(candidate)
+                candidate_branch_ids[candidate.candidate_id] = branch.branch_id
+
+        if not fast_candidates:
+            raise ValueError("V2 nu a produs candidați economici între ramuri.")
+
+        verification = verify_worker_safe_finalists_v2(
+            optimization_request,
+            candidates=fast_candidates,
+            candidate_branch_ids=candidate_branch_ids,
+            catalog=cost_catalog,
+            heating_catalog=heating_catalog,
+            verification_limit=V2_WORKER_VERIFICATION_LIMIT,
+        )
+        verified = verification.candidates or fast_candidates
+        verified_branch_ids = (
+            verification.candidate_branch_ids
+            if verification.candidates
+            else candidate_branch_ids
+        )
+        raw_selection = select_optimization_candidate_v2(
+            optimization_request,
+            verified,
+        )
+        if raw_selection.selected is None:
+            raise ValueError(
+                "Nicio soluție V2 verificată nu satisface condiția economică."
+            )
+
+        raw_selected = raw_selection.selected
+        ordered_rechecks: list[CandidateEvaluationV1] = [raw_selected]
+        for item in pareto_frontier(verified):
+            if item.candidate_id == raw_selected.candidate_id:
+                continue
+            ordered_rechecks.append(item)
+            if len(ordered_rechecks) >= V2_WORKER_VERIFICATION_LIMIT:
+                break
+
+        commercial_rows: list[CandidateEvaluationV1] = []
+        commercial_warnings: list[str] = []
+        commercial_recheck_count = 0
+        for raw_candidate in ordered_rechecks:
+            commercial_candidate, matched_product, product_warnings = (
+                commercialize_heating_finalist(
+                    raw_candidate,
+                    original_building=optimization_request.baseline,
+                    heating_catalog=heating_catalog,
+                    branch_id=verified_branch_ids.get(
+                        raw_candidate.candidate_id
+                    ),
+                )
+            )
+            commercial_rows.append(commercial_candidate)
+            commercial_warnings.extend(product_warnings)
+            if matched_product is not None:
+                commercial_recheck_count += 1
+
+        selection = select_optimization_candidate_v2(
+            optimization_request,
+            commercial_rows,
+        )
+        if selection.selected is None:
+            selection = raw_selection
+
+        # Rebuild complete branch metadata cheaply for the report. Technical
+        # branches are listed explicitly but are not simulated in this final
+        # request; doing so would recreate the Worker CPU spike that caused
+        # production 503s. They remain visible as technical-only alternatives.
+        all_branches = heating_branch_plan(
+            optimization_request,
+            heating_catalog,
+        )
+        branch_summaries: list[HeatingBranchSummaryV1] = []
+        for branch in all_branches:
+            existing = branch_summaries_by_id.get(branch.branch_id)
+            branch_summaries.append(existing or branch)
+
+        elapsed_ms = round(
+            prior_elapsed_ms
+            + (time.perf_counter() - started) * 1000.0,
+            1,
+        )
+        total_fast = representative_evaluations + branch_fast_evaluations
+        payload = _home_lab_optimizer_success_payload(
+            mode=mode,
+            form=form,
+            selection=selection,
+            branches=branch_summaries,
+            evaluated_candidates=len(fast_candidates),
+            parametric_evaluations=total_fast,
+            heating_branch_evaluations=heating_branch_evaluations,
+            warnings=[
+                (
+                    "Optimizer V2 Worker-safe: plan fizic, ramuri de încălzire și "
+                    "verificare finală executate în requesturi CPU-bounded."
+                ),
+                (
+                    f"Shortlist comun: {shortlist_size} configurații; "
+                    f"{representative_evaluations} evaluări reprezentative + "
+                    f"{branch_fast_evaluations} evaluări de ramură."
+                ),
+                (
+                    f"Motorul canonic complet a verificat "
+                    f"{verification.full_engine_evaluations} finaliști."
+                ),
+                (
+                    "Ramurile tehnice fără curbă CAPEX source-backed rămân vizibile "
+                    "în raport, dar nu sunt simulate în requestul final pentru a nu "
+                    "reintroduce faultul CPU 503."
+                ),
+                *verification.warnings,
+                *commercial_warnings,
+            ],
+            calculation_time_ms=elapsed_ms,
+            pareto_scope="worker_safe_v2_verified_finalists",
+            raw_selected=raw_selected,
+            technical_heating_alternatives=[],
+        )
+        payload["optimization"].update(
+            {
+                "optimizerVersion": "v2-worker-safe",
+                "searchMethod": "physics_informed_marginal_curve_worker_safe_v2",
+                "executionMode": "worker_safe_staged_v2",
+                "fastEvaluations": int(total_fast),
+                "representativeEvaluations": int(
+                    representative_evaluations
+                ),
+                "branchFastEvaluations": int(
+                    branch_fast_evaluations
+                ),
+                "fullEngineVerifications": int(
+                    verification.full_engine_evaluations
+                ),
+                "representativePoolSize": int(
+                    representative_pool_size
+                ),
+                "shortlistSize": int(shortlist_size),
+                "commercialRechecks": len(ordered_rechecks),
+                "commercialMatches": int(commercial_recheck_count),
+            }
+        )
+        return JSONResponse(payload)
+    except Exception as exc:
+        return JSONResponse(
+            {
+                "error": user_error(exc),
+                "optimizerVersion": "v2-worker-safe",
+                "stage": "finalize",
+            },
+            status_code=422,
+        )
 
 
 @app.post("/api/optimization/home-lab/v2")

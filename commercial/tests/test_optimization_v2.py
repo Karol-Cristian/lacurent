@@ -14,6 +14,8 @@ from commercial.app.optimization import (
 from commercial.app.optimization_v2 import (
     _fast_engine_candidate,
     axis_probe_measures_v2,
+    build_worker_safe_plan_v2,
+    evaluate_worker_safe_branch_v2,
     run_physics_informed_optimization,
     select_optimization_candidate_v2,
 )
@@ -158,3 +160,55 @@ def test_v2_bounds_full_engine_verification_count() -> None:
     assert result.shortlist_size <= 4
     assert result.search_method == "physics_informed_marginal_pareto_v2"
     assert any("marginal-value ladder" in item for item in result.warnings)
+
+
+
+def test_worker_safe_v2_bounds_representative_search_and_shortlist() -> None:
+    request = OptimizationRequestV1(
+        baseline=demo_building(),
+        mode=OptimizationMode.auto_economic,
+    )
+    plan = build_worker_safe_plan_v2(
+        request,
+        bounds=OptimizationSearchBoundsV1(),
+        catalog=_catalog(),
+        shortlist_limit=6,
+    )
+
+    assert plan.shortlist
+    assert len(plan.shortlist) <= 6
+    # 15 symmetric axis probes + at most 14 combined marginal-curve steps.
+    assert plan.representative_evaluations <= 29
+    assert plan.representative_pool_size >= len(plan.shortlist)
+    assert plan.search_method == "physics_informed_marginal_curve_worker_safe_v2"
+
+
+def test_worker_safe_v2_evaluates_only_shared_shortlist_per_branch() -> None:
+    request = OptimizationRequestV1(
+        baseline=demo_building(),
+        mode=OptimizationMode.auto_economic,
+    )
+    plan = build_worker_safe_plan_v2(
+        request,
+        bounds=OptimizationSearchBoundsV1(),
+        catalog=_catalog(),
+        shortlist_limit=4,
+    )
+    branch_id = next(
+        item.branch_id
+        for item in plan.branches
+        if item.eligible and item.economic_eligible
+    )
+
+    result = evaluate_worker_safe_branch_v2(
+        request,
+        branch_id=branch_id,
+        shortlist=plan.shortlist,
+        bounds=OptimizationSearchBoundsV1(),
+        catalog=_catalog(),
+    )
+
+    assert result.candidates
+    assert result.fast_evaluations <= len(plan.shortlist)
+    assert len(result.candidates) <= len(plan.shortlist)
+    assert result.branch.branch_id == branch_id
