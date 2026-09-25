@@ -24,6 +24,7 @@ from .optimization import (
     OptimizationCandidateRequestV1,
     OptimizationMode,
     OptimizationRequestV1,
+    OptimizationSearchBoundsV1,
     OptimizationSearchRequestV1,
     OptimizationSelectionRequestV1,
     evaluate_parametric_candidate,
@@ -40,6 +41,7 @@ from .full_commercialization import (
     FullProductBackedOptimizationRequestV1,
     run_full_product_backed_optimization,
 )
+from .heating_optimization import run_mixed_heating_optimization
 from .pricing import energy_prices, estimate_energy_cost, home_lab_price_overview
 from .personal_blog import router as personal_blog_router
 from .cost_curves import (
@@ -2177,22 +2179,25 @@ async def home_lab_parametric_optimization_api(request: Request) -> JSONResponse
             )
 
         optimization_request = OptimizationRequestV1(**request_kwargs)
-        search_request = OptimizationSearchRequestV1(
-            request=optimization_request,
-            max_evaluations=24,
+        mixed_result = run_mixed_heating_optimization(
+            optimization_request,
+            bounds=OptimizationSearchBoundsV1(),
+            catalog=await _optimizer_cost_catalog(request),
+            max_evaluations_per_branch=48,
         )
-        search_result = run_parametric_optimization(
-            search_request,
-            await _optimizer_cost_catalog(request),
-        )
-        selected = search_result.selection.selected
+        selected = mixed_result.selection.selected
         if selected is None or selected.resulting_configuration is None:
             return JSONResponse(
                 {
                     "error": "Nu există nicio soluție care satisface condiția economică aleasă în spațiul analizat.",
-                    "selection": model_to_dict(search_result.selection),
-                    "evaluated_candidates": search_result.evaluated_candidates,
-                    "pareto_count": len(search_result.pareto_candidate_ids),
+                    "selection": model_to_dict(mixed_result.selection),
+                    "evaluated_candidates": len(mixed_result.candidates),
+                    "parametric_evaluations": mixed_result.parametric_evaluations,
+                    "heating_branch_evaluations": mixed_result.heating_branch_evaluations,
+                    "heating_branches": [
+                        model_to_dict(item) for item in mixed_result.branches
+                    ],
+                    "pareto_count": mixed_result.selection.pareto_count,
                 },
                 status_code=422,
             )
@@ -2210,12 +2215,30 @@ async def home_lab_parametric_optimization_api(request: Request) -> JSONResponse
             )
         )
         active_rows = _optimizer_measure_rows(selected)
+        selected_heating = next(
+            (
+                {
+                    "label": line.note.split(". ", 1)[0] if line.note else "Sistem de încălzire",
+                    "capexLei": float(line.capex_lei),
+                    "ratedPowerKw": float(line.parameter_value),
+                    "sourceKind": line.source_kind,
+                    "sourceUrl": line.source_url,
+                    "confidence": line.confidence,
+                    "optionId": line.product_id,
+                    "equipmentPriceLei": line.material_subtotal_lei,
+                    "installationAllowanceLei": line.nonmaterial_subtotal_lei,
+                }
+                for line in selected.cost_breakdown
+                if line.family == "heating"
+            ),
+            None,
+        )
         optimization_payload = {
             "kind": "parametric_economic",
             "mode": "parametric_economic",
             "economicMode": mode.value,
             "label": _home_lab_optimizer_label(mode, form),
-            "rationale": search_result.selection.rationale,
+            "rationale": mixed_result.selection.rationale,
             "capexLei": float(selected.capex_lei),
             "annualSavingLei": float(selected.annual_saving_lei),
             "roiPercentPerYear": (
@@ -2229,9 +2252,15 @@ async def home_lab_parametric_optimization_api(request: Request) -> JSONResponse
                 else float(selected.payback_years)
             ),
             "selected": active_rows,
-            "evaluatedCandidates": int(search_result.evaluated_candidates),
-            "feasibleCandidates": int(search_result.selection.feasible_count),
-            "paretoSolutions": int(search_result.selection.pareto_count),
+            "selectedHeating": selected_heating,
+            "evaluatedCandidates": int(len(mixed_result.candidates)),
+            "parametricEvaluations": int(mixed_result.parametric_evaluations),
+            "heatingBranchEvaluations": int(mixed_result.heating_branch_evaluations),
+            "feasibleCandidates": int(mixed_result.selection.feasible_count),
+            "paretoSolutions": int(mixed_result.selection.pareto_count),
+            "heatingBranches": [
+                model_to_dict(item) for item in mixed_result.branches
+            ],
             "rawSolution": raw_measures,
             "rawEvaluation": {
                 "candidateId": selected.candidate_id,
@@ -2261,10 +2290,10 @@ async def home_lab_parametric_optimization_api(request: Request) -> JSONResponse
             "costSource": selected.cost_source,
             "costCatalogVersion": selected.cost_catalog_version,
             "warnings": [
-                *search_result.warnings,
+                *mixed_result.warnings,
                 *selected.warnings,
             ],
-            "autoHorizonsYears": search_result.selection.auto_horizons_years,
+            "autoHorizonsYears": mixed_result.selection.auto_horizons_years,
         }
         return JSONResponse(
             {
