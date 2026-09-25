@@ -2370,7 +2370,7 @@ async def home_lab_optimization_plan_api(request: Request) -> JSONResponse:
                 "microBatchSize": 1,
                 "phaseOffsets": list(range(12)),
                 "evaluationsPerBranch": 36,
-                "requestGapMs": 1000,
+                "requestGapMs": 250,
                 "restartCooldownMs": 3000,
             }
         )
