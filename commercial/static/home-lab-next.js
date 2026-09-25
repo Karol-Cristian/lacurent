@@ -1582,7 +1582,8 @@
     options = {},
     parentSignal = null,
     timeoutMs = OPTIMIZER_REQUEST_TIMEOUT_MS,
-    maxAttempts = 5
+    maxAttempts = 5,
+    useGlobalPacing = true
   ) {
     let lastResult = null;
     let lastError = null;
@@ -1595,15 +1596,16 @@
       }
 
       try {
-        await waitForOptimizerRequestSlot(parentSignal);
+        if (useGlobalPacing) await waitForOptimizerRequestSlot(parentSignal);
         let result;
         try {
           result = await fetchWithTimeout(url, options, parentSignal, timeoutMs);
         } finally {
-          // Measure the pacing gap from request completion, not request start.
-          // A heavy 2–3 s Worker request therefore still gets a quiet period
-          // before the next optimizer micro-batch starts.
-          optimizerLastRemoteRequestAt = Date.now();
+          if (useGlobalPacing) {
+            // Plan/finalize remain serialized. Candidate requests use a bounded
+            // parallel pool, one candidate per Worker request.
+            optimizerLastRemoteRequestAt = Date.now();
+          }
         }
         lastResult = result;
         const status = Number(result?.response?.status || 0);
