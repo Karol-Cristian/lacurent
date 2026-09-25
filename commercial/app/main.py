@@ -30,6 +30,7 @@ from .optimization import (
     OptimizationSearchRequestV1,
     OptimizationSelectionRequestV1,
     evaluate_parametric_candidate,
+    _fallback_refinement_seed,
     run_parametric_optimization,
     select_optimization_candidate,
 )
@@ -2343,10 +2344,20 @@ async def home_lab_optimization_plan_api(request: Request) -> JSONResponse:
 
 @app.post("/api/optimization/home-lab/branch")
 async def home_lab_optimization_branch_api(request: Request) -> JSONResponse:
-    form = dict(await request.form())
-    branch_id = str(form.pop("_heating_branch_id", "") or "").strip()
-    search_phase = str(form.pop("_search_phase", "") or "").strip()
-    raw_prior = str(form.pop("_prior_candidates_json", "") or "").strip()
+    content_type = str(request.headers.get("content-type", "") or "").lower()
+    prior_payload: Any = None
+    if "application/json" in content_type:
+        raw = await request.json()
+        form = dict(raw.get("form") or {})
+        branch_id = str(raw.get("branchId", "") or "").strip()
+        search_phase = str(raw.get("searchPhase", "") or "").strip()
+        prior_payload = raw.get("priorCandidates")
+    else:
+        form = dict(await request.form())
+        branch_id = str(form.pop("_heating_branch_id", "") or "").strip()
+        search_phase = str(form.pop("_search_phase", "") or "").strip()
+        prior_payload = str(form.pop("_prior_candidates_json", "") or "").strip()
+
     if not branch_id:
         return JSONResponse({"error": "Lipsește ramura de încălzire."}, status_code=422)
     if search_phase not in {"axis", "halton", "refine"}:
@@ -2360,13 +2371,18 @@ async def home_lab_optimization_branch_api(request: Request) -> JSONResponse:
             },
             status_code=409,
         )
+
     try:
         _, _, optimization_request = _home_lab_optimization_request_from_form(form)
         refinement_seed = None
         if search_phase == "refine":
-            if not raw_prior:
+            if prior_payload in (None, "", []):
                 raise ValueError("Faza de refinement necesită candidații fazelor anterioare.")
-            decoded_prior = json.loads(raw_prior)
+            decoded_prior = (
+                prior_payload
+                if isinstance(prior_payload, list)
+                else json.loads(str(prior_payload))
+            )
             if not isinstance(decoded_prior, list):
                 raise ValueError("Candidații anteriori trebuie să fie o listă.")
             prior_candidates = [
@@ -2378,10 +2394,13 @@ async def home_lab_optimization_branch_api(request: Request) -> JSONResponse:
                 optimization_request,
                 prior_candidates,
             )
-            seed_candidate = prior_selection.selected
+            seed_candidate = prior_selection.selected or _fallback_refinement_seed(
+                optimization_request,
+                prior_candidates,
+            )
             if seed_candidate is None:
                 raise ValueError(
-                    "Nu există un candidat anterior eligibil pentru refinement."
+                    "Nu există un candidat anterior disponibil pentru refinement."
                 )
             refinement_seed = ParametricMeasuresV1(
                 **model_to_dict(seed_candidate.parameters)
@@ -2418,13 +2437,20 @@ async def home_lab_optimization_branch_api(request: Request) -> JSONResponse:
 
 @app.post("/api/optimization/home-lab/finalize")
 async def home_lab_optimization_finalize_api(request: Request) -> JSONResponse:
-    form = dict(await request.form())
-    raw_results = str(form.pop("_branch_results_json", "") or "").strip()
-    if not raw_results:
+    content_type = str(request.headers.get("content-type", "") or "").lower()
+    if "application/json" in content_type:
+        raw = await request.json()
+        form = dict(raw.get("form") or {})
+        decoded = raw.get("branchResults")
+    else:
+        form = dict(await request.form())
+        raw_results = str(form.pop("_branch_results_json", "") or "").strip()
+        decoded = json.loads(raw_results) if raw_results else None
+
+    if not decoded:
         return JSONResponse({"error": "Lipsesc rezultatele ramurilor de încălzire."}, status_code=422)
     try:
         mode, _, optimization_request = _home_lab_optimization_request_from_form(form)
-        decoded = json.loads(raw_results)
         if not isinstance(decoded, list):
             raise ValueError("Rezultatele ramurilor trebuie să fie o listă.")
 
