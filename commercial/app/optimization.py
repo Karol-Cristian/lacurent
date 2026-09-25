@@ -1069,6 +1069,7 @@ def run_parametric_optimization(
     search_phase: Literal["full", "axis", "halton", "refine"] = "full",
     refinement_seed: ParametricMeasuresV1 | None = None,
     halton_start_index: int = 1,
+    phase_candidate_offset: int = 0,
 ) -> OptimizationSearchResultV1:
     """Deterministic bounded search in raw physical parameter space.
 
@@ -1122,7 +1123,32 @@ def run_parametric_optimization(
         evaluated.append(item)
         return True
 
-    if search_phase in {"full", "axis"}:
+    if search_phase == "axis":
+        axis_candidates: list[ParametricMeasuresV1] = [
+            ParametricMeasuresV1(
+                window_target_u_w_m2k=bounds.window_target_u_w_m2k,
+            )
+        ]
+        for dimension in range(len(_SEARCH_DIMENSIONS)):
+            for level in (0.5, 1.0):
+                vector = [0.0] * len(_SEARCH_DIMENSIONS)
+                vector[dimension] = level
+                axis_candidates.append(_measures_from_normalized(vector, bounds))
+
+        unique_axis: list[ParametricMeasuresV1] = []
+        axis_seen: set[tuple[float, ...]] = set()
+        for measures in axis_candidates:
+            signature = _measure_signature(measures)
+            if signature in axis_seen:
+                continue
+            axis_seen.add(signature)
+            unique_axis.append(measures)
+
+        offset = max(int(phase_candidate_offset), 0)
+        for measures in unique_axis[offset:offset + max_evaluations]:
+            evaluate_if_new(measures)
+
+    elif search_phase == "full":
         evaluate_if_new(
             ParametricMeasuresV1(
                 window_target_u_w_m2k=bounds.window_target_u_w_m2k,
@@ -1139,7 +1165,7 @@ def run_parametric_optimization(
                 break
 
     if search_phase == "halton":
-        halton_index = max(int(halton_start_index), 1)
+        halton_index = max(int(halton_start_index) + max(int(phase_candidate_offset), 0), 1)
         attempts = 0
         attempt_limit = max_evaluations * 8
         while engine_evaluations < max_evaluations and attempts < attempt_limit:
@@ -1155,21 +1181,26 @@ def run_parametric_optimization(
         if refinement_seed is None:
             raise ValueError("Refinement phase requires a seed candidate.")
         origin = _normalized_from_measures(refinement_seed, bounds)
+        refinement_candidates: list[ParametricMeasuresV1] = []
+        refinement_seen: set[tuple[float, ...]] = set()
         for step_fraction in (0.125, 0.0625, 0.03125):
-            if engine_evaluations >= max_evaluations:
-                break
             for dimension in range(len(_SEARCH_DIMENSIONS)):
                 for direction in (-1.0, 1.0):
-                    if engine_evaluations >= max_evaluations:
-                        break
                     vector = list(origin)
                     vector[dimension] = min(
                         max(vector[dimension] + direction * step_fraction, 0.0),
                         1.0,
                     )
-                    evaluate_if_new(_measures_from_normalized(vector, bounds))
-                if engine_evaluations >= max_evaluations:
-                    break
+                    measures = _measures_from_normalized(vector, bounds)
+                    signature = _measure_signature(measures)
+                    if signature in refinement_seen:
+                        continue
+                    refinement_seen.add(signature)
+                    refinement_candidates.append(measures)
+
+        offset = max(int(phase_candidate_offset), 0)
+        for measures in refinement_candidates[offset:offset + max_evaluations]:
+            evaluate_if_new(measures)
 
     elif search_phase == "full":
         refinement_reserve = max(6, min(12, max_evaluations // 4))
