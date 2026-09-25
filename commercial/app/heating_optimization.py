@@ -9,7 +9,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from .engine import calculate
-from .methodology import methodology
+from .methodology import methodology, resolve_climate
 from .models import (
     BuildingInput,
     Carrier,
@@ -49,10 +49,36 @@ HYDRONIC_DISTRIBUTIONS = {
 }
 
 
+class HeatPumpPerformancePointV1(BaseModel):
+    product_id: str
+    outdoor_temperature_c: float
+    flow_temperature_c: float
+    return_temperature_c: float | None = None
+    delta_t_k: float | None = None
+    heating_capacity_kw: float | None = Field(default=None, gt=0)
+    cop: float = Field(gt=1)
+    test_standard: str | None = None
+    source_kind: str
+    source_url: str | None = None
+    note: str = ""
+
+
+class HeatPumpSeasonalPerformanceV1(BaseModel):
+    product_id: str
+    climate: str
+    application_temperature_c: float
+    scop: float = Field(gt=1)
+    design_load_kw: float | None = Field(default=None, gt=0)
+    source_kind: str
+    source_url: str | None = None
+    test_standard: str | None = None
+
+
 class HeatingPlanningOptionV1(BaseModel):
     technology_id: str
     technology_label: str
     id: str
+    external_id: str | None = None
     label: str
     system_type: HeatingSystemType
     generator_type: HeatingGeneratorType
@@ -79,6 +105,8 @@ class HeatingPlanningOptionV1(BaseModel):
     requires_existing_biomass_infrastructure: bool = False
     capacity_basis: str = "catalog_nominal_output"
     note: str = ""
+    performance_points: list[HeatPumpPerformancePointV1] = Field(default_factory=list)
+    seasonal_performance: list[HeatPumpSeasonalPerformanceV1] = Field(default_factory=list)
 
     @property
     def installed_capex_lei(self) -> float:
@@ -146,14 +174,38 @@ def heating_planning_catalog() -> dict[str, Any]:
     return json.loads(DATA_PATH.read_text(encoding="utf-8"))
 
 
-def heating_planning_options() -> list[HeatingPlanningOptionV1]:
-    raw = heating_planning_catalog()
-    return [HeatingPlanningOptionV1(**item) for item in raw.get("options", [])]
+def heating_planning_options(
+    catalog: dict[str, Any] | None = None,
+) -> list[HeatingPlanningOptionV1]:
+    raw = catalog or heating_planning_catalog()
+    points_by_product: dict[str, list[dict[str, Any]]] = {}
+    for point in raw.get("heat_pump_performance_points", []):
+        product_id = str(point.get("product_id") or "")
+        if product_id:
+            points_by_product.setdefault(product_id, []).append(point)
+    seasonal_by_product: dict[str, list[dict[str, Any]]] = {}
+    for item in raw.get("heat_pump_seasonal_performance", []):
+        product_id = str(item.get("product_id") or "")
+        if product_id:
+            seasonal_by_product.setdefault(product_id, []).append(item)
+
+    options: list[HeatingPlanningOptionV1] = []
+    for item in raw.get("options", []):
+        product_id = str(item.get("id") or "")
+        payload = {
+            **item,
+            "performance_points": points_by_product.get(product_id, []),
+            "seasonal_performance": seasonal_by_product.get(product_id, []),
+        }
+        options.append(HeatingPlanningOptionV1(**payload))
+    return options
 
 
-def heating_technologies() -> list[HeatingTechnologyV2]:
+def heating_technologies(
+    catalog: dict[str, Any] | None = None,
+) -> list[HeatingTechnologyV2]:
     grouped: dict[str, list[HeatingPlanningOptionV1]] = {}
-    for item in heating_planning_options():
+    for item in heating_planning_options(catalog):
         grouped.setdefault(item.technology_id, []).append(item)
     return [
         HeatingTechnologyV2(
@@ -379,6 +431,175 @@ def _select_sized_product(
     )
 
 
+def _heat_pump_design_temperatures(
+    building: BuildingInput,
+) -> tuple[float, float, float]:
+    details = _default_details(building)
+    emitter_cfg = methodology()["heating_system_chain_light"]["emitters"][
+        details.emitter_type.value
+    ]
+    flow_c = float(
+        details.design_flow_temperature_c
+        if details.design_flow_temperature_c is not None
+        else emitter_cfg["flow_c"]
+    )
+    return_c = float(
+        details.design_return_temperature_c
+        if details.design_return_temperature_c is not None
+        else emitter_cfg["return_c"]
+    )
+    return flow_c, return_c, max(flow_c - return_c, 1.0)
+
+
+def _weather_compensated_flow_temperature_c(
+    building: BuildingInput,
+    *,
+    outdoor_temperature_c: float,
+    winter_design_temperature_c: float,
+) -> tuple[float, float]:
+    design_flow_c, design_return_c, design_delta_t_k = _heat_pump_design_temperatures(
+        building
+    )
+    indoor_c = float(building.indoor_design_temperature_c)
+    # Light Engine estimate: at zero space-heating load the circuit approaches
+    # a low hydronic floor, while at the normative winter design point it reaches
+    # the emitter design flow temperature. It is deliberately exposed as an
+    # assumption until emitter-by-emitter EN 442 / EN 1264 data is collected.
+    emitter = _default_details(building).emitter_type
+    min_flow_by_emitter = {
+        HeatingEmitterType.underfloor: 25.0,
+        HeatingEmitterType.radiators_low_temp: 30.0,
+        HeatingEmitterType.fan_coils: 30.0,
+        HeatingEmitterType.radiators_high_temp: 35.0,
+    }
+    min_flow_c = min(
+        design_flow_c,
+        min_flow_by_emitter.get(emitter, max(25.0, indoor_c + 5.0)),
+    )
+    denominator = max(indoor_c - float(winter_design_temperature_c), 1.0)
+    load_fraction = (
+        indoor_c - float(outdoor_temperature_c)
+    ) / denominator
+    load_fraction = min(max(load_fraction, 0.0), 1.0)
+    flow_c = min_flow_c + load_fraction * (design_flow_c - min_flow_c)
+    # Keep the design delta-T as the MVP hydronic assumption. The D1 schema
+    # stores return temperature / delta-T when manufacturer data provides it.
+    return_c = flow_c - design_delta_t_k
+    return flow_c, return_c
+
+
+def _interpolate_heat_pump_metric(
+    points: list[HeatPumpPerformancePointV1],
+    *,
+    outdoor_temperature_c: float,
+    flow_temperature_c: float,
+    metric: Literal["cop", "heating_capacity_kw"],
+) -> float | None:
+    rows: list[tuple[float, float, float]] = []
+    for point in points:
+        value = getattr(point, metric)
+        if value is None:
+            continue
+        rows.append(
+            (
+                float(point.outdoor_temperature_c),
+                float(point.flow_temperature_c),
+                float(value),
+            )
+        )
+    if not rows:
+        return None
+
+    outdoor_values = sorted({row[0] for row in rows})
+    flow_values = sorted({row[1] for row in rows})
+    query_outdoor = min(max(float(outdoor_temperature_c), outdoor_values[0]), outdoor_values[-1])
+    query_flow = min(max(float(flow_temperature_c), flow_values[0]), flow_values[-1])
+
+    # Do not pretend that a W35-only curve describes a radiator circuit at W55.
+    if len(flow_values) == 1 and abs(query_flow - float(flow_temperature_c)) > 2.0:
+        return None
+
+    for outdoor, flow, value in rows:
+        if abs(outdoor - query_outdoor) < 1e-9 and abs(flow - query_flow) < 1e-9:
+            return value
+
+    # Sparse manufacturer tables are common. Inverse-distance interpolation
+    # provides a deterministic MVP over the available A/W operating points
+    # without manufacturing synthetic catalogue points.
+    weighted = 0.0
+    weight_sum = 0.0
+    for outdoor, flow, value in rows:
+        distance_sq = ((outdoor - query_outdoor) / 10.0) ** 2 + (
+            (flow - query_flow) / 10.0
+        ) ** 2
+        weight = 1.0 / max(distance_sq, 0.01)
+        weighted += value * weight
+        weight_sum += weight
+    return weighted / weight_sum if weight_sum > 0 else None
+
+
+def _estimated_heat_pump_scop(
+    building: BuildingInput,
+    product: HeatingPlanningOptionV1,
+) -> tuple[float | None, list[str]]:
+    if product.generator_type != HeatingGeneratorType.heat_pump_air_water:
+        return None, []
+    if not product.performance_points:
+        return None, [
+            f"{product.label}: nu există încă puncte COP A/W verificate; se păstrează fallback-ul Light Engine."
+        ]
+
+    climate = resolve_climate(building.locality)
+    design_outdoor = climate.get("winter_design_temperature_c")
+    months = climate.get("monthly_temperatures") or []
+    if design_outdoor is None or not months:
+        return None, [
+            f"{product.label}: profilul climatic nu permite calculul COP sezonier specific produsului."
+        ]
+
+    total_heat_weight = 0.0
+    total_electric_weight = 0.0
+    used_points = 0
+    for month in months:
+        outdoor = float(month["temperature_c"])
+        days = float(month["days"])
+        load_weight = max(
+            float(building.indoor_design_temperature_c) - outdoor,
+            0.0,
+        ) * days
+        if load_weight <= 0:
+            continue
+        flow_c, _ = _weather_compensated_flow_temperature_c(
+            building,
+            outdoor_temperature_c=outdoor,
+            winter_design_temperature_c=float(design_outdoor),
+        )
+        cop = _interpolate_heat_pump_metric(
+            product.performance_points,
+            outdoor_temperature_c=outdoor,
+            flow_temperature_c=flow_c,
+            metric="cop",
+        )
+        if cop is None or cop <= 1.0:
+            continue
+        total_heat_weight += load_weight
+        total_electric_weight += load_weight / cop
+        used_points += 1
+
+    if used_points < 3 or total_electric_weight <= 0:
+        return None, [
+            f"{product.label}: curba COP nu acoperă suficient regimul climatic și temperatura de tur ale casei; fallback Light Engine."
+        ]
+
+    scop = total_heat_weight / total_electric_weight
+    return round(scop, 4), [
+        (
+            f"{product.label}: SCOP LaCurent estimat {scop:.2f} din punctele COP ale "
+            "producătorului, clima locală și curba climatică tur/retur a instalației."
+        )
+    ]
+
+
 def _stable_mixed_id(
     candidate_id: str,
     branch_id: str,
@@ -464,6 +685,40 @@ def _rebase_candidate(
                 "capacitatea disponibilă la temperatura exterioară de calcul trebuie "
                 "validată pe curba producătorului înainte de recomandarea finală."
             )
+        if (
+            product.generator_type == HeatingGeneratorType.heat_pump_air_water
+            and candidate.resulting_configuration is not None
+        ):
+            estimated_scop, hp_assumptions = _estimated_heat_pump_scop(
+                candidate.resulting_configuration,
+                product,
+            )
+            assumptions.extend(hp_assumptions)
+            if estimated_scop is not None:
+                hp_payload = model_to_dict(candidate.resulting_configuration)
+                hp_payload["heating"]["scop"] = float(estimated_scop)
+                hp_building = BuildingInput(**hp_payload)
+                hp_result = calculate(hp_building, include_reference=False)
+                hp_cost = estimate_energy_cost(hp_result)
+                if hp_cost.get("complete"):
+                    candidate_data = model_to_dict(candidate)
+                    candidate_data.update(
+                        {
+                            "annual_bill_lei": round(float(hp_cost["priced_total_lei"]), 2),
+                            "final_energy_kwh": round(float(hp_result.total_final_energy_kwh), 3),
+                            "primary_specific_kwh_m2": round(
+                                float(hp_result.primary_energy.specific_kwh_m2), 3
+                            ),
+                            "co2_total_kg": round(float(hp_result.co2.total_kg), 3),
+                            "co2_specific_kg_m2": round(
+                                float(hp_result.co2.specific_kg_m2), 3
+                            ),
+                            "energy_class": hp_result.energy_class,
+                            "resulting_configuration": model_to_dict(hp_building),
+                        }
+                    )
+                    candidate = CandidateEvaluationV1(**candidate_data)
+
         if product.generator_type == HeatingGeneratorType.condensing_gas_boiler:
             warnings.append(
                 "La centrala pe gaz trebuie verificată și puterea minimă de modulare; "
@@ -534,6 +789,7 @@ def _branch_request(
 
 def heating_branch_plan(
     request: OptimizationRequestV1,
+    heating_catalog: dict[str, Any] | None = None,
 ) -> list[HeatingBranchSummaryV1]:
     plan: list[HeatingBranchSummaryV1] = [
         HeatingBranchSummaryV1(
@@ -544,7 +800,7 @@ def heating_branch_plan(
             sizing_mode="existing_system",
         )
     ]
-    for technology in heating_technologies():
+    for technology in heating_technologies(heating_catalog):
         eligible, reason = technology_is_eligible(request.baseline, technology)
         if (
             eligible
@@ -578,6 +834,7 @@ def run_heating_branch_optimization(
     search_phase: Literal["full", "axis", "halton", "refine"] = "full",
     refinement_seed: Any | None = None,
     phase_candidate_offset: int = 0,
+    heating_catalog: dict[str, Any] | None = None,
 ) -> HeatingBranchRunResultV1:
     baseline_result = calculate(request.baseline, include_reference=False)
     baseline_cost = estimate_energy_cost(baseline_result)
@@ -595,7 +852,7 @@ def run_heating_branch_optimization(
 
     if branch_id != "keep-current-heating":
         technology = next(
-            (item for item in heating_technologies() if item.id == branch_id),
+            (item for item in heating_technologies(heating_catalog) if item.id == branch_id),
             None,
         )
         if technology is None:
@@ -691,6 +948,7 @@ def run_mixed_heating_optimization(
     bounds: OptimizationSearchBoundsV1,
     catalog: dict[str, Any],
     max_evaluations_per_branch: int = 48,
+    heating_catalog: dict[str, Any] | None = None,
 ) -> MixedHeatingOptimizationResultV1:
     all_candidates: list[CandidateEvaluationV1] = []
     summaries: list[HeatingBranchSummaryV1] = []
@@ -698,7 +956,7 @@ def run_mixed_heating_optimization(
     heating_branch_evaluations = 0
     warnings: list[str] = []
 
-    for branch in heating_branch_plan(request):
+    for branch in heating_branch_plan(request, heating_catalog):
         if not branch.eligible:
             summaries.append(branch)
             continue
@@ -708,6 +966,7 @@ def run_mixed_heating_optimization(
             bounds=bounds,
             catalog=catalog,
             max_evaluations=max_evaluations_per_branch,
+            heating_catalog=heating_catalog,
         )
         summaries.append(result.branch)
         total_parametric += int(result.parametric_evaluations)

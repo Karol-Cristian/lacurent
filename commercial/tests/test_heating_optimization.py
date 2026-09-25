@@ -4,6 +4,7 @@ import pytest
 
 from commercial.app.engine import calculate, demo_building
 from commercial.app.heating_optimization import (
+    _estimated_heat_pump_scop,
     _rebase_candidate,
     apply_heating_technology,
     heating_branch_plan,
@@ -20,6 +21,7 @@ from commercial.app.optimization import (
     ParametricMeasuresV1,
     evaluate_parametric_candidate,
 )
+from commercial.app.models import BuildingInput, model_to_dict
 from commercial.app.pricing import estimate_energy_cost
 
 
@@ -282,3 +284,131 @@ def test_selected_heating_cost_line_exposes_exact_product_name() -> None:
     line = next(item for item in sized.cost_breakdown if item.family == "heating")
     product = next(item for item in heating_planning_options() if item.id == line.product_id)
     assert str(line.note).startswith(product.label + ":")
+
+
+def test_heat_pump_catalog_contains_source_backed_operating_points() -> None:
+    options = heating_planning_options()
+    by_id = {item.id: item for item in options}
+
+    for product_id in {
+        "hp-ariston-8",
+        "hp-lg-therma-v-hm071mr-u44",
+        "hp-nibe-s2125-8-400v",
+        "hp-mitsubishi-ecodan-puz-swm80vaa",
+    }:
+        product = by_id[product_id]
+        assert product.external_id == product.id
+        assert product.performance_points
+        assert all(point.cop > 1 for point in product.performance_points)
+        assert all(point.source_url for point in product.performance_points)
+
+    nibe = by_id["hp-nibe-s2125-8-400v"]
+    nibe_conditions = {
+        (point.outdoor_temperature_c, point.flow_temperature_c)
+        for point in nibe.performance_points
+    }
+    assert (-7.0, 35.0) in nibe_conditions
+    assert (-7.0, 55.0) in nibe_conditions
+    assert nibe.seasonal_performance
+    assert {item.application_temperature_c for item in nibe.seasonal_performance} >= {
+        35.0,
+        55.0,
+    }
+
+
+def test_heat_pump_scop_responds_to_existing_emitter_temperature() -> None:
+    baseline = demo_building()
+    nibe = next(
+        item
+        for item in heating_planning_options()
+        if item.id == "hp-nibe-s2125-8-400v"
+    )
+
+    low_payload = model_to_dict(baseline)
+    low_payload["heating"]["details"] = {
+        **(low_payload["heating"].get("details") or {}),
+        "generator_type": "heat_pump_air_water",
+        "emitter_type": "underfloor",
+        "distribution_type": "underfloor",
+        "design_flow_temperature_c": 35,
+        "design_return_temperature_c": 30,
+    }
+    low_payload["heating"]["system_type"] = "heat_pump"
+    low_payload["heating"]["carrier"] = "electricity"
+    low_payload["heating"]["efficiency"] = None
+    low_payload["heating"]["scop"] = None
+    low_payload["heating"]["cost_profile"] = "electricity"
+    low_temp_house = BuildingInput(**low_payload)
+
+    high_payload = model_to_dict(baseline)
+    high_payload["heating"]["details"] = {
+        **(high_payload["heating"].get("details") or {}),
+        "generator_type": "heat_pump_air_water",
+        "emitter_type": "radiators_high_temp",
+        "distribution_type": "hydronic_insulated",
+        "design_flow_temperature_c": 55,
+        "design_return_temperature_c": 45,
+    }
+    high_payload["heating"]["system_type"] = "heat_pump"
+    high_payload["heating"]["carrier"] = "electricity"
+    high_payload["heating"]["efficiency"] = None
+    high_payload["heating"]["scop"] = None
+    high_payload["heating"]["cost_profile"] = "electricity"
+    high_temp_house = BuildingInput(**high_payload)
+
+    low_scop, low_notes = _estimated_heat_pump_scop(low_temp_house, nibe)
+    high_scop, high_notes = _estimated_heat_pump_scop(high_temp_house, nibe)
+
+    assert low_scop is not None
+    assert high_scop is not None
+    assert low_scop > high_scop > 1
+    assert any("SCOP LaCurent estimat" in item for item in low_notes)
+    assert any("SCOP LaCurent estimat" in item for item in high_notes)
+
+
+def test_heating_catalog_can_be_injected_from_d1_shape() -> None:
+    source = {
+        "options": [
+            {
+                "technology_id": "heat-pump-air-water",
+                "technology_label": "Pompă de căldură aer-apă",
+                "id": "external-hp-7",
+                "external_id": "ERP-HP-0007",
+                "label": "External HP 7 kW",
+                "system_type": "heat_pump",
+                "generator_type": "heat_pump_air_water",
+                "carrier": "electricity",
+                "cost_profile": "electricity",
+                "rated_power_kw": 7,
+                "equipment_price_lei": 21000,
+                "installation_allowance_lei": 9000,
+                "source_kind": "client_catalog",
+                "source_url": "https://example.invalid/hp-7",
+                "confidence": "medium",
+                "requires_hydronic": True,
+                "capacity_basis": "catalog_nominal_output",
+                "note": "Injected D1-shaped fixture.",
+            }
+        ],
+        "heat_pump_performance_points": [
+            {
+                "product_id": "external-hp-7",
+                "outdoor_temperature_c": -7,
+                "flow_temperature_c": 35,
+                "heating_capacity_kw": 6.5,
+                "cop": 3.1,
+                "source_kind": "manufacturer_technical_data",
+                "source_url": "https://example.invalid/hp-7-tech",
+            }
+        ],
+        "heat_pump_seasonal_performance": [],
+    }
+
+    products = heating_planning_options(source)
+    technologies = heating_technologies(source)
+
+    assert len(products) == 1
+    assert products[0].external_id == "ERP-HP-0007"
+    assert products[0].performance_points[0].cop == pytest.approx(3.1)
+    assert len(technologies) == 1
+    assert technologies[0].products[0].equipment_price_lei == pytest.approx(21000)
