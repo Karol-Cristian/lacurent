@@ -2689,6 +2689,7 @@ async def home_lab_optimization_finalize_api(request: Request) -> JSONResponse:
 
         branch_summaries_by_id: dict[str, HeatingBranchSummaryV1] = {}
         finalists: list[CandidateEvaluationV1] = []
+        finalist_branch_by_candidate_id: dict[str, str] = {}
         evaluated_candidates = 0
         parametric_evaluations = 0
         heating_branch_evaluations = 0
@@ -2722,12 +2723,16 @@ async def home_lab_optimization_finalize_api(request: Request) -> JSONResponse:
             if branch.economic_eligible:
                 for candidate_raw in candidate_rows:
                     if isinstance(candidate_raw, dict):
-                        finalists.append(CandidateEvaluationV1(**candidate_raw))
+                        parsed_candidate = CandidateEvaluationV1(**candidate_raw)
+                        finalists.append(parsed_candidate)
+                        finalist_branch_by_candidate_id[parsed_candidate.candidate_id] = branch.branch_id
                 if not candidate_rows:
                     selection_raw = item.get("selection") or {}
                     selected_raw = selection_raw.get("selected")
                     if selected_raw:
-                        finalists.append(CandidateEvaluationV1(**selected_raw))
+                        parsed_candidate = CandidateEvaluationV1(**selected_raw)
+                        finalists.append(parsed_candidate)
+                        finalist_branch_by_candidate_id[parsed_candidate.candidate_id] = branch.branch_id
             elif candidate_rows:
                 warnings.append(
                     f"{branch.label}: ramura a fost calculată tehnic, dar nu a intrat "
@@ -2788,6 +2793,9 @@ async def home_lab_optimization_finalize_api(request: Request) -> JSONResponse:
                     raw_candidate,
                     original_building=optimization_request.baseline,
                     heating_catalog=heating_catalog,
+                    branch_id=finalist_branch_by_candidate_id.get(
+                        raw_candidate.candidate_id
+                    ),
                 )
             )
             warnings.extend(product_warnings)
