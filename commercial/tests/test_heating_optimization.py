@@ -105,7 +105,7 @@ def test_branch_plan_has_one_heat_pump_branch_not_one_branch_per_power_step() ->
     assert ground.economic_eligible is False
     assert air_air.commercialization_mode == "raw_parametric_then_product_match"
     assert air_air.min_product_power_kw == pytest.approx(4.0)
-    assert air_air.max_product_power_kw == pytest.approx(8.2)
+    assert air_air.max_product_power_kw == pytest.approx(21.6)
 
 
 def test_heating_capacity_is_derived_after_each_complete_house_recalculation() -> None:
