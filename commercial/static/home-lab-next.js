@@ -2832,12 +2832,15 @@
       );
       const allBranches = Array.isArray(plan.branches) ? plan.branches : [];
       const runnableIds = Array.isArray(plan.runBranchIds) ? plan.runBranchIds : [];
+      const technicalPreviewIds = Array.isArray(plan.technicalPreviewBranchIds)
+        ? plan.technicalPreviewBranchIds
+        : [];
       if (!runnableIds.length) {
         throw new Error("Nu există nicio ramură tehnică eligibilă pentru optimizare.");
       }
       const branchById = new Map(allBranches.map(item => [String(item.branch_id || ""), item]));
       const branchResults = allBranches
-        .filter(item => !item.eligible)
+        .filter(item => !item.eligible || item.economic_eligible === false)
         .map(item => ({
           branch:item,
           selection:{selected:null},
@@ -2884,7 +2887,7 @@
       appendOptimizerConsole(
         "info",
         "PLAN",
-        `${runnableIds.length} ramuri × ${phases.length} faze × ${plannedPhaseCandidates} candidați = ${plannedCandidates} puncte planificate.`
+        `${runnableIds.length} ramuri economice × ${phases.length} faze × ${plannedPhaseCandidates} candidați = ${plannedCandidates} puncte planificate; + ${technicalPreviewIds.length} alternative tehnice evaluate o singură dată pe finalistul raw.`
       );
       appendOptimizerConsole(
         "info",
@@ -3432,6 +3435,17 @@
       const payload = finalCall.payload;
       if (!response.ok || !payload || payload.error) {
         throw new Error(payload?.error || `Optimizer indisponibil (HTTP ${response.status || "?"}).`);
+      }
+
+      const technicalAlternatives = Array.isArray(
+        payload.optimization?.technicalHeatingAlternatives
+      ) ? payload.optimization.technicalHeatingAlternatives : [];
+      for (const alternative of technicalAlternatives) {
+        appendOptimizerConsole(
+          "info",
+          "TECH",
+          `${alternative.label || alternative.branchId} · finalist raw neschimbat · factură ${fmt(Number(alternative.annualBillLei || 0))} lei/an · energie ${fmt(Number(alternative.finalEnergyKwh || 0))} kWh/an · cost comercial încă necunoscut`
+        );
       }
 
       const matchedHeating = payload.optimization?.selectedHeating;
