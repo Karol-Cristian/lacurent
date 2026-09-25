@@ -2786,7 +2786,9 @@
     if (!baselineSaved || !homeResult) return;
     const settings = parametricOptimizerUiSettings(action);
     const runToken = beginOptimizerRun();
-    const buttons = $$("[data-hln-smart-config]");
+    resetOptimizerConsole(settings.label);
+    appendOptimizerConsole("info","PLAN","Construiesc ramurile și spațiul de căutare.");
+    const buttons = $("[data-hln-smart-config]");
     buttons.forEach(button => button.disabled = true);
     setOptimizerBusy(true);
     setStatus(settings.working);
@@ -2850,11 +2852,40 @@
       const evaluationsPerBranch = Number(plan.evaluationsPerBranch || (phases.length * evaluationsPerPhase));
       const configuredBranchParallelism = Math.max(
         1,
-        Math.min(4, Number(plan.maxConcurrentBranchRequests || 4))
+        Math.min(3, Number(plan.maxConcurrentBranchRequests || 3))
       );
+      const initialBranchParallelism = Math.max(
+        1,
+        Math.min(
+          configuredBranchParallelism,
+          Number(plan.initialConcurrentBranchRequests || Math.min(2, configuredBranchParallelism))
+        )
+      );
+      const cleanWavesBeforeRampUp = Math.max(1, Number(plan.cleanWavesBeforeRampUp || 2));
       const branchMaxAttempts = Math.max(1, Math.min(3, Number(plan.branchMaxAttempts || 3)));
-      const branchStartStaggerMs = Math.max(0, Number(plan.branchStartStaggerMs || 120));
-      let adaptiveBranchParallelism = configuredBranchParallelism;
+      const branchStartStaggerMs = Math.max(0, Number(plan.branchStartStaggerMs || 140));
+      let adaptiveBranchParallelism = initialBranchParallelism;
+      let cleanWaveStreak = 0;
+      let processedCandidates = 0;
+      const plannedPhaseCandidates = Array.isArray(plan.phaseOffsets) && plan.phaseOffsets.length
+        ? plan.phaseOffsets.length
+        : evaluationsPerPhase;
+      let plannedCandidates = runnableIds.length * phases.length * plannedPhaseCandidates;
+      setOptimizerConsoleProgress(
+        processedCandidates,
+        plannedCandidates,
+        `0 procesați · ${completedEvaluations} calculați · concurență ${adaptiveBranchParallelism}/${configuredBranchParallelism}`
+      );
+      appendOptimizerConsole(
+        "info",
+        "PLAN",
+        `${runnableIds.length} ramuri × ${phases.length} faze × ${plannedPhaseCandidates} candidați = ${plannedCandidates} puncte planificate.`
+      );
+      appendOptimizerConsole(
+        "info",
+        "POOL",
+        `Pornesc cu ${adaptiveBranchParallelism} requesturi simultan; maxim ${configuredBranchParallelism}; ${branchMaxAttempts} încercări/candidat.`
+      );
       const phaseLabel = {
         axis:"probe axe",
         halton:"explorare Halton",
@@ -2867,6 +2898,11 @@
         const branch = branchById.get(branchId) || {};
         const branchLabel = branch.label || branchId;
         const priorCandidateSummaries = [];
+        appendOptimizerConsole(
+          "info",
+          "BRANCH",
+          `[${index + 1}/${runnableIds.length}] ${branchLabel} (${branchId})`
+        );
 
         const phaseOffsets = Array.isArray(plan.phaseOffsets) && plan.phaseOffsets.length
           ? plan.phaseOffsets.map(value => Number(value || 0))
@@ -2877,6 +2913,11 @@
           if (runToken !== optimizerRunToken) return;
           const phase = String(phases[phaseIndex]);
           const readablePhase = phaseLabel[phase] || phase;
+          appendOptimizerConsole(
+            "info",
+            "PHASE",
+            `[${phaseIndex + 1}/${phases.length}] ${readablePhase} · ${phaseOffsets.length} candidați · concurență curentă ${adaptiveBranchParallelism}`
+          );
           const fixedRefinementSeed = phase === "refine"
             ? [...priorCandidateSummaries]
             : [];
