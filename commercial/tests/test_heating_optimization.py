@@ -12,6 +12,7 @@ from commercial.app.heating_optimization import (
     heating_branch_plan,
     heating_planning_options,
     heating_technologies,
+    heat_pump_monthly_performance_profile,
     run_heating_branch_optimization,
     run_mixed_heating_optimization,
     technology_is_eligible,
@@ -52,6 +53,7 @@ def test_heating_catalog_groups_products_into_technology_branches() -> None:
     assert {
         "condensing-gas",
         "heat-pump-air-water",
+        "heat-pump-air-air",
         "electric-boiler",
         "pellet-boiler",
     } <= ids
@@ -99,9 +101,11 @@ def test_branch_plan_has_one_heat_pump_branch_not_one_branch_per_power_step() ->
     assert "heat-pump-ground-water" in ids
     air_air = next(item for item in plan if item.branch_id == "heat-pump-air-air")
     ground = next(item for item in plan if item.branch_id == "heat-pump-ground-water")
-    assert air_air.economic_eligible is False
+    assert air_air.economic_eligible is True
     assert ground.economic_eligible is False
-    assert air_air.commercialization_mode == "technical_only_pending_cost_catalog"
+    assert air_air.commercialization_mode == "raw_parametric_then_product_match"
+    assert air_air.min_product_power_kw == pytest.approx(4.0)
+    assert air_air.max_product_power_kw == pytest.approx(8.2)
 
 
 def test_heating_capacity_is_derived_after_each_complete_house_recalculation() -> None:
@@ -262,6 +266,7 @@ def test_real_product_catalog_has_at_least_five_products_per_heating_category() 
     options = heating_planning_options()
     expectations = {
         "heat-pump-air-water": (5, {"Mitsubishi", "Daikin", "LG", "NIBE", "Ariston"}),
+        "heat-pump-air-air": (5, {"Daikin"}),
         "condensing-gas": (5, {"Ariston", "Bosch", "Vaillant", "Viessmann", "Immergas"}),
         "electric-boiler": (5, {"Protherm", "Bosch", "Ferroli"}),
         "pellet-boiler": (5, {"Ferroli", "BURNiT", "Fornello", "Thermostahl", "BIODOM"}),
@@ -351,12 +356,15 @@ def test_air_air_and_ground_source_are_real_technical_branches() -> None:
         phase_candidate_offset=0,
     )
     assert air_result.branch.eligible is True
-    assert air_result.branch.economic_eligible is False
+    assert air_result.branch.economic_eligible is True
     assert air_result.candidates
-    assert not any(
-        line.family == "heating"
+    heating_line = next(
+        line
         for line in air_result.candidates[0].cost_breakdown
+        if line.family == "heating"
     )
+    assert heating_line.capex_lei > 0
+    assert heating_line.source_kind == "product_derived_parametric_curve"
 
 
 def test_heat_pump_catalog_contains_source_backed_operating_points() -> None:
@@ -515,3 +523,60 @@ def test_keep_current_finalist_never_selects_a_new_generator_product() -> None:
     assert commercial.candidate_id == keep_candidate.candidate_id
     assert not any(line.family == "heating" for line in commercial.cost_breakdown)
     assert any("nu necesită achiziția" in item for item in warnings)
+
+
+
+def test_air_air_catalog_has_commercial_cost_and_monthly_cop_curve() -> None:
+    baseline = demo_building()
+    technology = next(
+        item
+        for item in heating_technologies()
+        if item.id == "heat-pump-air-air"
+    )
+    product = next(
+        item
+        for item in technology.products
+        if item.id == "hp-aa-daikin-perfera-35a9"
+    )
+
+    assert product.installed_capex_lei == pytest.approx(7845.32)
+    assert product.scop == pytest.approx(5.2)
+    assert len({point.outdoor_temperature_c for point in product.performance_points}) >= 5
+
+    building = apply_heating_technology(baseline, technology)
+    assert building.heating.details is not None
+    assert building.heating.details.generator_type.value == "heat_pump_air_air"
+    assert building.heating.details.emitter_type.value == "air"
+    assert building.heating.details.distribution_type.value == "air"
+
+    result = calculate(building, include_reference=False)
+    profile = heat_pump_monthly_performance_profile(
+        building,
+        product,
+        list(result.monthly),
+    )
+    assert profile is not None
+    assert profile["profile_kind"] == "cop_curve"
+    assert profile["declared_scop"] == pytest.approx(5.2)
+    assert profile["modeled_scop_from_monthly_cop"] > 1
+    heating_months = [
+        row
+        for row in profile["monthly"]
+        if row["useful_heating_kwh"] > 0
+    ]
+    assert heating_months
+    assert all(row["cop"] is not None and row["cop"] > 1 for row in heating_months)
+
+
+def test_air_air_single_cop_reference_does_not_replace_declared_scop() -> None:
+    baseline = demo_building()
+    product = next(
+        item
+        for item in heating_planning_options()
+        if item.id == "hp-aa-daikin-perfera-60a"
+    )
+    estimated, notes = _estimated_heat_pump_scop(baseline, product)
+
+    assert estimated is None
+    assert product.scop == pytest.approx(4.3)
+    assert any("doar un COP de referință" in item for item in notes)
