@@ -152,10 +152,13 @@ def test_home_lab_auto_optimizer_runs_phased_and_returns_traceability() -> None:
     preview_ids = {
         item["branchId"] for item in meta["technicalHeatingAlternatives"]
     }
-    assert {
-        "heat-pump-air-air",
-        "heat-pump-ground-water",
-    } <= preview_ids
+    assert "heat-pump-ground-water" in preview_ids
+    assert "heat-pump-air-air" not in preview_ids
+    assert any(
+        item["branch_id"] == "heat-pump-air-air"
+        and item["economic_eligible"] is True
+        for item in meta["heatingBranches"]
+    )
     assert all(item["costKnown"] is False for item in meta["technicalHeatingAlternatives"])
 
 
