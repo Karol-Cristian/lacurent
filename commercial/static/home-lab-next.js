@@ -1616,7 +1616,10 @@
       } catch (error) {
         if (error?.name === "AbortError" && parentSignal?.aborted) throw error;
         const retryableError = error?.name === "TimeoutError" || error?.name === "TypeError";
-        if (!retryableError || attempt >= maxAttempts) throw error;
+        if (!retryableError || attempt >= maxAttempts) {
+          try { error.attemptCount = attempt; } catch (_) {}
+          throw error;
+        }
         lastError = error;
       }
 
