@@ -47,6 +47,12 @@ def _run_sharded(payload: dict[str, str]) -> tuple[dict, dict]:
     ground = next(item for item in plan["branches"] if item["branch_id"] == "heat-pump-ground-water")
     assert air_air["economic_eligible"] is False
     assert ground["economic_eligible"] is False
+    assert set(plan["technicalPreviewBranchIds"]) >= {
+        "heat-pump-air-air",
+        "heat-pump-ground-water",
+    }
+    assert "heat-pump-air-air" not in plan["runBranchIds"]
+    assert "heat-pump-ground-water" not in plan["runBranchIds"]
 
     results = [
         {
@@ -59,7 +65,7 @@ def _run_sharded(payload: dict[str, str]) -> tuple[dict, dict]:
             "warnings": [],
         }
         for branch in plan["branches"]
-        if not branch["eligible"]
+        if (not branch["eligible"]) or (branch.get("economic_eligible") is False)
     ]
 
     for branch_id in plan["runBranchIds"]:
@@ -139,6 +145,15 @@ def test_home_lab_auto_optimizer_runs_phased_and_returns_traceability() -> None:
     assert "commercialReady" in meta
     assert "commercialMessage" in meta
     assert "selectedHeating" in meta
+    assert isinstance(meta["technicalHeatingAlternatives"], list)
+    preview_ids = {
+        item["branchId"] for item in meta["technicalHeatingAlternatives"]
+    }
+    assert {
+        "heat-pump-air-air",
+        "heat-pump-ground-water",
+    } <= preview_ids
+    assert all(item["costKnown"] is False for item in meta["technicalHeatingAlternatives"])
 
 
 def test_home_lab_bill_target_phased_mode_preserves_constraint() -> None:
