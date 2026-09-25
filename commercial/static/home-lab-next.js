@@ -2417,6 +2417,9 @@
     if (state) state.textContent = "RUNNING";
     if (footer) footer.textContent = `Pornit · ${label}`;
     appendOptimizerConsole("info","START",`PS LaCurent:\\optimizer> ${label}`);
+    window.requestAnimationFrame(() => {
+      panel?.scrollIntoView({behavior:"smooth", block:"center"});
+    });
   }
 
   function appendOptimizerConsole(kind, tag, message) {
@@ -3246,8 +3249,9 @@
               appendOptimizerConsole(
                 "retry",
                 "THROTTLE",
-                `Fault în val: concurență ${previousParallelism} → 1 imediat pentru următorul val.`
+                `Fault în val: concurență ${previousParallelism} → 1 imediat pentru următorul val; cooldown 1,2 s.`
               );
+              await new Promise(resolve => window.setTimeout(resolve, 1200));
             } else if (waveRetries > 0) {
               adaptiveBranchParallelism = Math.max(1, adaptiveBranchParallelism - 1);
               cleanWaveStreak = 0;
@@ -3255,9 +3259,10 @@
                 appendOptimizerConsole(
                   "retry",
                   "THROTTLE",
-                  `Retry detectat: concurență ${previousParallelism} → ${adaptiveBranchParallelism} pentru următorul val.`
+                  `Retry detectat: concurență ${previousParallelism} → ${adaptiveBranchParallelism} pentru următorul val; cooldown 0,5 s.`
                 );
               }
+              await new Promise(resolve => window.setTimeout(resolve, 500));
             } else {
               cleanWaveStreak += 1;
               if (
