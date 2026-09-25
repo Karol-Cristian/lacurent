@@ -31,6 +31,8 @@ def _run_sharded(payload: dict[str, str]) -> tuple[dict, dict]:
     plan = plan_response.json()
     assert plan["searchPhases"] == ["axis", "halton", "refine"]
     assert plan["evaluationsPerPhase"] == 12
+    assert plan["microBatchSize"] == 4
+    assert plan["phaseOffsets"] == [0, 4, 8]
     assert plan["evaluationsPerBranch"] == 36
     assert plan["runBranchIds"]
 
@@ -51,39 +53,31 @@ def _run_sharded(payload: dict[str, str]) -> tuple[dict, dict]:
     for branch_id in plan["runBranchIds"]:
         prior_candidates: list[dict] = []
         for phase in plan["searchPhases"]:
-            branch_payload = dict(payload)
-            branch_payload["_heating_branch_id"] = branch_id
-            branch_payload["_search_phase"] = phase
-            if phase == "refine":
-                branch_payload["_prior_candidates_json"] = json.dumps(prior_candidates)
-
-            form_payload = {
-                key: value
-                for key, value in branch_payload.items()
-                if not key.startswith("_heating_branch_id")
-                and not key.startswith("_search_phase")
-                and not key.startswith("_prior_candidates_json")
-            }
-            response = client.post(
-                "/api/optimization/home-lab/branch",
-                json={
-                    "form": form_payload,
-                    "branchId": branch_id,
-                    "searchPhase": phase,
-                    "priorCandidates": prior_candidates if phase == "refine" else [],
-                },
-            )
-            assert response.status_code == 200
-            body = response.json()
-            assert body["branch"]["branch_id"] == branch_id
-            assert body["searchPhase"] == phase
-            assert body["parametricEvaluations"] <= 12
-            assert body["parametricEvaluations"] >= 1
-            assert isinstance(body["candidates"], list)
-            results.append(body)
-            assert isinstance(body["candidateSummaries"], list)
-            assert all("resulting_configuration" not in item for item in body["candidateSummaries"])
-            prior_candidates.extend(body["candidateSummaries"])
+            fixed_seed = list(prior_candidates) if phase == "refine" else []
+            phase_summaries: list[dict] = []
+            for phase_offset in plan["phaseOffsets"]:
+                response = client.post(
+                    "/api/optimization/home-lab/branch",
+                    json={
+                        "form": dict(payload),
+                        "branchId": branch_id,
+                        "searchPhase": phase,
+                        "phaseOffset": phase_offset,
+                        "priorCandidates": fixed_seed,
+                    },
+                )
+                assert response.status_code == 200
+                body = response.json()
+                assert body["branch"]["branch_id"] == branch_id
+                assert body["searchPhase"] == phase
+                assert body["phaseOffset"] == phase_offset
+                assert 0 <= body["parametricEvaluations"] <= plan["microBatchSize"]
+                assert isinstance(body["candidates"], list)
+                results.append(body)
+                assert isinstance(body["candidateSummaries"], list)
+                assert all("resulting_configuration" not in item for item in body["candidateSummaries"])
+                phase_summaries.extend(body["candidateSummaries"])
+            prior_candidates.extend(phase_summaries)
 
         assert len(prior_candidates) >= 18
 
@@ -168,29 +162,31 @@ def test_refinement_payload_is_compact_and_seedable() -> None:
 
     summaries: list[dict] = []
     for phase in ("axis", "halton"):
-        response = client.post(
-            "/api/optimization/home-lab/branch",
-            json={
-                "form": dict(payload),
-                "branchId": "electric-boiler",
-                "searchPhase": phase,
-                "priorCandidates": [],
-            },
-        )
-        assert response.status_code == 200
-        body = response.json()
-        assert isinstance(body["candidateSummaries"], list)
-        for item in body["candidateSummaries"]:
-            assert set(item) == {
-                "candidate_id",
-                "parameters",
-                "capex_lei",
-                "annual_bill_lei",
-                "annual_saving_lei",
-                "payback_years",
-            }
-            assert "resulting_configuration" not in item
-        summaries.extend(body["candidateSummaries"])
+        for phase_offset in (0, 4, 8):
+            response = client.post(
+                "/api/optimization/home-lab/branch",
+                json={
+                    "form": dict(payload),
+                    "branchId": "electric-boiler",
+                    "searchPhase": phase,
+                    "phaseOffset": phase_offset,
+                    "priorCandidates": [],
+                },
+            )
+            assert response.status_code == 200
+            body = response.json()
+            assert isinstance(body["candidateSummaries"], list)
+            for item in body["candidateSummaries"]:
+                assert set(item) == {
+                    "candidate_id",
+                    "parameters",
+                    "capex_lei",
+                    "annual_bill_lei",
+                    "annual_saving_lei",
+                    "payback_years",
+                }
+                assert "resulting_configuration" not in item
+            summaries.extend(body["candidateSummaries"])
 
     encoded = json.dumps(summaries)
     assert len(encoded) < 50000
@@ -201,6 +197,7 @@ def test_refinement_payload_is_compact_and_seedable() -> None:
             "form": dict(payload),
             "branchId": "electric-boiler",
             "searchPhase": "refine",
+            "phaseOffset": 0,
             "priorCandidates": summaries,
         },
     )

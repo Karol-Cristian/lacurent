@@ -577,6 +577,7 @@ def run_heating_branch_optimization(
     max_evaluations: int = 24,
     search_phase: Literal["full", "axis", "halton", "refine"] = "full",
     refinement_seed: Any | None = None,
+    phase_candidate_offset: int = 0,
 ) -> HeatingBranchRunResultV1:
     baseline_result = calculate(request.baseline, include_reference=False)
     baseline_cost = estimate_energy_cost(baseline_result)
@@ -647,6 +648,7 @@ def run_heating_branch_optimization(
         candidate_postprocessor=postprocess,
         search_phase=search_phase,
         refinement_seed=refinement_seed,
+        phase_candidate_offset=phase_candidate_offset,
     )
 
     rejected_capacity = max(int(search.engine_evaluations) - len(search.candidates), 0)
