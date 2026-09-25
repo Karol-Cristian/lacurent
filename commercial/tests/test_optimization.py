@@ -3,6 +3,8 @@ from __future__ import annotations
 import math
 
 import pytest
+
+import commercial.app.optimization as optimization_module
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
@@ -467,3 +469,35 @@ def test_compact_refinement_seed_matches_full_candidate_selection() -> None:
         assert compact_seed.wall_added_r_m2k_w == pytest.approx(
             full.parameters.wall_added_r_m2k_w
         )
+
+
+def test_optimizer_baseline_cache_reuses_identical_building(monkeypatch: pytest.MonkeyPatch) -> None:
+    optimization_module._cached_baseline_evaluation_serialized.cache_clear()
+    calls = {"count": 0}
+    real_calculate = optimization_module.calculate
+
+    def counted_calculate(*args, **kwargs):
+        calls["count"] += 1
+        return real_calculate(*args, **kwargs)
+
+    monkeypatch.setattr(optimization_module, "calculate", counted_calculate)
+
+    baseline = demo_building()
+    first_result, first_cost = optimization_module.cached_baseline_evaluation(baseline)
+    second_result, second_cost = optimization_module.cached_baseline_evaluation(baseline)
+
+    assert calls["count"] == 1
+    assert first_result.total_final_energy_kwh == pytest.approx(
+        second_result.total_final_energy_kwh
+    )
+    assert first_cost["priced_total_lei"] == pytest.approx(second_cost["priced_total_lei"])
+
+    changed_payload = model_to_dict(baseline)
+    changed_payload["indoor_design_temperature_c"] = (
+        float(changed_payload["indoor_design_temperature_c"]) + 1.0
+    )
+    changed = optimization_module.BuildingInput(**changed_payload)
+    optimization_module.cached_baseline_evaluation(changed)
+    assert calls["count"] == 2
+
+    optimization_module._cached_baseline_evaluation_serialized.cache_clear()
