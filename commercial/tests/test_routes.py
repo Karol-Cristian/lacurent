@@ -822,7 +822,7 @@ def test_home_lab_roi_reconciles_visible_capex_and_avoids_request_bursts() -> No
     assert "optimizerConsoleCandidateParameters" in source
     assert "ventilation_heat_recovery_efficiency_target" in source
     assert "calculationStages" in source
-    assert '"VENTILAȚIE"' in source
+    assert "stage?.stage" in source
     assert "Fault în val: concurență" in source
     assert "Două valuri curate: concurență" in source
     assert "reexecuție serială înainte de a continua" in source
