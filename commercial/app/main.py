@@ -2162,6 +2162,7 @@ def _optimizer_measure_rows(candidate: Any) -> list[dict[str, Any]]:
         "roof": "Izolație acoperiș / pod",
         "floor": "Izolație pardoseală",
         "windows": "Ferestre",
+        "ventilation": "Ventilație cu recuperare",
         "pv": "Fotovoltaice",
         "solar_thermal": "Solar termic",
         "heating": "Sistem de încălzire",
