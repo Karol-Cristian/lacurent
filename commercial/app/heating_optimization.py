@@ -26,9 +26,11 @@ from .optimization import (
     CostLineV1,
     OptimizationMode,
     OptimizationRequestV1,
+    ParametricMeasuresV1,
     OptimizationSearchBoundsV1,
     OptimizationSearchRequestV1,
     OptimizationSelectionV1,
+    evaluate_parametric_candidate,
     run_parametric_optimization,
     select_optimization_candidate,
 )
@@ -566,6 +568,53 @@ def heating_branch_plan(
             )
         )
     return plan
+
+
+def evaluate_heating_branch_candidate(
+    request: OptimizationRequestV1,
+    *,
+    branch_id: str,
+    measures: ParametricMeasuresV1,
+    catalog: dict[str, Any],
+) -> CandidateEvaluationV1:
+    """Rebuild one compactly-selected candidate as a full technical evaluation."""
+
+    baseline_result = calculate(request.baseline, include_reference=False)
+    baseline_cost = estimate_energy_cost(baseline_result)
+    if not baseline_cost.get("complete"):
+        raise ValueError("Baseline annual bill is incomplete; selected candidate cannot be rebuilt.")
+    original_baseline_bill = float(baseline_cost["priced_total_lei"])
+
+    technology: HeatingTechnologyV2 | None = None
+    branch_baseline = request.baseline
+    if branch_id != "keep-current-heating":
+        technology = next(
+            (item for item in heating_technologies() if item.id == branch_id),
+            None,
+        )
+        if technology is None:
+            raise ValueError(f"Unknown heating technology branch {branch_id!r}.")
+        eligible, reason = technology_is_eligible(request.baseline, technology)
+        if not eligible:
+            raise ValueError(reason or "Selected heating technology is no longer eligible.")
+        branch_baseline = apply_heating_technology(request.baseline, technology)
+
+    raw = evaluate_parametric_candidate(
+        branch_baseline,
+        measures,
+        catalog,
+    )
+    rebuilt = _rebase_candidate(
+        raw,
+        original_baseline_bill_lei=original_baseline_bill,
+        original_building=request.baseline,
+        technology=technology,
+    )
+    if rebuilt is None:
+        raise ValueError(
+            "Selected candidate cannot be commercial-sized with the current heating catalog."
+        )
+    return rebuilt
 
 
 def run_heating_branch_optimization(
