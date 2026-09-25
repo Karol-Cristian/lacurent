@@ -437,6 +437,94 @@ def apply_heating_technology(
     return BuildingInput(**payload)
 
 
+def _supplemental_branch_eligible(
+    building: BuildingInput,
+    branch_id: str,
+) -> tuple[bool, str | None]:
+    profile = SUPPLEMENTAL_TECHNICAL_HEATING_BRANCHES.get(branch_id)
+    if profile is None:
+        return False, "Ramură tehnică necunoscută."
+
+    details = building.heating.details
+    current_generator = details.generator_type if details is not None else None
+    target_generator = profile["generator_type"]
+    if current_generator == target_generator:
+        return False, (
+            "Aceeași familie de generator este deja instalată; păstrarea sistemului "
+            "actual este evaluată separat."
+        )
+
+    if bool(profile.get("requires_hydronic")) and not _is_hydronic(building):
+        return False, (
+            "Ramura sol-apă necesită momentan o distribuție hidronică existentă. "
+            "Conversia emitatoarelor va deveni o intervenție parametrică separată."
+        )
+    return True, None
+
+
+def _dhw_for_supplemental_branch(
+    building: BuildingInput,
+    branch_id: str,
+) -> dict[str, Any]:
+    dhw = model_to_dict(building.dhw)
+    if not dhw.get("enabled") or dhw.get("system_type") != "same_as_heating":
+        return dhw
+
+    # Air-air heat pumps do not implicitly become a DHW heat pump. Preserve the
+    # baseline hot-water performance as a separate custom service rather than
+    # silently inventing a new DHW technology.
+    if branch_id == "heat-pump-air-air":
+        dhw["system_type"] = "custom"
+        return dhw
+
+    cfg = methodology()["dhw"]["system_defaults"]["heat_pump_water_heater"]
+    dhw["system_type"] = "heat_pump_water_heater"
+    dhw["cop"] = float(cfg["cop"])
+    dhw["efficiency"] = None
+    dhw["carrier"] = "electricity"
+    return dhw
+
+
+def apply_supplemental_heating_technology(
+    building: BuildingInput,
+    branch_id: str,
+) -> BuildingInput:
+    profile = SUPPLEMENTAL_TECHNICAL_HEATING_BRANCHES.get(branch_id)
+    if profile is None:
+        raise ValueError(f"Unknown supplemental heating branch {branch_id!r}.")
+
+    payload = model_to_dict(building)
+    current = _default_details(building)
+    details = model_to_dict(current)
+    details["generator_type"] = profile["generator_type"].value
+    details["auxiliary_electricity_kwh_year"] = None
+
+    if branch_id == "heat-pump-air-air":
+        details.update(
+            {
+                "emitter_type": HeatingEmitterType.air.value,
+                "distribution_type": HeatingDistributionType.air.value,
+                "storage_type": "none",
+                "control_type": "room_thermostat",
+                "design_flow_temperature_c": None,
+                "design_return_temperature_c": None,
+            }
+        )
+
+    payload["heating"] = model_to_dict(
+        HeatingInput(
+            system_type=profile["system_type"],
+            carrier=profile["carrier"],
+            efficiency=None,
+            scop=None,
+            details=HeatingSystemDetails(**details),
+            cost_profile=profile["cost_profile"],
+        )
+    )
+    payload["dhw"] = _dhw_for_supplemental_branch(building, branch_id)
+    return BuildingInput(**payload)
+
+
 def _required_generator_power_kw(candidate: CandidateEvaluationV1) -> float | None:
     if candidate.design_heat_load_kw is None:
         return None
