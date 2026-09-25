@@ -90,7 +90,16 @@ class HeatingBranchSummaryV1(BaseModel):
     evaluated_candidates: int = 0
     accepted_candidates: int = 0
     rejected_for_capacity: int = 0
+    feasible_candidates: int = 0
     note: str | None = None
+
+
+class HeatingBranchRunResultV1(BaseModel):
+    selection: OptimizationSelectionV1
+    branch: HeatingBranchSummaryV1
+    candidate_count: int
+    parametric_evaluations: int
+    warnings: list[str] = Field(default_factory=list)
 
 
 class MixedHeatingOptimizationResultV1(BaseModel):
@@ -378,6 +387,154 @@ def _neutral_branch_request(
     return OptimizationRequestV1(
         baseline=branch_baseline,
         mode=OptimizationMode.auto_economic,
+    )
+
+
+def heating_branch_plan(
+    request: OptimizationRequestV1,
+) -> list[HeatingBranchSummaryV1]:
+    plan: list[HeatingBranchSummaryV1] = [
+        HeatingBranchSummaryV1(
+            branch_id="keep-current-heating",
+            label="Păstrează sistemul actual",
+            fixed_capex_lei=0.0,
+            eligible=True,
+        )
+    ]
+    for option in heating_planning_options():
+        eligible, reason = option_is_eligible(request.baseline, option)
+        if eligible:
+            branch_baseline = apply_heating_option(request.baseline, option)
+            branch_request = _neutral_branch_request(
+                request,
+                branch_baseline,
+                fixed_capex_lei=option.installed_capex_lei,
+            )
+            if branch_request is None:
+                eligible = False
+                reason = "CAPEX-ul fix al sistemului depășește singur bugetul de investiție."
+        plan.append(
+            HeatingBranchSummaryV1(
+                branch_id=option.id,
+                label=option.label,
+                fixed_capex_lei=option.installed_capex_lei,
+                eligible=eligible,
+                note=reason,
+            )
+        )
+    return plan
+
+
+def run_heating_branch_optimization(
+    request: OptimizationRequestV1,
+    *,
+    branch_id: str,
+    bounds: OptimizationSearchBoundsV1,
+    catalog: dict[str, Any],
+    max_evaluations: int = 24,
+) -> HeatingBranchRunResultV1:
+    baseline_result = calculate(request.baseline, include_reference=False)
+    baseline_cost = estimate_energy_cost(baseline_result)
+    if not baseline_cost.get("complete"):
+        raise ValueError("Baseline annual bill is incomplete; branch optimization cannot run safely.")
+    original_baseline_bill = float(baseline_cost["priced_total_lei"])
+
+    option: HeatingPlanningOptionV1 | None = None
+    branch_baseline = request.baseline
+    label = "Păstrează sistemul actual"
+    fixed_capex = 0.0
+
+    if branch_id != "keep-current-heating":
+        option = next(
+            (item for item in heating_planning_options() if item.id == branch_id),
+            None,
+        )
+        if option is None:
+            raise ValueError(f"Unknown heating branch {branch_id!r}.")
+        eligible, reason = option_is_eligible(request.baseline, option)
+        if not eligible:
+            summary = HeatingBranchSummaryV1(
+                branch_id=branch_id,
+                label=option.label,
+                fixed_capex_lei=option.installed_capex_lei,
+                eligible=False,
+                note=reason,
+            )
+            return HeatingBranchRunResultV1(
+                selection=select_optimization_candidate(request, []),
+                branch=summary,
+                candidate_count=0,
+                parametric_evaluations=0,
+                warnings=[],
+            )
+        branch_baseline = apply_heating_option(request.baseline, option)
+        label = option.label
+        fixed_capex = option.installed_capex_lei
+
+    branch_request = _neutral_branch_request(
+        request,
+        branch_baseline,
+        fixed_capex_lei=fixed_capex,
+    )
+    if branch_request is None:
+        summary = HeatingBranchSummaryV1(
+            branch_id=branch_id,
+            label=label,
+            fixed_capex_lei=fixed_capex,
+            eligible=False,
+            note="CAPEX-ul fix al sistemului depășește singur bugetul de investiție.",
+        )
+        return HeatingBranchRunResultV1(
+            selection=select_optimization_candidate(request, []),
+            branch=summary,
+            candidate_count=0,
+            parametric_evaluations=0,
+            warnings=[],
+        )
+
+    search = run_parametric_optimization(
+        OptimizationSearchRequestV1(
+            request=branch_request,
+            bounds=bounds,
+            max_evaluations=max_evaluations,
+        ),
+        catalog,
+    )
+
+    candidates: list[CandidateEvaluationV1] = []
+    rejected_capacity = 0
+    for raw_candidate in search.candidates:
+        mixed = _rebase_candidate(
+            raw_candidate,
+            original_baseline_bill_lei=original_baseline_bill,
+            option=option,
+        )
+        if (
+            option is not None
+            and mixed.design_heat_load_kw is not None
+            and float(option.rated_power_kw) + 1e-9 < float(mixed.design_heat_load_kw)
+        ):
+            rejected_capacity += 1
+            continue
+        candidates.append(mixed)
+
+    selection = select_optimization_candidate(request, candidates)
+    summary = HeatingBranchSummaryV1(
+        branch_id=branch_id,
+        label=label,
+        fixed_capex_lei=fixed_capex,
+        eligible=True,
+        evaluated_candidates=int(search.evaluated_candidates),
+        accepted_candidates=len(candidates),
+        rejected_for_capacity=rejected_capacity,
+        feasible_candidates=int(selection.feasible_count),
+    )
+    return HeatingBranchRunResultV1(
+        selection=selection,
+        branch=summary,
+        candidate_count=len(candidates),
+        parametric_evaluations=int(search.evaluated_candidates),
+        warnings=list(search.warnings),
     )
 
 
