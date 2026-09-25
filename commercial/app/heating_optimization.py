@@ -1042,7 +1042,9 @@ def run_heating_branch_optimization(
     baseline_result = calculate(request.baseline, include_reference=False)
     baseline_cost = estimate_energy_cost(baseline_result)
     if not baseline_cost.get("complete"):
-        raise ValueError("Baseline annual bill is incomplete; branch optimization cannot run safely.")
+        raise ValueError(
+            "Baseline annual bill is incomplete; branch optimization cannot run safely."
+        )
     original_baseline_bill = float(baseline_cost["priced_total_lei"])
 
     technology: HeatingTechnologyV2 | None = None
@@ -1052,41 +1054,97 @@ def run_heating_branch_optimization(
     min_power = None
     max_power = None
     sizing_mode = "existing_system"
+    economic_eligible = True
+    commercialization_mode = "existing_system"
+    branch_id_override: str | None = None
+    technical_note: str | None = None
 
     if branch_id != "keep-current-heating":
         technology = next(
-            (item for item in heating_technologies(heating_catalog) if item.id == branch_id),
+            (
+                item
+                for item in heating_technologies(heating_catalog)
+                if item.id == branch_id
+            ),
             None,
         )
-        if technology is None:
-            raise ValueError(f"Unknown heating technology branch {branch_id!r}.")
-        eligible, reason = technology_is_eligible(request.baseline, technology)
-        if not eligible:
-            summary = HeatingBranchSummaryV1(
-                branch_id=branch_id,
-                label=technology.label,
-                fixed_capex_lei=round(technology.minimum_capex_lei, 2),
-                eligible=False,
-                min_product_power_kw=technology.min_power_kw,
-                max_product_power_kw=technology.max_power_kw,
-                sizing_mode="design_load_recalculated_per_candidate",
-                note=reason,
+
+        if technology is not None:
+            eligible, reason = technology_is_eligible(request.baseline, technology)
+            if not eligible:
+                summary = HeatingBranchSummaryV1(
+                    branch_id=branch_id,
+                    label=technology.label,
+                    fixed_capex_lei=round(technology.minimum_capex_lei, 2),
+                    eligible=False,
+                    economic_eligible=True,
+                    commercialization_mode="raw_parametric_then_product_match",
+                    min_product_power_kw=technology.min_power_kw,
+                    max_product_power_kw=technology.max_power_kw,
+                    sizing_mode="raw_design_load_then_product_match_finalists",
+                    note=reason,
+                )
+                return HeatingBranchRunResultV1(
+                    selection=select_optimization_candidate(request, []),
+                    branch=summary,
+                    candidates=[],
+                    candidate_count=0,
+                    parametric_evaluations=0,
+                    search_phase=search_phase,
+                    warnings=[],
+                )
+            branch_baseline = apply_heating_technology(
+                request.baseline,
+                technology,
             )
-            return HeatingBranchRunResultV1(
-                selection=select_optimization_candidate(request, []),
-                branch=summary,
-                candidates=[],
-                candidate_count=0,
-                parametric_evaluations=0,
-                search_phase=search_phase,
-                warnings=[],
+            label = technology.label
+            min_capex = technology.minimum_capex_lei
+            min_power = technology.min_power_kw
+            max_power = technology.max_power_kw
+            sizing_mode = "raw_design_load_then_product_match_finalists"
+            commercialization_mode = "raw_parametric_then_product_match"
+        else:
+            profile = SUPPLEMENTAL_TECHNICAL_HEATING_BRANCHES.get(branch_id)
+            if profile is None:
+                raise ValueError(
+                    f"Unknown heating technology branch {branch_id!r}."
+                )
+            eligible, reason = _supplemental_branch_eligible(
+                request.baseline,
+                branch_id,
             )
-        branch_baseline = apply_heating_technology(request.baseline, technology)
-        label = technology.label
-        min_capex = technology.minimum_capex_lei
-        min_power = technology.min_power_kw
-        max_power = technology.max_power_kw
-        sizing_mode = "design_load_recalculated_per_candidate"
+            if not eligible:
+                summary = HeatingBranchSummaryV1(
+                    branch_id=branch_id,
+                    label=str(profile["label"]),
+                    fixed_capex_lei=0.0,
+                    eligible=False,
+                    economic_eligible=False,
+                    commercialization_mode="technical_only_pending_cost_catalog",
+                    min_product_power_kw=None,
+                    max_product_power_kw=None,
+                    sizing_mode="technical_design_load_without_sku",
+                    note=reason or str(profile.get("note") or ""),
+                )
+                return HeatingBranchRunResultV1(
+                    selection=select_optimization_candidate(request, []),
+                    branch=summary,
+                    candidates=[],
+                    candidate_count=0,
+                    parametric_evaluations=0,
+                    search_phase=search_phase,
+                    warnings=[],
+                )
+            branch_baseline = apply_supplemental_heating_technology(
+                request.baseline,
+                branch_id,
+            )
+            label = str(profile["label"])
+            economic_eligible = False
+            commercialization_mode = "technical_only_pending_cost_catalog"
+            sizing_mode = "technical_design_load_without_sku"
+            branch_id_override = branch_id
+            technical_note = str(profile.get("note") or "")
 
     branch_request = _branch_request(request, branch_baseline)
 
@@ -1096,6 +1154,7 @@ def run_heating_branch_optimization(
             original_baseline_bill_lei=original_baseline_bill,
             original_building=request.baseline,
             technology=technology,
+            branch_id_override=branch_id_override,
         )
 
     search = run_parametric_optimization(
@@ -1111,29 +1170,56 @@ def run_heating_branch_optimization(
         phase_candidate_offset=phase_candidate_offset,
     )
 
-    rejected_capacity = max(int(search.engine_evaluations) - len(search.candidates), 0)
+    rejected_capacity = max(
+        int(search.engine_evaluations) - len(search.candidates),
+        0,
+    )
     selection = select_optimization_candidate(request, search.candidates)
     summary = HeatingBranchSummaryV1(
         branch_id=branch_id,
         label=label,
         fixed_capex_lei=round(min_capex, 2),
         eligible=True,
+        economic_eligible=economic_eligible,
+        commercialization_mode=commercialization_mode,
         evaluated_candidates=int(search.engine_evaluations),
         accepted_candidates=len(search.candidates),
         rejected_for_capacity=rejected_capacity,
-        feasible_candidates=int(selection.feasible_count),
+        feasible_candidates=(
+            int(selection.feasible_count)
+            if economic_eligible
+            else 0
+        ),
         min_product_power_kw=min_power,
         max_product_power_kw=max_power,
         sizing_mode=sizing_mode,
+        note=technical_note,
     )
     warnings = list(search.warnings)
     if technology is not None:
         warnings.extend(
             [
-                "Puterea generatorului este recalculată pentru fiecare candidat după recalcularea completă a casei.",
-                "Nu se aplică un procent universal de supradimensionare; treapta comercială este aleasă imediat peste necesarul de calcul.",
+                (
+                    "Puterea necesară a generatorului este recalculată pentru fiecare "
+                    "candidat după recalcularea completă a casei."
+                ),
+                (
+                    "Optimizerul folosește o curbă CAPEX parametrică derivată din "
+                    "observațiile catalogului; produsul real nu este selectat în bucla "
+                    "de căutare."
+                ),
+                (
+                    "Discretizarea la SKU și verificarea curbelor producătorului sunt "
+                    "amânate până după alegerea finalistului."
+                ),
             ]
         )
+    elif branch_id_override is not None:
+        warnings.append(
+            technical_note
+            or "Ramură tehnică fără cost comercial source-backed; exclusă din câștigătorul economic."
+        )
+
     return HeatingBranchRunResultV1(
         selection=selection,
         branch=summary,
@@ -1143,7 +1229,6 @@ def run_heating_branch_optimization(
         search_phase=search_phase,
         warnings=warnings,
     )
-
 
 def run_mixed_heating_optimization(
     request: OptimizationRequestV1,
