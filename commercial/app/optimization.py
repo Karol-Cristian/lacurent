@@ -913,6 +913,108 @@ def _measure_signature(measures: ParametricMeasuresV1) -> tuple[float, ...]:
     )
 
 
+def _axis_phase_candidates(
+    bounds: OptimizationSearchBoundsV1,
+) -> list[ParametricMeasuresV1]:
+    axis_candidates: list[ParametricMeasuresV1] = [
+        ParametricMeasuresV1(
+            window_target_u_w_m2k=bounds.window_target_u_w_m2k,
+        )
+    ]
+    for dimension in range(len(_SEARCH_DIMENSIONS)):
+        for level in (0.5, 1.0):
+            vector = [0.0] * len(_SEARCH_DIMENSIONS)
+            vector[dimension] = level
+            axis_candidates.append(_measures_from_normalized(vector, bounds))
+
+    unique_axis: list[ParametricMeasuresV1] = []
+    axis_seen: set[tuple[float, ...]] = set()
+    for measures in axis_candidates:
+        signature = _measure_signature(measures)
+        if signature in axis_seen:
+            continue
+        axis_seen.add(signature)
+        unique_axis.append(measures)
+    return unique_axis
+
+
+def _refinement_phase_candidates(
+    bounds: OptimizationSearchBoundsV1,
+    refinement_seed: ParametricMeasuresV1,
+) -> list[ParametricMeasuresV1]:
+    origin = _normalized_from_measures(refinement_seed, bounds)
+    refinement_candidates: list[ParametricMeasuresV1] = []
+    refinement_seen: set[tuple[float, ...]] = set()
+    for step_fraction in (0.125, 0.0625, 0.03125):
+        for dimension in range(len(_SEARCH_DIMENSIONS)):
+            for direction in (-1.0, 1.0):
+                vector = list(origin)
+                vector[dimension] = min(
+                    max(vector[dimension] + direction * step_fraction, 0.0),
+                    1.0,
+                )
+                measures = _measures_from_normalized(vector, bounds)
+                signature = _measure_signature(measures)
+                if signature in refinement_seen:
+                    continue
+                refinement_seen.add(signature)
+                refinement_candidates.append(measures)
+    return refinement_candidates
+
+
+def parametric_phase_candidate_descriptors(
+    bounds: OptimizationSearchBoundsV1,
+    *,
+    search_phase: Literal["axis", "halton", "refine"],
+    phase_offsets: list[int],
+    refinement_seed: ParametricMeasuresV1 | None = None,
+    halton_start_index: int = 1,
+) -> list[dict[str, Any]]:
+    """Describe deterministic phase candidates without running the energy engine.
+
+    This is intentionally cheap and is used for fault traceability. If a
+    Worker request is terminated by the platform before it can return a body,
+    the browser still knows the exact raw candidate that was attempted.
+    """
+    descriptors: list[dict[str, Any]] = []
+    axis_candidates = _axis_phase_candidates(bounds) if search_phase == "axis" else []
+    refinement_candidates = (
+        _refinement_phase_candidates(bounds, refinement_seed)
+        if search_phase == "refine" and refinement_seed is not None
+        else []
+    )
+    if search_phase == "refine" and refinement_seed is None:
+        raise ValueError("Refinement phase requires a seed candidate.")
+
+    for raw_offset in phase_offsets:
+        offset = max(int(raw_offset), 0)
+        measures: ParametricMeasuresV1 | None = None
+        if search_phase == "axis":
+            if offset < len(axis_candidates):
+                measures = axis_candidates[offset]
+        elif search_phase == "halton":
+            halton_index = max(int(halton_start_index) + offset, 1)
+            vector = [
+                _van_der_corput(halton_index, base)
+                for base in _HALTON_BASES
+            ]
+            measures = _measures_from_normalized(vector, bounds)
+        elif search_phase == "refine":
+            if offset < len(refinement_candidates):
+                measures = refinement_candidates[offset]
+
+        if measures is None:
+            continue
+        descriptors.append(
+            {
+                "candidate_id": _stable_candidate_id(measures),
+                "phase_offset": offset,
+                "parameters": model_to_dict(measures),
+            }
+        )
+    return descriptors
+
+
 def _fallback_refinement_seed(
     request: OptimizationRequestV1,
     candidates: list[CandidateEvaluationV1],
@@ -1124,26 +1226,7 @@ def run_parametric_optimization(
         return True
 
     if search_phase == "axis":
-        axis_candidates: list[ParametricMeasuresV1] = [
-            ParametricMeasuresV1(
-                window_target_u_w_m2k=bounds.window_target_u_w_m2k,
-            )
-        ]
-        for dimension in range(len(_SEARCH_DIMENSIONS)):
-            for level in (0.5, 1.0):
-                vector = [0.0] * len(_SEARCH_DIMENSIONS)
-                vector[dimension] = level
-                axis_candidates.append(_measures_from_normalized(vector, bounds))
-
-        unique_axis: list[ParametricMeasuresV1] = []
-        axis_seen: set[tuple[float, ...]] = set()
-        for measures in axis_candidates:
-            signature = _measure_signature(measures)
-            if signature in axis_seen:
-                continue
-            axis_seen.add(signature)
-            unique_axis.append(measures)
-
+        unique_axis = _axis_phase_candidates(bounds)
         offset = max(int(phase_candidate_offset), 0)
         for measures in unique_axis[offset:offset + max_evaluations]:
             evaluate_if_new(measures)
@@ -1180,24 +1263,7 @@ def run_parametric_optimization(
     elif search_phase == "refine":
         if refinement_seed is None:
             raise ValueError("Refinement phase requires a seed candidate.")
-        origin = _normalized_from_measures(refinement_seed, bounds)
-        refinement_candidates: list[ParametricMeasuresV1] = []
-        refinement_seen: set[tuple[float, ...]] = set()
-        for step_fraction in (0.125, 0.0625, 0.03125):
-            for dimension in range(len(_SEARCH_DIMENSIONS)):
-                for direction in (-1.0, 1.0):
-                    vector = list(origin)
-                    vector[dimension] = min(
-                        max(vector[dimension] + direction * step_fraction, 0.0),
-                        1.0,
-                    )
-                    measures = _measures_from_normalized(vector, bounds)
-                    signature = _measure_signature(measures)
-                    if signature in refinement_seen:
-                        continue
-                    refinement_seen.add(signature)
-                    refinement_candidates.append(measures)
-
+        refinement_candidates = _refinement_phase_candidates(bounds, refinement_seed)
         offset = max(int(phase_candidate_offset), 0)
         for measures in refinement_candidates[offset:offset + max_evaluations]:
             evaluate_if_new(measures)
