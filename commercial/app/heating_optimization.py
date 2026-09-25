@@ -801,6 +801,7 @@ def _rebase_candidate(
     original_baseline_bill_lei: float,
     original_building: BuildingInput,
     technology: HeatingTechnologyV2 | None,
+    branch_id_override: str | None = None,
 ) -> CandidateEvaluationV1 | None:
     """Attach branch economics without commercializing the generator.
 
@@ -815,7 +816,7 @@ def _rebase_candidate(
     lines = [line for line in candidate.cost_breakdown if line.family != "heating"]
     assumptions = list(candidate.assumptions)
     warnings = list(candidate.warnings)
-    branch_id = "keep-current-heating"
+    branch_id = branch_id_override or "keep-current-heating"
     required_power_kw = _required_generator_power_kw(candidate)
 
     if technology is not None:
@@ -895,6 +896,23 @@ def _rebase_candidate(
                 "Generator design power in this optimizer uses the space-heating design load; "
                 "DHW peak/storage sizing is checked at final equipment selection."
             )
+    elif branch_id_override in SUPPLEMENTAL_TECHNICAL_HEATING_BRANCHES:
+        profile = SUPPLEMENTAL_TECHNICAL_HEATING_BRANCHES[branch_id_override]
+        assumptions.extend(
+            [
+                f"Technical heating branch: {profile['label']}.",
+                (
+                    "This branch is simulated with the LaCurent Light technology model "
+                    "before any commercial product is selected."
+                ),
+                (
+                    "No heating CAPEX is injected because a source-backed installed-cost "
+                    "curve is not yet attached; this branch is technical-only and is "
+                    "excluded from the economic winner."
+                ),
+            ]
+        )
+        warnings.append(str(profile["note"]))
 
     capex = sum(float(line.capex_lei) for line in lines)
     annual_bill = float(candidate.annual_bill_lei)
