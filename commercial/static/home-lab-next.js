@@ -3386,6 +3386,11 @@
       setStatus("Compar rezultatele ramurilor…");
       appendOptimizerConsole(
         "info",
+        "RAW",
+        `Căutarea tehnică s-a încheiat: compar ${completedEvaluations} rezultate fără selecție SKU în bucla parametrică.`
+      );
+      appendOptimizerConsole(
+        "info",
         "FINAL",
         `Compar ${completedEvaluations} rezultate calculate din ${processedCandidates} candidați procesați.`
       );
@@ -3401,6 +3406,11 @@
         `<strong>${escapeHtml(settings.label)}</strong><span>Aplic criteriul economic final peste toți candidații validați.</span><small>${completedEvaluations} recalculări parametrice finalizate${escapeHtml(partialSearchText)}.</small>`
       );
 
+      appendOptimizerConsole(
+        "info",
+        "PRODUCT",
+        "Selectez finaliștii Pareto și abia acum încerc maparea pe produse reale + recalcularea finalistului."
+      );
       const finalizeBody = optimizerBody();
       const finalizeForm = Object.fromEntries(finalizeBody.entries());
       const finalCall = await fetchOptimizerWithRetry(
@@ -3422,6 +3432,21 @@
       const payload = finalCall.payload;
       if (!response.ok || !payload || payload.error) {
         throw new Error(payload?.error || `Optimizer indisponibil (HTTP ${response.status || "?"}).`);
+      }
+
+      const matchedHeating = payload.optimization?.selectedHeating;
+      if (matchedHeating?.optionId) {
+        appendOptimizerConsole(
+          "ok",
+          "PRODUCT",
+          `${matchedHeating.label} · necesar ${fmt(Number(matchedHeating.requiredPowerKw || 0),2)} kW → produs ${fmt(Number(matchedHeating.ratedPowerKw || 0),2)} kW`
+        );
+      } else {
+        appendOptimizerConsole(
+          "info",
+          "PRODUCT",
+          "Finalistul nu a necesitat sau nu a avut încă o mapare comercială completă."
+        );
       }
 
       scenarioResult = payload.scenario;
