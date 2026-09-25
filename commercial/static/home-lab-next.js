@@ -2924,6 +2924,17 @@
 
           if (phase === "refine" && !fixedRefinementSeed.length) {
             const warning = `Ramura „${branchLabel}” nu are candidați validați pentru refinement; faza locală a fost omisă.`;
+            plannedCandidates = Math.max(processedCandidates, plannedCandidates - phaseOffsets.length);
+            appendOptimizerConsole(
+              "retry",
+              "SKIP",
+              `[${index + 1}/${runnableIds.length}] ${branchLabel} · refinement omis: nu există seed valid.`
+            );
+            setOptimizerConsoleProgress(
+              processedCandidates,
+              plannedCandidates,
+              `${processedCandidates} procesați · ${completedEvaluations} calculați · ${failedMicroBatches.length + 1} faulturi`
+            );
             failedMicroBatches.push({
               candidateId:null,
               candidateParameters:null,
@@ -2976,9 +2987,19 @@
               for (const descriptor of (traceCall.payload.candidates || [])) {
                 phaseCandidateByOffset.set(Number(descriptor.phase_offset), descriptor);
               }
+              appendOptimizerConsole(
+                "info",
+                "TRACE",
+                `${branchLabel} · ${readablePhase}: ${phaseCandidateByOffset.size}/${phaseOffsets.length} descriptori pregătiți înainte de calcul.`
+              );
             }
           } catch (error) {
             if (error?.name === "AbortError" || runToken !== optimizerRunToken) throw error;
+            appendOptimizerConsole(
+              "retry",
+              "TRACE",
+              `${branchLabel} · ${readablePhase}: descriptorii nu au putut fi preluați; continui cu branch/phase/offset determinist.`
+            );
             // Trace preview must never prevent optimization. The fallback key
             // branch/phase/offset remains deterministic and rerunnable.
           }
