@@ -19,6 +19,8 @@ from commercial.app.optimization import (
     ParametricMeasuresV1,
     apply_parametric_measures,
     evaluate_parametric_candidate,
+    compact_refinement_candidate,
+    refinement_seed_from_compact,
     parametric_capex,
     run_parametric_optimization,
     select_optimization_candidate,
@@ -390,3 +392,50 @@ def test_parametric_capex_prefers_complete_product_derived_curve() -> None:
     )
     assert lines[0].source_kind == "product_derived_parametric_curve"
     assert not any(item.startswith("wall: CAPEX is a continuous planning curve") for item in warnings)
+
+
+def test_compact_refinement_seed_matches_full_candidate_selection() -> None:
+    baseline = demo_building()
+    candidates = [
+        _synthetic("A", capex=5000, bill=7800, saving=2200, payback=2.27),
+        _synthetic("B", capex=12000, bill=5200, saving=4800, payback=2.50),
+        _synthetic("C", capex=23000, bill=3000, saving=7000, payback=3.29),
+        _synthetic("D", capex=38000, bill=1800, saving=8200, payback=4.63),
+    ]
+    for index, candidate in enumerate(candidates, start=1):
+        candidate.parameters = ParametricMeasuresV1(
+            wall_added_r_m2k_w=float(index),
+            window_target_u_w_m2k=0.9,
+        )
+
+    requests = [
+        OptimizationRequestV1(
+            baseline=baseline,
+            mode=OptimizationMode.investment_budget,
+            investment_budget_lei=20000,
+        ),
+        OptimizationRequestV1(
+            baseline=baseline,
+            mode=OptimizationMode.annual_bill_target,
+            annual_bill_target_lei=5500,
+        ),
+        OptimizationRequestV1(
+            baseline=baseline,
+            mode=OptimizationMode.max_payback_years,
+            max_payback_years=3,
+        ),
+        OptimizationRequestV1(
+            baseline=baseline,
+            mode=OptimizationMode.auto_economic,
+        ),
+    ]
+
+    summaries = [compact_refinement_candidate(item) for item in candidates]
+    for request in requests:
+        full = select_optimization_candidate(request, candidates).selected
+        assert full is not None
+        compact_seed = refinement_seed_from_compact(request, summaries)
+        assert compact_seed is not None
+        assert compact_seed.wall_added_r_m2k_w == pytest.approx(
+            full.parameters.wall_added_r_m2k_w
+        )
