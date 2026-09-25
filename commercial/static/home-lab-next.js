@@ -232,9 +232,9 @@
   let optimizerEvaluationCount = 0;
   let optimizerLastRemoteRequestAt = 0;
   let optimizerRestartCooldownUntil = 0;
-  let optimizerRequestGapMs = 1000;
+  let optimizerRequestGapMs = 250;
   const OPTIMIZER_MAX_ENGINE_EVALUATIONS = 16;
-  const OPTIMIZER_MIN_REQUEST_GAP_MS = 1000;
+  const OPTIMIZER_MIN_REQUEST_GAP_MS = 250;
   const OPTIMIZER_RESTART_COOLDOWN_MS = 3000;
   const LIVE_REQUEST_TIMEOUT_MS = 8000;
   const OPTIMIZER_REQUEST_TIMEOUT_MS = 30000;
