@@ -2462,6 +2462,67 @@ async def home_lab_optimization_phase_candidates_api(request: Request) -> JSONRe
         return JSONResponse({"error": user_error(exc)}, status_code=422)
 
 
+def _optimizer_candidate_stage_trace(
+    candidate: CandidateEvaluationV1 | None,
+) -> list[dict[str, str]]:
+    if candidate is None or candidate.resulting_configuration is None:
+        return []
+
+    measures = candidate.parameters
+    building = candidate.resulting_configuration
+    ventilation = building.ventilation
+    heating = building.heating
+    details = heating.details
+    pv = building.renewables.pv
+    solar = building.renewables.solar_thermal
+
+    envelope_detail = (
+        f"pereți ΔR={measures.wall_added_r_m2k_w:.3f} m²K/W · "
+        f"pod ΔR={measures.roof_added_r_m2k_w:.3f} · "
+        f"pardoseală ΔR={measures.floor_added_r_m2k_w:.3f} · "
+        f"ferestre={100.0 * measures.window_replacement_fraction:.1f}% "
+        f"la Uw={measures.window_target_u_w_m2k:.2f} W/m²K"
+    )
+    ventilation_detail = (
+        f"n={ventilation.air_changes_per_hour:.3f} 1/h · "
+        f"recuperare={100.0 * ventilation.heat_recovery_efficiency:.1f}% · "
+        "pierderile de ventilație sunt incluse în recalcularea completă"
+    )
+    generator = (
+        details.generator_type.value
+        if details is not None and details.generator_type is not None
+        else heating.system_type.value
+    )
+    emitter = (
+        details.emitter_type.value
+        if details is not None
+        else "implicit"
+    )
+    heating_detail = (
+        f"generator={generator} · emitere={emitter} · "
+        f"necesar design="
+        f"{candidate.design_heat_load_kw:.3f} kW"
+        if candidate.design_heat_load_kw is not None
+        else f"generator={generator} · emitere={emitter} · necesar design=n/a"
+    )
+    renewable_detail = (
+        f"PV={float(pv.installed_power_kwp if pv.enabled else 0.0):.3f} kWp · "
+        f"solar termic={float(solar.collector_area_m2 if solar.enabled else 0.0):.3f} m²"
+    )
+    economic_detail = (
+        f"CAPEX={candidate.capex_lei:.2f} lei · "
+        f"factură={candidate.annual_bill_lei:.2f} lei/an · "
+        f"economie={candidate.annual_saving_lei:.2f} lei/an"
+    )
+    return [
+        {"stage": "ANVELOPĂ", "detail": envelope_detail},
+        {"stage": "VENTILAȚIE", "detail": ventilation_detail},
+        {"stage": "ÎNCĂLZIRE", "detail": heating_detail},
+        {"stage": "REGENERABILE", "detail": renewable_detail},
+        {"stage": "ECONOMIC", "detail": economic_detail},
+    ]
+
+
 @app.post("/api/optimization/home-lab/branch")
 async def home_lab_optimization_branch_api(request: Request) -> JSONResponse:
     content_type = str(request.headers.get("content-type", "") or "").lower()
@@ -2541,6 +2602,9 @@ async def home_lab_optimization_branch_api(request: Request) -> JSONResponse:
                 "candidateSummaries": [
                     compact_refinement_candidate(item) for item in result.candidates
                 ],
+                "calculationStages": _optimizer_candidate_stage_trace(
+                    result.candidates[0] if result.candidates else None
+                ),
                 "candidateCount": int(result.candidate_count),
                 "parametricEvaluations": int(result.parametric_evaluations),
                 "searchPhase": result.search_phase,
