@@ -23,6 +23,7 @@ from .models import BuildingInput, building_from_json, model_to_dict, model_to_j
 from .optimization import (
     CandidateEvaluationV1,
     OptimizationCandidateRequestV1,
+    ParametricMeasuresV1,
     OptimizationMode,
     OptimizationRequestV1,
     OptimizationSearchBoundsV1,
@@ -44,6 +45,7 @@ from .full_commercialization import (
 )
 from .heating_optimization import (
     HeatingBranchSummaryV1,
+    evaluate_heating_branch_batch,
     heating_branch_plan,
     run_heating_branch_optimization,
     run_mixed_heating_optimization,
@@ -2307,7 +2309,11 @@ async def home_lab_optimization_plan_api(request: Request) -> JSONResponse:
                 "label": _home_lab_optimizer_label(mode, form),
                 "branches": [model_to_dict(item) for item in branches],
                 "runBranchIds": [item.branch_id for item in runnable],
+                "bounds": model_to_dict(OptimizationSearchBoundsV1()),
                 "evaluationsPerBranch": 24,
+                "coarseEvaluationsPerBranch": 18,
+                "refinementEvaluationsPerBranch": 6,
+                "maxCandidatesPerRequest": 6,
             }
         )
     except Exception as exc:
@@ -2316,29 +2322,71 @@ async def home_lab_optimization_plan_api(request: Request) -> JSONResponse:
 
 @app.post("/api/optimization/home-lab/branch")
 async def home_lab_optimization_branch_api(request: Request) -> JSONResponse:
+    return JSONResponse(
+        {
+            "error": (
+                "Interfața Home Lab a fost actualizată la microbatch. "
+                "Reîncarcă pagina înainte de a relansa optimizarea."
+            ),
+            "requiresMicrobatchExecution": True,
+        },
+        status_code=409,
+    )
+
+
+@app.post("/api/optimization/home-lab/batch")
+async def home_lab_optimization_batch_api(request: Request) -> JSONResponse:
     form = dict(await request.form())
     branch_id = str(form.pop("_heating_branch_id", "") or "").strip()
+    raw_measures = str(form.pop("_measures_json", "") or "").strip()
     if not branch_id:
         return JSONResponse({"error": "Lipsește ramura de încălzire."}, status_code=422)
+    if not raw_measures:
+        return JSONResponse({"error": "Lipsesc candidații microbatch."}, status_code=422)
     try:
         _, _, optimization_request = _home_lab_optimization_request_from_form(form)
+        decoded = json.loads(raw_measures)
+        if not isinstance(decoded, list) or not decoded:
+            raise ValueError("Candidații microbatch trebuie să fie o listă nevidă.")
+        measures = [ParametricMeasuresV1(**item) for item in decoded]
         started = time.perf_counter()
-        result = run_heating_branch_optimization(
+        result = evaluate_heating_branch_batch(
             optimization_request,
             branch_id=branch_id,
-            bounds=OptimizationSearchBoundsV1(),
+            measures=measures,
             catalog=await _optimizer_cost_catalog(request),
-            max_evaluations=24,
         )
         elapsed_ms = round((time.perf_counter() - started) * 1000.0, 1)
         return JSONResponse(
             {
-                "branch": model_to_dict(result.branch),
-                "selection": model_to_dict(result.selection),
-                "candidateCount": int(result.candidate_count),
-                "parametricEvaluations": int(result.parametric_evaluations),
+                **model_to_dict(result),
                 "calculationTimeMs": elapsed_ms,
-                "warnings": result.warnings,
+            }
+        )
+    except Exception as exc:
+        return JSONResponse({"error": user_error(exc)}, status_code=422)
+
+
+@app.post("/api/optimization/home-lab/materialize")
+async def home_lab_optimization_materialize_api(request: Request) -> JSONResponse:
+    form = dict(await request.form())
+    raw_candidate = str(form.pop("_selected_candidate_json", "") or "").strip()
+    if not raw_candidate:
+        return JSONResponse({"error": "Lipsește candidatul final."}, status_code=422)
+    try:
+        selected = CandidateEvaluationV1(**json.loads(raw_candidate))
+        if selected.resulting_configuration is None:
+            raise ValueError("Candidatul final nu conține configurația clădirii.")
+        started = time.perf_counter()
+        final_result = calculate(
+            selected.resulting_configuration,
+            include_reference=False,
+        )
+        elapsed_ms = round((time.perf_counter() - started) * 1000.0, 1)
+        return JSONResponse(
+            {
+                "scenario": embed_lab_result_payload(final_result),
+                "calculationTimeMs": elapsed_ms,
             }
         )
     except Exception as exc:
@@ -2347,88 +2395,16 @@ async def home_lab_optimization_branch_api(request: Request) -> JSONResponse:
 
 @app.post("/api/optimization/home-lab/finalize")
 async def home_lab_optimization_finalize_api(request: Request) -> JSONResponse:
-    form = dict(await request.form())
-    raw_results = str(form.pop("_branch_results_json", "") or "").strip()
-    if not raw_results:
-        return JSONResponse({"error": "Lipsesc rezultatele ramurilor de încălzire."}, status_code=422)
-    try:
-        mode, _, optimization_request = _home_lab_optimization_request_from_form(form)
-        decoded = json.loads(raw_results)
-        if not isinstance(decoded, list):
-            raise ValueError("Rezultatele ramurilor trebuie să fie o listă.")
-
-        branch_summaries: list[HeatingBranchSummaryV1] = []
-        finalists: list[CandidateEvaluationV1] = []
-        evaluated_candidates = 0
-        parametric_evaluations = 0
-        heating_branch_evaluations = 0
-        warnings: list[str] = []
-        total_elapsed_ms = 0.0
-
-        for item in decoded:
-            if not isinstance(item, dict):
-                continue
-            branch = HeatingBranchSummaryV1(**(item.get("branch") or {}))
-            branch_summaries.append(branch)
-            evaluated_candidates += int(item.get("candidateCount") or branch.accepted_candidates)
-            branch_evals = int(item.get("parametricEvaluations") or branch.evaluated_candidates)
-            parametric_evaluations += branch_evals
-            if branch.branch_id != "keep-current-heating":
-                heating_branch_evaluations += branch_evals
-            total_elapsed_ms += float(item.get("calculationTimeMs") or 0.0)
-            warnings.extend(str(value) for value in (item.get("warnings") or []))
-
-            selection_raw = item.get("selection") or {}
-            selected_raw = selection_raw.get("selected")
-            if selected_raw:
-                finalists.append(CandidateEvaluationV1(**selected_raw))
-
-        if not finalists:
-            selection = select_optimization_candidate(optimization_request, [])
-            return JSONResponse(
-                {
-                    "error": "Nu există nicio soluție care satisface condiția economică aleasă în ramurile analizate.",
-                    "selection": model_to_dict(selection),
-                    "evaluated_candidates": evaluated_candidates,
-                    "parametric_evaluations": parametric_evaluations,
-                    "heating_branch_evaluations": heating_branch_evaluations,
-                    "heating_branches": [model_to_dict(item) for item in branch_summaries],
-                },
-                status_code=422,
-            )
-
-        selection = select_optimization_candidate(optimization_request, finalists)
-        if selection.selected is None:
-            return JSONResponse(
-                {
-                    "error": "Nicio ramură finalistă nu satisface regula economică aleasă.",
-                    "selection": model_to_dict(selection),
-                    "evaluated_candidates": evaluated_candidates,
-                    "parametric_evaluations": parametric_evaluations,
-                    "heating_branch_evaluations": heating_branch_evaluations,
-                    "heating_branches": [model_to_dict(item) for item in branch_summaries],
-                },
-                status_code=422,
-            )
-
-        payload = _home_lab_optimizer_success_payload(
-            mode=mode,
-            form=form,
-            selection=selection,
-            branches=branch_summaries,
-            evaluated_candidates=evaluated_candidates,
-            parametric_evaluations=parametric_evaluations,
-            heating_branch_evaluations=heating_branch_evaluations,
-            warnings=[
-                "Optimizerul a rulat ramurile de încălzire în requesturi separate pentru a păstra profunzimea căutării fără a depăși limita CPU a Worker-ului.",
-                *warnings,
-            ],
-            calculation_time_ms=round(total_elapsed_ms, 1),
-            pareto_scope="branch_finalists",
-        )
-        return JSONResponse(payload)
-    except Exception as exc:
-        return JSONResponse({"error": user_error(exc)}, status_code=422)
+    return JSONResponse(
+        {
+            "error": (
+                "Interfața Home Lab a fost actualizată la selecție client-side. "
+                "Reîncarcă pagina înainte de a relansa optimizarea."
+            ),
+            "requiresMicrobatchExecution": True,
+        },
+        status_code=409,
+    )
 
 
 @app.post("/api/optimization/home-lab")
