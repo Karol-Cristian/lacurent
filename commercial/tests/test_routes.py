@@ -154,9 +154,52 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert "Analiza este gata." in page.text
     assert 'data-page="run"' in page.text
     assert 'data-page="report"' in page.text
-    assert "/static/home-lab-editorial.css?v=1" in page.text
-    assert "/static/home-lab-editorial.js?v=1" in page.text
+    assert 'data-page="renewables"' in page.text
+    assert "/static/home-lab-editorial.css?v=2" in page.text
+    assert "/static/home-lab-editorial.js?v=2" in page.text
     assert "/static/home-lab-3d.js" not in page.text
+
+    # Editorial changes presentation only. It must keep the technical input
+    # granularity of Home Lab instead of collapsing the building to broad
+    # envelope profiles.
+    for token in (
+        'name="heated_floor_area_m2"',
+        'name="heated_levels"',
+        'name="average_height_m"',
+        'name="wall_area_m2"',
+        'name="roof_area_m2"',
+        'name="floor_area_m2"',
+        'name="heated_volume_m3"',
+        'id="wallStructure"',
+        'id="wallStructureThickness"',
+        'id="wallInsulationMaterial"',
+        'id="wallIns"',
+        'id="topBoundary"',
+        'id="roofInsulationMaterial"',
+        'id="roofIns"',
+        'id="floorBoundary"',
+        'id="floorInsulationMaterial"',
+        'id="floorIns"',
+        'name="window_area_m2"',
+        'id="glazing"',
+        'id="orientation"',
+        'id="heatPumpSource"',
+        'id="heatingEmitter"',
+        'id="heatingDistribution"',
+        'id="heatingStorage"',
+        'id="heatingControl"',
+        'name="dhw_system_type"',
+        'id="ventilation"',
+        'id="cooling"',
+        'name="pv_installed_power_kwp"',
+        'name="pv_orientation"',
+        'name="pv_tilt_degrees"',
+        'name="solar_thermal_collector_area_m2"',
+        'name="solar_thermal_orientation"',
+        'name="solar_thermal_tilt_degrees"',
+    ):
+        assert token in page.text
+    assert 'name="insulation_profile"' not in page.text
 
     css = client.get("/static/home-lab-editorial.css")
     assert css.status_code == 200
@@ -165,11 +208,14 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
 
     js = client.get("/static/home-lab-editorial.js")
     assert js.status_code == 200
+    assert "WALL_STRUCTURE_PRESETS" in js.text
+    assert "INSULATION_LAMBDA_W_MK" in js.text
+    assert "function syncTechnicalForm()" in js.text
     assert '"/api/optimization/home-lab/v2/plan"' in js.text
     assert '"/api/optimization/home-lab/v2/branch"' in js.text
     assert '"/api/optimization/home-lab/v2/finalize"' in js.text
     assert 'showPage("done");' in js.text
-    assert 'document.getElementById("openReport").addEventListener("click", () => showPage("report"));' in js.text
+    assert '$("#openReport").addEventListener("click", () => showPage("report"));' in js.text
 
 
 def test_privacy_and_terms_pages_expose_required_disclosures() -> None:
