@@ -232,12 +232,12 @@
   let optimizerEvaluationCount = 0;
   let optimizerLastRemoteRequestAt = 0;
   let optimizerRestartCooldownUntil = 0;
-  let optimizerRequestGapMs = 750;
+  let optimizerRequestGapMs = 1000;
   const OPTIMIZER_MAX_ENGINE_EVALUATIONS = 16;
-  const OPTIMIZER_MIN_REQUEST_GAP_MS = 750;
-  const OPTIMIZER_RESTART_COOLDOWN_MS = 2500;
+  const OPTIMIZER_MIN_REQUEST_GAP_MS = 1000;
+  const OPTIMIZER_RESTART_COOLDOWN_MS = 3000;
   const LIVE_REQUEST_TIMEOUT_MS = 8000;
-  const OPTIMIZER_REQUEST_TIMEOUT_MS = 25000;
+  const OPTIMIZER_REQUEST_TIMEOUT_MS = 30000;
   const optimizerCandidateCache = new Map();
   const OPTIMIZER_CANDIDATE_CACHE_MAX = 192;
   let homeResultState = homeResult ? "stale" : "empty";
@@ -2707,6 +2707,7 @@
         }));
 
       let completedEvaluations = 0;
+      const failedMicroBatches = [];
       const phases = Array.isArray(plan.searchPhases) && plan.searchPhases.length
         ? plan.searchPhases
         : ["axis", "halton", "refine"];
@@ -2727,8 +2728,8 @@
 
         const phaseOffsets = Array.isArray(plan.phaseOffsets) && plan.phaseOffsets.length
           ? plan.phaseOffsets.map(value => Number(value || 0))
-          : [0, 4, 8];
-        const microBatchSize = Number(plan.microBatchSize || 4);
+          : Array.from({length:evaluationsPerPhase}, (_, offset) => offset);
+        const microBatchSize = Number(plan.microBatchSize || 1);
 
         for (let phaseIndex = 0; phaseIndex < phases.length; phaseIndex += 1) {
           if (runToken !== optimizerRunToken) return;
@@ -2737,6 +2738,29 @@
           const fixedRefinementSeed = phase === "refine"
             ? [...priorCandidateSummaries]
             : [];
+
+          if (phase === "refine" && !fixedRefinementSeed.length) {
+            const warning = `Ramura „${branchLabel}” nu are candidați validați pentru refinement; faza locală a fost omisă.`;
+            failedMicroBatches.push({
+              branchId,
+              branchLabel,
+              phase,
+              batchIndex:null,
+              phaseOffset:null,
+              status:null,
+              reason:"missing_refinement_seed",
+            });
+            branchResults.push({
+              branch,
+              selection:{selected:null},
+              candidates:[],
+              candidateCount:0,
+              parametricEvaluations:0,
+              calculationTimeMs:0,
+              warnings:[warning],
+            });
+            continue;
+          }
 
           const phaseSummariesCollected = [];
           for (let batchIndex = 0; batchIndex < phaseOffsets.length; batchIndex += 1) {
@@ -2753,28 +2777,79 @@
 
             const body = optimizerBody();
             const formPayload = Object.fromEntries(body.entries());
-            const branchCall = await fetchOptimizerWithRetry(
-              "/api/optimization/home-lab/branch",
-              {
-                method:"POST",
-                headers:{"Content-Type":"application/json"},
-                body:JSON.stringify({
-                  form:formPayload,
-                  branchId,
-                  searchPhase:phase,
-                  phaseOffset,
-                  priorCandidates:phase === "refine" ? fixedRefinementSeed : [],
-                }),
-              },
-              optimizerAbortController?.signal || null,
-              OPTIMIZER_REQUEST_TIMEOUT_MS
-            );
+            let branchCall = null;
+            try {
+              branchCall = await fetchOptimizerWithRetry(
+                "/api/optimization/home-lab/branch",
+                {
+                  method:"POST",
+                  headers:{"Content-Type":"application/json"},
+                  body:JSON.stringify({
+                    form:formPayload,
+                    branchId,
+                    searchPhase:phase,
+                    phaseOffset,
+                    priorCandidates:phase === "refine" ? fixedRefinementSeed : [],
+                  }),
+                },
+                optimizerAbortController?.signal || null,
+                OPTIMIZER_REQUEST_TIMEOUT_MS
+              );
+            } catch (error) {
+              if (error?.name === "AbortError" || runToken !== optimizerRunToken) throw error;
+              const transientTransport = error?.name === "TimeoutError" || error?.name === "TypeError";
+              if (!transientTransport) throw error;
+              const warning = `Ramura „${branchLabel}” / ${readablePhase} / micro-lot ${batchIndex + 1} a fost omisă după faulturi tranzitorii (${error?.name || "network"}).`;
+              failedMicroBatches.push({
+                branchId,
+                branchLabel,
+                phase,
+                batchIndex,
+                phaseOffset,
+                status:null,
+                reason:error?.name || "transport_error",
+              });
+              branchResults.push({
+                branch,
+                selection:{selected:null},
+                candidates:[],
+                candidateCount:0,
+                parametricEvaluations:0,
+                calculationTimeMs:0,
+                warnings:[warning],
+              });
+              continue;
+            }
+
             transientRetries += Math.max(0, Number(branchCall.attemptCount || 1) - 1);
             if (runToken !== optimizerRunToken) return;
             if (!branchCall.response.ok || !branchCall.payload || branchCall.payload.error) {
+              const status = Number(branchCall.response?.status || 0);
+              if (OPTIMIZER_TRANSIENT_RETRY_STATUSES.has(status)) {
+                const warning = `Ramura „${branchLabel}” / ${readablePhase} / micro-lot ${batchIndex + 1} a fost omisă după HTTP ${status || "tranzitoriu"} repetat.`;
+                failedMicroBatches.push({
+                  branchId,
+                  branchLabel,
+                  phase,
+                  batchIndex,
+                  phaseOffset,
+                  status,
+                  reason:"transient_http",
+                });
+                branchResults.push({
+                  branch,
+                  selection:{selected:null},
+                  candidates:[],
+                  candidateCount:0,
+                  parametricEvaluations:0,
+                  calculationTimeMs:0,
+                  warnings:[warning],
+                });
+                continue;
+              }
               throw new Error(
                 branchCall.payload?.error
-                || `Ramura „${branchLabel}” / ${readablePhase} / lot ${batchIndex + 1} nu a putut fi calculată (HTTP ${branchCall.response.status || "?"}).`
+                || `Ramura „${branchLabel}” / ${readablePhase} / lot ${batchIndex + 1} nu a putut fi calculată (HTTP ${status || "?"}).`
               );
             }
 
@@ -2790,8 +2865,11 @@
       }
 
       setStatus("Compar rezultatele ramurilor…");
+      const partialSearchText = failedMicroBatches.length
+        ? ` · ${failedMicroBatches.length} micro-loturi omise după faulturi tranzitorii`
+        : "";
       setOptimizationNote(
-        `<strong>${escapeHtml(settings.label)}</strong><span>Toate ramurile și fazele au fost calculate. Aplic criteriul economic final peste toți candidații validați.</span><small>${completedEvaluations} recalculări parametrice finalizate.</small>`
+        `<strong>${escapeHtml(settings.label)}</strong><span>Aplic criteriul economic final peste toți candidații validați.</span><small>${completedEvaluations} recalculări parametrice finalizate${escapeHtml(partialSearchText)}.</small>`
       );
 
       const finalizeBody = optimizerBody();
@@ -2825,6 +2903,8 @@
         projectMode,
         projectModeLabel:projectModeLabel(),
         transientRetries,
+        failedMicroBatches,
+        partialSearch:failedMicroBatches.length > 0,
       };
       applyParametricOptimizerState(optimizationMeta);
       persist();
@@ -2846,14 +2926,17 @@
       const retryText = Number(optimizationMeta.transientRetries || 0) > 0
         ? ` · ${optimizationMeta.transientRetries} retry-uri infrastructură recuperate`
         : "";
+      const partialText = Number(optimizationMeta.failedMicroBatches?.length || 0) > 0
+        ? ` · ${optimizationMeta.failedMicroBatches.length} puncte de căutare omise după faulturi tranzitorii`
+        : "";
       const paretoText = optimizationMeta.paretoScope === "branch_finalists"
         ? `${optimizationMeta.paretoSolutions || 0} ramuri finaliste nedominante`
         : `${optimizationMeta.paretoSolutions || 0} pe frontiera Pareto`;
       setOptimizationNote(
         `<strong>${escapeHtml(optimizationMeta.label || settings.label)}</strong>
          <span>CAPEX ${fmt(optimizationMeta.capexLei)} lei · economie anuală ${fmt(optimizationMeta.annualSavingLei)} lei/an · ${optimizationMeta.paybackYears == null ? "fără amortizare pozitivă" : "amortizare " + fmt(optimizationMeta.paybackYears,1) + " ani"} · ${escapeHtml(heatingChoice)}.</span>
-         <small>${escapeHtml(searchDepth + retryText)} · ${optimizationMeta.feasibleCandidates || 0} eligibile · ${escapeHtml(paretoText)}. ${escapeHtml(commercialNote)}</small>`,
-        Number(optimizationMeta.annualSavingLei) > 0 ? "good" : "warn"
+         <small>${escapeHtml(searchDepth + retryText + partialText)} · ${optimizationMeta.feasibleCandidates || 0} eligibile · ${escapeHtml(paretoText)}. ${escapeHtml(commercialNote)}</small>`,
+        optimizationMeta.partialSearch ? "warn" : (Number(optimizationMeta.annualSavingLei) > 0 ? "good" : "warn")
       );
       showScreen("report");
     } catch (error) {
