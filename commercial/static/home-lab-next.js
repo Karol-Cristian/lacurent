@@ -2747,12 +2747,15 @@
           if (phase === "refine" && !fixedRefinementSeed.length) {
             const warning = `Ramura „${branchLabel}” nu are candidați validați pentru refinement; faza locală a fost omisă.`;
             failedMicroBatches.push({
+              candidateId:null,
+              candidateParameters:null,
               branchId,
               branchLabel,
               phase,
               batchIndex:null,
               phaseOffset:null,
               status:null,
+              attempts:0,
               reason:"missing_refinement_seed",
             });
             branchResults.push({
@@ -2767,10 +2770,46 @@
             continue;
           }
 
+          // Resolve the raw candidates before the heavy Worker calls. If a
+          // request is killed by the platform, this descriptor survives in the
+          // browser and makes the failed point exactly reproducible.
+          const phaseCandidateByOffset = new Map();
+          try {
+            const traceBody = optimizerBody();
+            const traceForm = Object.fromEntries(traceBody.entries());
+            const traceCall = await fetchOptimizerWithRetry(
+              "/api/optimization/home-lab/phase-candidates",
+              {
+                method:"POST",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({
+                  form:traceForm,
+                  branchId,
+                  searchPhase:phase,
+                  phaseOffsets,
+                  priorCandidates:phase === "refine" ? fixedRefinementSeed : [],
+                }),
+              },
+              optimizerAbortController?.signal || null,
+              OPTIMIZER_REQUEST_TIMEOUT_MS,
+              2
+            );
+            if (traceCall.response.ok && traceCall.payload && !traceCall.payload.error) {
+              for (const descriptor of (traceCall.payload.candidates || [])) {
+                phaseCandidateByOffset.set(Number(descriptor.phase_offset), descriptor);
+              }
+            }
+          } catch (error) {
+            if (error?.name === "AbortError" || runToken !== optimizerRunToken) throw error;
+            // Trace preview must never prevent optimization. The fallback key
+            // branch/phase/offset remains deterministic and rerunnable.
+          }
+
           const phaseSummariesCollected = [];
           for (let batchIndex = 0; batchIndex < phaseOffsets.length; batchIndex += 1) {
             if (runToken !== optimizerRunToken) return;
             const phaseOffset = phaseOffsets[batchIndex];
+            const candidateTrace = phaseCandidateByOffset.get(Number(phaseOffset)) || null;
             setStatus(
               `Optimizez ${index + 1}/${runnableIds.length}: ${branchLabel} · ${readablePhase} ${batchIndex + 1}/${phaseOffsets.length}…`
             );
@@ -2806,12 +2845,15 @@
               if (!transientTransport) throw error;
               const warning = `Ramura „${branchLabel}” / ${readablePhase} / micro-lot ${batchIndex + 1} a fost omisă după faulturi tranzitorii (${error?.name || "network"}).`;
               failedMicroBatches.push({
+                candidateId:candidateTrace?.candidate_id || null,
+                candidateParameters:candidateTrace?.parameters || null,
                 branchId,
                 branchLabel,
                 phase,
                 batchIndex,
                 phaseOffset,
                 status:null,
+                attempts:Number(error?.attemptCount || 0),
                 reason:error?.name || "transport_error",
               });
               branchResults.push({
@@ -2833,12 +2875,15 @@
               if (OPTIMIZER_TRANSIENT_RETRY_STATUSES.has(status)) {
                 const warning = `Ramura „${branchLabel}” / ${readablePhase} / micro-lot ${batchIndex + 1} a fost omisă după HTTP ${status || "tranzitoriu"} repetat.`;
                 failedMicroBatches.push({
+                  candidateId:candidateTrace?.candidate_id || null,
+                  candidateParameters:candidateTrace?.parameters || null,
                   branchId,
                   branchLabel,
                   phase,
                   batchIndex,
                   phaseOffset,
                   status,
+                  attempts:Number(branchCall.attemptCount || 1),
                   reason:"transient_http",
                 });
                 branchResults.push({
@@ -4384,6 +4429,64 @@
     }).join("")}</div>`;
   }
 
+  function optimizerFailedCandidateParameterText(raw = {}) {
+    const parts = [];
+    const push = (label, value, suffix = "") => {
+      const number = Number(value);
+      if (Number.isFinite(number) && Math.abs(number) > 1e-9) {
+        parts.push(`${label} ${fmt(number,3)}${suffix}`);
+      }
+    };
+    push("pereți R+", raw.wall_added_r_m2k_w, " m²K/W");
+    push("pod R+", raw.roof_added_r_m2k_w, " m²K/W");
+    push("pardoseală R+", raw.floor_added_r_m2k_w, " m²K/W");
+    const windows = Number(raw.window_replacement_fraction);
+    if (Number.isFinite(windows) && windows > 1e-9) {
+      parts.push(`ferestre ${fmt(windows * 100,1)}% · Uw ${fmt(raw.window_target_u_w_m2k,2)} W/m²K`);
+    }
+    push("PV +", raw.pv_added_kwp, " kWp");
+    push("solar termic +", raw.solar_thermal_added_m2, " m²");
+    return parts.length ? parts.join(" · ") : "fără intervenții parametrice";
+  }
+
+  function renderOptimizerFailedCandidates() {
+    const node = $("#hlnReportFailedCandidates");
+    if (!node) return;
+    const failed = Array.isArray(optimizationMeta?.failedMicroBatches)
+      ? optimizationMeta.failedMicroBatches
+      : [];
+    if (optimizationMeta?.kind !== "parametric_economic" || !failed.length) {
+      node.innerHTML = '<p class="hln-report-empty">Niciun candidat nu a fost pierdut din cauza unui fault tranzitoriu.</p>';
+      return;
+    }
+    node.innerHTML = `
+      <div class="hln-report-status-warn">
+        <strong>${failed.length} candidat${failed.length === 1 ? "" : "i"} nu au putut fi evaluați complet.</strong>
+        <span>Acești candidați rămân în trasabilitate și trebuie reexecutați; nu sunt considerați automat neeligibili.</span>
+      </div>
+      <div class="hln-strategy-list">
+        ${failed.map((item,index) => {
+          const candidateId = item.candidateId || `TRACE-${item.branchId || "branch"}-${item.phase || "phase"}-${item.phaseOffset ?? "na"}`;
+          const status = item.status ? `HTTP ${item.status}` : (item.reason || "fault tranzitoriu");
+          const attempts = Number(item.attempts || 0);
+          const params = item.candidateParameters
+            ? optimizerFailedCandidateParameterText(item.candidateParameters)
+            : "parametrii nu au putut fi preluați înainte de fault";
+          return `
+            <article>
+              <b>${index + 1}</b>
+              <div>
+                <strong>${escapeHtml(candidateId)} · ${escapeHtml(item.branchLabel || item.branchId || "ramură")}</strong>
+                <small>${escapeHtml(item.phase || "fază")} · offset ${escapeHtml(String(item.phaseOffset ?? "—"))} · ${escapeHtml(status)}${attempts ? ` · ${attempts} încercări` : ""}</small>
+                <small>${escapeHtml(params)}</small>
+              </div>
+            </article>
+          `;
+        }).join("")}
+      </div>
+    `;
+  }
+
   function renderOptimizerTraceability() {
     const commercial = $("#hlnReportCommercialSolution");
     const rawNode = $("#hlnReportRawSolution");
@@ -4422,8 +4525,12 @@
     const heatingTrace = optimizationMeta.parametricEvaluations
       ? `${optimizationMeta.parametricEvaluations} recalculări parametrice, dintre care ${optimizationMeta.heatingBranchEvaluations || 0} în ramuri alternative de încălzire · `
       : "";
+    const failedTrace = Number(optimizationMeta.failedMicroBatches?.length || 0) > 0
+      ? `${optimizationMeta.failedMicroBatches.length} candidați cu fault păstrați pentru reexecuție · `
+      : "";
     trace.textContent =
       heatingTrace +
+      failedTrace +
       `${optimizationMeta.evaluatedCandidates || 0} candidați tehnici păstrați · ` +
       `${optimizationMeta.feasibleCandidates || 0} eligibili pentru regula aleasă · ` +
       `${optimizationMeta.paretoSolutions || 0} soluții nedominante. ` +
@@ -4433,6 +4540,7 @@
   function renderReport() {
     if (!homeResult || !scenarioResult) return;
     renderOptimizerTraceability();
+    renderOptimizerFailedCandidates();
     renderHeatingBranchTraceability();
 
     $("#hlnReportHomeClass").textContent = homeResult.energy_class || "—";
