@@ -972,9 +972,12 @@ def heating_branch_plan(
             label="Păstrează sistemul actual",
             fixed_capex_lei=0.0,
             eligible=True,
+            economic_eligible=True,
+            commercialization_mode="existing_system",
             sizing_mode="existing_system",
         )
     ]
+
     for technology in heating_technologies(heating_catalog):
         eligible, reason = technology_is_eligible(request.baseline, technology)
         if (
@@ -983,21 +986,46 @@ def heating_branch_plan(
             and technology.minimum_capex_lei > float(request.investment_budget_lei) + 1e-6
         ):
             eligible = False
-            reason = "CAPEX-ul minim al tehnologiei depășește singur bugetul de investiție."
+            reason = (
+                "CAPEX-ul minim observat al tehnologiei depășește singur bugetul de "
+                "investiție."
+            )
         plan.append(
             HeatingBranchSummaryV1(
                 branch_id=technology.id,
                 label=technology.label,
                 fixed_capex_lei=round(technology.minimum_capex_lei, 2),
                 eligible=eligible,
+                economic_eligible=True,
+                commercialization_mode="raw_parametric_then_product_match",
                 min_product_power_kw=technology.min_power_kw,
                 max_product_power_kw=technology.max_power_kw,
-                sizing_mode="design_load_recalculated_per_candidate",
+                sizing_mode="raw_design_load_then_product_match_finalists",
                 note=reason,
             )
         )
-    return plan
 
+    existing_ids = {item.branch_id for item in plan}
+    for branch_id, profile in SUPPLEMENTAL_TECHNICAL_HEATING_BRANCHES.items():
+        if branch_id in existing_ids:
+            continue
+        eligible, reason = _supplemental_branch_eligible(request.baseline, branch_id)
+        note_parts = [value for value in (reason, profile.get("note")) if value]
+        plan.append(
+            HeatingBranchSummaryV1(
+                branch_id=branch_id,
+                label=str(profile["label"]),
+                fixed_capex_lei=0.0,
+                eligible=eligible,
+                economic_eligible=False,
+                commercialization_mode="technical_only_pending_cost_catalog",
+                min_product_power_kw=None,
+                max_product_power_kw=None,
+                sizing_mode="technical_design_load_without_sku",
+                note=" ".join(str(value) for value in note_parts) or None,
+            )
+        )
+    return plan
 
 def run_heating_branch_optimization(
     request: OptimizationRequestV1,
