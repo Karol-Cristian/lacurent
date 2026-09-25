@@ -317,12 +317,12 @@ def _neutral_branch_request(
     # refinement; the true payback constraint is applied globally afterwards.
     if request.mode == OptimizationMode.investment_budget:
         remaining = float(request.investment_budget_lei) - fixed_capex_lei
-        if remaining < -1e-6:
+        if remaining <= 1e-6:
             return None
         return OptimizationRequestV1(
             baseline=branch_baseline,
             mode=OptimizationMode.investment_budget,
-            investment_budget_lei=max(0.0, remaining),
+            investment_budget_lei=remaining,
         )
     if request.mode == OptimizationMode.annual_bill_target:
         return OptimizationRequestV1(
