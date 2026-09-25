@@ -1,16 +1,26 @@
 from __future__ import annotations
 
-from commercial.app.engine import demo_building
+import pytest
+
+from commercial.app.engine import calculate, demo_building
 from commercial.app.heating_optimization import (
+    _rebase_candidate,
+    apply_heating_technology,
+    heating_branch_plan,
     heating_planning_options,
-    option_is_eligible,
+    heating_technologies,
+    run_heating_branch_optimization,
     run_mixed_heating_optimization,
+    technology_is_eligible,
 )
 from commercial.app.optimization import (
     OptimizationMode,
     OptimizationRequestV1,
     OptimizationSearchBoundsV1,
+    ParametricMeasuresV1,
+    evaluate_parametric_candidate,
 )
+from commercial.app.pricing import estimate_energy_cost
 
 
 def _catalog() -> dict:
@@ -28,19 +38,25 @@ def _catalog() -> dict:
     }
 
 
-def test_heating_planning_catalog_has_sourced_discrete_technologies() -> None:
+def test_heating_catalog_groups_products_into_technology_branches() -> None:
     options = heating_planning_options()
-    ids = {item.id for item in options}
+    technologies = heating_technologies()
 
+    assert len(options) > len(technologies)
+    ids = {item.id for item in technologies}
     assert {
-        "condensing-gas-24kw",
-        "heat-pump-air-water-5kw",
-        "heat-pump-air-water-8kw",
-        "heat-pump-air-water-12kw",
-        "heat-pump-air-water-15kw",
-        "electric-boiler-12kw",
-        "pellet-boiler-18kw",
+        "condensing-gas",
+        "heat-pump-air-water",
+        "electric-boiler",
+        "pellet-boiler",
     } <= ids
+
+    hp = next(item for item in technologies if item.id == "heat-pump-air-water")
+    assert [item.rated_power_kw for item in hp.products] == [5, 8, 12, 15]
+
+    electric = next(item for item in technologies if item.id == "electric-boiler")
+    assert [item.rated_power_kw for item in electric.products] == [6, 9, 12, 18]
+
     for option in options:
         assert option.source_url
         assert option.equipment_price_lei > 0
@@ -48,17 +64,118 @@ def test_heating_planning_catalog_has_sourced_discrete_technologies() -> None:
         assert option.rated_power_kw > 0
 
 
-def test_existing_condensing_gas_is_not_charged_as_a_replacement() -> None:
+def test_existing_condensing_gas_is_represented_by_keep_current_branch() -> None:
     baseline = demo_building()
-    gas = next(item for item in heating_planning_options() if item.id == "condensing-gas-24kw")
+    gas = next(item for item in heating_technologies() if item.id == "condensing-gas")
 
-    eligible, reason = option_is_eligible(baseline, gas)
+    eligible, reason = technology_is_eligible(baseline, gas)
 
     assert not eligible
     assert "deja instalată" in str(reason)
 
 
-def test_mixed_heating_search_recalculates_multiple_heating_branches() -> None:
+def test_branch_plan_has_one_heat_pump_branch_not_one_branch_per_power_step() -> None:
+    baseline = demo_building()
+    request = OptimizationRequestV1(
+        baseline=baseline,
+        mode=OptimizationMode.auto_economic,
+    )
+
+    plan = heating_branch_plan(request)
+    ids = [item.branch_id for item in plan]
+
+    assert ids.count("heat-pump-air-water") == 1
+    assert not any(item.startswith("heat-pump-air-water-") for item in ids)
+
+
+def test_heating_capacity_is_derived_after_each_complete_house_recalculation() -> None:
+    baseline = demo_building()
+    hp = next(item for item in heating_technologies() if item.id == "heat-pump-air-water")
+    hp_building = apply_heating_technology(baseline, hp)
+
+    base_candidate = evaluate_parametric_candidate(
+        hp_building,
+        ParametricMeasuresV1(window_target_u_w_m2k=0.9),
+        _catalog(),
+    )
+    improved_candidate = evaluate_parametric_candidate(
+        hp_building,
+        ParametricMeasuresV1(
+            wall_added_r_m2k_w=8,
+            roof_added_r_m2k_w=10,
+            floor_added_r_m2k_w=6,
+            window_replacement_fraction=1,
+            window_target_u_w_m2k=0.9,
+        ),
+        _catalog(),
+    )
+
+    baseline_bill = float(
+        estimate_energy_cost(calculate(baseline, include_reference=False))["priced_total_lei"]
+    )
+    sized_base = _rebase_candidate(
+        base_candidate,
+        original_baseline_bill_lei=baseline_bill,
+        original_building=baseline,
+        technology=hp,
+    )
+    sized_improved = _rebase_candidate(
+        improved_candidate,
+        original_baseline_bill_lei=baseline_bill,
+        original_building=baseline,
+        technology=hp,
+    )
+
+    assert sized_base is not None
+    assert sized_improved is not None
+    assert sized_improved.design_heat_load_kw < sized_base.design_heat_load_kw
+
+    base_line = next(line for line in sized_base.cost_breakdown if line.family == "heating")
+    improved_line = next(line for line in sized_improved.cost_breakdown if line.family == "heating")
+
+    assert base_line.parameter_value + 1e-9 >= sized_base.design_heat_load_kw
+    assert improved_line.parameter_value + 1e-9 >= sized_improved.design_heat_load_kw
+    assert improved_line.parameter_value <= base_line.parameter_value
+    assert "necesar recalculat" in str(improved_line.note)
+    assert any("No arbitrary fixed oversizing factor" in item for item in sized_improved.assumptions)
+
+
+def test_heat_pump_branch_reprices_heating_inside_optimizer_search() -> None:
+    baseline = demo_building()
+    result = run_heating_branch_optimization(
+        OptimizationRequestV1(
+            baseline=baseline,
+            mode=OptimizationMode.auto_economic,
+        ),
+        branch_id="heat-pump-air-water",
+        bounds=OptimizationSearchBoundsV1(
+            wall_added_r_m2k_w_max=8,
+            roof_added_r_m2k_w_max=10,
+            floor_added_r_m2k_w_max=6,
+            window_replacement_fraction_max=1,
+            window_target_u_w_m2k=0.9,
+            pv_added_kwp_max=3,
+            solar_thermal_added_m2_max=4,
+        ),
+        catalog=_catalog(),
+        max_evaluations=12,
+    )
+
+    assert result.parametric_evaluations == 12
+    assert result.branch.sizing_mode == "design_load_recalculated_per_candidate"
+    assert result.branch.evaluated_candidates == 12
+    assert result.selection.selected is not None
+
+    heating_line = next(
+        line
+        for line in result.selection.selected.cost_breakdown
+        if line.family == "heating"
+    )
+    assert heating_line.parameter_value >= result.selection.selected.design_heat_load_kw
+    assert "sized_equipment" in str(heating_line.catalog_unit)
+
+
+def test_mixed_heating_search_recalculates_technology_branches() -> None:
     baseline = demo_building()
     result = run_mixed_heating_optimization(
         OptimizationRequestV1(
@@ -81,23 +198,11 @@ def test_mixed_heating_search_recalculates_multiple_heating_branches() -> None:
     assert result.selection.selected is not None
     assert result.parametric_evaluations >= 24
     assert result.heating_branch_evaluations >= 12
-    assert len(result.candidates) >= 12
     assert any(item.branch_id == "keep-current-heating" and item.eligible for item in result.branches)
-    assert any(item.branch_id.startswith("heat-pump-air-water") and item.eligible for item in result.branches)
-
-    baseline_bills = {round(item.baseline_annual_bill_lei, 2) for item in result.candidates}
-    assert len(baseline_bills) == 1
-
-    heating_candidates = [
-        item
-        for item in result.candidates
-        if any(line.family == "heating" for line in item.cost_breakdown)
-    ]
-    assert heating_candidates
-    assert all(item.commercialization_status == "pending_product_catalog" for item in heating_candidates)
+    assert any(item.branch_id == "heat-pump-air-water" and item.eligible for item in result.branches)
 
 
-def test_mixed_heating_budget_includes_fixed_heating_capex() -> None:
+def test_mixed_heating_budget_includes_sized_heating_capex() -> None:
     baseline = demo_building()
     budget = 35000
     result = run_mixed_heating_optimization(
@@ -123,29 +228,9 @@ def test_mixed_heating_budget_includes_fixed_heating_capex() -> None:
     assert result.selection.selected.capex_lei <= budget + 0.01
 
 
-def test_unconfirmed_infrastructure_blocks_electric_and_pellet_branches() -> None:
-    baseline = demo_building()
-    options = {item.id: item for item in heating_planning_options()}
+def test_no_universal_oversizing_margin_is_encoded_in_catalog_policy() -> None:
+    from commercial.app.heating_optimization import heating_planning_catalog
 
-    electric_ok, electric_reason = option_is_eligible(
-        baseline,
-        options["electric-boiler-12kw"],
-    )
-    pellet_ok, pellet_reason = option_is_eligible(
-        baseline,
-        options["pellet-boiler-18kw"],
-    )
-
-    assert not electric_ok
-    assert "Puterea electrică" in str(electric_reason)
-    assert not pellet_ok
-    assert "biomasă" in str(pellet_reason)
-
-
-def test_heat_pump_capacity_catalog_spans_small_to_large_houses() -> None:
-    capacities = sorted(
-        item.rated_power_kw
-        for item in heating_planning_options()
-        if item.generator_type.value == "heat_pump_air_water"
-    )
-    assert capacities == [5, 8, 12, 15]
+    policy = heating_planning_catalog()["sizing_policy"]
+    assert policy["fixed_oversizing_margin_fraction"] == 0
+    assert policy["basis"] == "design_heat_load_at_normative_winter_design_temperature"
