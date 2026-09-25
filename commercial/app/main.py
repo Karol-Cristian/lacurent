@@ -2255,17 +2255,34 @@ def _home_lab_optimizer_success_payload(
                 "label": line.note.split(":", 1)[0] if line.note else "Sistem de încălzire",
                 "capexLei": float(line.capex_lei),
                 "requiredPowerKw": selected.design_heat_load_kw,
-                "ratedPowerKw": float(line.parameter_value),
+                "planningPowerKw": float(line.parameter_value),
+                "ratedPowerKw": (
+                    float(line.parameter_value)
+                    if line.product_id is not None
+                    else None
+                ),
                 "oversizeKw": (
                     None
-                    if selected.design_heat_load_kw is None
-                    else max(float(line.parameter_value) - float(selected.design_heat_load_kw), 0.0)
+                    if (
+                        line.product_id is None
+                        or selected.design_heat_load_kw is None
+                    )
+                    else max(
+                        float(line.parameter_value)
+                        - float(selected.design_heat_load_kw),
+                        0.0,
+                    )
                 ),
                 "oversizePercent": (
                     None
-                    if selected.design_heat_load_kw is None or float(selected.design_heat_load_kw) <= 1e-9
+                    if (
+                        line.product_id is None
+                        or selected.design_heat_load_kw is None
+                        or float(selected.design_heat_load_kw) <= 1e-9
+                    )
                     else 100.0 * max(
-                        float(line.parameter_value) - float(selected.design_heat_load_kw),
+                        float(line.parameter_value)
+                        - float(selected.design_heat_load_kw),
                         0.0,
                     ) / float(selected.design_heat_load_kw)
                 ),
@@ -2343,16 +2360,42 @@ def _home_lab_optimizer_success_payload(
             "designHeatLoadKw": selected.design_heat_load_kw,
         },
         "resultingConfiguration": model_to_dict(selected.resulting_configuration),
-        "commercialSolution": None,
+        "commercialSolution": (
+            {
+                "items": [
+                    {
+                        "family": "heating",
+                        "label": selected_heating["label"],
+                        "detail": (
+                            f"Produs real selectat după optimizarea parametrică · "
+                            f"{selected_heating['ratedPowerKw']:.2f} kW · "
+                            f"CAPEX {selected_heating['capexLei']:.0f} lei"
+                        ),
+                    }
+                ]
+            }
+            if selected_heating is not None
+            and selected_heating.get("optionId")
+            else None
+        ),
         "commercializationStatus": selected.commercialization_status,
         "commercialReady": commercial_ready,
         "commercialMessage": (
             "Soluția nu necesită discretizare comercială."
             if commercial_ready
             else (
-                "Catalogul comercial complet nu este încă atașat acestei rulări. "
-                "Rezultatul de mai jos este optimul parametric; raportul nu inventează "
-                "grosimi, module, ferestre sau echipamente comerciale."
+                (
+                    "Generatorul finalist a fost discretizat la un produs real; "
+                    "celelalte familii active rămân parametrice până la atașarea "
+                    "catalogului complet de produse. "
+                )
+                if selected_heating is not None
+                and selected_heating.get("optionId")
+                else (
+                    "Catalogul comercial complet nu este încă atașat acestei rulări. "
+                    "Rezultatul de mai jos este optimul parametric; raportul nu inventează "
+                    "grosimi, module, ferestre sau echipamente comerciale."
+                )
             )
         ),
         "discretization": [],
