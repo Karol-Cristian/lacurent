@@ -562,7 +562,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next359-adaptive" in response.text
-    assert "/static/home-lab-next.js?v=next64-microbatch-optimizer" in response.text
+    assert "/static/home-lab-next.js?v=next65-slow-safe-optimizer" in response.text
     assert "/static/home-lab-3d.css?v=3d31" in response.text
     assert 'aria-label="Schiță conceptuală a casei"' not in response.text
     assert 'aria-label="Casă cu zone de îmbunătățire"' not in response.text
