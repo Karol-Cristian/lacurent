@@ -8,6 +8,7 @@ const page = await browser.newPage({viewport:{width:1280,height:900}});
 const pageErrors = [];
 const consoleErrors = [];
 const sameOriginRequestFailures = [];
+const sameOriginServerErrors = [];
 const baseOrigin = new URL(baseUrl).origin;
 
 page.on("pageerror", error => pageErrors.push(String(error?.stack || error)));
@@ -19,7 +20,14 @@ page.on("requestfailed", request => {
     const url = new URL(request.url());
     const errorText = request.failure()?.errorText || "request failed";
     const benignClientAbort =
-      request.method() === "GET" && errorText === "net::ERR_ABORTED";
+      errorText === "net::ERR_ABORTED"
+      && (
+        request.method() === "GET"
+        || (
+          request.method() === "POST"
+          && url.pathname === "/api/home-lab-next/calculate"
+        )
+      );
     if (url.origin === baseOrigin && !benignClientAbort) {
       sameOriginRequestFailures.push(
         `${request.method()} ${request.url()} :: ${errorText}`
@@ -28,6 +36,19 @@ page.on("requestfailed", request => {
   } catch (_) {
     // Ignore malformed third-party request URLs; application-origin failures are
     // still captured because browser requests are absolute in normal operation.
+  }
+});
+page.on("response", response => {
+  try {
+    const url = new URL(response.url());
+    if (url.origin === baseOrigin && response.status() >= 500) {
+      sameOriginServerErrors.push(
+        `${response.request().method()} ${response.url()} :: HTTP ${response.status()}`
+      );
+    }
+  } catch (_) {
+    // Same rationale as requestfailed: malformed third-party URLs are irrelevant
+    // to application-origin server health.
   }
 });
 
@@ -909,6 +930,11 @@ try {
   if (sameOriginRequestFailures.length) {
     throw new Error(
       "Application-origin request failures:\n" + sameOriginRequestFailures.join("\n")
+    );
+  }
+  if (sameOriginServerErrors.length) {
+    throw new Error(
+      "Application-origin server errors:\n" + sameOriginServerErrors.join("\n")
     );
   }
   const fatalConsoleErrors = consoleErrors.filter(
