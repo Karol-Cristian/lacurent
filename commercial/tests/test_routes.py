@@ -804,7 +804,7 @@ def test_home_lab_roi_reconciles_visible_capex_and_avoids_request_bursts() -> No
     response = client.get("/static/home-lab-next.js")
     assert response.status_code == 200
     source = response.text
-    assert "OPTIMIZER_MIN_REQUEST_GAP_MS = 1000" in source
+    assert "OPTIMIZER_MIN_REQUEST_GAP_MS = 250" in source
     assert "roiCostBasisText(action, baseState, candidateState)" in source
     assert "CAPEX-ul pachetului nu corespunde intervențiilor selectate" in source
     assert "economia pachetului cu o singură măsură" in source
