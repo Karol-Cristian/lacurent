@@ -167,7 +167,7 @@ class OptimizationSearchRequestV1(BaseModel):
     schema_version: Literal["1.0"] = SCHEMA_VERSION
     request: OptimizationRequestV1
     bounds: OptimizationSearchBoundsV1 = Field(default_factory=OptimizationSearchBoundsV1)
-    max_evaluations: int = Field(default=36, ge=12, le=128)
+    max_evaluations: int = Field(default=36, ge=1, le=128)
 
 
 class OptimizationSearchResultV1(BaseModel):

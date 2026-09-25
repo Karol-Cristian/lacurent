@@ -1937,7 +1937,7 @@ def test_home_lab_issue_359_adaptive_intro_contract() -> None:
     assert response.status_code == 200
     assert response.text.count('class="hln-screen-intro-copy"') == 2
     assert "/static/home-lab-next.css?v=next359-adaptive" in response.text
-    assert "/static/home-lab-next.js?v=next63-transient-retry" in response.text
+    assert "/static/home-lab-next.js?v=next64-microbatch-optimizer" in response.text
 
     css = client.get("/static/home-lab-next.css")
     assert css.status_code == 200
@@ -2553,4 +2553,4 @@ def test_heating_branch_report_uses_explicit_verdict_labels() -> None:
 def test_home_lab_next_uses_transient_retry_asset_version() -> None:
     response = client.get("/home-lab-next")
     assert response.status_code == 200
-    assert "/static/home-lab-next.js?v=next63-transient-retry" in response.text
+    assert "/static/home-lab-next.js?v=next64-microbatch-optimizer" in response.text
