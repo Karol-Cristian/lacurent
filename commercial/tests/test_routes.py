@@ -562,7 +562,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next359-adaptive" in response.text
-    assert "/static/home-lab-next.js?v=next65-slow-safe-optimizer" in response.text
+    assert "/static/home-lab-next.js?v=next66-single-candidate-best-effort" in response.text
     assert "/static/home-lab-3d.css?v=3d31" in response.text
     assert 'aria-label="Schiță conceptuală a casei"' not in response.text
     assert 'aria-label="Casă cu zone de îmbunătățire"' not in response.text
@@ -804,13 +804,17 @@ def test_home_lab_roi_reconciles_visible_capex_and_avoids_request_bursts() -> No
     response = client.get("/static/home-lab-next.js")
     assert response.status_code == 200
     source = response.text
-    assert "OPTIMIZER_MIN_REQUEST_GAP_MS = 750" in source
+    assert "OPTIMIZER_MIN_REQUEST_GAP_MS = 1000" in source
     assert "roiCostBasisText(action, baseState, candidateState)" in source
     assert "CAPEX-ul pachetului nu corespunde intervențiilor selectate" in source
     assert "economia pachetului cu o singură măsură" in source
     assert "CEA MAI BUNĂ MĂSURĂ ROI" in source
     assert "lei/lună în medie" in source
     assert 'window.scrollTo({top: 0, behavior: "auto"})' in source
+    assert "failedMicroBatches = []" in source
+    assert "OPTIMIZER_TRANSIENT_RETRY_STATUSES.has(status)" in source
+    assert "partialSearch:failedMicroBatches.length > 0" in source
+    assert "puncte de căutare omise după faulturi tranzitorii" in source
 
 
 def test_home_lab_exposes_four_single_constraint_parametric_objectives() -> None:
@@ -1339,7 +1343,7 @@ def test_home_lab_next_optimizer_uses_compact_cached_candidates() -> None:
     assert "OPTIMIZER_CANDIDATE_CACHE_MAX = 192" in response.text
     assert "OPTIMIZER_MAX_ENGINE_EVALUATIONS = 16" in response.text
     assert "optimizerEvaluationCount >= OPTIMIZER_MAX_ENGINE_EVALUATIONS" in response.text
-    assert "OPTIMIZER_REQUEST_TIMEOUT_MS = 25000" in response.text
+    assert "OPTIMIZER_REQUEST_TIMEOUT_MS = 30000" in response.text
     assert "fetchWithTimeout(" in response.text
     assert "optimizerAbortController?.signal || null" in response.text
     assert "calculateCandidate(state, overrides, {compact:false})" in response.text
@@ -1937,7 +1941,7 @@ def test_home_lab_issue_359_adaptive_intro_contract() -> None:
     assert response.status_code == 200
     assert response.text.count('class="hln-screen-intro-copy"') == 2
     assert "/static/home-lab-next.css?v=next359-adaptive" in response.text
-    assert "/static/home-lab-next.js?v=next65-slow-safe-optimizer" in response.text
+    assert "/static/home-lab-next.js?v=next66-single-candidate-best-effort" in response.text
 
     css = client.get("/static/home-lab-next.css")
     assert css.status_code == 200
@@ -2553,4 +2557,4 @@ def test_heating_branch_report_uses_explicit_verdict_labels() -> None:
 def test_home_lab_next_uses_transient_retry_asset_version() -> None:
     response = client.get("/home-lab-next")
     assert response.status_code == 200
-    assert "/static/home-lab-next.js?v=next65-slow-safe-optimizer" in response.text
+    assert "/static/home-lab-next.js?v=next66-single-candidate-best-effort" in response.text
