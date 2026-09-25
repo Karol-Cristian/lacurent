@@ -2817,81 +2817,128 @@
       let transientRetries = 0;
 
       if (OPTIMIZER_BACKEND_V2) {
-        setOptimizerConsoleProgress(0, 1, "V2 · context fizic → căutare marginală → Pareto → verificare finaliști");
-        appendOptimizerConsole(
-          "info",
-          "V2",
-          "Pornesc optimizerul physics-informed într-un singur request backend; V1 rămâne fallback în cod."
-        );
-        appendOptimizerConsole(
-          "info",
-          "MATH",
-          "Probe simetrice pe toate cele 7 dimensiuni + scară marginală recalculată după fiecare intervenție + frontieră Pareto."
-        );
+        appendOptimizerConsole("info","V2","Worker-safe: plan fizic → ramuri de încălzire → verificare canonică → produse.");
+        appendOptimizerConsole("info","MATH","Probe simetrice pe toate cele 7 dimensiuni + curbe marginale 0→50%→100%; combinația este recalculată după fiecare segment acceptat.");
 
-        const v2Call = await fetchOptimizerWithRetry(
-          "/api/optimization/home-lab/v2",
+        const planCallV2 = await fetchOptimizerWithRetry(
+          "/api/optimization/home-lab/v2/plan",
           {method:"POST", body:optimizerBody()},
           optimizerAbortController?.signal || null,
-          OPTIMIZER_V2_TIMEOUT_MS,
-          2
+          OPTIMIZER_REQUEST_TIMEOUT_MS,
+          3
         );
-        transientRetries += Math.max(0, Number(v2Call.attemptCount || 1) - 1);
+        transientRetries += Math.max(0, Number(planCallV2.attemptCount || 1) - 1);
         if (runToken !== optimizerRunToken) return;
-
-        const response = v2Call.response;
-        const payload = v2Call.payload;
-        if (!response.ok || !payload || payload.error) {
-          throw new Error(payload?.error || `Optimizer V2 indisponibil (HTTP ${response.status || "?"}).`);
+        if (!planCallV2.response.ok || !planCallV2.payload || planCallV2.payload.error) {
+          throw new Error(planCallV2.payload?.error || ("Planul V2 indisponibil (HTTP " + (planCallV2.response.status || "?") + ")."));
         }
 
-        const meta = payload.optimization || {};
-        const fastCount = Number(meta.fastEvaluations || meta.parametricEvaluations || 0);
-        const fullCount = Number(meta.fullEngineVerifications || 0);
-        const shortlistCount = Number(meta.shortlistSize || 0);
-        const representativeCount = Number(meta.representativePoolSize || 0);
-        appendOptimizerConsole(
-          "ok",
-          "SEARCH",
-          `V2 a evaluat ${fastCount} stări cu kernelul rapid; pool reprezentativ ${representativeCount}; shortlist ${shortlistCount}.`
-        );
-        appendOptimizerConsole(
-          "ok",
-          "VERIFY",
-          `${fullCount} finaliști au fost recalculați cu motorul canonic complet înainte de comercializare.`
-        );
-
-        const technicalAlternatives = Array.isArray(
-          meta.technicalHeatingAlternatives
-        ) ? meta.technicalHeatingAlternatives : [];
-        for (const alternative of technicalAlternatives) {
-          appendOptimizerConsole(
-            "info",
-            "TECH",
-            `${alternative.label || alternative.branchId} · aceeași casă finalistă · factură ${fmt(Number(alternative.annualBillLei || 0))} lei/an · cost comercial încă necunoscut`
-          );
+        const planV2 = planCallV2.payload;
+        const allBranchesV2 = Array.isArray(planV2.branches) ? planV2.branches : [];
+        const runnableIdsV2 = Array.isArray(planV2.runBranchIds) ? planV2.runBranchIds : [];
+        const technicalIdsV2 = Array.isArray(planV2.technicalPreviewBranchIds) ? planV2.technicalPreviewBranchIds : [];
+        const shortlistV2 = Array.isArray(planV2.shortlist) ? planV2.shortlist : [];
+        if (!runnableIdsV2.length || !shortlistV2.length) {
+          throw new Error("Optimizerul V2 nu a construit un shortlist economic valid.");
         }
 
-        const matchedHeating = meta.selectedHeating;
-        if (matchedHeating?.optionId) {
-          appendOptimizerConsole(
-            "ok",
-            "PRODUCT",
-            `${matchedHeating.label} · necesar ${fmt(Number(matchedHeating.requiredPowerKw || 0),2)} kW → produs ${fmt(Number(matchedHeating.ratedPowerKw || 0),2)} kW`
+        const branchByIdV2 = new Map(allBranchesV2.map(item => [String(item.branch_id || ""), item]));
+        const plannedRequestsV2 = runnableIdsV2.length + 2;
+        let completedRequestsV2 = 1;
+        let backendElapsedMsV2 = Number(planV2.calculationTimeMs || 0);
+        setOptimizerConsoleProgress(completedRequestsV2, plannedRequestsV2, "PLAN · " + Number(planV2.representativeEvaluations || 0) + " evaluări · shortlist " + shortlistV2.length);
+        appendOptimizerConsole("ok","PLAN", Number(planV2.representativeEvaluations || 0) + " evaluări reprezentative → " + Number(planV2.representativePoolSize || 0) + " puncte unice → shortlist comun " + shortlistV2.length + ".");
+
+        for (const technicalIdV2 of technicalIdsV2) {
+          const branchV2 = branchByIdV2.get(String(technicalIdV2));
+          appendOptimizerConsole("info","TECH",(branchV2?.label || technicalIdV2) + " · ramură tehnică vizibilă; nu intră în winner până nu are curbă CAPEX source-backed.");
+        }
+
+        const formObjectV2 = Object.fromEntries(
+          Array.from(optimizerBody().entries()).map(([key, value]) => [key, typeof value === "string" ? value : String(value)])
+        );
+        const branchResultsV2 = [];
+        let branchFastEvaluationsV2 = 0;
+
+        for (let indexV2 = 0; indexV2 < runnableIdsV2.length; indexV2 += 1) {
+          if (runToken !== optimizerRunToken) return;
+          const branchIdV2 = String(runnableIdsV2[indexV2]);
+          const branchV2 = branchByIdV2.get(branchIdV2);
+          appendOptimizerConsole("info","BRANCH",(indexV2 + 1) + "/" + runnableIdsV2.length + " · " + (branchV2?.label || branchIdV2) + " · " + shortlistV2.length + " configurații comune");
+
+          const branchCallV2 = await fetchOptimizerWithRetry(
+            "/api/optimization/home-lab/v2/branch",
+            {
+              method:"POST",
+              headers:{"Content-Type":"application/json"},
+              body:JSON.stringify({form:formObjectV2, branchId:branchIdV2, shortlist:shortlistV2}),
+            },
+            optimizerAbortController?.signal || null,
+            OPTIMIZER_REQUEST_TIMEOUT_MS,
+            3
           );
+          transientRetries += Math.max(0, Number(branchCallV2.attemptCount || 1) - 1);
+          if (runToken !== optimizerRunToken) return;
+          if (!branchCallV2.response.ok || !branchCallV2.payload || branchCallV2.payload.error) {
+            throw new Error(branchCallV2.payload?.error || ((branchV2?.label || branchIdV2) + ": HTTP " + (branchCallV2.response.status || "?")));
+          }
+
+          const branchPayloadV2 = branchCallV2.payload;
+          branchResultsV2.push(branchPayloadV2);
+          const branchEvaluationsV2 = Number(branchPayloadV2.fastEvaluations || 0);
+          branchFastEvaluationsV2 += branchEvaluationsV2;
+          backendElapsedMsV2 += Number(branchPayloadV2.calculationTimeMs || 0);
+          completedRequestsV2 += 1;
+          setOptimizerConsoleProgress(completedRequestsV2, plannedRequestsV2, (branchV2?.label || branchIdV2) + " · " + branchEvaluationsV2 + " evaluări");
+          appendOptimizerConsole("ok","BRANCH",(branchV2?.label || branchIdV2) + " · " + branchEvaluationsV2 + " evaluări · " + Number(branchPayloadV2.candidateCount || 0) + " candidați · " + fmt(Number(branchPayloadV2.calculationTimeMs || 0) / 1000, 2) + " s");
+        }
+
+        appendOptimizerConsole("info","VERIFY","Selectez global dintre " + branchResultsV2.reduce((sum, item) => sum + Number(item.candidateCount || 0), 0) + " candidați și recalculez complet maximum 3 finaliști.");
+        const finalCallV2 = await fetchOptimizerWithRetry(
+          "/api/optimization/home-lab/v2/finalize",
+          {
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({
+              form:formObjectV2,
+              branchResults:branchResultsV2,
+              representativeEvaluations:Number(planV2.representativeEvaluations || 0),
+              representativePoolSize:Number(planV2.representativePoolSize || 0),
+              shortlistSize:shortlistV2.length,
+              priorCalculationTimeMs:backendElapsedMsV2,
+            }),
+          },
+          optimizerAbortController?.signal || null,
+          OPTIMIZER_REQUEST_TIMEOUT_MS,
+          3
+        );
+        transientRetries += Math.max(0, Number(finalCallV2.attemptCount || 1) - 1);
+        if (runToken !== optimizerRunToken) return;
+        const responseV2 = finalCallV2.response;
+        const payloadV2 = finalCallV2.payload;
+        if (!responseV2.ok || !payloadV2 || payloadV2.error) {
+          throw new Error(payloadV2?.error || ("Finalizarea V2 indisponibilă (HTTP " + (responseV2.status || "?") + ")."));
+        }
+
+        completedRequestsV2 += 1;
+        const metaV2 = payloadV2.optimization || {};
+        const fastCountV2 = Number(metaV2.fastEvaluations || metaV2.parametricEvaluations || 0);
+        const fullCountV2 = Number(metaV2.fullEngineVerifications || 0);
+        setOptimizerConsoleProgress(completedRequestsV2, plannedRequestsV2, "DONE · " + fastCountV2 + " fast · " + fullCountV2 + " full");
+        appendOptimizerConsole("ok","VERIFY",fullCountV2 + " finaliști recalculați cu motorul canonic; " + Number(metaV2.commercialRechecks || 0) + " trecuți prin maparea comercială.");
+
+        const matchedHeatingV2 = metaV2.selectedHeating;
+        if (matchedHeatingV2?.optionId) {
+          appendOptimizerConsole("ok","PRODUCT",matchedHeatingV2.label + " · necesar " + fmt(Number(matchedHeatingV2.requiredPowerKw || 0),2) + " kW → produs " + fmt(Number(matchedHeatingV2.ratedPowerKw || 0),2) + " kW");
         } else {
-          appendOptimizerConsole(
-            "info",
-            "PRODUCT",
-            "Finalistul nu a necesitat sau nu a avut încă o mapare comercială completă."
-          );
+          appendOptimizerConsole("info","PRODUCT","Finalistul păstrează sistemul actual sau nu are încă un SKU source-backed eligibil.");
         }
 
-        scenarioResult = payload.scenario;
+        scenarioResult = payloadV2.scenario;
         currentResult = scenarioResult;
         scenarioResultState = "fresh";
         optimizationMeta = {
-          ...meta,
+          ...metaV2,
           projectMode,
           projectModeLabel:projectModeLabel(),
           transientRetries,
@@ -2903,37 +2950,25 @@
         renderAll();
         emitVisualState("optimizer");
         setStatus("Optimizare V2 calculată", "ok");
-        setOptimizerConsoleProgress(1, 1, `V2 finalizat · ${fastCount} fast · ${fullCount} full`);
 
-        const commercialNote = optimizationMeta.commercialReady
+        const commercialNoteV2 = optimizationMeta.commercialReady
           ? "Soluția este implementabilă în forma raportată."
           : "Raportul păstrează separat optimul brut și componentele comerciale încă incomplete.";
-        const heatingChoice = optimizationMeta.selectedHeating?.label || "păstrează sistemul actual";
-        const elapsed = Number(optimizationMeta.calculationTimeMs);
-        const elapsedText = Number.isFinite(elapsed)
-          ? ` · ${fmt(elapsed / 1000, 1)} s backend`
-          : "";
-        const paretoText = `${optimizationMeta.paretoSolutions || 0} finaliști/Pareto verificați`;
-
+        const heatingChoiceV2 = optimizationMeta.selectedHeating?.label || "păstrează sistemul actual";
+        const elapsedV2 = Number(optimizationMeta.calculationTimeMs);
+        const elapsedTextV2 = Number.isFinite(elapsedV2) ? " · " + fmt(elapsedV2 / 1000, 1) + " s backend cumulat" : "";
         setOptimizationNote(
-          `<strong>${escapeHtml(optimizationMeta.label || settings.label)} · V2</strong>
-           <span>CAPEX ${fmt(optimizationMeta.capexLei)} lei · economie anuală ${fmt(optimizationMeta.annualSavingLei)} lei/an · ${optimizationMeta.paybackYears == null ? "fără amortizare pozitivă" : "amortizare " + fmt(optimizationMeta.paybackYears,1) + " ani"} · ${escapeHtml(heatingChoice)}.</span>
-           <small>${fastCount} evaluări fast · ${fullCount} verificări complete${elapsedText} · ${escapeHtml(paretoText)}. ${escapeHtml(commercialNote)}</small>`,
+          "<strong>" + escapeHtml(optimizationMeta.label || settings.label) + " · V2 Worker-safe</strong>" +
+          "<span>CAPEX " + fmt(optimizationMeta.capexLei) + " lei · economie anuală " + fmt(optimizationMeta.annualSavingLei) + " lei/an · " +
+          (optimizationMeta.paybackYears == null ? "fără amortizare pozitivă" : "amortizare " + fmt(optimizationMeta.paybackYears,1) + " ani") + " · " + escapeHtml(heatingChoiceV2) + ".</span>" +
+          "<small>" + fastCountV2 + " evaluări fast · " + fullCountV2 + " verificări complete · " + plannedRequestsV2 + " requesturi CPU-bounded" + elapsedTextV2 + ". " + escapeHtml(commercialNoteV2) + "</small>",
           Number(optimizationMeta.annualSavingLei) > 0 ? "good" : "warn"
         );
-        appendOptimizerConsole(
-          "ok",
-          "DONE",
-          `Optimizer V2 finalizat fără micro-requesturi per candidat. Retry-uri infrastructură: ${transientRetries}.`
-        );
-        finishOptimizerConsole(
-          "done",
-          `V2 finalizat · ${fastCount} fast · ${fullCount} full`
-        );
+        appendOptimizerConsole("ok","DONE","V2 Worker-safe finalizat · " + plannedRequestsV2 + " requesturi · " + transientRetries + " retry-uri tranzitorii.");
+        finishOptimizerConsole("done","V2 finalizat · " + fastCountV2 + " fast · " + fullCountV2 + " full");
         showScreen("report");
         return;
       }
-
       const planCall = await fetchOptimizerWithRetry(
         "/api/optimization/home-lab/plan",
         {method:"POST", body:optimizerBody()},
