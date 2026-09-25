@@ -7,6 +7,8 @@ from commercial.app.heating_optimization import (
     _estimated_heat_pump_scop,
     _rebase_candidate,
     apply_heating_technology,
+    apply_supplemental_heating_technology,
+    commercialize_heating_finalist,
     heating_branch_plan,
     heating_planning_options,
     heating_technologies,
@@ -93,6 +95,13 @@ def test_branch_plan_has_one_heat_pump_branch_not_one_branch_per_power_step() ->
 
     assert ids.count("heat-pump-air-water") == 1
     assert not any(item.startswith("heat-pump-air-water-") for item in ids)
+    assert "heat-pump-air-air" in ids
+    assert "heat-pump-ground-water" in ids
+    air_air = next(item for item in plan if item.branch_id == "heat-pump-air-air")
+    ground = next(item for item in plan if item.branch_id == "heat-pump-ground-water")
+    assert air_air.economic_eligible is False
+    assert ground.economic_eligible is False
+    assert air_air.commercialization_mode == "technical_only_pending_cost_catalog"
 
 
 def test_heating_capacity_is_derived_after_each_complete_house_recalculation() -> None:
@@ -140,10 +149,13 @@ def test_heating_capacity_is_derived_after_each_complete_house_recalculation() -
     base_line = next(line for line in sized_base.cost_breakdown if line.family == "heating")
     improved_line = next(line for line in sized_improved.cost_breakdown if line.family == "heating")
 
-    assert base_line.parameter_value + 1e-9 >= sized_base.design_heat_load_kw
-    assert improved_line.parameter_value + 1e-9 >= sized_improved.design_heat_load_kw
+    assert base_line.parameter_value == pytest.approx(sized_base.design_heat_load_kw)
+    assert improved_line.parameter_value == pytest.approx(sized_improved.design_heat_load_kw)
     assert improved_line.parameter_value <= base_line.parameter_value
-    assert "necesar recalculat" in str(improved_line.note)
+    assert base_line.product_id is None
+    assert improved_line.product_id is None
+    assert base_line.source_kind == "product_derived_parametric_curve"
+    assert "Niciun SKU" in str(improved_line.note)
     assert any("No arbitrary fixed oversizing factor" in item for item in sized_improved.assumptions)
 
 
@@ -169,7 +181,7 @@ def test_heat_pump_branch_reprices_heating_inside_optimizer_search() -> None:
     )
 
     assert result.parametric_evaluations == 12
-    assert result.branch.sizing_mode == "design_load_recalculated_per_candidate"
+    assert result.branch.sizing_mode == "raw_design_load_then_product_match_finalists"
     assert result.branch.evaluated_candidates == 12
     assert result.selection.selected is not None
 
@@ -178,8 +190,11 @@ def test_heat_pump_branch_reprices_heating_inside_optimizer_search() -> None:
         for line in result.selection.selected.cost_breakdown
         if line.family == "heating"
     )
-    assert heating_line.parameter_value >= result.selection.selected.design_heat_load_kw
-    assert "sized_equipment" in str(heating_line.catalog_unit)
+    assert heating_line.parameter_value == pytest.approx(
+        result.selection.selected.design_heat_load_kw
+    )
+    assert heating_line.product_id is None
+    assert heating_line.catalog_unit == "lei_total_as_function_of_design_kW"
 
 
 def test_mixed_heating_search_recalculates_technology_branches() -> None:
@@ -263,7 +278,7 @@ def test_real_product_catalog_has_at_least_five_products_per_heating_category() 
             assert brand in labels, (technology_id, brand, labels)
 
 
-def test_selected_heating_cost_line_exposes_exact_product_name() -> None:
+def test_heating_product_is_selected_only_after_raw_finalist_exists() -> None:
     baseline = demo_building()
     hp = next(item for item in heating_technologies() if item.id == "heat-pump-air-water")
     hp_building = apply_heating_technology(baseline, hp)
@@ -275,16 +290,73 @@ def test_selected_heating_cost_line_exposes_exact_product_name() -> None:
     baseline_bill = float(
         estimate_energy_cost(calculate(baseline, include_reference=False))["priced_total_lei"]
     )
-    sized = _rebase_candidate(
+    raw_branch_candidate = _rebase_candidate(
         raw,
         original_baseline_bill_lei=baseline_bill,
         original_building=baseline,
         technology=hp,
     )
-    assert sized is not None
-    line = next(item for item in sized.cost_breakdown if item.family == "heating")
-    product = next(item for item in heating_planning_options() if item.id == line.product_id)
-    assert str(line.note).startswith(product.label + ":")
+    assert raw_branch_candidate is not None
+    raw_line = next(
+        item for item in raw_branch_candidate.cost_breakdown
+        if item.family == "heating"
+    )
+    assert raw_line.product_id is None
+    assert "Niciun SKU" in str(raw_line.note)
+
+    commercial, product, _ = commercialize_heating_finalist(
+        raw_branch_candidate,
+        original_building=baseline,
+    )
+    assert product is not None
+    exact_line = next(
+        item for item in commercial.cost_breakdown
+        if item.family == "heating"
+    )
+    assert exact_line.product_id == product.id
+    assert exact_line.parameter_value == pytest.approx(product.rated_power_kw)
+    assert str(exact_line.note).startswith(product.label + ":")
+
+
+def test_air_air_and_ground_source_are_real_technical_branches() -> None:
+    baseline = demo_building()
+
+    air_air = apply_supplemental_heating_technology(
+        baseline,
+        "heat-pump-air-air",
+    )
+    assert air_air.heating.details is not None
+    assert air_air.heating.details.generator_type.value == "heat_pump_air_air"
+    assert air_air.heating.details.emitter_type.value == "air"
+    assert air_air.heating.details.distribution_type.value == "air"
+
+    ground = apply_supplemental_heating_technology(
+        baseline,
+        "heat-pump-ground-water",
+    )
+    assert ground.heating.details is not None
+    assert ground.heating.details.generator_type.value == "heat_pump_ground_water"
+
+    request = OptimizationRequestV1(
+        baseline=baseline,
+        mode=OptimizationMode.auto_economic,
+    )
+    air_result = run_heating_branch_optimization(
+        request,
+        branch_id="heat-pump-air-air",
+        bounds=OptimizationSearchBoundsV1(),
+        catalog=_catalog(),
+        max_evaluations=1,
+        search_phase="axis",
+        phase_candidate_offset=0,
+    )
+    assert air_result.branch.eligible is True
+    assert air_result.branch.economic_eligible is False
+    assert air_result.candidates
+    assert not any(
+        line.family == "heating"
+        for line in air_result.candidates[0].cost_breakdown
+    )
 
 
 def test_heat_pump_catalog_contains_source_backed_operating_points() -> None:
