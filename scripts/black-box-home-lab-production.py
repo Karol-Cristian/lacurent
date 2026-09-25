@@ -258,6 +258,23 @@ def main():
     optimizer_rows = {}
     for mode, extra in modes:
         status, body = optimize(mode, extra)
+
+        if status == 422 and mode == "max_payback_years":
+            selection = body.get("selection") or {}
+            require(selection.get("mode") == "max_payback_years", f"payback infeasible response has wrong mode: {body}")
+            require(selection.get("feasible_count") == 0, f"payback 422 did not report zero feasible candidates: {body}")
+            require(selection.get("candidate_count", 0) >= 1, f"payback 422 evaluated no candidates: {body}")
+            optimizer_rows[mode] = {
+                "status": "infeasible",
+                "http_status": status,
+                "constraint_years": 10,
+                "evaluated": body.get("evaluated_candidates"),
+                "feasible": selection.get("feasible_count"),
+                "pareto": body.get("pareto_count"),
+                "rationale": selection.get("rationale"),
+            }
+            continue
+
         require(status == 200, f"optimizer {mode} HTTP {status}: {body}")
         meta = body["optimization"]
         scenario = body["scenario"]
@@ -275,10 +292,9 @@ def main():
         if mode == "annual_bill_target":
             target = float(extra["_annual_bill_target_lei"])
             require(scenario["annual_cost_lei"] <= target + 0.01, f"annual bill mode missed target: {scenario['annual_cost_lei']} > {target}")
-        if mode == "max_payback_years" and meta.get("paybackYears") is not None:
-            require(meta["paybackYears"] <= 10 + 1e-9, f"payback mode exceeded 10 years: {meta['paybackYears']}")
 
         optimizer_rows[mode] = {
+            "status": "selected",
             "label": meta.get("label"),
             "capex_lei": meta.get("capexLei"),
             "annual_saving_lei": meta.get("annualSavingLei"),
@@ -292,7 +308,32 @@ def main():
             "commercial_message": meta.get("commercialMessage"),
             "raw_solution": meta.get("rawSolution"),
         }
-    report["checks"].append("all four optimizer modes preserve exact baseline and their stated constraint")
+
+    # Also prove that the payback mode can produce a selected solution when the
+    # user's threshold is relaxed enough.
+    status30, body30 = optimize("max_payback_years", {"_max_payback_years": "30"})
+    require(status30 == 200, f"optimizer max_payback_years 30 HTTP {status30}: {body30}")
+    meta30 = body30["optimization"]
+    scenario30 = body30["scenario"]
+    raw30 = meta30["rawEvaluation"]
+    assert_close("payback30 baseline bill", raw30["baselineAnnualBillLei"], prod["annual_cost_lei"], atol=0.01)
+    assert_close("payback30 selected bill raw/scenario", raw30["annualBillLei"], scenario30["annual_cost_lei"], atol=0.01)
+    require(meta30.get("paybackYears") is not None and meta30["paybackYears"] <= 30 + 1e-9, f"payback30 selected invalid solution: {meta30}")
+    optimizer_rows["max_payback_years_30"] = {
+        "status": "selected",
+        "capex_lei": meta30.get("capexLei"),
+        "annual_saving_lei": meta30.get("annualSavingLei"),
+        "payback_years": meta30.get("paybackYears"),
+        "annual_bill_lei": scenario30.get("annual_cost_lei"),
+        "evaluated": meta30.get("evaluatedCandidates"),
+        "feasible": meta30.get("feasibleCandidates"),
+        "pareto": meta30.get("paretoSolutions"),
+        "commercial_ready": meta30.get("commercialReady"),
+        "commercialization_status": meta30.get("commercializationStatus"),
+        "raw_solution": meta30.get("rawSolution"),
+    }
+
+    report["checks"].append("optimizer modes preserve exact baseline; hard constraints are enforced, including a valid infeasible payback result")
     report["optimizer"] = optimizer_rows
 
     # 5) Baseline must still be unchanged after optimizer calls.
