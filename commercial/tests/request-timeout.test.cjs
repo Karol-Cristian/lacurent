@@ -72,3 +72,73 @@ test('successful body clears timer and detaches parent listener', async () => {
   parent.abort();
   assert.equal(h.signal.aborted, false);
 });
+
+
+test('optimizer transient 500/503 responses are retried and eventually succeed', async () => {
+  let calls = 0;
+  const timers = new Set();
+  const helperSource = source.slice(
+    source.indexOf('  async function fetchWithTimeout('),
+    source.indexOf('  async function calculateState(')
+  );
+  const request = vm.runInNewContext(helperSource + '\nfetchOptimizerWithRetry;', {
+    AbortController, Error, Set,
+    LIVE_REQUEST_TIMEOUT_MS: 20,
+    OPTIMIZER_REQUEST_TIMEOUT_MS: 100,
+    window: {
+      setTimeout(fn, ms) {
+        const timer = setTimeout(fn, Math.min(ms, 1));
+        timers.add(timer);
+        return timer;
+      },
+      clearTimeout(timer) { clearTimeout(timer); timers.delete(timer); },
+    },
+    fetch: async () => {
+      calls += 1;
+      const status = calls === 1 ? 503 : calls === 2 ? 500 : 200;
+      return {
+        ok: status === 200,
+        status,
+        headers:{get:() => 'application/json'},
+        json: async () => status === 200 ? {ok:true} : {error:'transient'},
+      };
+    },
+  });
+
+  const result = await request('/api/optimization/home-lab/branch', {}, null, 100, 4);
+  assert.equal(result.response.status, 200);
+  assert.equal(result.payload.ok, true);
+  assert.equal(result.attemptCount, 3);
+  assert.equal(calls, 3);
+});
+
+test('optimizer does not retry logical 422 responses', async () => {
+  let calls = 0;
+  const helperSource = source.slice(
+    source.indexOf('  async function fetchWithTimeout('),
+    source.indexOf('  async function calculateState(')
+  );
+  const request = vm.runInNewContext(helperSource + '\nfetchOptimizerWithRetry;', {
+    AbortController, Error, Set,
+    LIVE_REQUEST_TIMEOUT_MS: 20,
+    OPTIMIZER_REQUEST_TIMEOUT_MS: 100,
+    window: {
+      setTimeout,
+      clearTimeout,
+    },
+    fetch: async () => {
+      calls += 1;
+      return {
+        ok:false,
+        status:422,
+        headers:{get:() => 'application/json'},
+        json: async () => ({error:'invalid input'}),
+      };
+    },
+  });
+
+  const result = await request('/api/optimization/home-lab/branch', {}, null, 100, 4);
+  assert.equal(result.response.status, 422);
+  assert.equal(result.attemptCount, 1);
+  assert.equal(calls, 1);
+});

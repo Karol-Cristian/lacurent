@@ -1532,6 +1532,51 @@
     }
   }
 
+  const OPTIMIZER_TRANSIENT_RETRY_STATUSES = new Set([500, 502, 503, 504]);
+  const OPTIMIZER_TRANSIENT_RETRY_DELAYS_MS = [180, 450, 900];
+
+  async function fetchOptimizerWithRetry(
+    url,
+    options = {},
+    parentSignal = null,
+    timeoutMs = OPTIMIZER_REQUEST_TIMEOUT_MS,
+    maxAttempts = 4
+  ) {
+    let lastResult = null;
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      if (parentSignal?.aborted) {
+        const abortError = new Error("Optimizer oprit");
+        abortError.name = "AbortError";
+        throw abortError;
+      }
+
+      try {
+        const result = await fetchWithTimeout(url, options, parentSignal, timeoutMs);
+        lastResult = result;
+        const status = Number(result?.response?.status || 0);
+        const retryableStatus = OPTIMIZER_TRANSIENT_RETRY_STATUSES.has(status);
+        if (!retryableStatus || attempt >= maxAttempts) {
+          return {...result, attemptCount:attempt};
+        }
+      } catch (error) {
+        if (error?.name === "AbortError" && parentSignal?.aborted) throw error;
+        const retryableError = error?.name === "TimeoutError" || error?.name === "TypeError";
+        if (!retryableError || attempt >= maxAttempts) throw error;
+        lastError = error;
+      }
+
+      const delay = OPTIMIZER_TRANSIENT_RETRY_DELAYS_MS[
+        Math.min(attempt - 1, OPTIMIZER_TRANSIENT_RETRY_DELAYS_MS.length - 1)
+      ];
+      await new Promise(resolve => window.setTimeout(resolve, delay));
+    }
+
+    if (lastError) throw lastError;
+    return {...lastResult, attemptCount:maxAttempts};
+  }
+
   async function calculateState(state, target) {
     const token = ++calculateToken;
     if (calculateAbortController) calculateAbortController.abort();
@@ -2579,12 +2624,14 @@
     };
 
     try {
-      const planCall = await fetchWithTimeout(
+      let transientRetries = 0;
+      const planCall = await fetchOptimizerWithRetry(
         "/api/optimization/home-lab/plan",
         {method:"POST", body:optimizerBody()},
         optimizerAbortController?.signal || null,
         OPTIMIZER_REQUEST_TIMEOUT_MS
       );
+      transientRetries += Math.max(0, Number(planCall.attemptCount || 1) - 1);
       if (runToken !== optimizerRunToken) return;
       if (!planCall.response.ok || !planCall.payload || planCall.payload.error) {
         throw new Error(planCall.payload?.error || `Planificarea optimizerului este indisponibilă (HTTP ${planCall.response.status || "?"}).`);
@@ -2643,7 +2690,7 @@
 
           const body = optimizerBody();
           const formPayload = Object.fromEntries(body.entries());
-          const branchCall = await fetchWithTimeout(
+          const branchCall = await fetchOptimizerWithRetry(
             "/api/optimization/home-lab/branch",
             {
               method:"POST",
@@ -2658,6 +2705,7 @@
             optimizerAbortController?.signal || null,
             OPTIMIZER_REQUEST_TIMEOUT_MS
           );
+          transientRetries += Math.max(0, Number(branchCall.attemptCount || 1) - 1);
           if (runToken !== optimizerRunToken) return;
           if (!branchCall.response.ok || !branchCall.payload || branchCall.payload.error) {
             throw new Error(
@@ -2682,7 +2730,7 @@
 
       const finalizeBody = optimizerBody();
       const finalizeForm = Object.fromEntries(finalizeBody.entries());
-      const finalCall = await fetchWithTimeout(
+      const finalCall = await fetchOptimizerWithRetry(
         "/api/optimization/home-lab/finalize",
         {
           method:"POST",
@@ -2695,6 +2743,7 @@
         optimizerAbortController?.signal || null,
         OPTIMIZER_REQUEST_TIMEOUT_MS
       );
+      transientRetries += Math.max(0, Number(finalCall.attemptCount || 1) - 1);
       if (runToken !== optimizerRunToken) return;
       const response = finalCall.response;
       const payload = finalCall.payload;
@@ -2709,6 +2758,7 @@
         ...payload.optimization,
         projectMode,
         projectModeLabel:projectModeLabel(),
+        transientRetries,
       };
       applyParametricOptimizerState(optimizationMeta);
       persist();
@@ -2727,13 +2777,16 @@
       const searchDepth = optimizationMeta.parametricEvaluations
         ? `${optimizationMeta.parametricEvaluations} recalculări parametrice · ${optimizationMeta.heatingBranchEvaluations || 0} în ramuri alternative de încălzire${elapsedText}`
         : `${optimizationMeta.evaluatedCandidates || 0} configurații evaluate${elapsedText}`;
+      const retryText = Number(optimizationMeta.transientRetries || 0) > 0
+        ? ` · ${optimizationMeta.transientRetries} retry-uri infrastructură recuperate`
+        : "";
       const paretoText = optimizationMeta.paretoScope === "branch_finalists"
         ? `${optimizationMeta.paretoSolutions || 0} ramuri finaliste nedominante`
         : `${optimizationMeta.paretoSolutions || 0} pe frontiera Pareto`;
       setOptimizationNote(
         `<strong>${escapeHtml(optimizationMeta.label || settings.label)}</strong>
          <span>CAPEX ${fmt(optimizationMeta.capexLei)} lei · economie anuală ${fmt(optimizationMeta.annualSavingLei)} lei/an · ${optimizationMeta.paybackYears == null ? "fără amortizare pozitivă" : "amortizare " + fmt(optimizationMeta.paybackYears,1) + " ani"} · ${escapeHtml(heatingChoice)}.</span>
-         <small>${escapeHtml(searchDepth)} · ${optimizationMeta.feasibleCandidates || 0} eligibile · ${escapeHtml(paretoText)}. ${escapeHtml(commercialNote)}</small>`,
+         <small>${escapeHtml(searchDepth + retryText)} · ${optimizationMeta.feasibleCandidates || 0} eligibile · ${escapeHtml(paretoText)}. ${escapeHtml(commercialNote)}</small>`,
         Number(optimizationMeta.annualSavingLei) > 0 ? "good" : "warn"
       );
       showScreen("report");
