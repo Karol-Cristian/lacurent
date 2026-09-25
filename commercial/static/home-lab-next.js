@@ -2602,6 +2602,7 @@
         .map(item => ({
           branch:item,
           selection:{selected:null},
+          candidates:[],
           candidateCount:0,
           parametricEvaluations:0,
           calculationTimeMs:0,
@@ -2609,48 +2610,88 @@
         }));
 
       let completedEvaluations = 0;
-      const evaluationsPerBranch = Number(plan.evaluationsPerBranch || 24);
+      const phases = Array.isArray(plan.searchPhases) && plan.searchPhases.length
+        ? plan.searchPhases
+        : ["axis", "halton", "refine"];
+      const evaluationsPerPhase = Number(plan.evaluationsPerPhase || 12);
+      const evaluationsPerBranch = Number(plan.evaluationsPerBranch || (phases.length * evaluationsPerPhase));
+      const phaseLabel = {
+        axis:"probe axe",
+        halton:"explorare Halton",
+        refine:"refinement local",
+      };
+
       for (let index = 0; index < runnableIds.length; index += 1) {
         if (runToken !== optimizerRunToken) return;
         const branchId = String(runnableIds[index]);
         const branch = branchById.get(branchId) || {};
         const branchLabel = branch.label || branchId;
-        setStatus(`Optimizez ${index + 1}/${runnableIds.length}: ${branchLabel}…`);
-        setOptimizationNote(
-          `<strong>${escapeHtml(settings.label)}</strong>
-           <span>Ramura ${index + 1} din ${runnableIds.length}: ${escapeHtml(branchLabel)}.</span>
-           <small>${completedEvaluations} recalculări terminate · până la ${evaluationsPerBranch} recalculări în această ramură.</small>`
-        );
+        const priorCandidates = [];
 
-        const body = optimizerBody();
-        body.set("_heating_branch_id", branchId);
-        const branchCall = await fetchWithTimeout(
-          "/api/optimization/home-lab/branch",
-          {method:"POST", body},
-          optimizerAbortController?.signal || null,
-          OPTIMIZER_REQUEST_TIMEOUT_MS
-        );
-        if (runToken !== optimizerRunToken) return;
-        if (!branchCall.response.ok || !branchCall.payload || branchCall.payload.error) {
-          throw new Error(
-            branchCall.payload?.error
-            || `Ramura „${branchLabel}” nu a putut fi calculată (HTTP ${branchCall.response.status || "?"}).`
+        for (let phaseIndex = 0; phaseIndex < phases.length; phaseIndex += 1) {
+          if (runToken !== optimizerRunToken) return;
+          const phase = String(phases[phaseIndex]);
+          const readablePhase = phaseLabel[phase] || phase;
+          setStatus(
+            `Optimizez ${index + 1}/${runnableIds.length}: ${branchLabel} · ${readablePhase}…`
           );
+          setOptimizationNote(
+            `<strong>${escapeHtml(settings.label)}</strong>
+             <span>Ramura ${index + 1}/${runnableIds.length}: ${escapeHtml(branchLabel)} · faza ${phaseIndex + 1}/${phases.length}: ${escapeHtml(readablePhase)}.</span>
+             <small>${completedEvaluations} recalculări terminate · max. ${evaluationsPerPhase} în requestul curent · ${evaluationsPerBranch} per ramură.</small>`
+          );
+
+          const body = optimizerBody();
+          const formPayload = Object.fromEntries(body.entries());
+          const branchCall = await fetchWithTimeout(
+            "/api/optimization/home-lab/branch",
+            {
+              method:"POST",
+              headers:{"Content-Type":"application/json"},
+              body:JSON.stringify({
+                form:formPayload,
+                branchId,
+                searchPhase:phase,
+                priorCandidates:phase === "refine" ? priorCandidates : [],
+              }),
+            },
+            optimizerAbortController?.signal || null,
+            OPTIMIZER_REQUEST_TIMEOUT_MS
+          );
+          if (runToken !== optimizerRunToken) return;
+          if (!branchCall.response.ok || !branchCall.payload || branchCall.payload.error) {
+            throw new Error(
+              branchCall.payload?.error
+              || `Ramura „${branchLabel}” / ${readablePhase} nu a putut fi calculată (HTTP ${branchCall.response.status || "?"}).`
+            );
+          }
+
+          branchResults.push(branchCall.payload);
+          const phaseCandidates = Array.isArray(branchCall.payload.candidates)
+            ? branchCall.payload.candidates
+            : [];
+          priorCandidates.push(...phaseCandidates);
+          completedEvaluations += Number(branchCall.payload.parametricEvaluations || 0);
         }
-        branchResults.push(branchCall.payload);
-        completedEvaluations += Number(branchCall.payload.parametricEvaluations || 0);
       }
 
       setStatus("Compar rezultatele ramurilor…");
       setOptimizationNote(
-        `<strong>${escapeHtml(settings.label)}</strong><span>Toate ramurile eligibile au fost calculate. Aplic criteriul economic final peste câștigătorii fiecărei ramuri.</span><small>${completedEvaluations} recalculări parametrice finalizate.</small>`
+        `<strong>${escapeHtml(settings.label)}</strong><span>Toate ramurile și fazele au fost calculate. Aplic criteriul economic final peste toți candidații validați.</span><small>${completedEvaluations} recalculări parametrice finalizate.</small>`
       );
 
       const finalizeBody = optimizerBody();
-      finalizeBody.set("_branch_results_json", JSON.stringify(branchResults));
+      const finalizeForm = Object.fromEntries(finalizeBody.entries());
       const finalCall = await fetchWithTimeout(
         "/api/optimization/home-lab/finalize",
-        {method:"POST", body:finalizeBody},
+        {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({
+            form:finalizeForm,
+            branchResults,
+          }),
+        },
         optimizerAbortController?.signal || null,
         OPTIMIZER_REQUEST_TIMEOUT_MS
       );

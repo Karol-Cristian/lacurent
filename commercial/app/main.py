@@ -25,10 +25,12 @@ from .optimization import (
     OptimizationCandidateRequestV1,
     OptimizationMode,
     OptimizationRequestV1,
+    ParametricMeasuresV1,
     OptimizationSearchBoundsV1,
     OptimizationSearchRequestV1,
     OptimizationSelectionRequestV1,
     evaluate_parametric_candidate,
+    _fallback_refinement_seed,
     run_parametric_optimization,
     select_optimization_candidate,
 )
@@ -2331,7 +2333,9 @@ async def home_lab_optimization_plan_api(request: Request) -> JSONResponse:
                 "label": _home_lab_optimizer_label(mode, form),
                 "branches": [model_to_dict(item) for item in branches],
                 "runBranchIds": [item.branch_id for item in runnable],
-                "evaluationsPerBranch": 24,
+                "searchPhases": ["axis", "halton", "refine"],
+                "evaluationsPerPhase": 12,
+                "evaluationsPerBranch": 36,
             }
         )
     except Exception as exc:
@@ -2340,27 +2344,89 @@ async def home_lab_optimization_plan_api(request: Request) -> JSONResponse:
 
 @app.post("/api/optimization/home-lab/branch")
 async def home_lab_optimization_branch_api(request: Request) -> JSONResponse:
-    form = dict(await request.form())
-    branch_id = str(form.pop("_heating_branch_id", "") or "").strip()
+    content_type = str(request.headers.get("content-type", "") or "").lower()
+    prior_payload: Any = None
+    if "application/json" in content_type:
+        raw = await request.json()
+        form = dict(raw.get("form") or {})
+        branch_id = str(raw.get("branchId", "") or "").strip()
+        search_phase = str(raw.get("searchPhase", "") or "").strip()
+        prior_payload = raw.get("priorCandidates")
+    else:
+        form = dict(await request.form())
+        branch_id = str(form.pop("_heating_branch_id", "") or "").strip()
+        search_phase = str(form.pop("_search_phase", "") or "").strip()
+        prior_payload = str(form.pop("_prior_candidates_json", "") or "").strip()
+
     if not branch_id:
         return JSONResponse({"error": "Lipsește ramura de încălzire."}, status_code=422)
+    if search_phase not in {"axis", "halton", "refine"}:
+        return JSONResponse(
+            {
+                "error": (
+                    "Interfața optimizerului a fost actualizată. Reîncarcă pagina "
+                    "pentru execuția pe faze CPU-safe."
+                ),
+                "requiresPhasedExecution": True,
+            },
+            status_code=409,
+        )
+
     try:
         _, _, optimization_request = _home_lab_optimization_request_from_form(form)
+        refinement_seed = None
+        if search_phase == "refine":
+            if prior_payload in (None, "", []):
+                raise ValueError("Faza de refinement necesită candidații fazelor anterioare.")
+            decoded_prior = (
+                prior_payload
+                if isinstance(prior_payload, list)
+                else json.loads(str(prior_payload))
+            )
+            if not isinstance(decoded_prior, list):
+                raise ValueError("Candidații anteriori trebuie să fie o listă.")
+            prior_candidates = [
+                CandidateEvaluationV1(**item)
+                for item in decoded_prior
+                if isinstance(item, dict)
+            ]
+            prior_selection = select_optimization_candidate(
+                optimization_request,
+                prior_candidates,
+            )
+            seed_candidate = prior_selection.selected or _fallback_refinement_seed(
+                optimization_request,
+                prior_candidates,
+            )
+            if seed_candidate is None:
+                raise ValueError(
+                    "Nu există un candidat anterior disponibil pentru refinement."
+                )
+            refinement_seed = ParametricMeasuresV1(
+                **model_to_dict(seed_candidate.parameters)
+            )
+
         started = time.perf_counter()
         result = run_heating_branch_optimization(
             optimization_request,
             branch_id=branch_id,
             bounds=OptimizationSearchBoundsV1(),
             catalog=await _optimizer_cost_catalog(request),
-            max_evaluations=24,
+            max_evaluations=12,
+            search_phase=search_phase,
+            refinement_seed=refinement_seed,
         )
         elapsed_ms = round((time.perf_counter() - started) * 1000.0, 1)
         return JSONResponse(
             {
                 "branch": model_to_dict(result.branch),
                 "selection": model_to_dict(result.selection),
+                "candidates": [
+                    model_to_dict(item) for item in result.candidates
+                ],
                 "candidateCount": int(result.candidate_count),
                 "parametricEvaluations": int(result.parametric_evaluations),
+                "searchPhase": result.search_phase,
                 "calculationTimeMs": elapsed_ms,
                 "warnings": result.warnings,
             }
@@ -2371,17 +2437,24 @@ async def home_lab_optimization_branch_api(request: Request) -> JSONResponse:
 
 @app.post("/api/optimization/home-lab/finalize")
 async def home_lab_optimization_finalize_api(request: Request) -> JSONResponse:
-    form = dict(await request.form())
-    raw_results = str(form.pop("_branch_results_json", "") or "").strip()
-    if not raw_results:
+    content_type = str(request.headers.get("content-type", "") or "").lower()
+    if "application/json" in content_type:
+        raw = await request.json()
+        form = dict(raw.get("form") or {})
+        decoded = raw.get("branchResults")
+    else:
+        form = dict(await request.form())
+        raw_results = str(form.pop("_branch_results_json", "") or "").strip()
+        decoded = json.loads(raw_results) if raw_results else None
+
+    if not decoded:
         return JSONResponse({"error": "Lipsesc rezultatele ramurilor de încălzire."}, status_code=422)
     try:
         mode, _, optimization_request = _home_lab_optimization_request_from_form(form)
-        decoded = json.loads(raw_results)
         if not isinstance(decoded, list):
             raise ValueError("Rezultatele ramurilor trebuie să fie o listă.")
 
-        branch_summaries: list[HeatingBranchSummaryV1] = []
+        branch_summaries_by_id: dict[str, HeatingBranchSummaryV1] = {}
         finalists: list[CandidateEvaluationV1] = []
         evaluated_candidates = 0
         parametric_evaluations = 0
@@ -2393,7 +2466,17 @@ async def home_lab_optimization_finalize_api(request: Request) -> JSONResponse:
             if not isinstance(item, dict):
                 continue
             branch = HeatingBranchSummaryV1(**(item.get("branch") or {}))
-            branch_summaries.append(branch)
+            existing = branch_summaries_by_id.get(branch.branch_id)
+            if existing is None:
+                branch_summaries_by_id[branch.branch_id] = branch
+            else:
+                merged = model_to_dict(existing)
+                merged["evaluated_candidates"] = int(existing.evaluated_candidates) + int(branch.evaluated_candidates)
+                merged["accepted_candidates"] = int(existing.accepted_candidates) + int(branch.accepted_candidates)
+                merged["rejected_for_capacity"] = int(existing.rejected_for_capacity) + int(branch.rejected_for_capacity)
+                merged["feasible_candidates"] = int(existing.feasible_candidates) + int(branch.feasible_candidates)
+                branch_summaries_by_id[branch.branch_id] = HeatingBranchSummaryV1(**merged)
+
             evaluated_candidates += int(item.get("candidateCount") or branch.accepted_candidates)
             branch_evals = int(item.get("parametricEvaluations") or branch.evaluated_candidates)
             parametric_evaluations += branch_evals
@@ -2402,10 +2485,17 @@ async def home_lab_optimization_finalize_api(request: Request) -> JSONResponse:
             total_elapsed_ms += float(item.get("calculationTimeMs") or 0.0)
             warnings.extend(str(value) for value in (item.get("warnings") or []))
 
-            selection_raw = item.get("selection") or {}
-            selected_raw = selection_raw.get("selected")
-            if selected_raw:
-                finalists.append(CandidateEvaluationV1(**selected_raw))
+            candidate_rows = item.get("candidates") or []
+            for candidate_raw in candidate_rows:
+                if isinstance(candidate_raw, dict):
+                    finalists.append(CandidateEvaluationV1(**candidate_raw))
+            if not candidate_rows:
+                selection_raw = item.get("selection") or {}
+                selected_raw = selection_raw.get("selected")
+                if selected_raw:
+                    finalists.append(CandidateEvaluationV1(**selected_raw))
+
+        branch_summaries = list(branch_summaries_by_id.values())
 
         if not finalists:
             selection = select_optimization_candidate(optimization_request, [])
@@ -2448,7 +2538,7 @@ async def home_lab_optimization_finalize_api(request: Request) -> JSONResponse:
                 *warnings,
             ],
             calculation_time_ms=round(total_elapsed_ms, 1),
-            pareto_scope="branch_finalists",
+            pareto_scope="all_phased_candidates",
         )
         return JSONResponse(payload)
     except Exception as exc:

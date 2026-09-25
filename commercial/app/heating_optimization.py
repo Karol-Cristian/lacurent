@@ -125,8 +125,10 @@ class HeatingBranchSummaryV1(BaseModel):
 class HeatingBranchRunResultV1(BaseModel):
     selection: OptimizationSelectionV1
     branch: HeatingBranchSummaryV1
+    candidates: list[CandidateEvaluationV1] = Field(default_factory=list)
     candidate_count: int
     parametric_evaluations: int
+    search_phase: str = "full"
     warnings: list[str] = Field(default_factory=list)
 
 
@@ -573,6 +575,8 @@ def run_heating_branch_optimization(
     bounds: OptimizationSearchBoundsV1,
     catalog: dict[str, Any],
     max_evaluations: int = 24,
+    search_phase: Literal["full", "axis", "halton", "refine"] = "full",
+    refinement_seed: Any | None = None,
 ) -> HeatingBranchRunResultV1:
     baseline_result = calculate(request.baseline, include_reference=False)
     baseline_cost = estimate_energy_cost(baseline_result)
@@ -610,8 +614,10 @@ def run_heating_branch_optimization(
             return HeatingBranchRunResultV1(
                 selection=select_optimization_candidate(request, []),
                 branch=summary,
+                candidates=[],
                 candidate_count=0,
                 parametric_evaluations=0,
+                search_phase=search_phase,
                 warnings=[],
             )
         branch_baseline = apply_heating_technology(request.baseline, technology)
@@ -639,6 +645,8 @@ def run_heating_branch_optimization(
         ),
         catalog,
         candidate_postprocessor=postprocess,
+        search_phase=search_phase,
+        refinement_seed=refinement_seed,
     )
 
     rejected_capacity = max(int(search.engine_evaluations) - len(search.candidates), 0)
@@ -667,8 +675,10 @@ def run_heating_branch_optimization(
     return HeatingBranchRunResultV1(
         selection=selection,
         branch=summary,
+        candidates=search.candidates,
         candidate_count=len(search.candidates),
         parametric_evaluations=int(search.engine_evaluations),
+        search_phase=search_phase,
         warnings=warnings,
     )
 
