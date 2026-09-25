@@ -78,6 +78,7 @@ class HeatingPlanningOptionV1(BaseModel):
     technology_id: str
     technology_label: str
     id: str
+    external_id: str | None = None
     label: str
     system_type: HeatingSystemType
     generator_type: HeatingGeneratorType
