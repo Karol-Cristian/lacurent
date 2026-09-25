@@ -2675,51 +2675,67 @@
         const branchLabel = branch.label || branchId;
         const priorCandidateSummaries = [];
 
+        const phaseOffsets = Array.isArray(plan.phaseOffsets) && plan.phaseOffsets.length
+          ? plan.phaseOffsets.map(value => Number(value || 0))
+          : [0, 4, 8];
+        const microBatchSize = Number(plan.microBatchSize || 4);
+
         for (let phaseIndex = 0; phaseIndex < phases.length; phaseIndex += 1) {
           if (runToken !== optimizerRunToken) return;
           const phase = String(phases[phaseIndex]);
           const readablePhase = phaseLabel[phase] || phase;
-          setStatus(
-            `Optimizez ${index + 1}/${runnableIds.length}: ${branchLabel} · ${readablePhase}…`
-          );
-          setOptimizationNote(
-            `<strong>${escapeHtml(settings.label)}</strong>
-             <span>Ramura ${index + 1}/${runnableIds.length}: ${escapeHtml(branchLabel)} · faza ${phaseIndex + 1}/${phases.length}: ${escapeHtml(readablePhase)}.</span>
-             <small>${completedEvaluations} recalculări terminate · max. ${evaluationsPerPhase} în requestul curent · ${evaluationsPerBranch} per ramură.</small>`
-          );
-
-          const body = optimizerBody();
-          const formPayload = Object.fromEntries(body.entries());
-          const branchCall = await fetchOptimizerWithRetry(
-            "/api/optimization/home-lab/branch",
-            {
-              method:"POST",
-              headers:{"Content-Type":"application/json"},
-              body:JSON.stringify({
-                form:formPayload,
-                branchId,
-                searchPhase:phase,
-                priorCandidates:phase === "refine" ? priorCandidateSummaries : [],
-              }),
-            },
-            optimizerAbortController?.signal || null,
-            OPTIMIZER_REQUEST_TIMEOUT_MS
-          );
-          transientRetries += Math.max(0, Number(branchCall.attemptCount || 1) - 1);
-          if (runToken !== optimizerRunToken) return;
-          if (!branchCall.response.ok || !branchCall.payload || branchCall.payload.error) {
-            throw new Error(
-              branchCall.payload?.error
-              || `Ramura „${branchLabel}” / ${readablePhase} nu a putut fi calculată (HTTP ${branchCall.response.status || "?"}).`
-            );
-          }
-
-          branchResults.push(branchCall.payload);
-          const phaseSummaries = Array.isArray(branchCall.payload.candidateSummaries)
-            ? branchCall.payload.candidateSummaries
+          const fixedRefinementSeed = phase === "refine"
+            ? [...priorCandidateSummaries]
             : [];
-          priorCandidateSummaries.push(...phaseSummaries);
-          completedEvaluations += Number(branchCall.payload.parametricEvaluations || 0);
+
+          const phaseSummariesCollected = [];
+          for (let batchIndex = 0; batchIndex < phaseOffsets.length; batchIndex += 1) {
+            if (runToken !== optimizerRunToken) return;
+            const phaseOffset = phaseOffsets[batchIndex];
+            setStatus(
+              `Optimizez ${index + 1}/${runnableIds.length}: ${branchLabel} · ${readablePhase} ${batchIndex + 1}/${phaseOffsets.length}…`
+            );
+            setOptimizationNote(
+              `<strong>${escapeHtml(settings.label)}</strong>
+               <span>Ramura ${index + 1}/${runnableIds.length}: ${escapeHtml(branchLabel)} · ${escapeHtml(readablePhase)} · micro-lot ${batchIndex + 1}/${phaseOffsets.length}.</span>
+               <small>${completedEvaluations} recalculări terminate · max. ${microBatchSize} în requestul curent · ${evaluationsPerPhase} în fază · ${evaluationsPerBranch} per ramură.</small>`
+            );
+
+            const body = optimizerBody();
+            const formPayload = Object.fromEntries(body.entries());
+            const branchCall = await fetchOptimizerWithRetry(
+              "/api/optimization/home-lab/branch",
+              {
+                method:"POST",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({
+                  form:formPayload,
+                  branchId,
+                  searchPhase:phase,
+                  phaseOffset,
+                  priorCandidates:phase === "refine" ? fixedRefinementSeed : [],
+                }),
+              },
+              optimizerAbortController?.signal || null,
+              OPTIMIZER_REQUEST_TIMEOUT_MS
+            );
+            transientRetries += Math.max(0, Number(branchCall.attemptCount || 1) - 1);
+            if (runToken !== optimizerRunToken) return;
+            if (!branchCall.response.ok || !branchCall.payload || branchCall.payload.error) {
+              throw new Error(
+                branchCall.payload?.error
+                || `Ramura „${branchLabel}” / ${readablePhase} / lot ${batchIndex + 1} nu a putut fi calculată (HTTP ${branchCall.response.status || "?"}).`
+              );
+            }
+
+            branchResults.push(branchCall.payload);
+            const batchSummaries = Array.isArray(branchCall.payload.candidateSummaries)
+              ? branchCall.payload.candidateSummaries
+              : [];
+            phaseSummariesCollected.push(...batchSummaries);
+            completedEvaluations += Number(branchCall.payload.parametricEvaluations || 0);
+          }
+          priorCandidateSummaries.push(...phaseSummariesCollected);
         }
       }
 
