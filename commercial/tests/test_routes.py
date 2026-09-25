@@ -632,11 +632,11 @@ def test_home_lab_persistent_summary_stays_bound_to_current_result_and_status() 
     assert 'document.body.classList.remove("hln-technical-open")' in js.text
     assert 'dock?.classList.toggle("has-comparison", scenarioMode)' in js.text
     assert 'if (back) back.hidden = screen === "home"' in js.text
-    assert 'backLabel.textContent = screen === "report" ? "Înapoi la scenariu" : "Înapoi"' in js.text
+    assert 'backLabel.textContent = screen === "report" ? "Înapoi la optimizare" : "Înapoi"' in js.text
     assert 'ctaLabel.dataset.mobileLabel = "Îmbunătățiri"' in js.text
     assert '$("#hlnDockBack").addEventListener("click"' in js.text
     assert 'if (screen === "report")' in js.text
-    assert 'showScreen("scenario");' in js.text
+    assert 'showScreen("site");' in js.text
     assert 'cancelIntervention();' in js.text
     assert 'root.querySelectorAll("[data-hln-editor-open]").forEach' in js.text
 
@@ -652,14 +652,17 @@ def test_home_lab_energy_strip_labels_references_and_sen_source() -> None:
     assert "/static/home-lab-3d.js?v=3d55" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
     assert 'data-hln-smart-config="nzeb"' in response.text
-    assert 'data-hln-smart-config="roi"' in response.text
-    assert 'data-hln-smart-config="roi-budget"' in response.text
-    assert 'data-hln-smart-config="roi-payback"' in response.text
+    assert 'data-hln-smart-config="economic-auto"' in response.text
+    assert 'data-hln-smart-config="economic-budget"' in response.text
+    assert 'data-hln-smart-config="economic-bill"' in response.text
+    assert 'data-hln-smart-config="economic-payback"' in response.text
     assert 'id="hlnRoiBudget"' in response.text
+    assert 'id="hlnAnnualBillTarget"' in response.text
     assert 'id="hlnRoiPaybackYears"' in response.text
-    assert "BEST ROI" in response.text
-    assert "Cea mai mare economie în bugetul tău" in response.text
-    assert "Cea mai mare economie în timpul ales" in response.text
+    assert "Optimizează pentru mine" in response.text
+    assert "Folosește cel mai bine suma disponibilă" in response.text
+    assert "Coboară factura până la ținta ta" in response.text
+    assert "Recuperează investiția în maximum X ani" in response.text
     assert "Configurează automat îmbunătățirile" not in response.text
     assert 'data-hln-screen="report"' in response.text
     assert 'data-hln-go="report"' in response.text
@@ -810,22 +813,23 @@ def test_home_lab_roi_reconciles_visible_capex_and_avoids_request_bursts() -> No
     assert 'window.scrollTo({top: 0, behavior: "auto"})' in source
 
 
-def test_home_lab_exposes_distinct_budget_and_payback_optimizer_objectives() -> None:
+def test_home_lab_exposes_four_single_constraint_parametric_objectives() -> None:
     response = client.get("/static/home-lab-next.js")
     assert response.status_code == 200
     source = response.text
-    assert 'mode === "roi-budget"' in source
-    assert 'mode === "roi-payback"' in source
-    assert 'metaMode:"roi_budget"' in source
-    assert 'metaMode:"roi_payback"' in source
-    assert "packageCapex > settings.budgetLei" in source
-    assert "evaluatePaybackPackageFrontier" in source
-    assert "item.economics.paybackYears <= settings.maxPaybackYears" in source
-    assert "maximizez economia anuală" in source.lower()
+    assert "function configureParametricEconomicOptimizer" in source
+    assert 'backendMode:"investment_budget"' in source
+    assert 'backendMode:"annual_bill_target"' in source
+    assert 'backendMode:"max_payback_years"' in source
+    assert 'backendMode:"auto_economic"' in source
+    assert 'body.set("_investment_budget_lei"' in source
+    assert 'body.set("_annual_bill_target_lei"' in source
+    assert 'body.set("_max_payback_years"' in source
+    assert '"/api/optimization/home-lab"' in source
+    assert '["economic-auto","economic-budget","economic-bill","economic-payback"].includes(action)' in source
     assert "isFinancialOptimizationMeta" in source
-    assert 'button.dataset.hlnSmartConfig === "roi-budget"' in source
-    assert 'button.dataset.hlnSmartConfig === "roi-payback"' in source
-
+    assert 'const buttons = $("[data-hln-smart-config]")' not in source
+    assert 'const buttons = $$("[data-hln-smart-config]")' in source
 
 def test_payback_optimizer_applies_threshold_to_complete_packages_not_components() -> None:
     response = client.get("/static/home-lab-next.js")
@@ -1368,7 +1372,8 @@ def test_home_lab_next_roi_uses_catalog_without_homeowner_price_form() -> None:
     assert 'value="new_nzeb"' in response.text
     assert 'id="hlnRoiCostSource"' in response.text
     assert 'id="hlnRoiCostAssumptions"' in response.text
-    assert "Toate variantele folosesc același motor energetic și același catalog CAPEX" in response.text
+    assert "Parametrii tehnici sunt optimizați continuu înainte de orice discretizare comercială." in response.text
+    assert "Nu combinăm mai multe constrângeri într-o singură rulare." in response.text
     assert 'id="hlnRoiCostWall"' not in response.text
     assert 'id="hlnRoiCostDoor"' not in response.text
     assert 'id="hlnRoiCostHeating"' not in response.text
@@ -1596,7 +1601,7 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert "fără limită artificială la numărul de intervenții" in response.text
     assert "round < 3" not in response.text
     assert "if (dock) dock.hidden = false;" in response.text
-    assert 'backLabel.textContent = screen === "report" ? "Înapoi la scenariu" : "Înapoi"' in response.text
+    assert 'backLabel.textContent = screen === "report" ? "Înapoi la optimizare" : "Înapoi"' in response.text
     assert "function nzebMeetsTarget" in response.text
     assert "ROI_ACTIONS" not in response.text
     assert "weather_compensated" in response.text
@@ -1768,7 +1773,8 @@ def test_home_lab_envelope_editor_exposes_structure_and_material_inputs() -> Non
     assert 'id="hlnWallInsulationMaterial"' in html
     assert 'id="hlnRoofInsulationMaterial"' in html
     assert 'id="hlnFloorInsulationMaterial"' in html
-    assert '<span>02</span><b>Îmbunătățiri</b>' in html
+    assert '<span>02</span><b>Optimizează</b>' in html
+    assert '<span>03</span><b>Raport</b>' in html
     assert 'VARIANTĂ NOUĂ' in html
     assert 'DUPĂ ÎMBUNĂTĂȚIRI' in html
     assert 'value="solid_brick"' in html

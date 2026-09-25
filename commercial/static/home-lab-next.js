@@ -2390,7 +2390,7 @@
   }
 
   function isFinancialOptimizationMeta(meta = optimizationMeta) {
-    return String(meta?.mode || "").startsWith("roi");
+    return meta?.kind === "parametric_economic" || String(meta?.mode || "").startsWith("roi");
   }
 
   function economicOptimizerSettings(mode) {
@@ -2430,6 +2430,171 @@
       maxPaybackYears:null,
       working:"Calculez Best ROI…",
     };
+  }
+
+  function parametricOptimizerUiSettings(action) {
+    if (action === "economic-budget") {
+      const value = Number($("#hlnRoiBudget")?.value);
+      if (!Number.isFinite(value) || value < 1000) throw new Error("Introdu un buget de cel puțin 1.000 lei.");
+      return {
+        backendMode:"investment_budget",
+        investmentBudgetLei:value,
+        label:`Buget maxim ${fmt(value)} lei`,
+        working:"Caut cea mai bună combinație în bugetul ales…",
+      };
+    }
+    if (action === "economic-bill") {
+      const value = Number($("#hlnAnnualBillTarget")?.value);
+      if (!Number.isFinite(value) || value < 0) throw new Error("Introdu o factură anuală țintă validă.");
+      return {
+        backendMode:"annual_bill_target",
+        annualBillTargetLei:value,
+        label:`Factură anuală ≤ ${fmt(value)} lei`,
+        working:"Caut investiția minimă care atinge factura țintă…",
+      };
+    }
+    if (action === "economic-payback") {
+      const value = Number($("#hlnRoiPaybackYears")?.value);
+      if (!Number.isFinite(value) || value < 1 || value > 30) throw new Error("Alege o recuperare între 1 și 30 de ani.");
+      return {
+        backendMode:"max_payback_years",
+        maxPaybackYears:value,
+        label:`Recuperare ≤ ${fmt(value,1)} ani`,
+        working:"Caut cea mai mare economie dintre soluțiile care se recuperează la timp…",
+      };
+    }
+    return {
+      backendMode:"auto_economic",
+      label:"Optimizează pentru mine",
+      working:"Compar soluțiile economice pe mai multe orizonturi…",
+    };
+  }
+
+  function optimizerMeasuresFromRaw(raw = {}) {
+    const rows = [];
+    if (Number(raw.wall_added_r_m2k_w) > 1e-9) rows.push("wall");
+    if (Number(raw.roof_added_r_m2k_w) > 1e-9) rows.push("roof");
+    if (Number(raw.floor_added_r_m2k_w) > 1e-9) rows.push("floor");
+    if (Number(raw.window_replacement_fraction) > 1e-9) rows.push("windows");
+    if (Number(raw.pv_added_kwp) > 1e-9) rows.push("pv");
+    if (Number(raw.solar_thermal_added_m2) > 1e-9) rows.push("solar_thermal");
+    return rows;
+  }
+
+  function applyParametricOptimizerState(meta) {
+    const raw = meta?.rawSolution || {};
+    scenarioState = migrateStoredHeatingState({...homeState}, defaultState);
+    scenarioOverrides = {};
+    referenceMode = false;
+
+    if (Number(raw.wall_added_r_m2k_w) > 0) {
+      scenarioState.wallIns = Number(homeState.wallIns || 0)
+        + Number(raw.wall_added_r_m2k_w) * insulationLambda(homeState.wallInsulationMaterial) * 100;
+    }
+    if (Number(raw.roof_added_r_m2k_w) > 0) {
+      scenarioState.roofIns = Number(homeState.roofIns || 0)
+        + Number(raw.roof_added_r_m2k_w) * insulationLambda(homeState.roofInsulationMaterial) * 100;
+    }
+    if (Number(raw.floor_added_r_m2k_w) > 0) {
+      scenarioState.floorIns = Number(homeState.floorIns || 0)
+        + Number(raw.floor_added_r_m2k_w) * insulationLambda(homeState.floorInsulationMaterial) * 100;
+    }
+    if (Number(raw.pv_added_kwp) > 0) {
+      scenarioState.pvEnabled = true;
+      scenarioState.pvKwp = (homeState.pvEnabled ? Number(homeState.pvKwp || 0) : 0)
+        + Number(raw.pv_added_kwp);
+    }
+    if (Number(raw.solar_thermal_added_m2) > 0) {
+      scenarioState.solarThermalEnabled = true;
+      scenarioState.solarThermalArea = (
+        homeState.solarThermalEnabled ? Number(homeState.solarThermalArea || 0) : 0
+      ) + Number(raw.solar_thermal_added_m2);
+    }
+
+    const resulting = meta?.resultingConfiguration;
+    const envelope = Array.isArray(resulting?.envelope) ? resulting.envelope : [];
+    const uFor = type => Number(envelope.find(item => item?.type === type)?.u_value_w_m2k);
+    const wallU = uFor("exterior_wall");
+    const roofU = uFor("roof");
+    const floorU = uFor("floor");
+    const windowU = uFor("window");
+    if (Number.isFinite(wallU)) scenarioOverrides.wallU = wallU;
+    if (Number.isFinite(roofU)) scenarioOverrides.roofU = roofU;
+    if (Number.isFinite(floorU)) scenarioOverrides.floorU = floorU;
+    if (Number.isFinite(windowU)) scenarioOverrides.windowU = windowU;
+
+    measures = optimizerMeasuresFromRaw(raw);
+  }
+
+  async function configureParametricEconomicOptimizer(action) {
+    if (!baselineSaved || !homeResult) return;
+    const settings = parametricOptimizerUiSettings(action);
+    const runToken = beginOptimizerRun();
+    const buttons = $$("[data-hln-smart-config]");
+    buttons.forEach(button => button.disabled = true);
+    setOptimizerBusy(true);
+    setStatus(settings.working);
+    setOptimizationNote(
+      `<strong>${escapeHtml(settings.label)}</strong><span>O singură regulă economică este activă. Parametrii tehnici sunt căutați înainte de discretizarea comercială.</span>`
+    );
+
+    try {
+      populateTechnicalForm(homeState, {});
+      const body = new FormData(form);
+      body.set("_optimization_mode", settings.backendMode);
+      if (settings.investmentBudgetLei != null) body.set("_investment_budget_lei", String(settings.investmentBudgetLei));
+      if (settings.annualBillTargetLei != null) body.set("_annual_bill_target_lei", String(settings.annualBillTargetLei));
+      if (settings.maxPaybackYears != null) body.set("_max_payback_years", String(settings.maxPaybackYears));
+
+      const {response, payload} = await fetchWithTimeout(
+        "/api/optimization/home-lab",
+        {method:"POST", body},
+        optimizerAbortController?.signal || null,
+        OPTIMIZER_REQUEST_TIMEOUT_MS
+      );
+      if (runToken !== optimizerRunToken) return;
+      if (!response.ok || !payload || payload.error) {
+        throw new Error(payload?.error || `Optimizer indisponibil (HTTP ${response.status || "?"}).`);
+      }
+
+      scenarioResult = payload.scenario;
+      currentResult = scenarioResult;
+      scenarioResultState = "fresh";
+      optimizationMeta = {
+        ...payload.optimization,
+        projectMode,
+        projectModeLabel:projectModeLabel(),
+      };
+      applyParametricOptimizerState(optimizationMeta);
+      persist();
+      renderAll();
+      emitVisualState("optimizer");
+      setStatus("Optimizare economică calculată", "ok");
+
+      const commercialNote = optimizationMeta.commercialReady
+        ? "Soluția este deja implementabilă în forma raportată."
+        : "Raportul separă optimul brut de discretizarea comercială încă indisponibilă.";
+      setOptimizationNote(
+        `<strong>${escapeHtml(optimizationMeta.label || settings.label)}</strong>
+         <span>CAPEX ${fmt(optimizationMeta.capexLei)} lei · economie anuală ${fmt(optimizationMeta.annualSavingLei)} lei/an · ${optimizationMeta.paybackYears == null ? "fără amortizare pozitivă" : "amortizare " + fmt(optimizationMeta.paybackYears,1) + " ani"}.</span>
+         <small>${optimizationMeta.evaluatedCandidates || 0} configurații evaluate · ${optimizationMeta.feasibleCandidates || 0} eligibile · ${optimizationMeta.paretoSolutions || 0} pe frontiera Pareto. ${escapeHtml(commercialNote)}</small>`,
+        Number(optimizationMeta.annualSavingLei) > 0 ? "good" : "warn"
+      );
+      showScreen("report");
+    } catch (error) {
+      if (error?.name === "AbortError" || runToken !== optimizerRunToken) return;
+      scenarioResultState = scenarioResult ? "stale" : "empty";
+      setOptimizationNote(
+        `<strong>Optimizarea nu a putut fi finalizată.</strong><span>${escapeHtml(error?.message || "Eroare necunoscută")}</span>`,
+        "warn"
+      );
+      setStatus(error?.message || "Optimizare indisponibilă", "error");
+      renderAll();
+    } finally {
+      buttons.forEach(button => button.disabled = false);
+      setOptimizerBusy(false);
+      if (runToken === optimizerRunToken) optimizerAbortController = null;
+    }
   }
 
   function bestEconomicVariantPerFamily(rows, settings) {
@@ -3229,7 +3394,7 @@
     const scenarioMode = baselineSaved && ["site", "intervention", "scenario"].includes(screen);
     benefits.hidden = !scenarioMode;
     if (back) back.hidden = screen === "home";
-    if (backLabel) backLabel.textContent = screen === "report" ? "Înapoi la scenariu" : "Înapoi";
+    if (backLabel) backLabel.textContent = screen === "report" ? "Înapoi la optimizare" : "Înapoi";
     dock?.classList.toggle("has-comparison", scenarioMode);
 
     if (scenarioMode && homeResult && scenarioResult) {
@@ -3272,8 +3437,8 @@
       ctaLabel.dataset.mobileLabel = "Îmbunătățiri";
     } else if (screen === "site") {
       cta.hidden = measures.length === 0;
-      ctaLabel.textContent = "Vezi Scenariul meu";
-      ctaLabel.dataset.mobileLabel = "Scenariul";
+      ctaLabel.textContent = "Generează raportul";
+      ctaLabel.dataset.mobileLabel = "Raport";
     } else if (screen === "intervention") {
       cta.hidden = false;
       ctaLabel.textContent = "Păstrează intervenția";
@@ -3793,8 +3958,68 @@
       </div>`;
   }
 
+  function rawOptimizationRows(raw = {}) {
+    const rows = [];
+    const push = (label, value) => rows.push(`<article><strong>${escapeHtml(label)}</strong><small>${escapeHtml(value)}</small></article>`);
+    if (Number(raw.wall_added_r_m2k_w) > 1e-9) push("Pereți", `R suplimentar ${fmt(raw.wall_added_r_m2k_w,3)} m²K/W`);
+    if (Number(raw.roof_added_r_m2k_w) > 1e-9) push("Acoperiș / pod", `R suplimentar ${fmt(raw.roof_added_r_m2k_w,3)} m²K/W`);
+    if (Number(raw.floor_added_r_m2k_w) > 1e-9) push("Pardoseală", `R suplimentar ${fmt(raw.floor_added_r_m2k_w,3)} m²K/W`);
+    if (Number(raw.window_replacement_fraction) > 1e-9) {
+      push(
+        "Ferestre",
+        `${fmt(100 * Number(raw.window_replacement_fraction),1)}% din suprafață · Uw țintă ${fmt(raw.window_target_u_w_m2k,3)} W/m²K`
+      );
+    }
+    if (Number(raw.pv_added_kwp) > 1e-9) push("Fotovoltaice", `+${fmt(raw.pv_added_kwp,3)} kWp`);
+    if (Number(raw.solar_thermal_added_m2) > 1e-9) push("Solar termic", `+${fmt(raw.solar_thermal_added_m2,3)} m² colector`);
+    return rows;
+  }
+
+  function renderOptimizerTraceability() {
+    const commercial = $("#hlnReportCommercialSolution");
+    const rawNode = $("#hlnReportRawSolution");
+    const trace = $("#hlnReportSearchTrace");
+    if (!commercial || !rawNode || !trace) return;
+
+    if (optimizationMeta?.kind !== "parametric_economic") {
+      commercial.innerHTML = '<p class="hln-report-empty">Scenariul nu provine din optimizerul parametric.</p>';
+      rawNode.innerHTML = '<p class="hln-report-empty">Nu există un optim matematic separat pentru acest scenariu.</p>';
+      trace.textContent = "Scenariu configurat manual sau prin fluxul regulator existent.";
+      return;
+    }
+
+    const commercialSolution = optimizationMeta.commercialSolution;
+    if (optimizationMeta.commercialReady && commercialSolution) {
+      const items = Array.isArray(commercialSolution.items) ? commercialSolution.items : [];
+      commercial.innerHTML = items.length
+        ? `<div class="hln-strategy-list">${items.map((item,index) => `
+            <article><b>${index + 1}</b><div><strong>${escapeHtml(item.label || item.family || "Produs")}</strong><small>${escapeHtml(item.detail || "")}</small></div></article>
+          `).join("")}</div>`
+        : '<p class="hln-report-empty">Soluția nu necesită alte produse comerciale.</p>';
+    } else if (optimizationMeta.commercialReady) {
+      commercial.innerHTML = '<div class="hln-report-status-good"><strong>Soluție implementabilă fără discretizare suplimentară.</strong></div>';
+    } else {
+      commercial.innerHTML = `
+        <div class="hln-report-status-warn">
+          <strong>Discretizarea comercială nu este încă disponibilă pentru această rulare.</strong>
+          <span>${escapeHtml(optimizationMeta.commercialMessage || "Lipsește catalogul complet de produse.")}</span>
+        </div>`;
+    }
+
+    const rawRows = rawOptimizationRows(optimizationMeta.rawSolution || {});
+    rawNode.innerHTML = rawRows.length
+      ? `<div class="hln-raw-optimizer-grid">${rawRows.join("")}</div>`
+      : '<p class="hln-report-empty">Optimizerul a păstrat casa fără intervenții.</p>';
+    trace.textContent =
+      `${optimizationMeta.evaluatedCandidates || 0} configurații evaluate · ` +
+      `${optimizationMeta.feasibleCandidates || 0} eligibile pentru regula aleasă · ` +
+      `${optimizationMeta.paretoSolutions || 0} soluții nedominante. ` +
+      `${optimizationMeta.rationale || ""}`;
+  }
+
   function renderReport() {
     if (!homeResult || !scenarioResult) return;
+    renderOptimizerTraceability();
 
     $("#hlnReportHomeClass").textContent = homeResult.energy_class || "—";
     $("#hlnReportScenarioClass").textContent = scenarioResult.energy_class || "—";
@@ -3823,9 +4048,15 @@
       : "—";
     const firstSelected = Array.isArray(optimizationMeta?.selected) ? optimizationMeta.selected[0] : null;
     $("#hlnReportDecisionPriority").textContent = firstSelected?.label || (measures.length ? measureTitle(measures[0]) : "Scenariu manual");
-    $("#hlnReportDecisionNote").textContent = financialScenario
-      ? "Amortizarea este simplă: CAPEX estimat împărțit la economia anuală modelată. Nu include finanțare, mentenanță, înlocuiri, inflație sau actualizarea banilor în timp."
-      : "Pentru un scenariu configurat manual, Home Lab compară energia și costul anual; CAPEX-ul și amortizarea nu sunt inventate dacă nu au fost calculate de optimizarea financiară.";
+    $("#hlnReportDecisionNote").textContent = optimizationMeta?.kind === "parametric_economic"
+      ? (
+          optimizationMeta.commercialReady
+            ? "Valorile economice sunt recalculate după soluția implementabilă raportată. Amortizarea afișată este simplă."
+            : "CAPEX-ul și amortizarea aparțin optimului parametric de planificare. Nu sunt prezentate ca ofertă comercială până când produsele reale nu sunt discretizate și recalculate."
+        )
+      : financialScenario
+        ? "Amortizarea este simplă: CAPEX estimat împărțit la economia anuală modelată. Nu include finanțare, mentenanță, înlocuiri, inflație sau actualizarea banilor în timp."
+        : "Pentru un scenariu configurat manual, Home Lab compară energia și costul anual; CAPEX-ul și amortizarea nu sunt inventate dacă nu au fost calculate de optimizarea financiară.";
 
     $("#hlnReportBars").innerHTML = [
       reportComparisonRow("Cost anual", homeResult.annual_cost_lei, scenarioResult.annual_cost_lei, "lei/an"),
@@ -4048,7 +4279,23 @@
 
     const strategy = $("#hlnReportStrategy");
     if (strategy) {
-      if (isFinancialOptimizationMeta() && Array.isArray(optimizationMeta?.selected)) {
+      if (optimizationMeta?.kind === "parametric_economic") {
+        const selected = Array.isArray(optimizationMeta.selected) ? optimizationMeta.selected : [];
+        const payback = optimizationMeta.paybackYears == null
+          ? "n/a"
+          : `${fmt(optimizationMeta.paybackYears,1)} ani`;
+        strategy.innerHTML = `
+          <div class="hln-strategy-lead">
+            <strong>${escapeHtml(optimizationMeta.label || "Optimizare economică")} · amortizare ${payback}</strong>
+            <span>CAPEX parametric ${fmt(optimizationMeta.capexLei)} lei · economie anuală ${fmt(optimizationMeta.annualSavingLei)} lei/an. Regula utilizatorului: ${escapeHtml(optimizationMeta.economicMode || "auto_economic")}.</span>
+          </div>
+          ${selected.length ? `<div class="hln-strategy-list">${selected.map((item,index) => `
+            <article><b>${index + 1}</b><div><strong>${escapeHtml(item.label || item.family)}</strong><small>parametru brut ${fmt(item.parameterValue,3)} ${escapeHtml(item.parameterUnit || "")} · CAPEX planificat ${fmt(item.capexLei)} lei</small></div></article>
+          `).join("")}</div>` : ""}
+          <p>${escapeHtml(optimizationMeta.rationale || "")}</p>
+          <p>${escapeHtml(optimizationMeta.commercialMessage || "")}</p>
+        `;
+      } else if (isFinancialOptimizationMeta() && Array.isArray(optimizationMeta?.selected)) {
         const selected = optimizationMeta.selected;
         const ranked = Array.isArray(optimizationMeta.rankedOpportunities)
           ? optimizationMeta.rankedOpportunities
@@ -4114,7 +4361,7 @@
   }
 
   function renderProgress() {
-    const stage = screen === "home" ? "home" : screen === "site" || screen === "intervention" ? "site" : screen === "report" ? "report" : "scenario";
+    const stage = screen === "home" ? "home" : screen === "report" ? "report" : "site";
     $$("[data-hln-go]").forEach(button => {
       button.classList.toggle("is-active", button.dataset.hlnGo === stage);
     });
@@ -4491,7 +4738,7 @@
     activeMeasure = null;
     interventionOriginal = null;
     persist();
-    showScreen("scenario");
+    showScreen("site");
   }
 
   function resetMeasure(type) {
@@ -5081,10 +5328,11 @@
   $$("[data-hln-smart-config]").forEach(button => {
     button.addEventListener("click", async () => {
       await runOptimizerAction(async () => {
-        if (button.dataset.hlnSmartConfig === "nzeb") await configureNzeb();
-        if (button.dataset.hlnSmartConfig === "roi") await configureBestRoi("roi");
-        if (button.dataset.hlnSmartConfig === "roi-budget") await configureBestRoi("roi-budget");
-        if (button.dataset.hlnSmartConfig === "roi-payback") await configureBestRoi("roi-payback");
+        const action = button.dataset.hlnSmartConfig;
+        if (action === "nzeb") await configureNzeb();
+        if (["economic-auto","economic-budget","economic-bill","economic-payback"].includes(action)) {
+          await configureParametricEconomicOptimizer(action);
+        }
       });
     });
   });
@@ -5200,7 +5448,7 @@
       return;
     }
     if (screen === "report") {
-      showScreen("scenario");
+      showScreen("site");
     }
   });
 
@@ -5217,7 +5465,10 @@
       return;
     }
     if (screen === "site") {
-      if (measures.length) showScreen("scenario");
+      if (measures.length && scenarioResult && scenarioResultState === "fresh") {
+        persist();
+        showScreen("report");
+      }
       return;
     }
     if (screen === "intervention") {

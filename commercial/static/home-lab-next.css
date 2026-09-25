@@ -1241,7 +1241,7 @@ svg{display:block}
 .hln-regulatory-config strong{font-size:13px}
 .hln-regulatory-config small{color:#738079;font-size:9px}
 .hln-smart-configs{
-  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0 14px
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:10px 0 14px
 }
 .hln-economic-card{
   display:grid;align-content:start;border:1px solid rgba(43,66,54,.12);border-radius:18px;
@@ -1249,6 +1249,7 @@ svg{display:block}
 }
 .hln-economic-card:nth-child(2){background:linear-gradient(145deg,#f7f9fb,#edf2f5)}
 .hln-economic-card:nth-child(3){background:linear-gradient(145deg,#fbf8f1,#f4efe5)}
+.hln-economic-card:nth-child(4){background:linear-gradient(145deg,#faf6f8,#f4edf1)}
 .hln-smart-configs button{
   display:grid;gap:5px;min-height:116px;padding:16px;border:0;background:transparent;color:#203029;text-align:left;cursor:pointer
 }
@@ -1256,6 +1257,7 @@ svg{display:block}
 .hln-smart-configs button span{font-size:8px;font-weight:900;letter-spacing:.14em;color:#397159}
 .hln-economic-card:nth-child(2) button span{color:#456b80}
 .hln-economic-card:nth-child(3) button span{color:#8a6b3b}
+.hln-economic-card:nth-child(4) button span{color:#85556b}
 .hln-smart-configs strong{font-size:14px;line-height:1.2}
 .hln-smart-configs small{color:#738079;font-size:9px;line-height:1.4}
 .hln-economic-input{display:grid;gap:5px;margin:auto 12px 12px;padding:10px 11px;border:1px solid rgba(43,66,54,.10);border-radius:11px;background:rgba(255,255,255,.72)}
@@ -1299,6 +1301,19 @@ svg{display:block}
 .hln-report-card>header{display:grid;gap:3px;margin-bottom:14px}
 .hln-report-card>header span{font-size:8px;font-weight:900;letter-spacing:.13em;color:#5a806e}
 .hln-report-card>header strong{font-size:15px}
+
+.hln-report-commercial,.hln-report-raw{grid-column:1/-1}
+.hln-report-status-good,.hln-report-status-warn{display:grid;gap:5px;padding:13px 14px;border-radius:13px}
+.hln-report-status-good{border:1px solid #b9d7c6;background:#eef7f1}
+.hln-report-status-warn{border:1px solid #e1c9a3;background:#fbf5ea}
+.hln-report-status-good strong,.hln-report-status-warn strong{font-size:11px}
+.hln-report-status-good span,.hln-report-status-warn span{font-size:8px;line-height:1.5;color:#65736c}
+.hln-raw-optimizer-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.hln-raw-optimizer-grid article{display:grid;gap:4px;padding:12px;border:1px solid #dce4df;border-radius:12px;background:#fafcfb}
+.hln-raw-optimizer-grid strong{font-size:9px;color:#28493b}
+.hln-raw-optimizer-grid small{font-size:8px;line-height:1.45;color:#6f7d76}
+#hlnReportSearchTrace{margin:11px 0 0;color:#68766f;font-size:8px;line-height:1.5}
+@media (max-width:720px){.hln-raw-optimizer-grid{grid-template-columns:1fr}}
 .hln-report-comparison,.hln-report-monthly,.hln-report-monthly-cost,.hln-report-method{grid-column:1/-1}
 .hln-report-decision{grid-column:1/-1;order:0;border-color:#bfd8c8;background:linear-gradient(135deg,#f7fbf8,#eef6f1)}
 .hln-report-comparison{order:10}
