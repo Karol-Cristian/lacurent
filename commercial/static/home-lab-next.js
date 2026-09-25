@@ -4901,32 +4901,58 @@
     const selectedId = optimizationMeta.selectedHeating?.technologyId || "keep-current-heating";
     node.innerHTML = `<div class="hln-strategy-list">${branches.map((branch,index) => {
       const eligible = Boolean(branch.eligible);
-      const selected = String(branch.branch_id || "") === String(selectedId);
+      const economicEligible = branch.economic_eligible !== false;
+      const selected = economicEligible
+        && String(branch.branch_id || "") === String(selectedId);
       const evaluated = Number(branch.evaluated_candidates || 0);
       const accepted = Number(branch.accepted_candidates || 0);
       const rejectedCapacity = Number(branch.rejected_for_capacity || 0);
-      const allRejectedForCapacity = eligible && evaluated > 0 && accepted === 0 && rejectedCapacity > 0;
+      const allRejectedForCapacity = eligible
+        && economicEligible
+        && evaluated > 0
+        && accepted === 0
+        && rejectedCapacity > 0;
+
       const status = selected
         ? "SELECTAT"
         : !eligible
           ? "EXCLUS ÎNAINTE DE CALCUL"
-          : allRejectedForCapacity
-            ? "ELIMINAT · PUTERE INSUFICIENTĂ"
-            : "EVALUAT · NESELECTAT";
+          : !economicEligible
+            ? "EVALUAT TEHNIC · COST COMERCIAL LIPSĂ"
+            : allRejectedForCapacity
+              ? "ELIMINAT · NECESAR PESTE PLAJA CATALOGULUI"
+              : "EVALUAT · NESELECTAT";
+
       const detail = selected
-        ? `${evaluated} recalculări · ${accepted} candidați tehnici valizi · sistemul ales de criteriul economic`
+        ? `${evaluated} recalculări parametrice · ${accepted} candidați tehnici valizi · produsul real este atașat doar după selecția finalistului`
         : !eligible
           ? (branch.note || "Infrastructură sau compatibilitate neconfirmată.")
-          : allRejectedForCapacity
-            ? `${evaluated} recalculări · toate configurațiile au fost eliminate deoarece puterea nominală nu acoperă sarcina termică recalculată`
-            : `${evaluated} recalculări · ${accepted} candidați tehnici valizi · ramura a fost analizată, dar nu a câștigat criteriul economic ales`;
+          : !economicEligible
+            ? `${evaluated} recalculări parametrice · ${accepted} candidați tehnici valizi · fizica a fost simulată, dar ramura nu poate câștiga economic până nu avem cost instalat source-backed`
+            : allRejectedForCapacity
+              ? `${evaluated} recalculări · necesarul termic recalculat a depășit domeniul acoperit de datele comerciale disponibile`
+              : `${evaluated} recalculări parametrice · ${accepted} candidați tehnici valizi · ramura a intrat în comparația economică, dar nu a fost selectată`;
+
+      let commercialLine = "";
+      if (!economicEligible) {
+        commercialLine = "CAPEX comercial: în așteptare · fără valoare inventată";
+      } else if (branch.branch_id === "keep-current-heating") {
+        commercialLine = "CAPEX încălzire: 0 lei · sistem existent";
+      } else {
+        const range = branch.min_product_power_kw != null && branch.max_product_power_kw != null
+          ? ` · observații catalog ${fmt(branch.min_product_power_kw,1)}–${fmt(branch.max_product_power_kw,1)} kW`
+          : "";
+        commercialLine =
+          `Curbă CAPEX parametrică în kW${range} · produs/SKU doar la finaliști`;
+      }
+
       return `
         <article class="${selected ? "is-selected" : ""}">
           <b>${index + 1}</b>
           <div>
             <strong>${escapeHtml(branch.label || branch.branch_id || "Sistem")}</strong>
             <small>${escapeHtml(status)} · ${escapeHtml(detail)}</small>
-            <small>${branch.sizing_mode === "design_load_recalculated_per_candidate" ? "CAPEX minim reper" : "CAPEX ramură"}: ${fmt(Number(branch.fixed_capex_lei || 0))} lei${branch.min_product_power_kw != null && branch.max_product_power_kw != null ? ` · plajă catalog ${fmt(branch.min_product_power_kw,1)}–${fmt(branch.max_product_power_kw,1)} kW` : ""}</small>
+            <small>${escapeHtml(commercialLine)}</small>
           </div>
         </article>
       `;
