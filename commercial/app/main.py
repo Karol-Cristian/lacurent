@@ -2336,6 +2336,8 @@ async def home_lab_optimization_plan_api(request: Request) -> JSONResponse:
                 "runBranchIds": [item.branch_id for item in runnable],
                 "searchPhases": ["axis", "halton", "refine"],
                 "evaluationsPerPhase": 12,
+                "microBatchSize": 4,
+                "phaseOffsets": [0, 4, 8],
                 "evaluationsPerBranch": 36,
             }
         )
@@ -2352,11 +2354,13 @@ async def home_lab_optimization_branch_api(request: Request) -> JSONResponse:
         form = dict(raw.get("form") or {})
         branch_id = str(raw.get("branchId", "") or "").strip()
         search_phase = str(raw.get("searchPhase", "") or "").strip()
+        phase_offset = int(raw.get("phaseOffset", 0) or 0)
         prior_payload = raw.get("priorCandidates")
     else:
         form = dict(await request.form())
         branch_id = str(form.pop("_heating_branch_id", "") or "").strip()
         search_phase = str(form.pop("_search_phase", "") or "").strip()
+        phase_offset = int(form.pop("_phase_offset", "0") or 0)
         prior_payload = str(form.pop("_prior_candidates_json", "") or "").strip()
 
     if not branch_id:
@@ -2401,9 +2405,10 @@ async def home_lab_optimization_branch_api(request: Request) -> JSONResponse:
             branch_id=branch_id,
             bounds=OptimizationSearchBoundsV1(),
             catalog=await _optimizer_cost_catalog(request),
-            max_evaluations=12,
+            max_evaluations=4,
             search_phase=search_phase,
             refinement_seed=refinement_seed,
+            phase_candidate_offset=phase_offset,
         )
         elapsed_ms = round((time.perf_counter() - started) * 1000.0, 1)
         return JSONResponse(
@@ -2419,6 +2424,7 @@ async def home_lab_optimization_branch_api(request: Request) -> JSONResponse:
                 "candidateCount": int(result.candidate_count),
                 "parametricEvaluations": int(result.parametric_evaluations),
                 "searchPhase": result.search_phase,
+                "phaseOffset": phase_offset,
                 "calculationTimeMs": elapsed_ms,
                 "warnings": result.warnings,
             }
