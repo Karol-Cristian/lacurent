@@ -34,6 +34,9 @@ def _run_sharded(payload: dict[str, str]) -> tuple[dict, dict]:
     assert plan["microBatchSize"] == 1
     assert plan["phaseOffsets"] == list(range(12))
     assert plan["evaluationsPerBranch"] == 36
+    assert plan["maxConcurrentBranchRequests"] == 4
+    assert plan["branchMaxAttempts"] == 3
+    assert plan["branchStartStaggerMs"] == 120
     assert plan["runBranchIds"]
 
     results = [
@@ -203,3 +206,65 @@ def test_refinement_payload_is_compact_and_seedable() -> None:
     )
     assert refine.status_code == 200
     assert refine.json()["searchPhase"] == "refine"
+
+
+def test_phase_candidate_trace_matches_executed_axis_parameters() -> None:
+    payload = _form_payload()
+    payload["_optimization_mode"] = "auto_economic"
+    branch_id = "heat-pump-air-water"
+
+    preview = client.post(
+        "/api/optimization/home-lab/phase-candidates",
+        json={
+            "form": dict(payload),
+            "branchId": branch_id,
+            "searchPhase": "axis",
+            "phaseOffsets": [3],
+            "priorCandidates": [],
+        },
+    )
+    assert preview.status_code == 200
+    preview_body = preview.json()
+    assert preview_body["branchId"] == branch_id
+    assert preview_body["searchPhase"] == "axis"
+    assert len(preview_body["candidates"]) == 1
+    descriptor = preview_body["candidates"][0]
+    assert descriptor["candidate_id"].startswith("OPT-")
+    assert descriptor["phase_offset"] == 3
+    assert isinstance(descriptor["parameters"], dict)
+
+    executed = client.post(
+        "/api/optimization/home-lab/branch",
+        json={
+            "form": dict(payload),
+            "branchId": branch_id,
+            "searchPhase": "axis",
+            "phaseOffset": 3,
+            "priorCandidates": [],
+        },
+    )
+    assert executed.status_code == 200
+    executed_body = executed.json()
+    summaries = executed_body["candidateSummaries"]
+    if summaries:
+        assert summaries[0]["parameters"] == descriptor["parameters"]
+
+
+def test_phase_candidate_trace_is_deterministic() -> None:
+    payload = _form_payload()
+    payload["_optimization_mode"] = "auto_economic"
+    request_body = {
+        "form": dict(payload),
+        "branchId": "condensing-gas",
+        "searchPhase": "halton",
+        "phaseOffsets": [0, 1, 2, 3],
+        "priorCandidates": [],
+    }
+
+    first = client.post("/api/optimization/home-lab/phase-candidates", json=request_body)
+    second = client.post("/api/optimization/home-lab/phase-candidates", json=request_body)
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json()["candidates"] == second.json()["candidates"]
+    assert len(first.json()["candidates"]) == 4
