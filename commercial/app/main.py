@@ -2367,11 +2367,11 @@ async def home_lab_optimization_plan_api(request: Request) -> JSONResponse:
                 "runBranchIds": [item.branch_id for item in runnable],
                 "searchPhases": ["axis", "halton", "refine"],
                 "evaluationsPerPhase": 12,
-                "microBatchSize": 2,
-                "phaseOffsets": [0, 2, 4, 6, 8, 10],
+                "microBatchSize": 1,
+                "phaseOffsets": list(range(12)),
                 "evaluationsPerBranch": 36,
-                "requestGapMs": 750,
-                "restartCooldownMs": 2500,
+                "requestGapMs": 1000,
+                "restartCooldownMs": 3000,
             }
         )
     except Exception as exc:
@@ -2440,7 +2440,7 @@ async def home_lab_optimization_branch_api(request: Request) -> JSONResponse:
             branch_id=branch_id,
             bounds=OptimizationSearchBoundsV1(),
             catalog=cost_catalog,
-            max_evaluations=2,
+            max_evaluations=1,
             search_phase=search_phase,
             refinement_seed=refinement_seed,
             phase_candidate_offset=phase_offset,
