@@ -45,7 +45,8 @@ def test_production_cloudflare_credentials_fail_closed() -> None:
 
 
 
-def test_production_worker_has_explicit_cpu_headroom() -> None:
+def test_production_worker_is_compatible_with_cloudflare_free_plan() -> None:
     source = WORKER_CONFIG.read_text(encoding="utf-8")
-    assert "[limits]" in source
-    assert "cpu_ms = 120000" in source
+    assert "[limits]" not in source
+    assert "cpu_ms" not in source
+    assert "API error 100328" in source

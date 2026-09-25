@@ -4,12 +4,10 @@ compatibility_date = "2026-08-29"
 compatibility_flags = ["python_workers"]
 workers_dev = true
 
-# The Python/FastAPI runtime and Home Lab calculations can exceed the default
-# Standard Worker CPU ceiling during cold starts and engineering calculations.
-# Keep the algorithm itself bounded, but give each request explicit headroom so
-# Cloudflare does not terminate valid calculations with error 1102.
-[limits]
-cpu_ms = 120000
+# Keep optimizer requests CPU-bounded in application code. Do not set an
+# explicit Worker CPU limit here: the production account currently uses the
+# Cloudflare Free plan, where an explicit Worker CPU-limit deployment parameter
+# is not supported and causes API error 100328.
 
 [ai]
 binding = "AI"
