@@ -89,10 +89,6 @@ test('optimizer transient 500/503 responses are retried and eventually succeed',
     optimizerRequestGapMs: 750,
     optimizerLastRemoteRequestAt: 0,
     optimizerRestartCooldownUntil: 0,
-    OPTIMIZER_MIN_REQUEST_GAP_MS: 750,
-    optimizerRequestGapMs: 750,
-    optimizerLastRemoteRequestAt: 0,
-    optimizerRestartCooldownUntil: 0,
     window: {
       setTimeout(fn, ms) {
         const timer = setTimeout(fn, Math.min(ms, 1));
@@ -130,6 +126,10 @@ test('optimizer does not retry logical 422 responses', async () => {
     AbortController, Error, Set,
     LIVE_REQUEST_TIMEOUT_MS: 20,
     OPTIMIZER_REQUEST_TIMEOUT_MS: 100,
+    OPTIMIZER_MIN_REQUEST_GAP_MS: 750,
+    optimizerRequestGapMs: 750,
+    optimizerLastRemoteRequestAt: 0,
+    optimizerRestartCooldownUntil: 0,
     window: {
       setTimeout,
       clearTimeout,
