@@ -1139,6 +1139,45 @@
       "source_kind": "eurovent_certified_performance",
       "source_url": "https://www.eurovent-certification.com/en/catalog/program/certificate/participant/model/show/202109590",
       "note": "EN 14825 part-load D; pentru air-air câmpul flow_temperature_c=20°C reprezintă condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-50a8",
+      "outdoor_temperature_c": 7,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 5.8,
+      "cop": 4,
+      "test_standard": "manufacturer declared nominal heating point",
+      "source_kind": "manufacturer_ro_technical_data",
+      "source_url": "https://buydaikin.ro/daikinb2c/daikinROB2C/ro_RO/Aer-condi%C8%9Bionat/18000-BTU/FTXM50A-%2B-RXM50A8/p/U0IuRlRYTTUwQS9SWE01MEE4",
+      "note": "COP nominal declarat; pentru air-air flow_temperature_c=20°C este condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-60a",
+      "outdoor_temperature_c": 7,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 7,
+      "cop": 3.61,
+      "test_standard": "manufacturer declared nominal heating point",
+      "source_kind": "manufacturer_ro_technical_data",
+      "source_url": "https://buydaikin.ro/daikinb2c/daikinStoreROB2C/ro_RO/Aer-condi%C8%9Bionat/21000-BTU/FTXM60A-%2B-RXM60A/p/U0IuRlRYTTYwQS9SWE02MEE%3D",
+      "note": "COP nominal declarat; pentru air-air flow_temperature_c=20°C este condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-71a",
+      "outdoor_temperature_c": 7,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 8.2,
+      "cop": 3.19,
+      "test_standard": "manufacturer declared nominal heating point",
+      "source_kind": "manufacturer_ro_technical_data",
+      "source_url": "https://www.buydaikin.ro/daikinb2c/daikinStoreROB2C/ro_RO/Aer-condi%C8%9Bionat/24000-BTU/FTXM71A-%2B-RXM71A/p/U0IuRlRYTTcxQS9SWE03MUE%3D",
+      "note": "COP nominal declarat; pentru air-air flow_temperature_c=20°C este condiția interioară de referință, nu tur hidronic."
     }
   ],
   "heat_pump_seasonal_performance": [
