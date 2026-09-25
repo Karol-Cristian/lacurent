@@ -2352,7 +2352,7 @@
     const minutes = Math.floor(elapsedMs / 60000);
     const seconds = Math.floor((elapsedMs % 60000) / 1000);
     const tenths = Math.floor((elapsedMs % 1000) / 100);
-    return \`\${String(minutes).padStart(2,"0")}:\${String(seconds).padStart(2,"0")}.\${tenths}\`;
+    return `${String(minutes).padStart(2,"0")}:${String(seconds).padStart(2,"0")}.${tenths}`;
   }
 
   function optimizerConsoleCandidateParameters(raw = {}) {
@@ -2362,13 +2362,13 @@
     };
     const windows = Number(raw.window_replacement_fraction);
     return [
-      \`wallR+\${number(raw.wall_added_r_m2k_w)}\`,
-      \`roofR+\${number(raw.roof_added_r_m2k_w)}\`,
-      \`floorR+\${number(raw.floor_added_r_m2k_w)}\`,
-      \`windows=\${Number.isFinite(windows) ? (windows * 100).toFixed(1) : "n/a"}%\`,
-      \`Uw=\${number(raw.window_target_u_w_m2k,2)}\`,
-      \`PV+\${number(raw.pv_added_kwp)}kWp\`,
-      \`solar+\${number(raw.solar_thermal_added_m2)}m²\`,
+      `wallR+${number(raw.wall_added_r_m2k_w)}`,
+      `roofR+${number(raw.roof_added_r_m2k_w)}`,
+      `floorR+${number(raw.floor_added_r_m2k_w)}`,
+      `windows=${Number.isFinite(windows) ? (windows * 100).toFixed(1) : "n/a"}%`,
+      `Uw=${number(raw.window_target_u_w_m2k,2)}`,
+      `PV+${number(raw.pv_added_kwp)}kWp`,
+      `solar+${number(raw.solar_thermal_added_m2)}m²`,
     ].join(" | ");
   }
 
@@ -2382,17 +2382,17 @@
     panel.hidden = !optimizerConsoleStartedAt;
     const planned = Math.max(0, Number(optimizerConsolePlanned || 0));
     const completed = Math.max(0, Number(optimizerConsoleCompleted || 0));
-    progress.textContent = planned ? \`\${completed} / \${planned}\` : "0 / 0";
+    progress.textContent = planned ? `${completed} / ${planned}` : "0 / 0";
     progressBar.style.width = planned
-      ? \`\${Math.min(100, 100 * completed / planned).toFixed(1)}%\`
+      ? `${Math.min(100, 100 * completed / planned).toFixed(1)}%`
       : "0%";
 
     output.innerHTML = optimizerConsoleLines.map(line => (
-      \`<div class="hln-optimizer-console-line is-\${escapeHtml(line.kind || "info")}">\` +
-      \`<time>\${escapeHtml(line.elapsed || "00:00.0")}</time>\` +
-      \`<b>\${escapeHtml(line.tag || "INFO")}</b>\` +
-      \`<span>\${escapeHtml(line.message || "")}</span>\` +
-      \`</div>\`
+      `<div class="hln-optimizer-console-line is-${escapeHtml(line.kind || "info")}">` +
+      `<time>${escapeHtml(line.elapsed || "00:00.0")}</time>` +
+      `<b>${escapeHtml(line.tag || "INFO")}</b>` +
+      `<span>${escapeHtml(line.message || "")}</span>` +
+      `</div>`
     )).join("");
     output.scrollTop = output.scrollHeight;
   }
@@ -2415,8 +2415,8 @@
       toggle.setAttribute("aria-expanded","true");
     }
     if (state) state.textContent = "RUNNING";
-    if (footer) footer.textContent = \`Pornit · \${label}\`;
-    appendOptimizerConsole("info","START",\`PS LaCurent:\\optimizer> \${label}\`);
+    if (footer) footer.textContent = `Pornit · ${label}`;
+    appendOptimizerConsole("info","START",`PS LaCurent:\\optimizer> ${label}`);
   }
 
   function appendOptimizerConsole(kind, tag, message) {
@@ -3011,17 +3011,17 @@
 
           const updateParallelPhaseProgress = waveText => {
             setStatus(
-              \`Ramura \${index + 1}/\${runnableIds.length} · faza \${phaseIndex + 1}/\${phases.length} · \${readablePhase} · \${completedInPhase}/\${phaseOffsets.length}\`
+              `Ramura ${index + 1}/${runnableIds.length} · faza ${phaseIndex + 1}/${phases.length} · ${readablePhase} · ${completedInPhase}/${phaseOffsets.length}`
             );
             setOptimizationNote(
-              \`<strong>\${escapeHtml(settings.label)}</strong>
-               <span>Ramura \${index + 1}/\${runnableIds.length}: \${escapeHtml(branchLabel)} · faza \${phaseIndex + 1}/\${phases.length}: \${escapeHtml(readablePhase)}.</span>
-               <small>Candidați procesați \${completedInPhase}/\${phaseOffsets.length} în fază · \${processedCandidates}/\${plannedCandidates} total · concurență \${adaptiveBranchParallelism}/\${configuredBranchParallelism}\${waveText ? " · " + escapeHtml(waveText) : ""}.</small>\`
+              `<strong>${escapeHtml(settings.label)}</strong>
+               <span>Ramura ${index + 1}/${runnableIds.length}: ${escapeHtml(branchLabel)} · faza ${phaseIndex + 1}/${phases.length}: ${escapeHtml(readablePhase)}.</span>
+               <small>Candidați procesați ${completedInPhase}/${phaseOffsets.length} în fază · ${processedCandidates}/${plannedCandidates} total · concurență ${adaptiveBranchParallelism}/${configuredBranchParallelism}${waveText ? " · " + escapeHtml(waveText) : ""}.</small>`
             );
             setOptimizerConsoleProgress(
               processedCandidates,
               plannedCandidates,
-              \`\${processedCandidates}/\${plannedCandidates} procesați · \${completedEvaluations} calculați · \${failedMicroBatches.length} faulturi · concurență \${adaptiveBranchParallelism}/\${configuredBranchParallelism}\`
+              `${processedCandidates}/${plannedCandidates} procesați · ${completedEvaluations} calculați · ${failedMicroBatches.length} faulturi · concurență ${adaptiveBranchParallelism}/${configuredBranchParallelism}`
             );
           };
 
@@ -3034,7 +3034,7 @@
 
             const phaseOffset = phaseOffsets[batchIndex];
             const candidateTrace = phaseCandidateByOffset.get(Number(phaseOffset)) || null;
-            const candidateId = candidateTrace?.candidate_id || \`TRACE-\${branchId}-\${phase}-\${phaseOffset}\`;
+            const candidateId = candidateTrace?.candidate_id || `TRACE-${branchId}-${phase}-${phaseOffset}`;
             const candidateParameters = candidateTrace?.parameters || null;
             const candidateStartedAt = performance.now();
             const body = optimizerBody();
@@ -3044,14 +3044,14 @@
             appendOptimizerConsole(
               "run",
               "RUN",
-              \`B \${index + 1}/\${runnableIds.length} · P \${phaseIndex + 1}/\${phases.length} · C \${batchIndex + 1}/\${phaseOffsets.length} · \${candidateId}\`
+              `B ${index + 1}/${runnableIds.length} · P ${phaseIndex + 1}/${phases.length} · C ${batchIndex + 1}/${phaseOffsets.length} · ${candidateId}`
             );
             appendOptimizerConsole(
               "param",
               "PARAM",
               candidateParameters
                 ? optimizerConsoleCandidateParameters(candidateParameters)
-                : \`branch=\${branchId} | phase=\${phase} | offset=\${phaseOffset}\`
+                : `branch=${branchId} | phase=${phase} | offset=${phaseOffset}`
             );
 
             try {
@@ -3075,12 +3075,12 @@
                 {
                   onRetry: ({nextAttempt, maxAttempts, delayMs, reason}) => {
                     const reasonText = reason?.type === "http"
-                      ? \`HTTP \${reason.status}\`
+                      ? `HTTP ${reason.status}`
                       : (reason?.name || "network");
                     appendOptimizerConsole(
                       "retry",
                       "RETRY",
-                      \`\${candidateId} · \${reasonText} · încercarea \${nextAttempt}/\${maxAttempts} în \${Math.round(delayMs)} ms\`
+                      `${candidateId} · ${reasonText} · încercarea ${nextAttempt}/${maxAttempts} în ${Math.round(delayMs)} ms`
                     );
                   },
                 }
@@ -3095,9 +3095,9 @@
               appendOptimizerConsole(
                 "fail",
                 "FAIL",
-                \`\${candidateId} · \${error?.name || "network"} după \${attempts} încercări · \${Math.round(elapsedMs)} ms · păstrat pentru reexecuție\`
+                `${candidateId} · ${error?.name || "network"} după ${attempts} încercări · ${Math.round(elapsedMs)} ms · păstrat pentru reexecuție`
               );
-              const warning = \`Ramura „\${branchLabel}” / \${readablePhase} / candidat \${candidateId} a fost păstrat pentru reexecuție după \${error?.name || "network"}.\`;
+              const warning = `Ramura „${branchLabel}” / ${readablePhase} / candidat ${candidateId} a fost păstrat pentru reexecuție după ${error?.name || "network"}.`;
               failedMicroBatches.push({
                 candidateId:candidateTrace?.candidate_id || null,
                 candidateParameters,
@@ -3141,9 +3141,9 @@
                 appendOptimizerConsole(
                   "fail",
                   "FAIL",
-                  \`\${candidateId} · HTTP \${status || "?"} după \${attempts} încercări · \${Math.round(elapsedMs)} ms · păstrat pentru reexecuție\`
+                  `${candidateId} · HTTP ${status || "?"} după ${attempts} încercări · ${Math.round(elapsedMs)} ms · păstrat pentru reexecuție`
                 );
-                const warning = \`Ramura „\${branchLabel}” / \${readablePhase} / candidat \${candidateId} a fost păstrat pentru reexecuție după HTTP \${status || "tranzitoriu"} repetat.\`;
+                const warning = `Ramura „${branchLabel}” / ${readablePhase} / candidat ${candidateId} a fost păstrat pentru reexecuție după HTTP ${status || "tranzitoriu"} repetat.`;
                 failedMicroBatches.push({
                   candidateId:candidateTrace?.candidate_id || null,
                   candidateParameters,
@@ -3169,7 +3169,7 @@
               }
               throw new Error(
                 branchCall.payload?.error
-                || \`Ramura „\${branchLabel}” / \${readablePhase} / candidat \${candidateId} nu a putut fi calculată (HTTP \${status || "?"}).\`
+                || `Ramura „${branchLabel}” / ${readablePhase} / candidat ${candidateId} nu a putut fi calculată (HTTP ${status || "?"}).`
               );
             }
 
@@ -3184,12 +3184,12 @@
             const summary = batchSummaries[0] || null;
             const elapsedMs = performance.now() - candidateStartedAt;
             const resultText = summary
-              ? \`CAPEX \${fmt(Number(summary.capex_lei || 0))} lei | factură \${fmt(Number(summary.annual_bill_lei || 0))} lei/an | economie \${fmt(Number(summary.annual_saving_lei || 0))} lei/an\`
+              ? `CAPEX ${fmt(Number(summary.capex_lei || 0))} lei | factură ${fmt(Number(summary.annual_bill_lei || 0))} lei/an | economie ${fmt(Number(summary.annual_saving_lei || 0))} lei/an`
               : (evaluatedNow > 0 ? "calculat, dar eliminat de constrângerile tehnice/economice" : "fără candidat tehnic păstrat");
             appendOptimizerConsole(
               "ok",
               "OK",
-              \`\${candidateId} · \${Math.round(elapsedMs)} ms · \${resultText}\`
+              `${candidateId} · ${Math.round(elapsedMs)} ms · ${resultText}`
             );
           };
 
@@ -3212,10 +3212,10 @@
             appendOptimizerConsole(
               "info",
               "WAVE",
-              \`\${branchLabel} · \${readablePhase} · candidați \${firstCandidate}–\${lastCandidate}/\${phaseOffsets.length} · concurență \${waveParallelism}\`
+              `${branchLabel} · ${readablePhase} · candidați ${firstCandidate}–${lastCandidate}/${phaseOffsets.length} · concurență ${waveParallelism}`
             );
             updateParallelPhaseProgress(
-              \`rulează candidații \${firstCandidate}–\${lastCandidate}/\${phaseOffsets.length}\`
+              `rulează candidații ${firstCandidate}–${lastCandidate}/${phaseOffsets.length}`
             );
 
             await Promise.all(waveIndexes.map(async (batchIndex, wavePosition) => {
@@ -3231,7 +3231,7 @@
                 completedInPhase += 1;
                 processedCandidates += 1;
                 updateParallelPhaseProgress(
-                  \`ultimul val \${firstCandidate}–\${lastCandidate}/\${phaseOffsets.length}\`
+                  `ultimul val ${firstCandidate}–${lastCandidate}/${phaseOffsets.length}`
                 );
               }
             }));
@@ -3246,7 +3246,7 @@
               appendOptimizerConsole(
                 "retry",
                 "THROTTLE",
-                \`Fault în val: concurență \${previousParallelism} → 1 imediat pentru următorul val.\`
+                `Fault în val: concurență ${previousParallelism} → 1 imediat pentru următorul val.`
               );
             } else if (waveRetries > 0) {
               adaptiveBranchParallelism = Math.max(1, adaptiveBranchParallelism - 1);
@@ -3255,7 +3255,7 @@
                 appendOptimizerConsole(
                   "retry",
                   "THROTTLE",
-                  \`Retry detectat: concurență \${previousParallelism} → \${adaptiveBranchParallelism} pentru următorul val.\`
+                  `Retry detectat: concurență ${previousParallelism} → ${adaptiveBranchParallelism} pentru următorul val.`
                 );
               }
             } else {
@@ -3269,7 +3269,7 @@
                 appendOptimizerConsole(
                   "info",
                   "RAMP",
-                  \`Două valuri curate: concurență \${previousParallelism} → \${adaptiveBranchParallelism}.\`
+                  `Două valuri curate: concurență ${previousParallelism} → ${adaptiveBranchParallelism}.`
                 );
               }
             }
