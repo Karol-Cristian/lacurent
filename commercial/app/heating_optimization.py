@@ -30,6 +30,7 @@ from .optimization import (
     OptimizationSearchBoundsV1,
     OptimizationSearchRequestV1,
     OptimizationSelectionV1,
+    evaluate_parametric_candidate,
     run_parametric_optimization,
     select_optimization_candidate,
 )
