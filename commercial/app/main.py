@@ -30,7 +30,8 @@ from .optimization import (
     OptimizationSearchRequestV1,
     OptimizationSelectionRequestV1,
     evaluate_parametric_candidate,
-    _fallback_refinement_seed,
+    compact_refinement_candidate,
+    refinement_seed_from_compact,
     run_parametric_optimization,
     select_optimization_candidate,
 )
@@ -2385,26 +2386,14 @@ async def home_lab_optimization_branch_api(request: Request) -> JSONResponse:
             )
             if not isinstance(decoded_prior, list):
                 raise ValueError("Candidații anteriori trebuie să fie o listă.")
-            prior_candidates = [
-                CandidateEvaluationV1(**item)
-                for item in decoded_prior
-                if isinstance(item, dict)
-            ]
-            prior_selection = select_optimization_candidate(
+            refinement_seed = refinement_seed_from_compact(
                 optimization_request,
-                prior_candidates,
+                [item for item in decoded_prior if isinstance(item, dict)],
             )
-            seed_candidate = prior_selection.selected or _fallback_refinement_seed(
-                optimization_request,
-                prior_candidates,
-            )
-            if seed_candidate is None:
+            if refinement_seed is None:
                 raise ValueError(
                     "Nu există un candidat anterior disponibil pentru refinement."
                 )
-            refinement_seed = ParametricMeasuresV1(
-                **model_to_dict(seed_candidate.parameters)
-            )
 
         started = time.perf_counter()
         result = run_heating_branch_optimization(
@@ -2423,6 +2412,9 @@ async def home_lab_optimization_branch_api(request: Request) -> JSONResponse:
                 "selection": model_to_dict(result.selection),
                 "candidates": [
                     model_to_dict(item) for item in result.candidates
+                ],
+                "candidateSummaries": [
+                    compact_refinement_candidate(item) for item in result.candidates
                 ],
                 "candidateCount": int(result.candidate_count),
                 "parametricEvaluations": int(result.parametric_evaluations),

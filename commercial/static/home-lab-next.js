@@ -2626,7 +2626,7 @@
         const branchId = String(runnableIds[index]);
         const branch = branchById.get(branchId) || {};
         const branchLabel = branch.label || branchId;
-        const priorCandidates = [];
+        const priorCandidateSummaries = [];
 
         for (let phaseIndex = 0; phaseIndex < phases.length; phaseIndex += 1) {
           if (runToken !== optimizerRunToken) return;
@@ -2652,7 +2652,7 @@
                 form:formPayload,
                 branchId,
                 searchPhase:phase,
-                priorCandidates:phase === "refine" ? priorCandidates : [],
+                priorCandidates:phase === "refine" ? priorCandidateSummaries : [],
               }),
             },
             optimizerAbortController?.signal || null,
@@ -2667,10 +2667,10 @@
           }
 
           branchResults.push(branchCall.payload);
-          const phaseCandidates = Array.isArray(branchCall.payload.candidates)
-            ? branchCall.payload.candidates
+          const phaseSummaries = Array.isArray(branchCall.payload.candidateSummaries)
+            ? branchCall.payload.candidateSummaries
             : [];
-          priorCandidates.push(...phaseCandidates);
+          priorCandidateSummaries.push(...phaseSummaries);
           completedEvaluations += Number(branchCall.payload.parametricEvaluations || 0);
         }
       }

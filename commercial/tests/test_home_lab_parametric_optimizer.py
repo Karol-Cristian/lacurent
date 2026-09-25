@@ -81,7 +81,9 @@ def _run_sharded(payload: dict[str, str]) -> tuple[dict, dict]:
             assert body["parametricEvaluations"] >= 1
             assert isinstance(body["candidates"], list)
             results.append(body)
-            prior_candidates.extend(body["candidates"])
+            assert isinstance(body["candidateSummaries"], list)
+            assert all("resulting_configuration" not in item for item in body["candidateSummaries"])
+            prior_candidates.extend(body["candidateSummaries"])
 
         assert len(prior_candidates) >= 18
 
@@ -158,3 +160,49 @@ def test_legacy_monolithic_optimizer_refuses_multi_branch_execution() -> None:
     assert body["requiresShardedExecution"] is True
     assert len(body["runBranchIds"]) > 1
     assert "Reîncarcă pagina" in body["error"]
+
+
+def test_refinement_payload_is_compact_and_seedable() -> None:
+    payload = _form_payload()
+    payload["_optimization_mode"] = "auto_economic"
+
+    summaries: list[dict] = []
+    for phase in ("axis", "halton"):
+        response = client.post(
+            "/api/optimization/home-lab/branch",
+            json={
+                "form": dict(payload),
+                "branchId": "electric-boiler",
+                "searchPhase": phase,
+                "priorCandidates": [],
+            },
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert isinstance(body["candidateSummaries"], list)
+        for item in body["candidateSummaries"]:
+            assert set(item) == {
+                "candidate_id",
+                "parameters",
+                "capex_lei",
+                "annual_bill_lei",
+                "annual_saving_lei",
+                "payback_years",
+            }
+            assert "resulting_configuration" not in item
+        summaries.extend(body["candidateSummaries"])
+
+    encoded = json.dumps(summaries)
+    assert len(encoded) < 50000
+
+    refine = client.post(
+        "/api/optimization/home-lab/branch",
+        json={
+            "form": dict(payload),
+            "branchId": "electric-boiler",
+            "searchPhase": "refine",
+            "priorCandidates": summaries,
+        },
+    )
+    assert refine.status_code == 200
+    assert refine.json()["searchPhase"] == "refine"
