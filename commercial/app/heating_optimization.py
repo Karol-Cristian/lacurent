@@ -9,7 +9,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from .engine import calculate
-from .methodology import methodology, resolve_locality
+from .methodology import methodology, resolve_climate
 from .models import (
     BuildingInput,
     Carrier,
@@ -549,7 +549,7 @@ def _estimated_heat_pump_scop(
             f"{product.label}: nu există încă puncte COP A/W verificate; se păstrează fallback-ul Light Engine."
         ]
 
-    climate = resolve_locality(building.locality)
+    climate = resolve_climate(building.locality)
     design_outdoor = climate.get("winter_design_temperature_c")
     months = climate.get("monthly_temperatures") or []
     if design_outdoor is None or not months:
