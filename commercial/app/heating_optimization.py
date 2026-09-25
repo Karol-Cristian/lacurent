@@ -748,6 +748,18 @@ def _estimated_heat_pump_scop(
         return None, [
             f"{product.label}: nu există încă puncte COP verificate; se păstrează SCOP-ul declarat/fallback-ul Light Engine."
         ]
+    if (
+        product.generator_type == HeatingGeneratorType.heat_pump_air_air
+        and len(
+            {
+                float(point.outdoor_temperature_c)
+                for point in product.performance_points
+            }
+        ) < 2
+    ):
+        return None, [
+            f"{product.label}: există doar un COP de referință, nu o curbă COP; se folosește SCOP-ul sezonier declarat."
+        ]
 
     climate = resolve_climate(building.locality)
     design_outdoor = climate.get("winter_design_temperature_c")
