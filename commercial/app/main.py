@@ -2234,6 +2234,7 @@ def _home_lab_optimizer_success_payload(
     calculation_time_ms: float | None = None,
     pareto_scope: str = "all_candidates",
     raw_selected: CandidateEvaluationV1 | None = None,
+    technical_heating_alternatives: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     selected = selection.selected
     if selected is None or selected.resulting_configuration is None:
@@ -2337,6 +2338,7 @@ def _home_lab_optimizer_success_payload(
         "paretoSolutions": int(selection.pareto_count),
         "paretoScope": pareto_scope,
         "heatingBranches": [model_to_dict(item) for item in branches],
+        "technicalHeatingAlternatives": technical_heating_alternatives or [],
         "rawSolution": raw_measures,
         "rawEvaluation": {
             "candidateId": raw_selected.candidate_id,
@@ -2797,6 +2799,79 @@ async def home_lab_optimization_finalize_api(request: Request) -> JSONResponse:
             if len(ordered_rechecks) >= 6:
                 break
 
+        technical_heating_alternatives: list[dict[str, Any]] = []
+        raw_config = raw_selected.resulting_configuration
+        if raw_config is not None:
+            for branch in branch_summaries:
+                if not branch.eligible or branch.economic_eligible:
+                    continue
+                try:
+                    preview_building = apply_supplemental_heating_technology(
+                        raw_config,
+                        branch.branch_id,
+                    )
+                    preview_result = calculate(
+                        preview_building,
+                        include_reference=False,
+                    )
+                    preview_cost = estimate_energy_cost(preview_result)
+                    if not preview_cost.get("complete"):
+                        raise ValueError("cost anual incomplet")
+                    technical_heating_alternatives.append(
+                        {
+                            "branchId": branch.branch_id,
+                            "label": branch.label,
+                            "annualBillLei": round(
+                                float(preview_cost["priced_total_lei"]),
+                                2,
+                            ),
+                            "finalEnergyKwh": round(
+                                float(preview_result.total_final_energy_kwh),
+                                3,
+                            ),
+                            "primarySpecificKwhM2": round(
+                                float(
+                                    preview_result.primary_energy.specific_kwh_m2
+                                ),
+                                3,
+                            ),
+                            "co2SpecificKgM2": round(
+                                float(preview_result.co2.specific_kg_m2),
+                                3,
+                            ),
+                            "energyClass": preview_result.energy_class,
+                            "designHeatLoadKw": raw_selected.design_heat_load_kw,
+                            "costKnown": False,
+                            "economicEligible": False,
+                            "basis": (
+                                "aceeași casă raw finalistă; se schimbă numai "
+                                "tehnologia de încălzire"
+                            ),
+                        }
+                    )
+                    existing_summary = branch_summaries_by_id.get(
+                        branch.branch_id
+                    )
+                    if existing_summary is not None:
+                        updated = model_to_dict(existing_summary)
+                        updated["evaluated_candidates"] = max(
+                            int(existing_summary.evaluated_candidates),
+                            1,
+                        )
+                        updated["accepted_candidates"] = max(
+                            int(existing_summary.accepted_candidates),
+                            1,
+                        )
+                        branch_summaries_by_id[branch.branch_id] = (
+                            HeatingBranchSummaryV1(**updated)
+                        )
+                except Exception as preview_exc:
+                    warnings.append(
+                        f"{branch.label}: preview-ul tehnic pe finalistul raw "
+                        f"nu a putut fi calculat ({user_error(preview_exc)})."
+                    )
+            branch_summaries = list(branch_summaries_by_id.values())
+
         heating_catalog = await _optimizer_heating_catalog(request)
         commercial_rechecks: list[CandidateEvaluationV1] = []
         commercial_recheck_count = 0
@@ -2847,6 +2922,7 @@ async def home_lab_optimization_finalize_api(request: Request) -> JSONResponse:
             calculation_time_ms=round(total_elapsed_ms, 1),
             pareto_scope="raw_all_then_bounded_commercial_recheck",
             raw_selected=raw_selected,
+            technical_heating_alternatives=technical_heating_alternatives,
         )
         return JSONResponse(payload)
     except Exception as exc:
