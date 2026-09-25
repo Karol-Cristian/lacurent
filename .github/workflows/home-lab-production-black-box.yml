@@ -1,0 +1,50 @@
+name: Home Lab Production Black Box Diagnostic
+
+on:
+  push:
+    branches:
+      - diagnostic/black-box-home-lab-20260925
+
+jobs:
+  black-box:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out diagnostic branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install application dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r commercial/requirements.txt
+
+      - name: Start pre-optimizer production build locally
+        run: |
+          git worktree add /tmp/lacurent-pre-optimizer fa0b7527f3a45041214a823ab2dee5345114e43e
+          python -m uvicorn app.main:app --app-dir /tmp/lacurent-pre-optimizer/commercial --host 127.0.0.1 --port 8766 > /tmp/pre-optimizer.log 2>&1 &
+          echo $! > /tmp/pre-optimizer.pid
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8766/health | grep -q '"status":"ok"'; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/pre-optimizer.log
+          exit 1
+
+      - name: Run production black-box differential
+        run: |
+          python scripts/black-box-home-lab-production.py
+
+      - name: Show pre-optimizer server log
+        if: always()
+        run: |
+          cat /tmp/pre-optimizer.log || true
+          if [ -f /tmp/pre-optimizer.pid ]; then kill "$(cat /tmp/pre-optimizer.pid)" || true; fi
