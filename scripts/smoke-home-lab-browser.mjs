@@ -7,11 +7,31 @@ const browser = await chromium.launch({headless:true});
 const page = await browser.newPage({viewport:{width:1280,height:900}});
 const pageErrors = [];
 const consoleErrors = [];
+const sameOriginRequestFailures = [];
+const baseOrigin = new URL(baseUrl).origin;
 
 page.on("pageerror", error => pageErrors.push(String(error?.stack || error)));
 page.on("console", message => {
   if (message.type() === "error") consoleErrors.push(message.text());
 });
+page.on("requestfailed", request => {
+  try {
+    if (new URL(request.url()).origin === baseOrigin) {
+      sameOriginRequestFailures.push(
+        `${request.method()} ${request.url()} :: ${request.failure()?.errorText || "request failed"}`
+      );
+    }
+  } catch (_) {
+    // Ignore malformed third-party request URLs; application-origin failures are
+    // still captured because browser requests are absolute in normal operation.
+  }
+});
+
+function isKnownExternal3dFetchError(line) {
+  return /^\[Home Lab 3D\] model load failed\s+TypeError:\s+Failed to fetch\s*$/i.test(
+    String(line || "").trim()
+  );
+}
 
 async function expectVisible(selector) {
   await page.locator(selector).waitFor({state:"visible", timeout:15000});
@@ -881,8 +901,18 @@ try {
   if (pageErrors.length) {
     throw new Error("Browser page errors:\n" + pageErrors.join("\n"));
   }
-  if (consoleErrors.some(line => /TypeError|ReferenceError|SyntaxError/i.test(line))) {
-    throw new Error("Browser console errors:\n" + consoleErrors.join("\n"));
+  if (sameOriginRequestFailures.length) {
+    throw new Error(
+      "Application-origin request failures:\n" + sameOriginRequestFailures.join("\n")
+    );
+  }
+  const fatalConsoleErrors = consoleErrors.filter(
+    line =>
+      /TypeError|ReferenceError|SyntaxError/i.test(line)
+      && !isKnownExternal3dFetchError(line)
+  );
+  if (fatalConsoleErrors.length) {
+    throw new Error("Browser console errors:\n" + fatalConsoleErrors.join("\n"));
   }
 } finally {
   await browser.close();
