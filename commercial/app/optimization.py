@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from enum import Enum
-from typing import Any, Literal
+from typing import Any, Callable, Literal
 
 from pydantic import BaseModel, Field, root_validator
 
@@ -175,6 +175,7 @@ class OptimizationSearchResultV1(BaseModel):
     selection: OptimizationSelectionV1
     bounds: OptimizationSearchBoundsV1
     evaluated_candidates: int
+    engine_evaluations: int
     skipped_candidates: int
     max_evaluations: int
     pareto_candidate_ids: list[str] = Field(default_factory=list)
@@ -942,6 +943,8 @@ def _fallback_refinement_seed(
 def run_parametric_optimization(
     payload: OptimizationSearchRequestV1,
     catalog: dict[str, Any],
+    *,
+    candidate_postprocessor: Callable[[CandidateEvaluationV1], CandidateEvaluationV1 | None] | None = None,
 ) -> OptimizationSearchResultV1:
     """Deterministic bounded search in raw physical parameter space.
 
@@ -964,10 +967,11 @@ def run_parametric_optimization(
     evaluated: list[CandidateEvaluationV1] = []
     seen: set[tuple[float, ...]] = set()
     skipped = 0
+    engine_evaluations = 0
 
     def evaluate_if_new(measures: ParametricMeasuresV1) -> bool:
-        nonlocal skipped
-        if len(evaluated) >= max_evaluations:
+        nonlocal skipped, engine_evaluations
+        if engine_evaluations >= max_evaluations:
             return False
         signature = _measure_signature(measures)
         if signature in seen:
@@ -983,7 +987,14 @@ def run_parametric_optimization(
                 baseline_result=baseline_result,
                 baseline_cost=baseline_cost,
             )
+            engine_evaluations += 1
+            if candidate_postprocessor is not None:
+                item = candidate_postprocessor(item)
+                if item is None:
+                    skipped += 1
+                    return False
         except ValueError:
+            engine_evaluations += 1
             skipped += 1
             return False
         evaluated.append(item)
@@ -1000,7 +1011,7 @@ def run_parametric_optimization(
     # Axis probes ensure sparse solutions are not missed by the mixed sampler.
     for dimension in range(len(_SEARCH_DIMENSIONS)):
         for level in (0.5, 1.0):
-            if len(evaluated) >= max_evaluations:
+            if engine_evaluations >= max_evaluations:
                 break
             vector = [0.0] * len(_SEARCH_DIMENSIONS)
             vector[dimension] = level
@@ -1012,7 +1023,7 @@ def run_parametric_optimization(
     halton_index = 1
     halton_attempt_limit = max_evaluations * 6
     attempts = 0
-    while len(evaluated) < coarse_limit and attempts < halton_attempt_limit:
+    while engine_evaluations < coarse_limit and attempts < halton_attempt_limit:
         vector = [
             _van_der_corput(halton_index, base)
             for base in _HALTON_BASES
@@ -1053,6 +1064,7 @@ def run_parametric_optimization(
         selection=selection,
         bounds=bounds,
         evaluated_candidates=len(evaluated),
+        engine_evaluations=engine_evaluations,
         skipped_candidates=skipped,
         max_evaluations=max_evaluations,
         pareto_candidate_ids=[item.candidate_id for item in frontier],
