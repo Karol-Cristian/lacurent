@@ -4,6 +4,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 PR_WORKFLOW = ROOT / ".github" / "workflows" / "commercial-pr-checks.yml"
 PROD_WORKFLOW = ROOT / ".github" / "workflows" / "commercial-v2-cloudflare-worker.yml"
+WORKER_CONFIG = ROOT / "commercial" / "cloudflare-worker" / "wrangler.toml"
 
 
 def test_commercial_pr_checks_run_for_every_pr_to_production_branch() -> None:
@@ -41,3 +42,10 @@ def test_production_cloudflare_credentials_fail_closed() -> None:
     )
     for marker in forbidden:
         assert marker not in source
+
+
+
+def test_production_worker_has_explicit_cpu_headroom() -> None:
+    source = WORKER_CONFIG.read_text(encoding="utf-8")
+    assert "[limits]" in source
+    assert "cpu_ms = 120000" in source
