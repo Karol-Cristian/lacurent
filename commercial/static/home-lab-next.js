@@ -5035,13 +5035,29 @@
     }
 
     const commercialSolution = optimizationMeta.commercialSolution;
-    if (optimizationMeta.commercialReady && commercialSolution) {
-      const items = Array.isArray(commercialSolution.items) ? commercialSolution.items : [];
-      commercial.innerHTML = items.length
-        ? `<div class="hln-strategy-list">${items.map((item,index) => `
-            <article><b>${index + 1}</b><div><strong>${escapeHtml(item.label || item.family || "Produs")}</strong><small>${escapeHtml(item.detail || "")}</small></div></article>
-          `).join("")}</div>`
-        : '<p class="hln-report-empty">Soluția nu necesită alte produse comerciale.</p>';
+    const commercialItems = Array.isArray(commercialSolution?.items)
+      ? commercialSolution.items
+      : [];
+    if (commercialItems.length) {
+      commercial.innerHTML = `
+        <div class="hln-strategy-list">
+          ${commercialItems.map((item,index) => `
+            <article>
+              <b>${index + 1}</b>
+              <div>
+                <strong>${escapeHtml(item.label || item.family || "Produs")}</strong>
+                <small>${escapeHtml(item.detail || "")}</small>
+              </div>
+            </article>
+          `).join("")}
+        </div>
+        ${optimizationMeta.commercialReady ? "" : `
+          <div class="hln-report-status-warn">
+            <strong>Discretizare comercială parțială.</strong>
+            <span>${escapeHtml(optimizationMeta.commercialMessage || "Unele familii rămân parametrice.")}</span>
+          </div>
+        `}
+      `;
     } else if (optimizationMeta.commercialReady) {
       commercial.innerHTML = '<div class="hln-report-status-good"><strong>Soluție implementabilă fără discretizare suplimentară.</strong></div>';
     } else {
