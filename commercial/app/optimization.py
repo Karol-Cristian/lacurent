@@ -72,6 +72,7 @@ class ParametricMeasuresV1(BaseModel):
     floor_added_r_m2k_w: float = Field(default=0, ge=0, le=15)
     window_replacement_fraction: float = Field(default=0, ge=0, le=1)
     window_target_u_w_m2k: float = Field(default=0.9, gt=0, le=6)
+    ventilation_heat_recovery_efficiency_target: float = Field(default=0, ge=0, lt=1)
     pv_added_kwp: float = Field(default=0, ge=0, le=100)
     pv_performance_ratio: float | None = Field(default=None, gt=0, le=1)
     solar_thermal_added_m2: float = Field(default=0, ge=0, le=100)
@@ -159,6 +160,7 @@ class OptimizationSearchBoundsV1(BaseModel):
     floor_added_r_m2k_w_max: float = Field(default=6.0, gt=0, le=15)
     window_replacement_fraction_max: float = Field(default=1.0, gt=0, le=1)
     window_target_u_w_m2k: float = Field(default=0.9, gt=0, le=6)
+    ventilation_heat_recovery_efficiency_target_max: float = Field(default=0.85, gt=0, lt=1)
     pv_added_kwp_max: float = Field(default=15.0, gt=0, le=100)
     solar_thermal_added_m2_max: float = Field(default=8.0, gt=0, le=100)
 
@@ -381,6 +383,29 @@ def parametric_capex(
                 "curve should replace it before commercial recommendation."
             )
 
+    current_recovery = float(
+        getattr(baseline_result.input.ventilation, "heat_recovery_efficiency", 0.0) or 0.0
+    )
+    target_recovery = float(measures.ventilation_heat_recovery_efficiency_target)
+    if target_recovery > current_recovery + 1e-9:
+        item = _catalog_item(catalog, "ventilation")
+        if item.get("unit") != "lei_total":
+            raise ValueError("Ventilation cost catalog entry must use lei_total.")
+        lines.append(
+            _cost_line(
+                family="ventilation",
+                capex_lei=float(item["cost_lei"]),
+                parameter_value=target_recovery,
+                parameter_unit="heat_recovery_efficiency_target",
+                item=item,
+            )
+        )
+        warnings.append(
+            "ventilation: optimizerul variază parametrul fizic de recuperare a căldurii; "
+            "CAPEX-ul este momentan o alocație fixă de sistem. Energia ventilatoarelor și "
+            "dimensionarea debitului mecanic trebuie discretizate/verificate ulterior."
+        )
+
     if measures.pv_added_kwp > 0:
         raw_curve = (
             catalog.get("system_curves", {}).get("pv")
@@ -541,6 +566,17 @@ def apply_parametric_measures(
             "Partial window replacement is represented by area-weighted effective U. "
             "The current SolarInput still uses one glazing optical type, so mixed-window "
             "solar transmittance is not yet modeled product-by-product."
+        )
+
+    ventilation = payload.setdefault("ventilation", {})
+    current_recovery = float(ventilation.get("heat_recovery_efficiency") or 0.0)
+    target_recovery = float(measures.ventilation_heat_recovery_efficiency_target)
+    if target_recovery > current_recovery:
+        ventilation["heat_recovery_efficiency"] = target_recovery
+        warnings.append(
+            "Ventilation heat recovery is optimized as a raw physical efficiency. "
+            "Fan electricity, duct pressure losses and real HRV unit sizing remain downstream "
+            "commercial/engineering checks."
         )
 
     renewables = payload.setdefault("renewables", {})
@@ -853,10 +889,14 @@ _SEARCH_DIMENSIONS = (
     ("roof_added_r_m2k_w", "roof_added_r_m2k_w_max"),
     ("floor_added_r_m2k_w", "floor_added_r_m2k_w_max"),
     ("window_replacement_fraction", "window_replacement_fraction_max"),
+    (
+        "ventilation_heat_recovery_efficiency_target",
+        "ventilation_heat_recovery_efficiency_target_max",
+    ),
     ("pv_added_kwp", "pv_added_kwp_max"),
     ("solar_thermal_added_m2", "solar_thermal_added_m2_max"),
 )
-_HALTON_BASES = (2, 3, 5, 7, 11, 13)
+_HALTON_BASES = (2, 3, 5, 7, 11, 13, 17)
 
 
 def _van_der_corput(index: int, base: int) -> float:
@@ -905,6 +945,7 @@ def _measure_signature(measures: ParametricMeasuresV1) -> tuple[float, ...]:
             measures.floor_added_r_m2k_w,
             measures.window_replacement_fraction,
             measures.window_target_u_w_m2k,
+            measures.ventilation_heat_recovery_efficiency_target,
             measures.pv_added_kwp,
             measures.pv_performance_ratio or 0.0,
             measures.solar_thermal_added_m2,
