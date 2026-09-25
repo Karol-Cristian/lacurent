@@ -1249,6 +1249,7 @@ def _technology_id_from_candidate(
     mapping = {
         HeatingGeneratorType.condensing_gas_boiler: "condensing-gas",
         HeatingGeneratorType.heat_pump_air_water: "heat-pump-air-water",
+        HeatingGeneratorType.heat_pump_air_air: "heat-pump-air-air",
         HeatingGeneratorType.electric_boiler: "electric-boiler",
         HeatingGeneratorType.pellet_boiler: "pellet-boiler",
     }
@@ -1273,7 +1274,13 @@ def commercialize_heating_finalist(
         return candidate, None, [
             "Păstrează sistemul actual: finalistul nu necesită achiziția unui generator nou."
         ]
-    if branch_id in SUPPLEMENTAL_TECHNICAL_HEATING_BRANCHES:
+    catalog_technology_ids = {
+        item.id for item in heating_technologies(heating_catalog)
+    }
+    if (
+        branch_id in SUPPLEMENTAL_TECHNICAL_HEATING_BRANCHES
+        and branch_id not in catalog_technology_ids
+    ):
         return candidate, None, [
             (
                 f"{SUPPLEMENTAL_TECHNICAL_HEATING_BRANCHES[branch_id]['label']}: "
@@ -1332,7 +1339,10 @@ def commercialize_heating_finalist(
     building_data["dhw"] = _dhw_for_product(raw_building, product)
 
     product_assumptions: list[str] = []
-    if product.generator_type == HeatingGeneratorType.heat_pump_air_water:
+    if product.generator_type in {
+        HeatingGeneratorType.heat_pump_air_water,
+        HeatingGeneratorType.heat_pump_air_air,
+    }:
         estimated_scop, hp_assumptions = _estimated_heat_pump_scop(
             raw_building,
             product,
