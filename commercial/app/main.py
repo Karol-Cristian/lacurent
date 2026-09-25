@@ -2372,6 +2372,9 @@ async def home_lab_optimization_plan_api(request: Request) -> JSONResponse:
                 "evaluationsPerBranch": 36,
                 "requestGapMs": 250,
                 "restartCooldownMs": 3000,
+                "maxConcurrentBranchRequests": 4,
+                "branchMaxAttempts": 3,
+                "branchStartStaggerMs": 120,
             }
         )
     except Exception as exc:
