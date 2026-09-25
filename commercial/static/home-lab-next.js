@@ -6087,6 +6087,15 @@
   });
   window.requestAnimationFrame(syncPersistentStackHeight);
 
+  $("#hlnOptimizerConsoleToggle")?.addEventListener("click", () => {
+    const panel = $("#hlnOptimizerConsole");
+    const toggle = $("#hlnOptimizerConsoleToggle");
+    if (!panel || !toggle) return;
+    const collapsed = panel.classList.toggle("is-collapsed");
+    toggle.textContent = collapsed ? "Extinde" : "Restrânge";
+    toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+  });
+
   root.addEventListener("pointerdown", event => {
     collapseAdaptiveIntroFor(event.target);
   }, {passive:true});
