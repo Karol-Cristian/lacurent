@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from functools import lru_cache
 from enum import Enum
 from typing import Any, Callable, Literal
 
@@ -184,6 +185,37 @@ class OptimizationSearchResultV1(BaseModel):
     candidates: list[CandidateEvaluationV1] = Field(default_factory=list)
     search_method: str
     warnings: list[str] = Field(default_factory=list)
+
+
+@lru_cache(maxsize=96)
+def _cached_baseline_evaluation_serialized(
+    serialized_building: str,
+) -> tuple[Any, dict[str, Any]]:
+    building = BuildingInput(**json.loads(serialized_building))
+    result = calculate(building, include_reference=False)
+    priced = estimate_energy_cost(result)
+    return result, dict(priced)
+
+
+def cached_baseline_evaluation(
+    building: BuildingInput,
+) -> tuple[Any, dict[str, Any]]:
+    """Reuse identical baseline/technology calculations inside a Worker isolate.
+
+    Home Lab shards one raw candidate per HTTP request. Without this cache, the
+    unchanged original/technology baseline was recalculated for every request,
+    consuming CPU without adding information. The cache key is the complete
+    validated BuildingInput, so a user edit or technology branch change creates
+    a different entry automatically.
+    """
+    serialized = json.dumps(
+        model_to_dict(building),
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+    )
+    result, priced = _cached_baseline_evaluation_serialized(serialized)
+    return result, dict(priced)
 
 
 def _stable_candidate_id(measures: ParametricMeasuresV1) -> str:
@@ -1223,8 +1255,9 @@ def run_parametric_optimization(
     request = payload.request
     bounds = payload.bounds
     max_evaluations = int(payload.max_evaluations)
-    baseline_result = calculate(request.baseline, include_reference=False)
-    baseline_cost = estimate_energy_cost(baseline_result)
+    baseline_result, baseline_cost = cached_baseline_evaluation(
+        request.baseline
+    )
     if not baseline_cost.get("complete"):
         raise ValueError(
             "Baseline annual bill is incomplete; parametric optimization cannot run safely."
