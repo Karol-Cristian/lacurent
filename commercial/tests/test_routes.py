@@ -822,7 +822,7 @@ def test_home_lab_roi_reconciles_visible_capex_and_avoids_request_bursts() -> No
     assert "optimizerConsoleCandidateParameters" in source
     assert "Fault în val: concurență" in source
     assert "Două valuri curate: concurență" in source
-    assert 'id="hlnOptimizerConsole"' in response.text
+    assert '$("#hlnOptimizerConsole")' in source
     assert "candidateParameters" in source
     assert "concurență ${adaptiveBranchParallelism}/${configuredBranchParallelism}" in source
 
