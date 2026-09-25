@@ -24,6 +24,7 @@ from .models import (
 from .optimization import (
     CandidateEvaluationV1,
     CostLineV1,
+    cached_baseline_evaluation,
     OptimizationMode,
     OptimizationRequestV1,
     OptimizationSearchBoundsV1,
@@ -1231,8 +1232,9 @@ def run_heating_branch_optimization(
     phase_candidate_offset: int = 0,
     heating_catalog: dict[str, Any] | None = None,
 ) -> HeatingBranchRunResultV1:
-    baseline_result = calculate(request.baseline, include_reference=False)
-    baseline_cost = estimate_energy_cost(baseline_result)
+    baseline_result, baseline_cost = cached_baseline_evaluation(
+        request.baseline
+    )
     if not baseline_cost.get("complete"):
         raise ValueError(
             "Baseline annual bill is incomplete; branch optimization cannot run safely."
