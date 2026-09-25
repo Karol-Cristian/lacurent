@@ -980,16 +980,6 @@ def heating_branch_plan(
 
     for technology in heating_technologies(heating_catalog):
         eligible, reason = technology_is_eligible(request.baseline, technology)
-        if (
-            eligible
-            and request.mode == OptimizationMode.investment_budget
-            and technology.minimum_capex_lei > float(request.investment_budget_lei) + 1e-6
-        ):
-            eligible = False
-            reason = (
-                "CAPEX-ul minim observat al tehnologiei depășește singur bugetul de "
-                "investiție."
-            )
         plan.append(
             HeatingBranchSummaryV1(
                 branch_id=technology.id,
@@ -1260,7 +1250,7 @@ def run_mixed_heating_optimization(
         total_parametric += int(result.parametric_evaluations)
         if branch.branch_id != "keep-current-heating":
             heating_branch_evaluations += int(result.parametric_evaluations)
-        if result.selection.selected is not None:
+        if branch.economic_eligible and result.selection.selected is not None:
             all_candidates.extend(
                 candidate
                 for candidate in [result.selection.selected]
@@ -1276,10 +1266,11 @@ def run_mixed_heating_optimization(
         heating_branch_evaluations=heating_branch_evaluations,
         branches=summaries,
         warnings=[
-            "Mixed heating V3 treats heating technology as discrete and generator capacity as candidate-dependent.",
-            "The full building is recalculated before generator sizing for every optimizer evaluation.",
-            "Commercial generator size is rounded upward from the recalculated design heat load; no universal oversizing percentage is injected.",
-            "Heat-pump nominal capacity still requires manufacturer-curve verification at the normative winter design temperature.",
+            "Mixed heating V4 evaluates technology branches before commercial product matching.",
+            "The complete building is recalculated once for each raw optimizer candidate before generator design power is derived.",
+            "Product-backed branches use a continuous planning CAPEX curve in required-kW space; no SKU is selected inside the raw search loop.",
+            "Air-air and ground-source heat pumps may run as technical-only branches until source-backed installed-cost/product catalogs are attached.",
+            "Heat-pump product capacity/COP curves remain finalist verification at the normative winter design temperature.",
             "DHW peak/storage sizing is not yet added to the generator design load.",
             *warnings,
         ],
