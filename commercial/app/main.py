@@ -2179,11 +2179,16 @@ async def home_lab_parametric_optimization_api(request: Request) -> JSONResponse
             )
 
         optimization_request = OptimizationRequestV1(**request_kwargs)
+        optimization_started = time.perf_counter()
         mixed_result = run_mixed_heating_optimization(
             optimization_request,
             bounds=OptimizationSearchBoundsV1(),
             catalog=await _optimizer_cost_catalog(request),
-            max_evaluations_per_branch=48,
+            max_evaluations_per_branch=24,
+        )
+        optimization_elapsed_ms = round(
+            (time.perf_counter() - optimization_started) * 1000.0,
+            1,
         )
         selected = mixed_result.selection.selected
         if selected is None or selected.resulting_configuration is None:
@@ -2254,6 +2259,7 @@ async def home_lab_parametric_optimization_api(request: Request) -> JSONResponse
             "selected": active_rows,
             "selectedHeating": selected_heating,
             "evaluatedCandidates": int(len(mixed_result.candidates)),
+            "calculationTimeMs": optimization_elapsed_ms,
             "parametricEvaluations": int(mixed_result.parametric_evaluations),
             "heatingBranchEvaluations": int(mixed_result.heating_branch_evaluations),
             "feasibleCandidates": int(mixed_result.selection.feasible_count),

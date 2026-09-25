@@ -2605,9 +2605,13 @@
         ? "Soluția este deja implementabilă în forma raportată."
         : "Raportul separă optimul brut de discretizarea comercială încă indisponibilă.";
       const heatingChoice = optimizationMeta.selectedHeating?.label || "păstrează sistemul actual";
+      const elapsed = Number(optimizationMeta.calculationTimeMs);
+      const elapsedText = Number.isFinite(elapsed)
+        ? ` · ${fmt(elapsed / 1000, 1)} s calcul backend`
+        : "";
       const searchDepth = optimizationMeta.parametricEvaluations
-        ? `${optimizationMeta.parametricEvaluations} recalculări parametrice · ${optimizationMeta.heatingBranchEvaluations || 0} în ramuri alternative de încălzire`
-        : `${optimizationMeta.evaluatedCandidates || 0} configurații evaluate`;
+        ? `${optimizationMeta.parametricEvaluations} recalculări parametrice · ${optimizationMeta.heatingBranchEvaluations || 0} în ramuri alternative de încălzire${elapsedText}`
+        : `${optimizationMeta.evaluatedCandidates || 0} configurații evaluate${elapsedText}`;
       setOptimizationNote(
         `<strong>${escapeHtml(optimizationMeta.label || settings.label)}</strong>
          <span>CAPEX ${fmt(optimizationMeta.capexLei)} lei · economie anuală ${fmt(optimizationMeta.annualSavingLei)} lei/an · ${optimizationMeta.paybackYears == null ? "fără amortizare pozitivă" : "amortizare " + fmt(optimizationMeta.paybackYears,1) + " ani"} · ${escapeHtml(heatingChoice)}.</span>
