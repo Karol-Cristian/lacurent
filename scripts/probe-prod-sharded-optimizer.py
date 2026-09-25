@@ -49,53 +49,21 @@ def post(path, form, timeout=30):
       return e.code,payload,time.perf_counter()-t
 
 failures=[]
-for run in range(1,7):
-    t0=time.perf_counter()
-    status,plan,plan_t=post("/api/optimization/home-lab/plan",FORM)
-    if status != 200:
-        failures.append({"run":run,"stage":"plan","status":status,"body":plan})
-        print(json.dumps(failures[-1],ensure_ascii=False))
-        continue
-    results=[
-      {"branch":b,"selection":{"selected":None},"candidateCount":0,"parametricEvaluations":0,"calculationTimeMs":0,"warnings":[]}
-      for b in plan.get("branches",[]) if not b.get("eligible")
-    ]
-    branch_rows=[]
-    ok=True
-    for branch_id in plan.get("runBranchIds",[]):
-        payload=dict(FORM); payload["_heating_branch_id"]=branch_id
-        st,body,dt=post("/api/optimization/home-lab/branch",payload)
-        branch_rows.append({"id":branch_id,"status":st,"seconds":round(dt,3),"evals":body.get("parametricEvaluations") if isinstance(body,dict) else None})
-        if st != 200:
-            failures.append({"run":run,"stage":"branch","branch":branch_id,"status":st,"body":body})
-            ok=False
-            break
-        results.append(body)
-    if not ok:
-        print(json.dumps({"run":run,"branches":branch_rows,"failure":failures[-1]},ensure_ascii=False))
-        continue
-    fin=dict(FORM); fin["_branch_results_json"]=json.dumps(results,separators=(",",":"))
-    st,body,fin_t=post("/api/optimization/home-lab/finalize",fin)
-    total=time.perf_counter()-t0
-    row={
-      "run":run,"status":st,"seconds":round(total,3),
-      "plan_seconds":round(plan_t,3),"finalize_seconds":round(fin_t,3),
-      "branches":branch_rows,
-    }
-    if st==200:
-      opt=body.get("optimization",{})
-      row.update({
-        "parametric":opt.get("parametricEvaluations"),
-        "heating":opt.get("heatingBranchEvaluations"),
-        "evaluated":opt.get("evaluatedCandidates"),
-        "executionMode":opt.get("executionMode"),
-      })
-    else:
-      failures.append({"run":run,"stage":"finalize","status":st,"body":body})
-      row["failure"]=failures[-1]
+status,plan,plan_t=post("/api/optimization/home-lab/plan",FORM)
+if status != 200:
+    print(json.dumps({"stage":"plan","status":status,"body":plan},ensure_ascii=False))
+    raise SystemExit(1)
+ids=plan.get("runBranchIds",[])
+print(json.dumps({"plan_status":status,"branches":ids,"seconds":round(plan_t,3)},ensure_ascii=False))
+for i in range(25):
+    branch_id=ids[i % len(ids)]
+    payload=dict(FORM); payload["_heating_branch_id"]=branch_id
+    st,body,dt=post("/api/optimization/home-lab/branch",payload)
+    row={"request":i+1,"branch":branch_id,"status":st,"seconds":round(dt,3),"evals":body.get("parametricEvaluations") if isinstance(body,dict) else None}
     print(json.dumps(row,ensure_ascii=False))
-
+    if st != 200:
+        failures.append({"request":i+1,"branch":branch_id,"status":st,"body":body})
 if failures:
     print("FAILURES="+json.dumps(failures,ensure_ascii=False))
     raise SystemExit(1)
-print("SHARDED_STABILITY_PASS")
+print("BRANCH_STABILITY_PASS")
