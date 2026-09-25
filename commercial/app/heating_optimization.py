@@ -836,7 +836,8 @@ def heat_pump_monthly_performance_profile(
     design_outdoor = climate.get("winter_design_temperature_c")
 
     source_urls = sorted(
-        {str(point.source_url) for point in points if point.source_url}
+        ({str(product.source_url)} if product.source_url else set())
+        | {str(point.source_url) for point in points if point.source_url}
         | {
             str(item.source_url)
             for item in product.seasonal_performance
@@ -852,14 +853,14 @@ def heat_pump_monthly_performance_profile(
         }
     )
 
-    nominal_cop = None
+    reference_cop_at_7c = None
     if points:
         nominal_point = min(
             points,
             key=lambda point: abs(float(point.outdoor_temperature_c) - 7.0),
         )
         if abs(float(nominal_point.outdoor_temperature_c) - 7.0) <= 0.6:
-            nominal_cop = float(nominal_point.cop)
+            reference_cop_at_7c = float(nominal_point.cop)
 
     rows: list[dict[str, Any]] = []
     total_useful = 0.0
@@ -974,8 +975,10 @@ def heat_pump_monthly_performance_profile(
         "modeled_scop_from_monthly_cop": (
             None if modeled_scop is None else round(modeled_scop, 4)
         ),
-        "nominal_cop": (
-            None if nominal_cop is None else round(nominal_cop, 4)
+        "reference_cop_at_7c": (
+            None
+            if reference_cop_at_7c is None
+            else round(reference_cop_at_7c, 4)
         ),
         "cop_curve_min_outdoor_c": (
             None if not unique_outdoor else unique_outdoor[0]
