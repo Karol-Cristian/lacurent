@@ -34,8 +34,8 @@ def _run_sharded(payload: dict[str, str]) -> tuple[dict, dict]:
     assert plan["microBatchSize"] == 1
     assert plan["phaseOffsets"] == list(range(12))
     assert plan["evaluationsPerBranch"] == 36
-    assert plan["initialConcurrentBranchRequests"] == 2
-    assert plan["maxConcurrentBranchRequests"] == 3
+    assert plan["initialConcurrentBranchRequests"] == 1
+    assert plan["maxConcurrentBranchRequests"] == 2
     assert plan["cleanWavesBeforeRampUp"] == 2
     assert plan["branchMaxAttempts"] == 3
     assert plan["branchStartStaggerMs"] == 140
