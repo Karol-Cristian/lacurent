@@ -26,6 +26,7 @@ from .optimization import (
     CostLineV1,
     OptimizationMode,
     OptimizationRequestV1,
+    ParametricMeasuresV1,
     OptimizationSearchBoundsV1,
     OptimizationSearchRequestV1,
     OptimizationSelectionV1,
@@ -99,6 +100,15 @@ class HeatingBranchRunResultV1(BaseModel):
     branch: HeatingBranchSummaryV1
     candidate_count: int
     parametric_evaluations: int
+    warnings: list[str] = Field(default_factory=list)
+
+
+class HeatingBranchBatchResultV1(BaseModel):
+    branch_id: str
+    label: str
+    evaluated_candidates: int
+    rejected_for_capacity: int
+    candidates: list[CandidateEvaluationV1] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
 
 
@@ -423,6 +433,84 @@ def heating_branch_plan(
             )
         )
     return plan
+
+
+def evaluate_heating_branch_batch(
+    request: OptimizationRequestV1,
+    *,
+    branch_id: str,
+    measures: list[ParametricMeasuresV1],
+    catalog: dict[str, Any],
+) -> HeatingBranchBatchResultV1:
+    if not measures:
+        raise ValueError("Heating branch batch requires at least one candidate.")
+    if len(measures) > 6:
+        raise ValueError("Heating branch batch accepts at most 6 candidates per request.")
+
+    original_result = calculate(request.baseline, include_reference=False)
+    original_cost = estimate_energy_cost(original_result)
+    if not original_cost.get("complete"):
+        raise ValueError("Baseline annual bill is incomplete; branch batch cannot run safely.")
+    original_baseline_bill = float(original_cost["priced_total_lei"])
+
+    option: HeatingPlanningOptionV1 | None = None
+    branch_baseline = request.baseline
+    label = "Păstrează sistemul actual"
+    if branch_id != "keep-current-heating":
+        option = next(
+            (item for item in heating_planning_options() if item.id == branch_id),
+            None,
+        )
+        if option is None:
+            raise ValueError(f"Unknown heating branch {branch_id!r}.")
+        eligible, reason = option_is_eligible(request.baseline, option)
+        if not eligible:
+            raise ValueError(reason or f"Heating branch {branch_id!r} is not eligible.")
+        branch_baseline = apply_heating_option(request.baseline, option)
+        label = option.label
+
+    branch_result = calculate(branch_baseline, include_reference=False)
+    branch_cost = estimate_energy_cost(branch_result)
+    if not branch_cost.get("complete"):
+        raise ValueError("Branch annual bill is incomplete; candidate batch cannot run safely.")
+
+    accepted: list[CandidateEvaluationV1] = []
+    rejected_capacity = 0
+    warnings: list[str] = []
+    for item in measures:
+        try:
+            raw = evaluate_parametric_candidate(
+                branch_baseline,
+                item,
+                catalog,
+                baseline_result=branch_result,
+                baseline_cost=branch_cost,
+            )
+        except ValueError as exc:
+            warnings.append(str(exc))
+            continue
+        mixed = _rebase_candidate(
+            raw,
+            original_baseline_bill_lei=original_baseline_bill,
+            option=option,
+        )
+        if (
+            option is not None
+            and mixed.design_heat_load_kw is not None
+            and float(option.rated_power_kw) + 1e-9 < float(mixed.design_heat_load_kw)
+        ):
+            rejected_capacity += 1
+            continue
+        accepted.append(mixed)
+
+    return HeatingBranchBatchResultV1(
+        branch_id=branch_id,
+        label=label,
+        evaluated_candidates=len(measures),
+        rejected_for_capacity=rejected_capacity,
+        candidates=accepted,
+        warnings=warnings,
+    )
 
 
 def run_heating_branch_optimization(
