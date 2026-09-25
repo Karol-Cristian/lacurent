@@ -45,13 +45,16 @@ def _run_sharded(payload: dict[str, str]) -> tuple[dict, dict]:
     assert "heat-pump-ground-water" in branch_ids
     air_air = next(item for item in plan["branches"] if item["branch_id"] == "heat-pump-air-air")
     ground = next(item for item in plan["branches"] if item["branch_id"] == "heat-pump-ground-water")
-    assert air_air["economic_eligible"] is False
+    assert air_air["economic_eligible"] is True
+    assert air_air["commercialization_mode"] == "raw_parametric_then_product_match"
+    assert float(air_air["min_product_power_kw"]) == 4.0
+    assert float(air_air["max_product_power_kw"]) == 21.6
     assert ground["economic_eligible"] is False
+    assert "heat-pump-air-air" in plan["runBranchIds"]
     assert set(plan["technicalPreviewBranchIds"]) >= {
-        "heat-pump-air-air",
         "heat-pump-ground-water",
     }
-    assert "heat-pump-air-air" not in plan["runBranchIds"]
+    assert "heat-pump-air-air" not in plan["technicalPreviewBranchIds"]
     assert "heat-pump-ground-water" not in plan["runBranchIds"]
 
     results = [
