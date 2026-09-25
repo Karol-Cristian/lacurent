@@ -161,3 +161,36 @@ button{cursor:pointer}
   .ed-report>header{padding-top:4px}
   .ed-report h1{font-size:48px}
 }
+
+.ed-subsection{padding:30px 0;border-top:1px solid var(--line)}
+.ed-subsection:first-of-type{border-top:0;padding-top:0}
+.ed-subsection h3{font-size:16px;margin:0 0 16px;letter-spacing:-.02em}
+.ed-details{margin-top:22px;border:1px solid var(--line);border-radius:18px;background:#fff;overflow:hidden}
+.ed-details summary{list-style:none;cursor:pointer;padding:18px 20px;display:flex;justify-content:space-between;gap:20px;align-items:center}
+.ed-details summary::-webkit-details-marker{display:none}
+.ed-details summary span{font-weight:690}
+.ed-details summary small{color:var(--muted);font-size:12px;text-align:right}
+.ed-details[open] summary{border-bottom:1px solid var(--line)}
+.ed-details-body{padding:18px}
+.ed-derived{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:16px}
+.ed-derived span{padding:12px;border-radius:12px;background:var(--soft);font-size:11px;color:var(--muted)}
+.ed-derived b{display:block;margin-top:5px;color:var(--ink);font-size:14px}
+.ed-reset-geometry{padding-left:0;margin-top:8px}
+.ed-switch-row{display:flex;justify-content:space-between;align-items:center;gap:22px;padding:18px 0;border-bottom:1px solid var(--line)}
+.ed-switch-row>div{display:grid;gap:5px}
+.ed-switch-row b{font-size:16px}
+.ed-switch-row span{font-size:13px;color:var(--muted)}
+.ed-switch{position:relative;width:46px;height:28px;flex:0 0 auto}
+.ed-switch input{position:absolute;opacity:0;pointer-events:none}
+.ed-switch i{display:block;width:46px;height:28px;border-radius:99px;background:#d9dde5;position:relative;transition:.2s}
+.ed-switch i:after{content:"";position:absolute;width:22px;height:22px;left:3px;top:3px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.2);transition:.2s}
+.ed-switch input:checked+i{background:var(--ink)}
+.ed-switch input:checked+i:after{transform:translateX(18px)}
+.ed-grid.is-disabled{opacity:.38;pointer-events:none}
+.ed-field[hidden]{display:none}
+@media(max-width:720px){
+  .ed-derived{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ed-details summary{align-items:flex-start;flex-direction:column;gap:4px}
+  .ed-details summary small{text-align:left}
+  .ed-subsection{padding:24px 0}
+}
