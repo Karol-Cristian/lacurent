@@ -233,6 +233,11 @@
   let optimizerLastRemoteRequestAt = 0;
   let optimizerRestartCooldownUntil = 0;
   let optimizerRequestGapMs = 250;
+  let optimizerConsoleStartedAt = 0;
+  let optimizerConsolePlanned = 0;
+  let optimizerConsoleCompleted = 0;
+  let optimizerConsoleLines = [];
+  const OPTIMIZER_CONSOLE_MAX_LINES = 180;
   const OPTIMIZER_MAX_ENGINE_EVALUATIONS = 16;
   const OPTIMIZER_MIN_REQUEST_GAP_MS = 250;
   const OPTIMIZER_RESTART_COOLDOWN_MS = 3000;
@@ -2322,6 +2327,114 @@
     node.innerHTML = html || "";
     node.classList.toggle("is-good", kind === "good");
     node.classList.toggle("is-warn", kind === "warn");
+  }
+
+  function optimizerConsoleElapsed() {
+    if (!optimizerConsoleStartedAt) return "00:00.0";
+    const elapsedMs = Math.max(0, Date.now() - optimizerConsoleStartedAt);
+    const minutes = Math.floor(elapsedMs / 60000);
+    const seconds = Math.floor((elapsedMs % 60000) / 1000);
+    const tenths = Math.floor((elapsedMs % 1000) / 100);
+    return \`\${String(minutes).padStart(2,"0")}:\${String(seconds).padStart(2,"0")}.\${tenths}\`;
+  }
+
+  function optimizerConsoleCandidateParameters(raw = {}) {
+    const number = (value, digits = 3) => {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed.toFixed(digits) : "n/a";
+    };
+    const windows = Number(raw.window_replacement_fraction);
+    return [
+      \`wallR+\${number(raw.wall_added_r_m2k_w)}\`,
+      \`roofR+\${number(raw.roof_added_r_m2k_w)}\`,
+      \`floorR+\${number(raw.floor_added_r_m2k_w)}\`,
+      \`windows=\${Number.isFinite(windows) ? (windows * 100).toFixed(1) : "n/a"}%\`,
+      \`Uw=\${number(raw.window_target_u_w_m2k,2)}\`,
+      \`PV+\${number(raw.pv_added_kwp)}kWp\`,
+      \`solar+\${number(raw.solar_thermal_added_m2)}m²\`,
+    ].join(" | ");
+  }
+
+  function renderOptimizerConsole() {
+    const panel = $("#hlnOptimizerConsole");
+    const output = $("#hlnOptimizerConsoleOutput");
+    const progress = $("#hlnOptimizerConsoleProgress");
+    const progressBar = $("#hlnOptimizerConsoleProgressBar");
+    if (!panel || !output || !progress || !progressBar) return;
+
+    panel.hidden = !optimizerConsoleStartedAt;
+    const planned = Math.max(0, Number(optimizerConsolePlanned || 0));
+    const completed = Math.max(0, Number(optimizerConsoleCompleted || 0));
+    progress.textContent = planned ? \`\${completed} / \${planned}\` : "0 / 0";
+    progressBar.style.width = planned
+      ? \`\${Math.min(100, 100 * completed / planned).toFixed(1)}%\`
+      : "0%";
+
+    output.innerHTML = optimizerConsoleLines.map(line => (
+      \`<div class="hln-optimizer-console-line is-\${escapeHtml(line.kind || "info")}">\` +
+      \`<time>\${escapeHtml(line.elapsed || "00:00.0")}</time>\` +
+      \`<b>\${escapeHtml(line.tag || "INFO")}</b>\` +
+      \`<span>\${escapeHtml(line.message || "")}</span>\` +
+      \`</div>\`
+    )).join("");
+    output.scrollTop = output.scrollHeight;
+  }
+
+  function resetOptimizerConsole(label = "optimizer") {
+    optimizerConsoleStartedAt = Date.now();
+    optimizerConsolePlanned = 0;
+    optimizerConsoleCompleted = 0;
+    optimizerConsoleLines = [];
+    const panel = $("#hlnOptimizerConsole");
+    const state = $("#hlnOptimizerConsoleState");
+    const footer = $("#hlnOptimizerConsoleFooter");
+    if (panel) {
+      panel.hidden = false;
+      panel.classList.remove("is-error","is-done","is-collapsed");
+    }
+    const toggle = $("#hlnOptimizerConsoleToggle");
+    if (toggle) {
+      toggle.textContent = "Restrânge";
+      toggle.setAttribute("aria-expanded","true");
+    }
+    if (state) state.textContent = "RUNNING";
+    if (footer) footer.textContent = \`Pornit · \${label}\`;
+    appendOptimizerConsole("info","START",\`PS LaCurent:\\optimizer> \${label}\`);
+  }
+
+  function appendOptimizerConsole(kind, tag, message) {
+    if (!optimizerConsoleStartedAt) optimizerConsoleStartedAt = Date.now();
+    optimizerConsoleLines.push({
+      kind:kind || "info",
+      tag:tag || "INFO",
+      message:String(message || ""),
+      elapsed:optimizerConsoleElapsed(),
+    });
+    if (optimizerConsoleLines.length > OPTIMIZER_CONSOLE_MAX_LINES) {
+      optimizerConsoleLines = optimizerConsoleLines.slice(-OPTIMIZER_CONSOLE_MAX_LINES);
+    }
+    renderOptimizerConsole();
+  }
+
+  function setOptimizerConsoleProgress(completed, planned, footerText = "") {
+    optimizerConsoleCompleted = Math.max(0, Number(completed || 0));
+    optimizerConsolePlanned = Math.max(0, Number(planned || 0));
+    const footer = $("#hlnOptimizerConsoleFooter");
+    if (footer && footerText) footer.textContent = footerText;
+    renderOptimizerConsole();
+  }
+
+  function finishOptimizerConsole(kind = "done", message = "") {
+    const panel = $("#hlnOptimizerConsole");
+    const state = $("#hlnOptimizerConsoleState");
+    const footer = $("#hlnOptimizerConsoleFooter");
+    if (panel) {
+      panel.classList.toggle("is-error", kind === "error");
+      panel.classList.toggle("is-done", kind !== "error");
+    }
+    if (state) state.textContent = kind === "error" ? "FAULT" : "DONE";
+    if (footer && message) footer.textContent = message;
+    renderOptimizerConsole();
   }
 
   function beginOptimizerRun() {
