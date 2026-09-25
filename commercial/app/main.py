@@ -32,6 +32,7 @@ from .optimization import (
     evaluate_parametric_candidate,
     compact_refinement_candidate,
     parametric_phase_candidate_descriptors,
+    pareto_frontier,
     refinement_seed_from_compact,
     run_parametric_optimization,
     select_optimization_candidate,
@@ -2649,6 +2650,52 @@ async def home_lab_optimization_finalize_api(request: Request) -> JSONResponse:
                 status_code=422,
             )
 
+        # Raw physics/economics decide the finalist set first. Only then do we
+        # touch real generator SKUs. Recheck a small Pareto-bounded set so that
+        # commercial capacity/price rounding can change the winner without
+        # dragging product-level recalculation through every Halton point.
+        raw_selection = selection
+        raw_selected = selection.selected
+        ordered_rechecks: list[CandidateEvaluationV1] = [raw_selected]
+        for item in pareto_frontier(finalists):
+            if item.candidate_id == raw_selected.candidate_id:
+                continue
+            ordered_rechecks.append(item)
+            if len(ordered_rechecks) >= 6:
+                break
+
+        heating_catalog = await _optimizer_heating_catalog(request)
+        commercial_rechecks: list[CandidateEvaluationV1] = []
+        commercial_recheck_count = 0
+        for raw_candidate in ordered_rechecks:
+            commercial_candidate, matched_product, product_warnings = (
+                commercialize_heating_finalist(
+                    raw_candidate,
+                    original_building=optimization_request.baseline,
+                    heating_catalog=heating_catalog,
+                )
+            )
+            warnings.extend(product_warnings)
+            commercial_rechecks.append(commercial_candidate)
+            if matched_product is not None:
+                commercial_recheck_count += 1
+
+        commercial_selection = select_optimization_candidate(
+            optimization_request,
+            commercial_rechecks,
+        )
+        if commercial_selection.selected is not None:
+            selection = commercial_selection
+        warnings.append(
+            (
+                f"Raw-first pipeline: {len(finalists)} candidați economici au fost "
+                f"selectați în spațiul parametric; {len(ordered_rechecks)} finaliști "
+                f"Pareto au intrat în etapa comercială, iar "
+                f"{commercial_recheck_count} au primit o treaptă reală de generator "
+                "și recalculare completă."
+            )
+        )
+
         payload = _home_lab_optimizer_success_payload(
             mode=mode,
             form=form,
@@ -2662,7 +2709,8 @@ async def home_lab_optimization_finalize_api(request: Request) -> JSONResponse:
                 *warnings,
             ],
             calculation_time_ms=round(total_elapsed_ms, 1),
-            pareto_scope="all_phased_candidates",
+            pareto_scope="raw_all_then_bounded_commercial_recheck",
+            raw_selected=raw_selected,
         )
         return JSONResponse(payload)
     except Exception as exc:
