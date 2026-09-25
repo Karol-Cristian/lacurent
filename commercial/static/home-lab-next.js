@@ -3008,9 +3008,43 @@
           }
 
           const phaseSummariesByBatch = new Map();
+          const phaseFailedBatchIndexes = new Set();
           let completedInPhase = 0;
           let phaseFinalFailures = 0;
           let phaseRecoveredRetries = 0;
+
+          const recordPhaseFailure = failure => {
+            phaseFailedBatchIndexes.add(failure.batchIndex);
+            const existingIndex = failedMicroBatches.findIndex(item => (
+              item.branchId === failure.branchId
+              && item.phase === failure.phase
+              && item.batchIndex === failure.batchIndex
+            ));
+            if (existingIndex >= 0) {
+              const existing = failedMicroBatches[existingIndex];
+              failedMicroBatches[existingIndex] = {
+                ...existing,
+                ...failure,
+                attempts:Number(existing.attempts || 0) + Number(failure.attempts || 0),
+              };
+              return;
+            }
+            failedMicroBatches.push(failure);
+          };
+
+          const clearPhaseFailure = batchIndex => {
+            phaseFailedBatchIndexes.delete(batchIndex);
+            for (let i = failedMicroBatches.length - 1; i >= 0; i -= 1) {
+              const item = failedMicroBatches[i];
+              if (
+                item.branchId === branchId
+                && item.phase === phase
+                && item.batchIndex === batchIndex
+              ) {
+                failedMicroBatches.splice(i, 1);
+              }
+            }
+          };
 
           const updateParallelPhaseProgress = waveText => {
             setStatus(
@@ -3028,7 +3062,7 @@
             );
           };
 
-          const runOnePhaseCandidate = async batchIndex => {
+          const runOnePhaseCandidate = async (batchIndex, {recovery = false} = {}) => {
             if (runToken !== optimizerRunToken) {
               const abortError = new Error("Optimizer oprit");
               abortError.name = "AbortError";
@@ -3046,7 +3080,7 @@
 
             appendOptimizerConsole(
               "run",
-              "RUN",
+              recovery ? "RECOVER" : "RUN",
               `B ${index + 1}/${runnableIds.length} · P ${phaseIndex + 1}/${phases.length} · C ${batchIndex + 1}/${phaseOffsets.length} · ${candidateId}`
             );
             appendOptimizerConsole(
@@ -3076,6 +3110,13 @@
                 branchMaxAttempts,
                 false,
                 {
+                  onAttempt: ({attempt, maxAttempts}) => {
+                    appendOptimizerConsole(
+                      "run",
+                      "TRY",
+                      `${candidateId} · încercarea ${attempt}/${maxAttempts}${recovery ? " · recovery serial" : ""}`
+                    );
+                  },
                   onRetry: ({nextAttempt, maxAttempts, delayMs, reason}) => {
                     const reasonText = reason?.type === "http"
                       ? `HTTP ${reason.status}`
@@ -3101,7 +3142,7 @@
                 `${candidateId} · ${error?.name || "network"} după ${attempts} încercări · ${Math.round(elapsedMs)} ms · păstrat pentru reexecuție`
               );
               const warning = `Ramura „${branchLabel}” / ${readablePhase} / candidat ${candidateId} a fost păstrat pentru reexecuție după ${error?.name || "network"}.`;
-              failedMicroBatches.push({
+              recordPhaseFailure({
                 candidateId:candidateTrace?.candidate_id || null,
                 candidateParameters,
                 branchId,
@@ -3122,7 +3163,7 @@
                 calculationTimeMs:0,
                 warnings:[warning],
               });
-              return;
+              return false;
             }
 
             const recoveredRetries = Math.max(0, Number(branchCall.attemptCount || 1) - 1);
@@ -3147,7 +3188,7 @@
                   `${candidateId} · HTTP ${status || "?"} după ${attempts} încercări · ${Math.round(elapsedMs)} ms · păstrat pentru reexecuție`
                 );
                 const warning = `Ramura „${branchLabel}” / ${readablePhase} / candidat ${candidateId} a fost păstrat pentru reexecuție după HTTP ${status || "tranzitoriu"} repetat.`;
-                failedMicroBatches.push({
+                recordPhaseFailure({
                   candidateId:candidateTrace?.candidate_id || null,
                   candidateParameters,
                   branchId,
@@ -3168,7 +3209,7 @@
                   calculationTimeMs:0,
                   warnings:[warning],
                 });
-                return;
+                return false;
               }
               throw new Error(
                 branchCall.payload?.error
@@ -3189,11 +3230,20 @@
             const resultText = summary
               ? `CAPEX ${fmt(Number(summary.capex_lei || 0))} lei | factură ${fmt(Number(summary.annual_bill_lei || 0))} lei/an | economie ${fmt(Number(summary.annual_saving_lei || 0))} lei/an`
               : (evaluatedNow > 0 ? "calculat, dar eliminat de constrângerile tehnice/economice" : "fără candidat tehnic păstrat");
+            if (recovery && phaseFailedBatchIndexes.has(batchIndex)) {
+              clearPhaseFailure(batchIndex);
+              appendOptimizerConsole(
+                "ok",
+                "RECOVERED",
+                `${candidateId} · reintrat în competiție după reexecuție serială.`
+              );
+            }
             appendOptimizerConsole(
               "ok",
               "OK",
               `${candidateId} · ${Math.round(elapsedMs)} ms · ${resultText}`
             );
+            return true;
           };
 
           let waveCursor = 0;
@@ -3280,6 +3330,35 @@
             }
 
             waveCursor += waveIndexes.length;
+          }
+
+          if (phaseFailedBatchIndexes.size) {
+            adaptiveBranchParallelism = 1;
+            cleanWaveStreak = 0;
+            const recoveryIndexes = [...phaseFailedBatchIndexes].sort((a,b) => a - b);
+            appendOptimizerConsole(
+              "retry",
+              "RECOVERY",
+              `${recoveryIndexes.length} candidat${recoveryIndexes.length === 1 ? "" : "i"} cu fault: reexecuție serială înainte de a continua.`
+            );
+            await new Promise(resolve => window.setTimeout(resolve, 1500));
+            for (let recoveryIndex = 0; recoveryIndex < recoveryIndexes.length; recoveryIndex += 1) {
+              const batchIndex = recoveryIndexes[recoveryIndex];
+              appendOptimizerConsole(
+                "retry",
+                "RECOVERY",
+                `[${recoveryIndex + 1}/${recoveryIndexes.length}] C ${batchIndex + 1}/${phaseOffsets.length} · concurență 1`
+              );
+              await runOnePhaseCandidate(batchIndex, {recovery:true});
+              if (phaseFailedBatchIndexes.has(batchIndex)) {
+                appendOptimizerConsole(
+                  "fail",
+                  "PENDING",
+                  `C ${batchIndex + 1}/${phaseOffsets.length} rămâne în lista de reexecuție după recovery.`
+                );
+              }
+              await new Promise(resolve => window.setTimeout(resolve, 500));
+            }
           }
 
           // Preserve deterministic candidate ordering for refinement seed
