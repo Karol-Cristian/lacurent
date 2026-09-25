@@ -826,6 +826,8 @@ def test_home_lab_exposes_four_single_constraint_parametric_objectives() -> None
     assert 'body.set("_annual_bill_target_lei"' in source
     assert 'body.set("_max_payback_years"' in source
     assert '"/api/optimization/home-lab"' in source
+    assert "heatingBranchEvaluations" in source
+    assert "selectedHeating" in source
     assert '["economic-auto","economic-budget","economic-bill","economic-payback"].includes(action)' in source
     assert "isFinancialOptimizationMeta" in source
     assert 'const buttons = $("[data-hln-smart-config]")' not in source
