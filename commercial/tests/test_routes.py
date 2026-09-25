@@ -2617,3 +2617,12 @@ def test_home_lab_next_uses_transient_retry_asset_version() -> None:
     response = client.get("/home-lab-next")
     assert response.status_code == 200
     assert "/static/home-lab-next.js?v=next72-heating-power" in response.text
+
+
+
+def test_cloudflare_free_plan_worker_config_has_no_cpu_limit() -> None:
+    config = Path("commercial/cloudflare-worker/wrangler.toml").read_text(
+        encoding="utf-8"
+    )
+    assert "[limits]" not in config
+    assert "cpu_ms" not in config
