@@ -86,7 +86,7 @@ def main():
         "depths": {},
     }
 
-    for depth in (12, 24, 36, 48, 64, 96):
+    for depth in (24, 48, 64, 96, 128):
         output["depths"][str(depth)] = {
             "auto": run_mode(
                 building,
