@@ -2149,6 +2149,24 @@ async def home_lab_next(request: Request) -> HTMLResponse:
     )
 
 
+@app.get("/home-lab-editorial", response_class=HTMLResponse)
+async def home_lab_editorial(request: Request) -> HTMLResponse:
+    """Experimental Technical Editorial UI.
+
+    This route deliberately reuses the production calculation and optimizer
+    APIs. It changes presentation and interaction only; no engine behavior is
+    forked for the experiment.
+    """
+    return templates.TemplateResponse(
+        request,
+        "home_lab_editorial.html",
+        {
+            "request": request,
+            **calculator_context(),
+        },
+    )
+
+
 async def home_lab_next_calculation(request: Request) -> JSONResponse:
     form = dict(await request.form())
     # Scenario and optimizer requests reuse the reference configuration already

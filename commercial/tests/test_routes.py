@@ -147,6 +147,31 @@ def test_home_lab_exposes_explicit_dhw_source_selection() -> None:
     assert 'homeState.dhwSystem = $("#hlnHomeDhwSystem").value' in js.text
 
 
+def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report() -> None:
+    page = client.get("/home-lab-editorial")
+    assert page.status_code == 200
+    assert "Home Lab Editorial — experiment" in page.text
+    assert "Analiza este gata." in page.text
+    assert 'data-page="run"' in page.text
+    assert 'data-page="report"' in page.text
+    assert "/static/home-lab-editorial.css?v=1" in page.text
+    assert "/static/home-lab-editorial.js?v=1" in page.text
+    assert "/static/home-lab-3d.js" not in page.text
+
+    css = client.get("/static/home-lab-editorial.css")
+    assert css.status_code == 200
+    assert "--max:820px" in css.text
+    assert "backdrop-filter:blur(18px)" in css.text
+
+    js = client.get("/static/home-lab-editorial.js")
+    assert js.status_code == 200
+    assert '"/api/optimization/home-lab/v2/plan"' in js.text
+    assert '"/api/optimization/home-lab/v2/branch"' in js.text
+    assert '"/api/optimization/home-lab/v2/finalize"' in js.text
+    assert 'showPage("done");' in js.text
+    assert 'document.getElementById("openReport").addEventListener("click", () => showPage("report"));' in js.text
+
+
 def test_privacy_and_terms_pages_expose_required_disclosures() -> None:
     privacy = client.get("/privacy")
     assert privacy.status_code == 200
