@@ -32,8 +32,9 @@ page.on("requestfailed", request => {
 });
 
 function isKnownExternal3dFetchError(line) {
-  return /^\[Home Lab 3D\] model load failed\s+TypeError:\s+Failed to fetch\s*$/i.test(
-    String(line || "").trim()
+  const text = String(line || "").trim();
+  return text.startsWith(
+    "[Home Lab 3D] model load failed TypeError: Failed to fetch"
   );
 }
 
