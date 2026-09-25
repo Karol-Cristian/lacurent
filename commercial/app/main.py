@@ -48,6 +48,7 @@ from .full_commercialization import (
 )
 from .heating_optimization import (
     HeatingBranchSummaryV1,
+    commercialize_heating_finalist,
     heating_branch_plan,
     heating_planning_options,
     run_heating_branch_optimization,
@@ -2229,13 +2230,15 @@ def _home_lab_optimizer_success_payload(
     warnings: list[str],
     calculation_time_ms: float | None = None,
     pareto_scope: str = "all_candidates",
+    raw_selected: CandidateEvaluationV1 | None = None,
 ) -> dict[str, Any]:
     selected = selection.selected
     if selected is None or selected.resulting_configuration is None:
         raise ValueError("Nu există nicio soluție fezabilă pentru regula economică aleasă.")
 
+    raw_selected = raw_selected or selected
     final_result = calculate(selected.resulting_configuration, include_reference=False)
-    raw_measures = model_to_dict(selected.parameters)
+    raw_measures = model_to_dict(raw_selected.parameters)
     commercial_ready = (
         selected.commercialization_status == "commercialized"
         or (
@@ -2316,12 +2319,23 @@ def _home_lab_optimizer_success_payload(
         "heatingBranches": [model_to_dict(item) for item in branches],
         "rawSolution": raw_measures,
         "rawEvaluation": {
+            "candidateId": raw_selected.candidate_id,
+            "annualBillLei": float(raw_selected.annual_bill_lei),
+            "baselineAnnualBillLei": float(raw_selected.baseline_annual_bill_lei),
+            "finalEnergyKwh": float(raw_selected.final_energy_kwh),
+            "primarySpecificKwhM2": float(raw_selected.primary_specific_kwh_m2),
+            "co2TotalKg": float(raw_selected.co2_total_kg),
+            "co2SpecificKgM2": float(raw_selected.co2_specific_kg_m2),
+            "energyClass": raw_selected.energy_class,
+            "designHeatLoadKw": raw_selected.design_heat_load_kw,
+        },
+        "commercialEvaluation": {
             "candidateId": selected.candidate_id,
             "annualBillLei": float(selected.annual_bill_lei),
-            "baselineAnnualBillLei": float(selected.baseline_annual_bill_lei),
+            "capexLei": float(selected.capex_lei),
+            "annualSavingLei": float(selected.annual_saving_lei),
             "finalEnergyKwh": float(selected.final_energy_kwh),
             "primarySpecificKwhM2": float(selected.primary_specific_kwh_m2),
-            "co2TotalKg": float(selected.co2_total_kg),
             "co2SpecificKgM2": float(selected.co2_specific_kg_m2),
             "energyClass": selected.energy_class,
             "designHeatLoadKw": selected.design_heat_load_kw,
