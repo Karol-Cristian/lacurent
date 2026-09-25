@@ -5343,7 +5343,7 @@
         strategy.innerHTML = `
           <div class="hln-strategy-lead">
             <strong>${escapeHtml(optimizationMeta.label || "Optimizare economică")} · amortizare ${payback}</strong>
-            <span>CAPEX parametric ${fmt(optimizationMeta.capexLei)} lei · economie anuală ${fmt(optimizationMeta.annualSavingLei)} lei/an · încălzire: ${escapeHtml(optimizationMeta.selectedHeating?.label || "sistemul actual")}${optimizationMeta.selectedHeating?.requiredPowerKw != null ? ` · necesar ${fmt(optimizationMeta.selectedHeating.requiredPowerKw,2)} kW → treaptă ${fmt(optimizationMeta.selectedHeating.ratedPowerKw,2)} kW` : ""}. Regula utilizatorului: ${escapeHtml(optimizationMeta.economicMode || "auto_economic")}.</span>
+            <span>CAPEX parametric ${fmt(optimizationMeta.capexLei)} lei · economie anuală ${fmt(optimizationMeta.annualSavingLei)} lei/an · încălzire: ${escapeHtml(optimizationMeta.selectedHeating?.label || "sistemul actual")}${optimizationMeta.selectedHeating?.requiredPowerKw != null ? ` · necesar ${fmt(optimizationMeta.selectedHeating.requiredPowerKw,2)} kW${optimizationMeta.selectedHeating?.ratedPowerKw != null ? " → produs " + fmt(optimizationMeta.selectedHeating.ratedPowerKw,2) + " kW" : ""}` : ""}. Regula utilizatorului: ${escapeHtml(optimizationMeta.economicMode || "auto_economic")}.</span>
           </div>
           ${selected.length ? `<div class="hln-strategy-list">${selected.map((item,index) => `
             <article><b>${index + 1}</b><div><strong>${escapeHtml(item.label || item.family)}</strong><small>parametru brut ${fmt(item.parameterValue,3)} ${escapeHtml(item.parameterUnit || "")} · CAPEX planificat ${fmt(item.capexLei)} lei</small></div></article>
