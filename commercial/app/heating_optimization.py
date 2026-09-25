@@ -315,8 +315,18 @@ def _same_generator_family(
     details = building.heating.details
     if details is not None and details.generator_type is not None:
         return details.generator_type == generator
-    if generator == HeatingGeneratorType.heat_pump_air_water:
-        return building.heating.system_type == HeatingSystemType.heat_pump
+    if generator in {
+        HeatingGeneratorType.heat_pump_air_water,
+        HeatingGeneratorType.heat_pump_ground_water,
+        HeatingGeneratorType.heat_pump_air_air,
+    }:
+        return (
+            building.heating.system_type == HeatingSystemType.heat_pump
+            and (
+                building.heating.details is None
+                or building.heating.details.generator_type == generator
+            )
+        )
     if generator == HeatingGeneratorType.condensing_gas_boiler:
         return building.heating.system_type == HeatingSystemType.condensing_gas_boiler
     return False
@@ -384,6 +394,19 @@ def _heating_details_for_product(
     data = model_to_dict(current)
     data["generator_type"] = product.generator_type.value
     data["auxiliary_electricity_kwh_year"] = None
+    if product.generator_type == HeatingGeneratorType.heat_pump_air_air:
+        # A split air-air unit is itself the emitter/distribution path. Do not
+        # inherit radiators or a hydronic circuit from the baseline house.
+        data.update(
+            {
+                "emitter_type": HeatingEmitterType.air.value,
+                "distribution_type": HeatingDistributionType.air.value,
+                "storage_type": "none",
+                "control_type": "room_thermostat",
+                "design_flow_temperature_c": None,
+                "design_return_temperature_c": None,
+            }
+        )
     return data
 
 
@@ -396,6 +419,11 @@ def _dhw_for_product(
         return dhw
 
     defaults = methodology()["dhw"]["system_defaults"]
+    if product.generator_type == HeatingGeneratorType.heat_pump_air_air:
+        # Air-air space heating does not heat domestic hot water. Preserve the
+        # baseline DHW performance instead of silently inventing a DHW heat pump.
+        dhw["system_type"] = "custom"
+        return dhw
     if product.system_type == HeatingSystemType.heat_pump:
         cfg = defaults["heat_pump_water_heater"]
         dhw["cop"] = float(cfg["cop"])
