@@ -431,7 +431,7 @@ def _rebase_candidate(
                 confidence=product.confidence,
                 catalog_unit="sized_equipment_plus_planning_installation_allowance",
                 note=(
-                    f"{technology.label}: necesar recalculat {required_power_kw:.2f} kW; "
+                    f"{product.label}: necesar recalculat {required_power_kw:.2f} kW; "
                     f"treaptă comercială selectată {product.rated_power_kw:.2f} kW "
                     f"(+{oversize_kw:.2f} kW / {oversize_pct:.1f}% peste necesarul de calcul). "
                     f"{product.note}"

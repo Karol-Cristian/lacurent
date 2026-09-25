@@ -52,10 +52,14 @@ def test_heating_catalog_groups_products_into_technology_branches() -> None:
     } <= ids
 
     hp = next(item for item in technologies if item.id == "heat-pump-air-water")
-    assert [item.rated_power_kw for item in hp.products] == [5, 8, 12, 15]
+    hp_powers = {round(item.rated_power_kw, 2) for item in hp.products}
+    assert {5.0, 7.0, 8.0, 12.0, 15.0} <= hp_powers
+    assert len(hp.products) >= 5
 
     electric = next(item for item in technologies if item.id == "electric-boiler")
-    assert [item.rated_power_kw for item in electric.products] == [6, 9, 12, 18]
+    electric_powers = {round(item.rated_power_kw, 2) for item in electric.products}
+    assert {5.94, 6.0, 8.91, 9.0, 12.0, 18.0} <= electric_powers
+    assert len(electric.products) >= 5
 
     for option in options:
         assert option.source_url
@@ -234,3 +238,47 @@ def test_no_universal_oversizing_margin_is_encoded_in_catalog_policy() -> None:
     policy = heating_planning_catalog()["sizing_policy"]
     assert policy["fixed_oversizing_margin_fraction"] == 0
     assert policy["basis"] == "design_heat_load_at_normative_winter_design_temperature"
+
+
+def test_real_product_catalog_has_at_least_five_products_per_heating_category() -> None:
+    options = heating_planning_options()
+    expectations = {
+        "heat-pump-air-water": (5, {"Mitsubishi", "Daikin", "LG", "NIBE", "Ariston"}),
+        "condensing-gas": (5, {"Ariston", "Bosch", "Vaillant", "Viessmann", "Immergas"}),
+        "electric-boiler": (5, {"Protherm", "Bosch", "Ferroli"}),
+        "pellet-boiler": (5, {"Ferroli", "BURNiT", "Fornello", "Thermostahl", "BIODOM"}),
+    }
+    for technology_id, (minimum, brands) in expectations.items():
+        products = [item for item in options if item.technology_id == technology_id]
+        assert len(products) >= minimum, (technology_id, [item.label for item in products])
+        assert all(item.label.strip() for item in products)
+        assert all(item.rated_power_kw > 0 for item in products)
+        assert all(item.equipment_price_lei > 0 for item in products)
+        assert all(item.source_url for item in products)
+        labels = " ".join(item.label for item in products)
+        for brand in brands:
+            assert brand in labels, (technology_id, brand, labels)
+
+
+def test_selected_heating_cost_line_exposes_exact_product_name() -> None:
+    baseline = demo_building()
+    hp = next(item for item in heating_technologies() if item.id == "heat-pump-air-water")
+    hp_building = apply_heating_technology(baseline, hp)
+    raw = evaluate_parametric_candidate(
+        hp_building,
+        ParametricMeasuresV1(window_target_u_w_m2k=0.9),
+        _catalog(),
+    )
+    baseline_bill = float(
+        estimate_energy_cost(calculate(baseline, include_reference=False))["priced_total_lei"]
+    )
+    sized = _rebase_candidate(
+        raw,
+        original_baseline_bill_lei=baseline_bill,
+        original_building=baseline,
+        technology=hp,
+    )
+    assert sized is not None
+    line = next(item for item in sized.cost_breakdown if item.family == "heating")
+    product = next(item for item in heating_planning_options() if item.id == line.product_id)
+    assert str(line.note).startswith(product.label + ":")
