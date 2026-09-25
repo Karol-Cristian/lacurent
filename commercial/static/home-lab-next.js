@@ -4013,6 +4013,41 @@
     return rows;
   }
 
+  function renderHeatingBranchTraceability() {
+    const node = $("#hlnReportHeatingBranches");
+    if (!node) return;
+    const branches = Array.isArray(optimizationMeta?.heatingBranches)
+      ? optimizationMeta.heatingBranches
+      : [];
+    if (optimizationMeta?.kind !== "parametric_economic" || !branches.length) {
+      node.innerHTML = '<p class="hln-report-empty">Acest scenariu nu a rulat o comparație mixtă a sistemelor de încălzire.</p>';
+      return;
+    }
+
+    const selectedId = optimizationMeta.selectedHeating?.optionId || "keep-current-heating";
+    node.innerHTML = `<div class="hln-strategy-list">${branches.map((branch,index) => {
+      const eligible = Boolean(branch.eligible);
+      const selected = String(branch.branch_id || "") === String(selectedId);
+      const status = selected
+        ? "SELECTAT"
+        : eligible
+          ? `${Number(branch.accepted_candidates || 0)} candidați tehnici valizi`
+          : "EXCLUS";
+      const detail = eligible
+        ? `${Number(branch.evaluated_candidates || 0)} recalculări · ${Number(branch.rejected_for_capacity || 0)} eliminate pentru putere insuficientă`
+        : (branch.note || "Infrastructură sau compatibilitate neconfirmată.");
+      return `
+        <article class="${selected ? "is-selected" : ""}">
+          <b>${index + 1}</b>
+          <div>
+            <strong>${escapeHtml(branch.label || branch.branch_id || "Sistem")}</strong>
+            <small>${escapeHtml(status)} · ${escapeHtml(detail)}</small>
+          </div>
+        </article>
+      `;
+    }).join("")}</div>`;
+  }
+
   function renderOptimizerTraceability() {
     const commercial = $("#hlnReportCommercialSolution");
     const rawNode = $("#hlnReportRawSolution");
@@ -4062,6 +4097,7 @@
   function renderReport() {
     if (!homeResult || !scenarioResult) return;
     renderOptimizerTraceability();
+    renderHeatingBranchTraceability();
 
     $("#hlnReportHomeClass").textContent = homeResult.energy_class || "—";
     $("#hlnReportScenarioClass").textContent = scenarioResult.energy_class || "—";

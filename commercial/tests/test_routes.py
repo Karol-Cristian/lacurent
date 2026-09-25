@@ -2523,3 +2523,15 @@ def test_home_lab_report_3d_stage_is_contained_by_positioned_wrapper() -> None:
     assert response.status_code == 200
     css = response.text.replace("\n", "")
     assert ".hln-report-3d-wrap{position:relative;" in css
+
+
+def test_home_lab_report_exposes_heating_branch_traceability() -> None:
+    response = client.get("/home-lab-next")
+    assert response.status_code == 200
+    assert 'id="hlnReportHeatingBranches"' in response.text
+
+    js = client.get("/static/home-lab-next.js")
+    assert js.status_code == 200
+    assert "renderHeatingBranchTraceability" in js.text
+    assert "heatingBranches" in js.text
+    assert "rejected_for_capacity" in js.text
