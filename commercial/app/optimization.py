@@ -940,6 +940,127 @@ def _fallback_refinement_seed(
     )
 
 
+def compact_refinement_candidate(
+    candidate: CandidateEvaluationV1,
+) -> dict[str, Any]:
+    """Return only fields needed to select a refinement seed."""
+    return {
+        "candidate_id": candidate.candidate_id,
+        "parameters": model_to_dict(candidate.parameters),
+        "capex_lei": float(candidate.capex_lei),
+        "annual_bill_lei": float(candidate.annual_bill_lei),
+        "annual_saving_lei": float(candidate.annual_saving_lei),
+        "payback_years": (
+            None if candidate.payback_years is None else float(candidate.payback_years)
+        ),
+    }
+
+
+def refinement_seed_from_compact(
+    request: OptimizationRequestV1,
+    rows: list[dict[str, Any]],
+) -> ParametricMeasuresV1 | None:
+    """Select a refinement seed without deserializing complete building results."""
+    compact: list[dict[str, Any]] = []
+    for row in rows:
+        if not isinstance(row, dict) or not isinstance(row.get("parameters"), dict):
+            continue
+        try:
+            compact.append({
+                "candidate_id": str(row.get("candidate_id") or ""),
+                "parameters": ParametricMeasuresV1(**row["parameters"]),
+                "capex_lei": float(row.get("capex_lei") or 0.0),
+                "annual_bill_lei": float(row.get("annual_bill_lei") or 0.0),
+                "annual_saving_lei": float(row.get("annual_saving_lei") or 0.0),
+                "payback_years": (
+                    None if row.get("payback_years") is None
+                    else float(row.get("payback_years"))
+                ),
+            })
+        except (TypeError, ValueError):
+            continue
+    if not compact:
+        return None
+
+    def pareto_pool(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        for item in items:
+            dominated = any(
+                other["candidate_id"] != item["candidate_id"]
+                and other["capex_lei"] <= item["capex_lei"] + 1e-9
+                and other["annual_bill_lei"] <= item["annual_bill_lei"] + 1e-9
+                and (
+                    other["capex_lei"] < item["capex_lei"] - 1e-9
+                    or other["annual_bill_lei"] < item["annual_bill_lei"] - 1e-9
+                )
+                for other in items
+            )
+            if not dominated:
+                out.append(item)
+        return out
+
+    selected: dict[str, Any] | None = None
+    if request.mode == OptimizationMode.investment_budget:
+        budget = float(request.investment_budget_lei)
+        feasible = [x for x in compact if x["capex_lei"] <= budget + 1e-6]
+        selected = (
+            min(feasible, key=lambda x: (-x["annual_saving_lei"], x["capex_lei"], x["annual_bill_lei"]))
+            if feasible
+            else max(compact, key=lambda x: (x["annual_saving_lei"], -x["capex_lei"]))
+        )
+    elif request.mode == OptimizationMode.annual_bill_target:
+        target = float(request.annual_bill_target_lei)
+        feasible = [x for x in compact if x["annual_bill_lei"] <= target + 1e-6]
+        selected = (
+            min(feasible, key=lambda x: (x["capex_lei"], x["annual_bill_lei"], -x["annual_saving_lei"]))
+            if feasible
+            else min(compact, key=lambda x: (x["annual_bill_lei"], x["capex_lei"]))
+        )
+    elif request.mode == OptimizationMode.max_payback_years:
+        limit = float(request.max_payback_years)
+        feasible = [
+            x for x in compact
+            if x["payback_years"] is not None
+            and x["payback_years"] <= limit + 1e-6
+            and x["annual_saving_lei"] > 0
+        ]
+        if feasible:
+            selected = min(feasible, key=lambda x: (-x["annual_saving_lei"], x["capex_lei"], x["payback_years"] or float("inf")))
+        else:
+            positive = [x for x in compact if x["capex_lei"] > 0 and x["annual_saving_lei"] > 0]
+            selected = (
+                max(positive, key=lambda x: (x["annual_saving_lei"] / x["capex_lei"], x["annual_saving_lei"]))
+                if positive
+                else max(compact, key=lambda x: (x["annual_saving_lei"], -x["capex_lei"]))
+            )
+    else:
+        pool = pareto_pool(compact) or compact
+        horizons = AUTO_ECONOMIC_HORIZONS_YEARS
+        rank_sum = {id(x): 0 for x in pool}
+        horizon_wins = {id(x): 0 for x in pool}
+        net = {
+            id(x): {h: x["annual_saving_lei"] * h - x["capex_lei"] for h in horizons}
+            for x in pool
+        }
+        for horizon in horizons:
+            ranked = sorted(pool, key=lambda x: (-net[id(x)][horizon], x["capex_lei"]))
+            best_net = net[id(ranked[0])][horizon]
+            for rank, item in enumerate(ranked):
+                rank_sum[id(item)] += rank + 1
+                if abs(net[id(item)][horizon] - best_net) <= 0.01:
+                    horizon_wins[id(item)] += 1
+        selected = min(
+            pool,
+            key=lambda x: (
+                rank_sum[id(x)],
+                -horizon_wins[id(x)],
+                -net[id(x)][20],
+                x["capex_lei"],
+            ),
+        )
+    return selected["parameters"] if selected is not None else None
+
+
 def run_parametric_optimization(
     payload: OptimizationSearchRequestV1,
     catalog: dict[str, Any],
