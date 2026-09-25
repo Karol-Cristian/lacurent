@@ -627,6 +627,427 @@ def _verification_candidates(
     return unique
 
 
+
+V2_WORKER_SHORTLIST_LIMIT = 6
+V2_WORKER_VERIFICATION_LIMIT = 3
+
+
+class WorkerSafePlanV2(BaseModel):
+    shortlist: list[ParametricMeasuresV1] = Field(default_factory=list)
+    branches: list[HeatingBranchSummaryV1] = Field(default_factory=list)
+    representative_candidates: list[CandidateEvaluationV1] = Field(default_factory=list)
+    representative_evaluations: int = 0
+    representative_pool_size: int = 0
+    search_method: str = "physics_informed_marginal_curve_worker_safe_v2"
+
+
+class WorkerSafeBranchResultV2(BaseModel):
+    branch: HeatingBranchSummaryV1
+    candidates: list[CandidateEvaluationV1] = Field(default_factory=list)
+    fast_evaluations: int = 0
+    search_method: str = "physics_informed_shortlist_branch_v2"
+
+
+class WorkerSafeVerificationResultV2(BaseModel):
+    candidates: list[CandidateEvaluationV1] = Field(default_factory=list)
+    candidate_branch_ids: dict[str, str] = Field(default_factory=dict)
+    full_engine_evaluations: int = 0
+    warnings: list[str] = Field(default_factory=list)
+
+
+def _axis_candidate_by_dimension(
+    rows: list[CandidateEvaluationV1],
+    bounds: OptimizationSearchBoundsV1,
+) -> tuple[
+    CandidateEvaluationV1 | None,
+    dict[tuple[int, float], CandidateEvaluationV1],
+]:
+    zero_signature = _measure_signature(
+        _measures_from_normalized([0.0] * 7, bounds)
+    )
+    by_signature = {
+        _measure_signature(item.parameters): item
+        for item in rows
+    }
+    zero = by_signature.get(zero_signature)
+    axis: dict[tuple[int, float], CandidateEvaluationV1] = {}
+    for dimension in range(7):
+        for level in V2_AXIS_LEVELS:
+            vector = [0.0] * 7
+            vector[dimension] = float(level)
+            item = by_signature.get(
+                _measure_signature(_measures_from_normalized(vector, bounds))
+            )
+            if item is not None:
+                axis[(dimension, float(level))] = item
+    return zero, axis
+
+
+def _marginal_curve_ladder(
+    context: _FastEvaluationContext,
+    *,
+    branch_id: str,
+    branch_baseline: BuildingInput,
+    technology: HeatingTechnologyV2 | None,
+    branch_baseline_cost: dict[str, Any],
+    axis_rows: list[CandidateEvaluationV1],
+) -> list[CandidateEvaluationV1]:
+    """Build a combined path from per-axis marginal curves.
+
+    Each dimension contributes two source-backed mathematical segments:
+    0→50% and 50→100%. Segment ordering is derived from isolated marginal
+    annual saving / marginal CAPEX. After every accepted segment the complete
+    combined physical candidate is recalculated, so interactions are visible
+    in the path without testing all seven alternatives again at every step.
+    This bounds representative search to <=29 fast evaluations instead of the
+    previous ~64 while preserving all seven dimensions.
+    """
+
+    zero, axis = _axis_candidate_by_dimension(axis_rows, context.bounds)
+    if zero is None:
+        return []
+
+    segment_scores: dict[tuple[int, int], tuple[float, float, float]] = {}
+    for dimension in range(7):
+        half = axis.get((dimension, 0.5))
+        full = axis.get((dimension, 1.0))
+        if half is not None:
+            segment_scores[(dimension, 1)] = _marginal_score(zero, half)
+        if half is not None and full is not None:
+            segment_scores[(dimension, 2)] = _marginal_score(half, full)
+
+    levels = [0] * 7
+    vector = [0.0] * 7
+    current = zero
+    ladder = [zero]
+
+    for _ in range(14):
+        eligible: list[
+            tuple[tuple[float, float, float], int, int]
+        ] = []
+        for dimension in range(7):
+            next_segment = levels[dimension] + 1
+            if next_segment > 2:
+                continue
+            score = segment_scores.get((dimension, next_segment))
+            if score is None:
+                continue
+            eligible.append((score, dimension, next_segment))
+        if not eligible:
+            break
+
+        score, dimension, next_segment = max(
+            eligible,
+            key=lambda row: (
+                row[0][0],
+                row[0][1],
+                row[0][2],
+                -row[1],
+            ),
+        )
+        # A segment that does not save energy cost is never useful for the
+        # economic frontier. Stop once every remaining eligible segment is
+        # non-beneficial.
+        if score[0] == -math.inf:
+            break
+
+        next_vector = list(vector)
+        next_vector[dimension] = 0.5 if next_segment == 1 else 1.0
+        candidate = _fast_branch_candidate(
+            context,
+            branch_id=branch_id,
+            measures=_measures_from_normalized(next_vector, context.bounds),
+            branch_baseline=branch_baseline,
+            technology=technology,
+            branch_baseline_cost=branch_baseline_cost,
+        )
+        levels[dimension] = next_segment
+        vector = next_vector
+        if candidate is None:
+            continue
+
+        # Combined interactions can make a segment cease to be useful even if
+        # its isolated marginal curve was positive. Keep the evaluated point
+        # for Pareto evidence, but do not advance "current" economically when
+        # annual saving moved backwards.
+        ladder.append(candidate)
+        if candidate.annual_saving_lei + 1e-6 >= current.annual_saving_lei:
+            current = candidate
+
+    return list({item.candidate_id: item for item in ladder}.values())
+
+
+def _worker_representative_pool(
+    context: _FastEvaluationContext,
+    *,
+    branch_id: str,
+    branch_baseline: BuildingInput,
+    technology: HeatingTechnologyV2 | None,
+    branch_baseline_cost: dict[str, Any],
+) -> list[CandidateEvaluationV1]:
+    axis_rows: list[CandidateEvaluationV1] = []
+    for measures in axis_probe_measures_v2(context.bounds):
+        item = _fast_branch_candidate(
+            context,
+            branch_id=branch_id,
+            measures=measures,
+            branch_baseline=branch_baseline,
+            technology=technology,
+            branch_baseline_cost=branch_baseline_cost,
+        )
+        if item is not None:
+            axis_rows.append(item)
+
+    ladder = _marginal_curve_ladder(
+        context,
+        branch_id=branch_id,
+        branch_baseline=branch_baseline,
+        technology=technology,
+        branch_baseline_cost=branch_baseline_cost,
+        axis_rows=axis_rows,
+    )
+    return list(
+        {
+            item.candidate_id: item
+            for item in [*axis_rows, *ladder]
+        }.values()
+    )
+
+
+def build_worker_safe_plan_v2(
+    request: OptimizationRequestV1,
+    *,
+    bounds: OptimizationSearchBoundsV1,
+    catalog: dict[str, Any],
+    heating_catalog: dict[str, Any] | None = None,
+    shortlist_limit: int = V2_WORKER_SHORTLIST_LIMIT,
+) -> WorkerSafePlanV2:
+    baseline_result, baseline_cost = cached_baseline_evaluation(request.baseline)
+    if not baseline_cost.get("complete"):
+        raise ValueError(
+            "Baseline annual bill is incomplete; optimizer V2 cannot run safely."
+        )
+
+    context = _FastEvaluationContext(
+        request=request,
+        bounds=bounds,
+        catalog=catalog,
+        baseline_result=baseline_result,
+        baseline_cost=baseline_cost,
+        baseline_bill_lei=float(baseline_cost["priced_total_lei"]),
+        heating_catalog=heating_catalog,
+        cache={},
+    )
+    branches = heating_branch_plan(request, heating_catalog)
+    economic = [
+        item
+        for item in branches
+        if item.eligible and item.economic_eligible
+    ]
+    if not economic:
+        return WorkerSafePlanV2(
+            branches=branches,
+            representative_evaluations=0,
+            representative_pool_size=0,
+        )
+
+    # The physical shortlist is intentionally learned on the current system.
+    # Heating alternatives are applied only after the shortlist exists. This
+    # prevents rediscovering the same envelope/PV/ventilation space once per
+    # generator technology.
+    representative = next(
+        (
+            item for item in economic
+            if item.branch_id == "keep-current-heating"
+        ),
+        economic[0],
+    )
+    technologies = {
+        item.id: item
+        for item in heating_technologies(heating_catalog)
+    }
+    representative_baseline, representative_technology = _branch_baseline(
+        request,
+        representative.branch_id,
+        technologies,
+    )
+    representative_pool = _worker_representative_pool(
+        context,
+        branch_id=representative.branch_id,
+        branch_baseline=representative_baseline,
+        technology=representative_technology,
+        branch_baseline_cost=baseline_cost,
+    )
+    shortlist = _shortlist_measures(
+        request,
+        representative_pool,
+        limit=shortlist_limit,
+    )
+    return WorkerSafePlanV2(
+        shortlist=shortlist,
+        branches=branches,
+        representative_candidates=representative_pool,
+        representative_evaluations=context.fast_evaluations,
+        representative_pool_size=len(representative_pool),
+    )
+
+
+def evaluate_worker_safe_branch_v2(
+    request: OptimizationRequestV1,
+    *,
+    branch_id: str,
+    shortlist: list[ParametricMeasuresV1],
+    bounds: OptimizationSearchBoundsV1,
+    catalog: dict[str, Any],
+    heating_catalog: dict[str, Any] | None = None,
+) -> WorkerSafeBranchResultV2:
+    baseline_result, baseline_cost = cached_baseline_evaluation(request.baseline)
+    if not baseline_cost.get("complete"):
+        raise ValueError(
+            "Baseline annual bill is incomplete; optimizer V2 cannot run safely."
+        )
+
+    branches = heating_branch_plan(request, heating_catalog)
+    branch = next(
+        (item for item in branches if item.branch_id == branch_id),
+        None,
+    )
+    if branch is None:
+        raise ValueError(f"Unknown heating branch {branch_id!r}.")
+    if not branch.eligible or not branch.economic_eligible:
+        return WorkerSafeBranchResultV2(branch=branch)
+
+    technologies = {
+        item.id: item
+        for item in heating_technologies(heating_catalog)
+    }
+    branch_baseline, technology = _branch_baseline(
+        request,
+        branch_id,
+        technologies,
+    )
+    context = _FastEvaluationContext(
+        request=request,
+        bounds=bounds,
+        catalog=catalog,
+        baseline_result=baseline_result,
+        baseline_cost=baseline_cost,
+        baseline_bill_lei=float(baseline_cost["priced_total_lei"]),
+        heating_catalog=heating_catalog,
+        cache={},
+    )
+
+    rows: list[CandidateEvaluationV1] = []
+    for measures in shortlist[:V2_WORKER_SHORTLIST_LIMIT]:
+        item = _fast_branch_candidate(
+            context,
+            branch_id=branch_id,
+            measures=measures,
+            branch_baseline=branch_baseline,
+            technology=technology,
+            # _rebase_candidate attaches economics to the original house, so a
+            # separate branch-zero billing pass is unnecessary here.
+            branch_baseline_cost=baseline_cost,
+        )
+        if item is not None:
+            rows.append(item)
+
+    branch_data = (
+        branch.model_dump()
+        if hasattr(branch, "model_dump")
+        else branch.dict()
+    )
+    selection = select_optimization_candidate_v2(request, rows)
+    branch_data["evaluated_candidates"] = context.fast_evaluations
+    branch_data["accepted_candidates"] = len(rows)
+    branch_data["feasible_candidates"] = selection.feasible_count
+    return WorkerSafeBranchResultV2(
+        branch=HeatingBranchSummaryV1(**branch_data),
+        candidates=rows,
+        fast_evaluations=context.fast_evaluations,
+    )
+
+
+def verify_worker_safe_finalists_v2(
+    request: OptimizationRequestV1,
+    *,
+    candidates: list[CandidateEvaluationV1],
+    candidate_branch_ids: dict[str, str],
+    catalog: dict[str, Any],
+    heating_catalog: dict[str, Any] | None = None,
+    verification_limit: int = V2_WORKER_VERIFICATION_LIMIT,
+) -> WorkerSafeVerificationResultV2:
+    if not candidates:
+        return WorkerSafeVerificationResultV2()
+
+    baseline_result, baseline_cost = cached_baseline_evaluation(request.baseline)
+    technologies = {
+        item.id: item
+        for item in heating_technologies(heating_catalog)
+    }
+    verification_rows = _verification_candidates(
+        request,
+        candidates,
+        limit=verification_limit,
+    )
+    verified: list[CandidateEvaluationV1] = []
+    verified_branch_ids: dict[str, str] = {}
+    warnings: list[str] = []
+
+    for fast_item in verification_rows:
+        branch_id = candidate_branch_ids.get(fast_item.candidate_id)
+        if not branch_id:
+            continue
+        branch_baseline, technology = _branch_baseline(
+            request,
+            branch_id,
+            technologies,
+        )
+        full_raw = evaluate_parametric_candidate(
+            branch_baseline,
+            fast_item.parameters,
+            catalog,
+            baseline_result=baseline_result,
+            baseline_cost=baseline_cost,
+        )
+        full_item = _rebase_candidate(
+            full_raw,
+            original_baseline_bill_lei=float(
+                baseline_cost["priced_total_lei"]
+            ),
+            original_building=request.baseline,
+            technology=technology,
+        )
+        if full_item is None:
+            continue
+
+        verified.append(full_item)
+        verified_branch_ids[full_item.candidate_id] = branch_id
+
+        bill_delta = abs(
+            float(full_item.annual_bill_lei)
+            - float(fast_item.annual_bill_lei)
+        )
+        load_delta = abs(
+            float(full_item.design_heat_load_kw or 0.0)
+            - float(fast_item.design_heat_load_kw or 0.0)
+        )
+        if bill_delta > 1.0 or load_delta > 0.02:
+            warnings.append(
+                (
+                    f"{branch_id}: fast/full delta {bill_delta:.2f} lei/an, "
+                    f"{load_delta:.3f} kW; canonical full-engine result retained."
+                )
+            )
+
+    return WorkerSafeVerificationResultV2(
+        candidates=verified,
+        candidate_branch_ids=verified_branch_ids,
+        full_engine_evaluations=len(verified),
+        warnings=warnings,
+    )
+
+
 def run_physics_informed_optimization(
     request: OptimizationRequestV1,
     *,
