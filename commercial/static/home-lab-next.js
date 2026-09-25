@@ -2642,14 +2642,19 @@
           );
 
           const body = optimizerBody();
-          body.set("_heating_branch_id", branchId);
-          body.set("_search_phase", phase);
-          if (phase === "refine") {
-            body.set("_prior_candidates_json", JSON.stringify(priorCandidates));
-          }
+          const formPayload = Object.fromEntries(body.entries());
           const branchCall = await fetchWithTimeout(
             "/api/optimization/home-lab/branch",
-            {method:"POST", body},
+            {
+              method:"POST",
+              headers:{"Content-Type":"application/json"},
+              body:JSON.stringify({
+                form:formPayload,
+                branchId,
+                searchPhase:phase,
+                priorCandidates:phase === "refine" ? priorCandidates : [],
+              }),
+            },
             optimizerAbortController?.signal || null,
             OPTIMIZER_REQUEST_TIMEOUT_MS
           );
@@ -2676,10 +2681,17 @@
       );
 
       const finalizeBody = optimizerBody();
-      finalizeBody.set("_branch_results_json", JSON.stringify(branchResults));
+      const finalizeForm = Object.fromEntries(finalizeBody.entries());
       const finalCall = await fetchWithTimeout(
         "/api/optimization/home-lab/finalize",
-        {method:"POST", body:finalizeBody},
+        {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({
+            form:finalizeForm,
+            branchResults,
+          }),
+        },
         optimizerAbortController?.signal || null,
         OPTIMIZER_REQUEST_TIMEOUT_MS
       );

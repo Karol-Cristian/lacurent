@@ -57,9 +57,21 @@ def _run_sharded(payload: dict[str, str]) -> tuple[dict, dict]:
             if phase == "refine":
                 branch_payload["_prior_candidates_json"] = json.dumps(prior_candidates)
 
+            form_payload = {
+                key: value
+                for key, value in branch_payload.items()
+                if not key.startswith("_heating_branch_id")
+                and not key.startswith("_search_phase")
+                and not key.startswith("_prior_candidates_json")
+            }
             response = client.post(
                 "/api/optimization/home-lab/branch",
-                data=branch_payload,
+                json={
+                    "form": form_payload,
+                    "branchId": branch_id,
+                    "searchPhase": phase,
+                    "priorCandidates": prior_candidates if phase == "refine" else [],
+                },
             )
             assert response.status_code == 200
             body = response.json()
@@ -73,11 +85,12 @@ def _run_sharded(payload: dict[str, str]) -> tuple[dict, dict]:
 
         assert len(prior_candidates) >= 18
 
-    finalize_payload = dict(payload)
-    finalize_payload["_branch_results_json"] = json.dumps(results)
     finalize_response = client.post(
         "/api/optimization/home-lab/finalize",
-        data=finalize_payload,
+        json={
+            "form": dict(payload),
+            "branchResults": results,
+        },
     )
     assert finalize_response.status_code in {200, 422}
     return plan, finalize_response.json()
