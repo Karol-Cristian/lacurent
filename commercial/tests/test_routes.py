@@ -562,7 +562,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next359-adaptive" in response.text
-    assert "/static/home-lab-next.js?v=next59-adaptive-intro" in response.text
+    assert "/static/home-lab-next.js?v=next60-sharded-optimizer" in response.text
     assert "/static/home-lab-3d.css?v=3d31" in response.text
     assert 'aria-label="Schiță conceptuală a casei"' not in response.text
     assert 'aria-label="Casă cu zone de îmbunătățire"' not in response.text
@@ -825,7 +825,9 @@ def test_home_lab_exposes_four_single_constraint_parametric_objectives() -> None
     assert 'body.set("_investment_budget_lei"' in source
     assert 'body.set("_annual_bill_target_lei"' in source
     assert 'body.set("_max_payback_years"' in source
-    assert '"/api/optimization/home-lab"' in source
+    assert '"/api/optimization/home-lab/plan"' in source
+    assert '"/api/optimization/home-lab/branch"' in source
+    assert '"/api/optimization/home-lab/finalize"' in source
     assert "heatingBranchEvaluations" in source
     assert "selectedHeating" in source
     assert '["economic-auto","economic-budget","economic-bill","economic-payback"].includes(action)' in source
@@ -1935,7 +1937,7 @@ def test_home_lab_issue_359_adaptive_intro_contract() -> None:
     assert response.status_code == 200
     assert response.text.count('class="hln-screen-intro-copy"') == 2
     assert "/static/home-lab-next.css?v=next359-adaptive" in response.text
-    assert "/static/home-lab-next.js?v=next59-adaptive-intro" in response.text
+    assert "/static/home-lab-next.js?v=next60-sharded-optimizer" in response.text
 
     css = client.get("/static/home-lab-next.css")
     assert css.status_code == 200
