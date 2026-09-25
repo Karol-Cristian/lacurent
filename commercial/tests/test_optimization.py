@@ -126,6 +126,33 @@ def test_added_wall_r_is_applied_directly_to_whole_wall_u() -> None:
     assert warnings == []
 
 
+def test_ventilation_heat_recovery_is_a_raw_optimizer_variable() -> None:
+    baseline = demo_building()
+    measures = ParametricMeasuresV1(
+        ventilation_heat_recovery_efficiency_target=0.75,
+    )
+
+    candidate, warnings = apply_parametric_measures(baseline, measures)
+
+    assert candidate.ventilation.heat_recovery_efficiency == pytest.approx(0.75)
+    assert candidate.ventilation.air_changes_per_hour == pytest.approx(
+        baseline.ventilation.air_changes_per_hour
+    )
+    assert any("Ventilation heat recovery is optimized" in item for item in warnings)
+
+    baseline_result = calculate(baseline, include_reference=False)
+    capex, lines, cost_warnings = parametric_capex(
+        baseline_result,
+        measures,
+        _catalog(),
+    )
+    ventilation_line = next(item for item in lines if item.family == "ventilation")
+    assert capex == pytest.approx(8000)
+    assert ventilation_line.parameter_value == pytest.approx(0.75)
+    assert ventilation_line.parameter_unit == "heat_recovery_efficiency_target"
+    assert any("optimizerul variază parametrul fizic" in item for item in cost_warnings)
+
+
 def test_wall_capex_is_continuous_in_added_r_not_commercial_steps() -> None:
     baseline = demo_building()
     result = calculate(baseline, include_reference=False)
