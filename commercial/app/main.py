@@ -2589,14 +2589,21 @@ async def home_lab_optimization_finalize_api(request: Request) -> JSONResponse:
             warnings.extend(str(value) for value in (item.get("warnings") or []))
 
             candidate_rows = item.get("candidates") or []
-            for candidate_raw in candidate_rows:
-                if isinstance(candidate_raw, dict):
-                    finalists.append(CandidateEvaluationV1(**candidate_raw))
-            if not candidate_rows:
-                selection_raw = item.get("selection") or {}
-                selected_raw = selection_raw.get("selected")
-                if selected_raw:
-                    finalists.append(CandidateEvaluationV1(**selected_raw))
+            if branch.economic_eligible:
+                for candidate_raw in candidate_rows:
+                    if isinstance(candidate_raw, dict):
+                        finalists.append(CandidateEvaluationV1(**candidate_raw))
+                if not candidate_rows:
+                    selection_raw = item.get("selection") or {}
+                    selected_raw = selection_raw.get("selected")
+                    if selected_raw:
+                        finalists.append(CandidateEvaluationV1(**selected_raw))
+            elif candidate_rows:
+                warnings.append(
+                    f"{branch.label}: ramura a fost calculată tehnic, dar nu a intrat "
+                    "în selecția economică deoarece nu are încă un cost instalat "
+                    "source-backed."
+                )
 
         branch_summaries = list(branch_summaries_by_id.values())
 
