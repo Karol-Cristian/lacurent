@@ -609,6 +609,67 @@ def _stable_mixed_id(
     return "OPT-MIX-" + hashlib.sha256(raw).hexdigest()[:12].upper()
 
 
+def _planning_heating_capex(
+    building: BuildingInput,
+    technology: HeatingTechnologyV2,
+    required_power_kw: float,
+) -> tuple[float, float, float, int] | None:
+    """Interpolate a raw kW->CAPEX curve without selecting a commercial SKU.
+
+    Product observations are used only as market points for the planning curve.
+    The optimizer therefore stays continuous in required design power. Real
+    generator selection is intentionally deferred until after the economic
+    finalist has been chosen.
+    """
+
+    eligible_products = [
+        product
+        for product in technology.products
+        if _product_infrastructure_eligible(building, product)
+    ]
+    if not eligible_products:
+        return None
+
+    by_power: dict[float, float] = {}
+    for product in eligible_products:
+        power = float(product.rated_power_kw)
+        capex = float(product.installed_capex_lei)
+        previous = by_power.get(power)
+        if previous is None or capex < previous:
+            by_power[power] = capex
+
+    points = sorted(by_power.items())
+    if not points:
+        return None
+    min_power = float(points[0][0])
+    max_power = float(points[-1][0])
+    target = max(float(required_power_kw), 0.0)
+    if target > max_power + 1e-9:
+        return None
+
+    if target <= min_power + 1e-9:
+        return round(float(points[0][1]), 2), min_power, max_power, len(points)
+
+    lower_power, lower_cost = points[0]
+    upper_power, upper_cost = points[-1]
+    for index in range(1, len(points)):
+        candidate_upper = points[index]
+        if target <= float(candidate_upper[0]) + 1e-9:
+            lower_power, lower_cost = points[index - 1]
+            upper_power, upper_cost = candidate_upper
+            break
+
+    span = float(upper_power) - float(lower_power)
+    if span <= 1e-9:
+        interpolated = float(upper_cost)
+    else:
+        fraction = (target - float(lower_power)) / span
+        interpolated = float(lower_cost) + fraction * (
+            float(upper_cost) - float(lower_cost)
+        )
+    return round(interpolated, 2), min_power, max_power, len(points)
+
+
 def _rebase_candidate(
     candidate: CandidateEvaluationV1,
     *,
@@ -616,126 +677,98 @@ def _rebase_candidate(
     original_building: BuildingInput,
     technology: HeatingTechnologyV2 | None,
 ) -> CandidateEvaluationV1 | None:
+    """Attach branch economics without commercializing the generator.
+
+    The expensive V3 path selected a real product for every raw candidate and,
+    for air-water heat pumps, could run the complete building engine a second
+    time with product-specific COP data. That mixed mathematical search and
+    commercialization and amplified Cloudflare CPU pressure. V4 keeps the raw
+    technology calculation authoritative here; product matching happens only
+    for finalists.
+    """
+
     lines = [line for line in candidate.cost_breakdown if line.family != "heating"]
     assumptions = list(candidate.assumptions)
     warnings = list(candidate.warnings)
     branch_id = "keep-current-heating"
-    product: HeatingPlanningOptionV1 | None = None
     required_power_kw = _required_generator_power_kw(candidate)
 
     if technology is not None:
         branch_id = technology.id
         if required_power_kw is None:
             return None
-        product = _select_sized_product(
+
+        planning = _planning_heating_capex(
             original_building,
             technology,
             required_power_kw,
         )
-        if product is None:
+        if planning is None:
             return None
-
-        oversize_kw = max(float(product.rated_power_kw) - required_power_kw, 0.0)
-        oversize_pct = (
-            100.0 * oversize_kw / required_power_kw
-            if required_power_kw > 1e-9
-            else 0.0
-        )
+        planning_capex, min_power, max_power, point_count = planning
         lines.append(
             CostLineV1(
                 family="heating",
-                capex_lei=round(product.installed_capex_lei, 2),
-                parameter_value=float(product.rated_power_kw),
-                parameter_unit="kW_rated",
-                source_kind=product.source_kind,
-                source_url=product.source_url,
-                confidence=product.confidence,
-                catalog_unit="sized_equipment_plus_planning_installation_allowance",
+                capex_lei=round(planning_capex, 2),
+                parameter_value=round(float(required_power_kw), 4),
+                parameter_unit="kW_design_required",
+                source_kind="product_derived_parametric_curve",
+                source_url=None,
+                confidence="market_derived",
+                catalog_unit="lei_total_as_function_of_design_kW",
                 note=(
-                    f"{product.label}: necesar recalculat {required_power_kw:.2f} kW; "
-                    f"treaptă comercială selectată {product.rated_power_kw:.2f} kW "
-                    f"(+{oversize_kw:.2f} kW / {oversize_pct:.1f}% peste necesarul de calcul). "
-                    f"{product.note}"
+                    f"{technology.label}: necesar termic recalculat "
+                    f"{required_power_kw:.2f} kW; CAPEX parametric interpolat din "
+                    f"{point_count} trepte comerciale observate pe plaja "
+                    f"{min_power:.2f}–{max_power:.2f} kW. Niciun SKU nu este selectat "
+                    "în această etapă."
                 ),
-                product_id=product.id,
-                quantity=1,
-                quantity_unit="system",
-                material_subtotal_lei=round(float(product.equipment_price_lei), 2),
-                nonmaterial_subtotal_lei=round(float(product.installation_allowance_lei), 2),
             )
         )
         assumptions.extend(
             [
                 f"Heating technology branch: {technology.label}.",
                 (
-                    f"Generator sizing is recalculated for this candidate from the "
-                    f"design heat load: {required_power_kw:.2f} kW."
+                    f"Generator design power is recalculated for this complete candidate: "
+                    f"{required_power_kw:.2f} kW."
                 ),
                 "No arbitrary fixed oversizing factor is applied.",
                 (
-                    f"Commercial sizing rounds upward to {product.rated_power_kw:.2f} kW "
-                    f"using the current planning catalog."
+                    "Heating CAPEX is a continuous planning curve derived from real catalog "
+                    "observations; real product/SKU selection is deferred until finalist "
+                    "commercialization."
                 ),
-                "Existing emitters/distribution are preserved; conversion of emitters is not silently assumed.",
+                "Existing emitters/distribution are preserved unless the technical branch explicitly changes them.",
             ]
         )
-        if product.capacity_basis == "catalog_nominal_output" and product.generator_type == HeatingGeneratorType.heat_pump_air_water:
+
+        generator = technology.representative.generator_type
+        if generator == HeatingGeneratorType.heat_pump_air_water:
             warnings.append(
-                "Puterea pompei de căldură este momentan puterea nominală de catalog; "
-                "capacitatea disponibilă la temperatura exterioară de calcul trebuie "
-                "validată pe curba producătorului înainte de recomandarea finală."
+                "Raw air-water heat-pump search uses the technology-level LaCurent Light "
+                "performance model. Manufacturer COP/capacity curves are intentionally "
+                "deferred to finalist product matching, so the engine is not rerun once per SKU."
+            )
+        if generator == HeatingGeneratorType.condensing_gas_boiler:
+            warnings.append(
+                "Minimum modulation power remains a finalist/product check; the raw branch "
+                "sizes only the required design capacity."
+            )
+        if generator == HeatingGeneratorType.electric_boiler:
+            warnings.append(
+                "Electrical service capacity/protection remains a downstream implementation check."
+            )
+        if generator == HeatingGeneratorType.pellet_boiler:
+            warnings.append(
+                "Chimney, plant-room and fuel-storage constraints remain downstream implementation checks."
             )
         if (
-            product.generator_type == HeatingGeneratorType.heat_pump_air_water
-            and candidate.resulting_configuration is not None
+            original_building.dhw.enabled
+            and original_building.dhw.system_type.value == "same_as_heating"
         ):
-            estimated_scop, hp_assumptions = _estimated_heat_pump_scop(
-                candidate.resulting_configuration,
-                product,
-            )
-            assumptions.extend(hp_assumptions)
-            if estimated_scop is not None:
-                hp_payload = model_to_dict(candidate.resulting_configuration)
-                hp_payload["heating"]["scop"] = float(estimated_scop)
-                hp_building = BuildingInput(**hp_payload)
-                hp_result = calculate(hp_building, include_reference=False)
-                hp_cost = estimate_energy_cost(hp_result)
-                if hp_cost.get("complete"):
-                    candidate_data = model_to_dict(candidate)
-                    candidate_data.update(
-                        {
-                            "annual_bill_lei": round(float(hp_cost["priced_total_lei"]), 2),
-                            "final_energy_kwh": round(float(hp_result.total_final_energy_kwh), 3),
-                            "primary_specific_kwh_m2": round(
-                                float(hp_result.primary_energy.specific_kwh_m2), 3
-                            ),
-                            "co2_total_kg": round(float(hp_result.co2.total_kg), 3),
-                            "co2_specific_kg_m2": round(
-                                float(hp_result.co2.specific_kg_m2), 3
-                            ),
-                            "energy_class": hp_result.energy_class,
-                            "resulting_configuration": model_to_dict(hp_building),
-                        }
-                    )
-                    candidate = CandidateEvaluationV1(**candidate_data)
-
-        if product.generator_type == HeatingGeneratorType.condensing_gas_boiler:
             warnings.append(
-                "La centrala pe gaz trebuie verificată și puterea minimă de modulare; "
-                "optimizerul dimensionează momentan după puterea maximă necesară."
-            )
-        if product.generator_type == HeatingGeneratorType.electric_boiler and product.requires_existing_high_power_electric:
-            warnings.append(
-                "Treapta electrică selectată necesită validarea branșamentului, protecțiilor și puterii aprobate."
-            )
-        if product.generator_type == HeatingGeneratorType.pellet_boiler:
-            warnings.append(
-                "Centrala pe peleți necesită validarea coșului, spațiului tehnic și depozitării combustibilului."
-            )
-        if original_building.dhw.enabled and original_building.dhw.system_type.value == "same_as_heating":
-            warnings.append(
-                "Dimensionarea generatorului din această versiune folosește sarcina de încălzire a spațiilor; "
-                "puterea de vârf pentru ACM / strategia de acumulare trebuie verificată separat la discretizarea finală."
+                "Generator design power in this optimizer uses the space-heating design load; "
+                "DHW peak/storage sizing is checked at final equipment selection."
             )
 
     capex = sum(float(line.capex_lei) for line in lines)
@@ -750,7 +783,7 @@ def _rebase_candidate(
             "candidate_id": _stable_mixed_id(
                 candidate.candidate_id,
                 branch_id,
-                product.id if product else None,
+                None,
             ),
             "capex_lei": round(capex, 2),
             "baseline_annual_bill_lei": round(float(original_baseline_bill_lei), 2),
@@ -768,7 +801,6 @@ def _rebase_candidate(
         }
     )
     return CandidateEvaluationV1(**data)
-
 
 def _branch_request(
     request: OptimizationRequestV1,
