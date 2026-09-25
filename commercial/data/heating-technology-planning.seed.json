@@ -27,7 +27,8 @@
       "requires_hydronic": true,
       "requires_existing_gas": true,
       "capacity_basis": "catalog_heating_output",
-      "note": "Putere nominală declarată pentru încălzire; ACM poate impune separat o treaptă comercială mai mare."
+      "note": "Putere nominală declarată pentru încălzire; ACM poate impune separat o treaptă comercială mai mare.",
+      "external_id": "gas-ferroli-alpha-20-6"
     },
     {
       "technology_id": "condensing-gas",
@@ -47,7 +48,8 @@
       "requires_hydronic": true,
       "requires_existing_gas": true,
       "capacity_basis": "catalog_heating_output",
-      "note": "Putere de încălzire declarată 24 kW; 30 kW este puterea pentru ACM."
+      "note": "Putere de încălzire declarată 24 kW; 30 kW este puterea pentru ACM.",
+      "external_id": "gas-termet-24"
     },
     {
       "technology_id": "condensing-gas",
@@ -67,7 +69,8 @@
       "requires_hydronic": true,
       "requires_existing_gas": true,
       "capacity_basis": "catalog_nominal_output",
-      "note": "Reper comercial de putere superioară; puterea minimă de modulare nu este încă inclusă în optimizer."
+      "note": "Reper comercial de putere superioară; puterea minimă de modulare nu este încă inclusă în optimizer.",
+      "external_id": "gas-ariston-clas-one-30"
     },
     {
       "technology_id": "heat-pump-air-water",
@@ -86,7 +89,8 @@
       "confidence": "medium",
       "requires_hydronic": true,
       "capacity_basis": "catalog_nominal_output",
-      "note": "Putere nominală de catalog; capacitatea disponibilă exact la temperatura exterioară de calcul trebuie validată pe curba producătorului înainte de recomandare comercială finală."
+      "note": "Putere nominală de catalog; capacitatea disponibilă exact la temperatura exterioară de calcul trebuie validată pe curba producătorului înainte de recomandare comercială finală.",
+      "external_id": "hp-ariston-5"
     },
     {
       "technology_id": "heat-pump-air-water",
@@ -105,7 +109,8 @@
       "confidence": "medium",
       "requires_hydronic": true,
       "capacity_basis": "catalog_nominal_output",
-      "note": "Putere nominală de catalog; capacitatea la temperatura exterioară de calcul rămâne de verificat."
+      "note": "Putere nominală de catalog; capacitatea la temperatura exterioară de calcul rămâne de verificat.",
+      "external_id": "hp-ariston-8"
     },
     {
       "technology_id": "heat-pump-air-water",
@@ -124,7 +129,8 @@
       "confidence": "medium",
       "requires_hydronic": true,
       "capacity_basis": "catalog_nominal_output",
-      "note": "Putere nominală de catalog; capacitatea la temperatura exterioară de calcul rămâne de verificat."
+      "note": "Putere nominală de catalog; capacitatea la temperatura exterioară de calcul rămâne de verificat.",
+      "external_id": "hp-ariston-12"
     },
     {
       "technology_id": "heat-pump-air-water",
@@ -143,7 +149,8 @@
       "confidence": "medium",
       "requires_hydronic": true,
       "capacity_basis": "catalog_nominal_output",
-      "note": "Putere nominală de catalog; capacitatea la temperatura exterioară de calcul rămâne de verificat."
+      "note": "Putere nominală de catalog; capacitatea la temperatura exterioară de calcul rămâne de verificat.",
+      "external_id": "hp-ariston-15"
     },
     {
       "technology_id": "electric-boiler",
@@ -164,7 +171,8 @@
       "requires_hydronic": true,
       "requires_existing_high_power_electric": false,
       "capacity_basis": "catalog_nominal_output",
-      "note": "Varianta de 6 kW poate fi conectată și monofazat conform informațiilor produsului; instalația electrică reală trebuie verificată."
+      "note": "Varianta de 6 kW poate fi conectată și monofazat conform informațiilor produsului; instalația electrică reală trebuie verificată.",
+      "external_id": "electric-protherm-6"
     },
     {
       "technology_id": "electric-boiler",
@@ -185,7 +193,8 @@
       "requires_hydronic": true,
       "requires_existing_high_power_electric": true,
       "capacity_basis": "catalog_nominal_output",
-      "note": "Necesită validarea branșamentului și protecțiilor electrice."
+      "note": "Necesită validarea branșamentului și protecțiilor electrice.",
+      "external_id": "electric-protherm-9"
     },
     {
       "technology_id": "electric-boiler",
@@ -206,7 +215,8 @@
       "requires_hydronic": true,
       "requires_existing_high_power_electric": true,
       "capacity_basis": "catalog_nominal_output",
-      "note": "Necesită validarea branșamentului și protecțiilor electrice."
+      "note": "Necesită validarea branșamentului și protecțiilor electrice.",
+      "external_id": "electric-protherm-12"
     },
     {
       "technology_id": "electric-boiler",
@@ -227,7 +237,8 @@
       "requires_hydronic": true,
       "requires_existing_high_power_electric": true,
       "capacity_basis": "catalog_nominal_output",
-      "note": "Necesită validarea branșamentului și protecțiilor electrice."
+      "note": "Necesită validarea branșamentului și protecțiilor electrice.",
+      "external_id": "electric-protherm-18"
     },
     {
       "technology_id": "pellet-boiler",
@@ -248,7 +259,8 @@
       "requires_hydronic": true,
       "requires_existing_biomass_infrastructure": true,
       "capacity_basis": "catalog_nominal_output",
-      "note": "Randamentul sezonier 0,88 este ipoteză de planificare; coșul, spațiul tehnic și logistica peleților trebuie validate."
+      "note": "Randamentul sezonier 0,88 este ipoteză de planificare; coșul, spațiul tehnic și logistica peleților trebuie validate.",
+      "external_id": "pellet-ferroli-18"
     },
     {
       "technology_id": "pellet-boiler",
@@ -269,7 +281,8 @@
       "requires_hydronic": true,
       "requires_existing_biomass_infrastructure": true,
       "capacity_basis": "catalog_nominal_output",
-      "note": "Reper de catalog Dedeman; costul exact de montaj/coș rămâne de validat."
+      "note": "Reper de catalog Dedeman; costul exact de montaj/coș rămâne de validat.",
+      "external_id": "pellet-ferroli-24"
     },
     {
       "technology_id": "pellet-boiler",
@@ -290,7 +303,8 @@
       "requires_hydronic": true,
       "requires_existing_biomass_infrastructure": true,
       "capacity_basis": "catalog_nominal_output",
-      "note": "Reper de catalog Dedeman; costul exact de montaj/coș rămâne de validat."
+      "note": "Reper de catalog Dedeman; costul exact de montaj/coș rămâne de validat.",
+      "external_id": "pellet-ferroli-30"
     },
     {
       "technology_id": "heat-pump-air-water",
@@ -309,7 +323,8 @@
       "source_kind": "romanian_market_price_plus_installation_allowance",
       "source_url": "https://pompa-de-caldura.compari.ro/mitsubishi/puz-swm80vaa-p1315524346/",
       "confidence": "medium",
-      "note": "Model Power Inverter R32, reper piață RO. Capacitatea la temperatura exterioară de calcul trebuie validată pe curba producătorului."
+      "note": "Model Power Inverter R32, reper piață RO. Capacitatea la temperatura exterioară de calcul trebuie validată pe curba producătorului.",
+      "external_id": "hp-mitsubishi-ecodan-puz-swm80vaa"
     },
     {
       "technology_id": "heat-pump-air-water",
@@ -328,7 +343,8 @@
       "source_kind": "romanian_market_price_plus_installation_allowance",
       "source_url": "https://pompa-de-caldura.compari.ro/daikin/altherma-3-m-8kw-ebla08e3v3-p908597100/",
       "confidence": "medium",
-      "note": "Monobloc reversibil R32. Capacitatea la temperatura exterioară de calcul trebuie validată din datele Daikin."
+      "note": "Monobloc reversibil R32. Capacitatea la temperatura exterioară de calcul trebuie validată din datele Daikin.",
+      "external_id": "hp-daikin-altherma3m-ebla08e3v3"
     },
     {
       "technology_id": "heat-pump-air-water",
@@ -347,7 +363,8 @@
       "source_kind": "romanian_market_price_plus_installation_allowance",
       "source_url": "https://pompa-de-caldura.compari.ro/lg/therma-v-hm071mr-u44-p792800289/",
       "confidence": "medium",
-      "note": "LG publică 7 kW la A7/W35 și 5,6 kW la A2/W35; curba la temperatura exterioară de calcul trebuie verificată."
+      "note": "LG publică 7 kW la A7/W35 și 5,6 kW la A2/W35; curba la temperatura exterioară de calcul trebuie verificată.",
+      "external_id": "hp-lg-therma-v-hm071mr-u44"
     },
     {
       "technology_id": "heat-pump-air-water",
@@ -366,7 +383,8 @@
       "source_kind": "romanian_market_price_plus_installation_allowance",
       "source_url": "https://pompa-de-caldura.compari.ro/nibe/s2125-8-400-v-064219-p1016606635/",
       "confidence": "medium",
-      "note": "R290, temperatură de tur ridicată; preț reper pentru unitatea externă. Capacitatea exactă la temperatura de calcul se validează pe curba NIBE."
+      "note": "R290, temperatură de tur ridicată; preț reper pentru unitatea externă. Capacitatea exactă la temperatura de calcul se validează pe curba NIBE.",
+      "external_id": "hp-nibe-s2125-8-400v"
     },
     {
       "technology_id": "condensing-gas",
@@ -386,7 +404,8 @@
       "source_url": "https://www.compari.ro/centrale-termice-si-sobe-c4026/ariston/clas-one-wifi-24-kw-3302123-p845842803/",
       "confidence": "medium",
       "capacity_basis": "catalog_useful_output_80_60",
-      "note": "Ariston declară 21,4 kW utili la 80/60 °C și 23,6 kW la 50/30 °C; modularea minimă trebuie verificată."
+      "note": "Ariston declară 21,4 kW utili la 80/60 °C și 23,6 kW la 50/30 °C; modularea minimă trebuie verificată.",
+      "external_id": "gas-ariston-clas-one-wifi-24"
     },
     {
       "technology_id": "condensing-gas",
@@ -406,7 +425,8 @@
       "source_url": "https://www.compari.ro/centrale-termice-si-sobe-c4026/bosch/condens-2300i-w-24-30-c-23-7736902960-p710373852/",
       "confidence": "medium",
       "capacity_basis": "catalog_nominal_output",
-      "note": "Bosch declară 24 kW nominal la 80/60 °C; puterea minimă și modularea trebuie verificate."
+      "note": "Bosch declară 24 kW nominal la 80/60 °C; puterea minimă și modularea trebuie verificate.",
+      "external_id": "gas-bosch-condens-2300iw-24"
     },
     {
       "technology_id": "condensing-gas",
@@ -426,7 +446,8 @@
       "source_url": "https://www.compari.ro/centrale-termice-si-sobe-c4026/vaillant/ecotec-pure-vuw-236-7-2-0010019976-p356593435/",
       "confidence": "medium",
       "capacity_basis": "catalog_heating_output",
-      "note": "Reper comercial RO; puterea minimă de modulare trebuie inclusă ulterior în filtrul de dimensionare."
+      "note": "Reper comercial RO; puterea minimă de modulare trebuie inclusă ulterior în filtrul de dimensionare.",
+      "external_id": "gas-vaillant-ecotec-pure-vuw236"
     },
     {
       "technology_id": "condensing-gas",
@@ -446,7 +467,8 @@
       "source_url": "https://www.compari.ro/centrale-termice-si-sobe-c4026/viessmann/vitodens-050-w-25-b0ka-gn-gpl-z024826-p756488199/",
       "confidence": "medium",
       "capacity_basis": "catalog_nominal_output",
-      "note": "Reper comercial RO pentru Vitodens 050-W B0KA; modularea minimă trebuie verificată în etapa finală."
+      "note": "Reper comercial RO pentru Vitodens 050-W B0KA; modularea minimă trebuie verificată în etapa finală.",
+      "external_id": "gas-viessmann-vitodens050w-25"
     },
     {
       "technology_id": "condensing-gas",
@@ -466,7 +488,8 @@
       "source_url": "https://www.compari.ro/centrale-termice-si-sobe-c4026/immergas/victrix-tera-24-plus-v3-3-036306-p1312370698/",
       "confidence": "medium",
       "capacity_basis": "catalog_useful_output_80_60",
-      "note": "Putere utilă maximă 24 kW la 80/60 °C; puterea utilă minimă ~4,3 kW trebuie folosită ulterior la verificarea ciclării."
+      "note": "Putere utilă maximă 24 kW la 80/60 °C; puterea utilă minimă ~4,3 kW trebuie folosită ulterior la verificarea ciclării.",
+      "external_id": "gas-immergas-victrix-tera24plus-v3"
     },
     {
       "technology_id": "electric-boiler",
@@ -487,7 +510,8 @@
       "confidence": "medium",
       "requires_existing_high_power_electric": false,
       "capacity_basis": "catalog_heating_output",
-      "note": "Bosch declară 5,94 kW putere de încălzire; instalația electrică reală trebuie verificată."
+      "note": "Bosch declară 5,94 kW putere de încălzire; instalația electrică reală trebuie verificată.",
+      "external_id": "electric-bosch-tronic3500-6"
     },
     {
       "technology_id": "electric-boiler",
@@ -508,7 +532,8 @@
       "confidence": "medium",
       "requires_existing_high_power_electric": true,
       "capacity_basis": "catalog_heating_output",
-      "note": "Bosch declară 8,91 kW putere de încălzire; branșamentul și protecțiile trebuie validate."
+      "note": "Bosch declară 8,91 kW putere de încălzire; branșamentul și protecțiile trebuie validate.",
+      "external_id": "electric-bosch-tronic3500-9"
     },
     {
       "technology_id": "electric-boiler",
@@ -529,7 +554,8 @@
       "confidence": "medium",
       "requires_existing_high_power_electric": false,
       "capacity_basis": "catalog_nominal_output",
-      "note": "Ferroli TOR 6 este 220–240 V, 6 kW; instalația electrică și curentul disponibil trebuie verificate."
+      "note": "Ferroli TOR 6 este 220–240 V, 6 kW; instalația electrică și curentul disponibil trebuie verificate.",
+      "external_id": "electric-ferroli-tor6"
     },
     {
       "technology_id": "electric-boiler",
@@ -550,7 +576,8 @@
       "confidence": "medium",
       "requires_existing_high_power_electric": true,
       "capacity_basis": "catalog_nominal_output",
-      "note": "Ferroli TOR 9 este 220–240 V, 9 kW; necesarul de curent și protecțiile trebuie validate."
+      "note": "Ferroli TOR 9 este 220–240 V, 9 kW; necesarul de curent și protecțiile trebuie validate.",
+      "external_id": "electric-ferroli-tor9"
     },
     {
       "technology_id": "pellet-boiler",
@@ -571,7 +598,8 @@
       "source_kind": "romanian_market_price_plus_installation_allowance",
       "source_url": "https://www.dechor.ro/produse?categorie=centrale-peleti-fornello",
       "confidence": "medium",
-      "note": "BURNiT publică 18 kW nominal și eficiență de referință ~90,6%; coșul și camera tehnică se verifică separat."
+      "note": "BURNiT publică 18 kW nominal și eficiență de referință ~90,6%; coșul și camera tehnică se verifică separat.",
+      "external_id": "pellet-burnit-pell-easy20"
     },
     {
       "technology_id": "pellet-boiler",
@@ -592,7 +620,8 @@
       "source_kind": "romanian_market_price_plus_installation_allowance",
       "source_url": "https://www.pricy.ro/ProductUrlId/termosemineu-centrala-peleti-fornello-royal-25-kw---complet-echipat-pentru-incalzire--pompa--vas-expansiune--automatizare--telecomanda--buncar-peleti-tiraj-fortat-culoare-ivory--crem---fornello-3340F9AA8E215A26FACD39B2D5B7002B",
       "confidence": "medium",
-      "note": "Termoșemineu hidronic 25 kW, randament declarat 90–93%; preț reper pentru echipament complet."
+      "note": "Termoșemineu hidronic 25 kW, randament declarat 90–93%; preț reper pentru echipament complet.",
+      "external_id": "pellet-fornello-royal25"
     },
     {
       "technology_id": "pellet-boiler",
@@ -613,7 +642,8 @@
       "source_kind": "romanian_market_price_plus_installation_allowance",
       "source_url": "https://www.roinstal.com/centrala-pe-peleti-complet-echipata-thermostahl-pellet-compact-25-25-kw-randament-95-continut-apa-28-l-diam-cos-fum-80-mm-rezervor-peleti-55-kg.html",
       "confidence": "medium",
-      "note": "25 kW, randament declarat 95%, buncăr 55 kg; coșul și integrarea hidraulică se verifică separat."
+      "note": "25 kW, randament declarat 95%, buncăr 55 kg; coșul și integrarea hidraulică se verifică separat.",
+      "external_id": "pellet-thermostahl-compact25"
     },
     {
       "technology_id": "pellet-boiler",
@@ -634,7 +664,8 @@
       "source_kind": "romanian_market_price_plus_installation_allowance",
       "source_url": "https://m.benedekco.ro/centrala-termica-pe-peleti-biodom-b27-c5-30-kw-p1164",
       "confidence": "medium",
-      "note": "Manualul BIODOM declară 30,8 kW nominal și ~91,94% randament; preț reper RO pentru produs nou."
+      "note": "Manualul BIODOM declară 30,8 kW nominal și ~91,94% randament; preț reper RO pentru produs nou.",
+      "external_id": "pellet-biodom27c5-30"
     }
   ],
   "heat_pump_performance_points": [
