@@ -4938,6 +4938,12 @@
     }
 
     const selectedId = optimizationMeta.selectedHeating?.technologyId || "keep-current-heating";
+    const technicalAlternatives = new Map(
+      (Array.isArray(optimizationMeta?.technicalHeatingAlternatives)
+        ? optimizationMeta.technicalHeatingAlternatives
+        : []
+      ).map(item => [String(item.branchId || ""), item])
+    );
     node.innerHTML = `<div class="hln-strategy-list">${branches.map((branch,index) => {
       const eligible = Boolean(branch.eligible);
       const economicEligible = branch.economic_eligible !== false;
@@ -4946,6 +4952,7 @@
       const evaluated = Number(branch.evaluated_candidates || 0);
       const accepted = Number(branch.accepted_candidates || 0);
       const rejectedCapacity = Number(branch.rejected_for_capacity || 0);
+      const technicalPreview = technicalAlternatives.get(String(branch.branch_id || "")) || null;
       const allRejectedForCapacity = eligible
         && economicEligible
         && evaluated > 0
@@ -4967,7 +4974,11 @@
         : !eligible
           ? (branch.note || "Infrastructură sau compatibilitate neconfirmată.")
           : !economicEligible
-            ? `${evaluated} recalculări parametrice · ${accepted} candidați tehnici valizi · fizica a fost simulată, dar ramura nu poate câștiga economic până nu avem cost instalat source-backed`
+            ? (
+                technicalPreview
+                  ? `preview tehnic pe finalistul raw · factură ${fmt(Number(technicalPreview.annualBillLei || 0))} lei/an · energie ${fmt(Number(technicalPreview.finalEnergyKwh || 0))} kWh/an · EP ${fmt(Number(technicalPreview.primarySpecificKwhM2 || 0),1)} kWh/m²·an · clasa ${escapeHtml(technicalPreview.energyClass || "—")}`
+                  : `ramură tehnică disponibilă, dar preview-ul nu a putut fi calculat în această rulare`
+              )
             : allRejectedForCapacity
               ? `${evaluated} recalculări · necesarul termic recalculat a depășit domeniul acoperit de datele comerciale disponibile`
               : `${evaluated} recalculări parametrice · ${accepted} candidați tehnici valizi · ramura a intrat în comparația economică, dar nu a fost selectată`;
