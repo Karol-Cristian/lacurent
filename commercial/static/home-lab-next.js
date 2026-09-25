@@ -5535,6 +5535,54 @@
     $("#hlnReportHeatingSource").textContent =
       `LaCurent Light · ${heating.confidence || "—"} confidence · ${String(heating.performance_source || "model intern").replaceAll("_"," ")}`;
 
+    const designHeatLoadKw = Number(scenarioResult.design_heat_load_kw);
+    const winterDesignC = Number(scenarioResult.winter_design_temperature_c);
+    const selectedHeatingMeta = optimizationMeta?.selectedHeating || null;
+    const ratedPowerKw = Number(selectedHeatingMeta?.ratedPowerKw);
+    const oversizeKw = Number(selectedHeatingMeta?.oversizeKw);
+    const oversizePercent = Number(selectedHeatingMeta?.oversizePercent);
+
+    const requiredPowerNode = $("#hlnReportHeatingRequiredPower");
+    if (requiredPowerNode) {
+      requiredPowerNode.textContent = Number.isFinite(designHeatLoadKw)
+        ? `${fmt(designHeatLoadKw,2)} kW${Number.isFinite(winterDesignC) ? " la " + fmt(winterDesignC,0) + " °C exterior" : ""}`
+        : "—";
+      requiredPowerNode.title = Number.isFinite(designHeatLoadKw)
+        ? "Puterea termică pe care sistemul trebuie să o poată livra la temperatura exterioară de calcul, conform modelului Light Engine."
+        : "";
+    }
+
+    const selectedPowerNode = $("#hlnReportHeatingSelectedPower");
+    if (selectedPowerNode) {
+      selectedPowerNode.textContent = Number.isFinite(ratedPowerKw)
+        ? `${fmt(ratedPowerKw,2)} kW nominal`
+        : Number.isFinite(designHeatLoadKw)
+          ? `minim ${fmt(designHeatLoadKw,2)} kW`
+          : "—";
+      selectedPowerNode.title = Number.isFinite(ratedPowerKw)
+        ? "Puterea nominală din catalog a produsului comercial selectat."
+        : "Nu există încă un SKU comercial selectat; se afișează necesarul minim calculat.";
+    }
+
+    const reserveNode = $("#hlnReportHeatingPowerReserve");
+    if (reserveNode) {
+      if (
+        Number.isFinite(ratedPowerKw)
+        && Number.isFinite(designHeatLoadKw)
+        && designHeatLoadKw > 0
+      ) {
+        const reserveKw = Number.isFinite(oversizeKw)
+          ? oversizeKw
+          : Math.max(ratedPowerKw - designHeatLoadKw, 0);
+        const reservePct = Number.isFinite(oversizePercent)
+          ? oversizePercent
+          : 100 * reserveKw / designHeatLoadKw;
+        reserveNode.textContent = `+${fmt(reserveKw,2)} kW · +${fmt(reservePct,0)}%`;
+      } else {
+        reserveNode.textContent = "—";
+      }
+    }
+
     const annualFuel = scenarioResult.annual_fuel_use || null;
     const fuelNode = $("#hlnReportFuelUse");
     if (fuelNode) {
