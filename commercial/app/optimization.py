@@ -945,13 +945,14 @@ def run_parametric_optimization(
     catalog: dict[str, Any],
     *,
     candidate_postprocessor: Callable[[CandidateEvaluationV1], CandidateEvaluationV1 | None] | None = None,
+    search_phase: Literal["full", "axis", "halton", "refine"] = "full",
+    refinement_seed: ParametricMeasuresV1 | None = None,
+    halton_start_index: int = 1,
 ) -> OptimizationSearchResultV1:
     """Deterministic bounded search in raw physical parameter space.
 
-    Search deliberately avoids commercial product increments. It combines
-    axis probes, a six-dimensional Halton exploration and local coordinate
-    refinement around the policy-selected solution. Commercial rounding is a
-    separate downstream operation.
+    Full mode keeps the original all-in-one search. Home Lab can execute the
+    same search family in CPU-safe phases: axis, halton, then refine.
     """
 
     request = payload.request
@@ -1000,65 +1001,102 @@ def run_parametric_optimization(
         evaluated.append(item)
         return True
 
-    # Always include the unmodified house. It is the economically correct
-    # solution when a target is already met or every intervention destroys value.
-    evaluate_if_new(
-        ParametricMeasuresV1(
-            window_target_u_w_m2k=bounds.window_target_u_w_m2k,
+    if search_phase in {"full", "axis"}:
+        evaluate_if_new(
+            ParametricMeasuresV1(
+                window_target_u_w_m2k=bounds.window_target_u_w_m2k,
+            )
         )
-    )
-
-    # Axis probes ensure sparse solutions are not missed by the mixed sampler.
-    for dimension in range(len(_SEARCH_DIMENSIONS)):
-        for level in (0.5, 1.0):
+        for dimension in range(len(_SEARCH_DIMENSIONS)):
+            for level in (0.5, 1.0):
+                if engine_evaluations >= max_evaluations:
+                    break
+                vector = [0.0] * len(_SEARCH_DIMENSIONS)
+                vector[dimension] = level
+                evaluate_if_new(_measures_from_normalized(vector, bounds))
             if engine_evaluations >= max_evaluations:
                 break
-            vector = [0.0] * len(_SEARCH_DIMENSIONS)
-            vector[dimension] = level
+
+    if search_phase == "halton":
+        halton_index = max(int(halton_start_index), 1)
+        attempts = 0
+        attempt_limit = max_evaluations * 8
+        while engine_evaluations < max_evaluations and attempts < attempt_limit:
+            vector = [
+                _van_der_corput(halton_index, base)
+                for base in _HALTON_BASES
+            ]
             evaluate_if_new(_measures_from_normalized(vector, bounds))
+            halton_index += 1
+            attempts += 1
 
-    # Reserve about one quarter of the budget for local refinement.
-    refinement_reserve = max(6, min(12, max_evaluations // 4))
-    coarse_limit = max(1, max_evaluations - refinement_reserve)
-    halton_index = 1
-    halton_attempt_limit = max_evaluations * 6
-    attempts = 0
-    while engine_evaluations < coarse_limit and attempts < halton_attempt_limit:
-        vector = [
-            _van_der_corput(halton_index, base)
-            for base in _HALTON_BASES
-        ]
-        evaluate_if_new(_measures_from_normalized(vector, bounds))
-        halton_index += 1
-        attempts += 1
-
-    # Refine around the actual policy-selected candidate, not around a generic
-    # energy or ROI score. If the target is not yet feasible, use a mode-aware
-    # seed so the second stage still moves toward feasibility.
-    for step_fraction in (0.125, 0.0625):
-        if len(evaluated) >= max_evaluations:
-            break
-        current_selection = select_optimization_candidate(request, evaluated)
-        seed = current_selection.selected or _fallback_refinement_seed(
-            request,
-            evaluated,
-        )
-        if seed is None:
-            break
-        origin = _normalized_from_measures(seed.parameters, bounds)
-        for dimension in range(len(_SEARCH_DIMENSIONS)):
-            for direction in (-1.0, 1.0):
-                if len(evaluated) >= max_evaluations:
+    elif search_phase == "refine":
+        if refinement_seed is None:
+            raise ValueError("Refinement phase requires a seed candidate.")
+        origin = _normalized_from_measures(refinement_seed, bounds)
+        for step_fraction in (0.125, 0.0625, 0.03125):
+            if engine_evaluations >= max_evaluations:
+                break
+            for dimension in range(len(_SEARCH_DIMENSIONS)):
+                for direction in (-1.0, 1.0):
+                    if engine_evaluations >= max_evaluations:
+                        break
+                    vector = list(origin)
+                    vector[dimension] = min(
+                        max(vector[dimension] + direction * step_fraction, 0.0),
+                        1.0,
+                    )
+                    evaluate_if_new(_measures_from_normalized(vector, bounds))
+                if engine_evaluations >= max_evaluations:
                     break
-                vector = list(origin)
-                vector[dimension] = min(
-                    max(vector[dimension] + direction * step_fraction, 0.0),
-                    1.0,
-                )
-                evaluate_if_new(_measures_from_normalized(vector, bounds))
+
+    elif search_phase == "full":
+        refinement_reserve = max(6, min(12, max_evaluations // 4))
+        coarse_limit = max(engine_evaluations, max_evaluations - refinement_reserve)
+        halton_index = max(int(halton_start_index), 1)
+        attempts = 0
+        halton_attempt_limit = max_evaluations * 6
+        while engine_evaluations < coarse_limit and attempts < halton_attempt_limit:
+            vector = [
+                _van_der_corput(halton_index, base)
+                for base in _HALTON_BASES
+            ]
+            evaluate_if_new(_measures_from_normalized(vector, bounds))
+            halton_index += 1
+            attempts += 1
+
+        for step_fraction in (0.125, 0.0625):
+            if engine_evaluations >= max_evaluations:
+                break
+            current_selection = select_optimization_candidate(request, evaluated)
+            seed = current_selection.selected or _fallback_refinement_seed(
+                request,
+                evaluated,
+            )
+            if seed is None:
+                break
+            origin = _normalized_from_measures(seed.parameters, bounds)
+            for dimension in range(len(_SEARCH_DIMENSIONS)):
+                for direction in (-1.0, 1.0):
+                    if engine_evaluations >= max_evaluations:
+                        break
+                    vector = list(origin)
+                    vector[dimension] = min(
+                        max(vector[dimension] + direction * step_fraction, 0.0),
+                        1.0,
+                    )
+                    evaluate_if_new(_measures_from_normalized(vector, bounds))
+                if engine_evaluations >= max_evaluations:
+                    break
 
     selection = select_optimization_candidate(request, evaluated)
     frontier = pareto_frontier(evaluated)
+    method = {
+        "full": "axis_halton_coordinate_refinement_v1",
+        "axis": "axis_phase_v2",
+        "halton": "halton_phase_v2",
+        "refine": "coordinate_refinement_phase_v2",
+    }[search_phase]
 
     return OptimizationSearchResultV1(
         selection=selection,
@@ -1069,11 +1107,10 @@ def run_parametric_optimization(
         max_evaluations=max_evaluations,
         pareto_candidate_ids=[item.candidate_id for item in frontier],
         candidates=evaluated,
-        search_method="axis_halton_coordinate_refinement_v1",
+        search_method=method,
         warnings=[
             "Search bounds are numerical safety bounds, not commercial package sizes.",
-            "The selected candidate is still a raw mathematical solution. It must be "
-            "commercially discretized and then recalculated before appearing as the "
-            "implementable recommendation in the final report.",
+            "Home Lab can shard axis, Halton and refinement phases into separate Worker requests while preserving total search depth.",
+            "The selected candidate is still a raw mathematical solution. It must be commercially discretized and then recalculated before appearing as the implementable recommendation in the final report.",
         ],
     )
