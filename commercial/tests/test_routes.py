@@ -2514,3 +2514,10 @@ def test_embed_language_switch_keeps_ro_en_controls_and_reversible_translation_c
     assert 'if (lang !== "en") return raw;' in script.text
     assert "originalText.get" in script.text
     assert "window.lacurentSetLanguage = setLanguage" in script.text
+
+
+def test_home_lab_report_3d_stage_is_contained_by_positioned_wrapper() -> None:
+    response = client.get("/static/home-lab-next.css")
+    assert response.status_code == 200
+    css = response.text.replace("\n", "")
+    assert ".hln-report-3d-wrap{position:relative;" in css

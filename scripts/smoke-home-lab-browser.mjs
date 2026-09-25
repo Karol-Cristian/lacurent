@@ -396,6 +396,33 @@ try {
   const optimizerMeasures = await page.evaluate(() => window.__homeLabVisualState?.measures || []);
   if (!optimizerMeasures.length) throw new Error("Budget optimizer did not expose any selected measure");
 
+  const report3dContainment = await page.evaluate(() => {
+    const wrap = document.querySelector(".hln-report-3d-wrap");
+    const stage = document.querySelector('.hln-3d-stage[data-hln-3d-stage="report"]');
+    const firstCard = document.querySelector(".hln-report-grid .hln-report-card");
+    if (!(wrap instanceof HTMLElement) || !(stage instanceof HTMLElement) || !(firstCard instanceof HTMLElement)) {
+      throw new Error("Report 3D containment elements are missing");
+    }
+    const wrapBox = wrap.getBoundingClientRect();
+    const stageBox = stage.getBoundingClientRect();
+    const cardBox = firstCard.getBoundingClientRect();
+    return {
+      positioned:getComputedStyle(wrap).position,
+      wrap:{left:wrapBox.left,top:wrapBox.top,right:wrapBox.right,bottom:wrapBox.bottom},
+      stage:{left:stageBox.left,top:stageBox.top,right:stageBox.right,bottom:stageBox.bottom},
+      cardTop:cardBox.top,
+    };
+  });
+  const containmentTolerance = 2;
+  if (report3dContainment.positioned === "static" ||
+      report3dContainment.stage.left < report3dContainment.wrap.left - containmentTolerance ||
+      report3dContainment.stage.top < report3dContainment.wrap.top - containmentTolerance ||
+      report3dContainment.stage.right > report3dContainment.wrap.right + containmentTolerance ||
+      report3dContainment.stage.bottom > report3dContainment.wrap.bottom + containmentTolerance ||
+      report3dContainment.stage.bottom > report3dContainment.cardTop + containmentTolerance) {
+    throw new Error("Report 3D canvas escaped its wrapper: " + JSON.stringify(report3dContainment));
+  }
+
   const optimizerReport = await page.evaluate(() => ({
     investment:String(document.querySelector("#hlnReportDecisionInvestment")?.textContent || ""),
     saving:String(document.querySelector("#hlnReportDecisionSaving")?.textContent || ""),
