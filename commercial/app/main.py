@@ -2553,6 +2553,12 @@ def _optimizer_candidate_stage_trace(
         f"PV={float(pv.installed_power_kwp if pv.enabled else 0.0):.3f} kWp · "
         f"solar termic={float(solar.collector_area_m2 if solar.enabled else 0.0):.3f} m²"
     )
+    balance_detail = (
+        f"energie finală={candidate.final_energy_kwh:.1f} kWh/an · "
+        f"energie primară={candidate.primary_specific_kwh_m2:.1f} kWh/m²·an · "
+        f"CO₂={candidate.co2_specific_kg_m2:.1f} kg/m²·an · "
+        f"clasa={candidate.energy_class}"
+    )
     economic_detail = (
         f"CAPEX={candidate.capex_lei:.2f} lei · "
         f"factură={candidate.annual_bill_lei:.2f} lei/an · "
@@ -2563,6 +2569,7 @@ def _optimizer_candidate_stage_trace(
         {"stage": "VENTILAȚIE", "detail": ventilation_detail},
         {"stage": "ÎNCĂLZIRE", "detail": heating_detail},
         {"stage": "REGENERABILE", "detail": renewable_detail},
+        {"stage": "BILANȚ", "detail": balance_detail},
         {"stage": "ECONOMIC", "detail": economic_detail},
     ]
 
