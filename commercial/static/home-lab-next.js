@@ -2565,24 +2565,98 @@
     setOptimizerBusy(true);
     setStatus(settings.working);
     setOptimizationNote(
-      `<strong>${escapeHtml(settings.label)}</strong><span>O singură regulă economică este activă. Parametrii tehnici sunt căutați înainte de discretizarea comercială.</span>`
+      `<strong>${escapeHtml(settings.label)}</strong><span>Pregătesc ramurile tehnice. Fiecare sistem de încălzire va fi calculat separat pentru a evita limita CPU a Worker-ului.</span>`
     );
 
-    try {
+    const optimizerBody = () => {
       populateTechnicalForm(homeState, {});
       const body = new FormData(form);
       body.set("_optimization_mode", settings.backendMode);
       if (settings.investmentBudgetLei != null) body.set("_investment_budget_lei", String(settings.investmentBudgetLei));
       if (settings.annualBillTargetLei != null) body.set("_annual_bill_target_lei", String(settings.annualBillTargetLei));
       if (settings.maxPaybackYears != null) body.set("_max_payback_years", String(settings.maxPaybackYears));
+      return body;
+    };
 
-      const {response, payload} = await fetchWithTimeout(
-        "/api/optimization/home-lab",
-        {method:"POST", body},
+    try {
+      const planCall = await fetchWithTimeout(
+        "/api/optimization/home-lab/plan",
+        {method:"POST", body:optimizerBody()},
         optimizerAbortController?.signal || null,
         OPTIMIZER_REQUEST_TIMEOUT_MS
       );
       if (runToken !== optimizerRunToken) return;
+      if (!planCall.response.ok || !planCall.payload || planCall.payload.error) {
+        throw new Error(planCall.payload?.error || `Planificarea optimizerului este indisponibilă (HTTP ${planCall.response.status || "?"}).`);
+      }
+
+      const plan = planCall.payload;
+      const allBranches = Array.isArray(plan.branches) ? plan.branches : [];
+      const runnableIds = Array.isArray(plan.runBranchIds) ? plan.runBranchIds : [];
+      if (!runnableIds.length) {
+        throw new Error("Nu există nicio ramură tehnică eligibilă pentru optimizare.");
+      }
+      const branchById = new Map(allBranches.map(item => [String(item.branch_id || ""), item]));
+      const branchResults = allBranches
+        .filter(item => !item.eligible)
+        .map(item => ({
+          branch:item,
+          selection:{selected:null},
+          candidateCount:0,
+          parametricEvaluations:0,
+          calculationTimeMs:0,
+          warnings:[],
+        }));
+
+      let completedEvaluations = 0;
+      const evaluationsPerBranch = Number(plan.evaluationsPerBranch || 24);
+      for (let index = 0; index < runnableIds.length; index += 1) {
+        if (runToken !== optimizerRunToken) return;
+        const branchId = String(runnableIds[index]);
+        const branch = branchById.get(branchId) || {};
+        const branchLabel = branch.label || branchId;
+        setStatus(`Optimizez ${index + 1}/${runnableIds.length}: ${branchLabel}…`);
+        setOptimizationNote(
+          `<strong>${escapeHtml(settings.label)}</strong>
+           <span>Ramura ${index + 1} din ${runnableIds.length}: ${escapeHtml(branchLabel)}.</span>
+           <small>${completedEvaluations} recalculări terminate · până la ${evaluationsPerBranch} recalculări în această ramură.</small>`
+        );
+
+        const body = optimizerBody();
+        body.set("_heating_branch_id", branchId);
+        const branchCall = await fetchWithTimeout(
+          "/api/optimization/home-lab/branch",
+          {method:"POST", body},
+          optimizerAbortController?.signal || null,
+          OPTIMIZER_REQUEST_TIMEOUT_MS
+        );
+        if (runToken !== optimizerRunToken) return;
+        if (!branchCall.response.ok || !branchCall.payload || branchCall.payload.error) {
+          throw new Error(
+            branchCall.payload?.error
+            || `Ramura „${branchLabel}” nu a putut fi calculată (HTTP ${branchCall.response.status || "?"}).`
+          );
+        }
+        branchResults.push(branchCall.payload);
+        completedEvaluations += Number(branchCall.payload.parametricEvaluations || 0);
+      }
+
+      setStatus("Compar rezultatele ramurilor…");
+      setOptimizationNote(
+        `<strong>${escapeHtml(settings.label)}</strong><span>Toate ramurile eligibile au fost calculate. Aplic criteriul economic final peste câștigătorii fiecărei ramuri.</span><small>${completedEvaluations} recalculări parametrice finalizate.</small>`
+      );
+
+      const finalizeBody = optimizerBody();
+      finalizeBody.set("_branch_results_json", JSON.stringify(branchResults));
+      const finalCall = await fetchWithTimeout(
+        "/api/optimization/home-lab/finalize",
+        {method:"POST", body:finalizeBody},
+        optimizerAbortController?.signal || null,
+        OPTIMIZER_REQUEST_TIMEOUT_MS
+      );
+      if (runToken !== optimizerRunToken) return;
+      const response = finalCall.response;
+      const payload = finalCall.payload;
       if (!response.ok || !payload || payload.error) {
         throw new Error(payload?.error || `Optimizer indisponibil (HTTP ${response.status || "?"}).`);
       }
@@ -2607,15 +2681,18 @@
       const heatingChoice = optimizationMeta.selectedHeating?.label || "păstrează sistemul actual";
       const elapsed = Number(optimizationMeta.calculationTimeMs);
       const elapsedText = Number.isFinite(elapsed)
-        ? ` · ${fmt(elapsed / 1000, 1)} s calcul backend`
+        ? ` · ${fmt(elapsed / 1000, 1)} s calcul cumulat backend`
         : "";
       const searchDepth = optimizationMeta.parametricEvaluations
         ? `${optimizationMeta.parametricEvaluations} recalculări parametrice · ${optimizationMeta.heatingBranchEvaluations || 0} în ramuri alternative de încălzire${elapsedText}`
         : `${optimizationMeta.evaluatedCandidates || 0} configurații evaluate${elapsedText}`;
+      const paretoText = optimizationMeta.paretoScope === "branch_finalists"
+        ? `${optimizationMeta.paretoSolutions || 0} ramuri finaliste nedominante`
+        : `${optimizationMeta.paretoSolutions || 0} pe frontiera Pareto`;
       setOptimizationNote(
         `<strong>${escapeHtml(optimizationMeta.label || settings.label)}</strong>
          <span>CAPEX ${fmt(optimizationMeta.capexLei)} lei · economie anuală ${fmt(optimizationMeta.annualSavingLei)} lei/an · ${optimizationMeta.paybackYears == null ? "fără amortizare pozitivă" : "amortizare " + fmt(optimizationMeta.paybackYears,1) + " ani"} · ${escapeHtml(heatingChoice)}.</span>
-         <small>${escapeHtml(searchDepth)} · ${optimizationMeta.feasibleCandidates || 0} eligibile · ${optimizationMeta.paretoSolutions || 0} pe frontiera Pareto. ${escapeHtml(commercialNote)}</small>`,
+         <small>${escapeHtml(searchDepth)} · ${optimizationMeta.feasibleCandidates || 0} eligibile · ${escapeHtml(paretoText)}. ${escapeHtml(commercialNote)}</small>`,
         Number(optimizationMeta.annualSavingLei) > 0 ? "good" : "warn"
       );
       showScreen("report");
