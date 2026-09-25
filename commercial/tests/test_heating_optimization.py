@@ -34,8 +34,10 @@ def test_heating_planning_catalog_has_sourced_discrete_technologies() -> None:
 
     assert {
         "condensing-gas-24kw",
+        "heat-pump-air-water-5kw",
         "heat-pump-air-water-8kw",
         "heat-pump-air-water-12kw",
+        "heat-pump-air-water-15kw",
         "electric-boiler-12kw",
         "pellet-boiler-18kw",
     } <= ids
@@ -119,3 +121,31 @@ def test_mixed_heating_budget_includes_fixed_heating_capex() -> None:
 
     assert result.selection.selected is not None
     assert result.selection.selected.capex_lei <= budget + 0.01
+
+
+def test_unconfirmed_infrastructure_blocks_electric_and_pellet_branches() -> None:
+    baseline = demo_building()
+    options = {item.id: item for item in heating_planning_options()}
+
+    electric_ok, electric_reason = option_is_eligible(
+        baseline,
+        options["electric-boiler-12kw"],
+    )
+    pellet_ok, pellet_reason = option_is_eligible(
+        baseline,
+        options["pellet-boiler-18kw"],
+    )
+
+    assert not electric_ok
+    assert "Puterea electrică" in str(electric_reason)
+    assert not pellet_ok
+    assert "biomasă" in str(pellet_reason)
+
+
+def test_heat_pump_capacity_catalog_spans_small_to_large_houses() -> None:
+    capacities = sorted(
+        item.rated_power_kw
+        for item in heating_planning_options()
+        if item.generator_type.value == "heat_pump_air_water"
+    )
+    assert capacities == [5, 8, 12, 15]

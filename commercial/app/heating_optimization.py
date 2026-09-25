@@ -73,6 +73,8 @@ class HeatingPlanningOptionV1(BaseModel):
     confidence: Literal["low", "medium", "high"] = "low"
     requires_hydronic: bool = True
     requires_existing_gas: bool = False
+    requires_existing_high_power_electric: bool = False
+    requires_existing_biomass_infrastructure: bool = False
     note: str = ""
 
     @property
@@ -140,6 +142,28 @@ def _has_existing_gas(building: BuildingInput) -> bool:
     )
 
 
+def _has_existing_high_power_electric(building: BuildingInput) -> bool:
+    details = building.heating.details
+    generator = details.generator_type if details is not None else None
+    return generator in {
+        HeatingGeneratorType.electric_boiler,
+        HeatingGeneratorType.heat_pump_air_water,
+        HeatingGeneratorType.heat_pump_ground_water,
+    }
+
+
+def _has_existing_biomass_infrastructure(building: BuildingInput) -> bool:
+    details = building.heating.details
+    generator = details.generator_type if details is not None else None
+    return (
+        building.heating.carrier == Carrier.biomass
+        and generator in {
+            HeatingGeneratorType.wood_boiler,
+            HeatingGeneratorType.pellet_boiler,
+        }
+    )
+
+
 def _same_generator_family(building: BuildingInput, option: HeatingPlanningOptionV1) -> bool:
     details = building.heating.details
     if details is not None and details.generator_type is not None:
@@ -156,6 +180,22 @@ def option_is_eligible(building: BuildingInput, option: HeatingPlanningOptionV1)
         return False, "Sistemul necesită o instalație hidronică existentă; conversia emitatoarelor nu este inclusă."
     if option.requires_existing_gas and not _has_existing_gas(building):
         return False, "Gazul nu este confirmat ca disponibil în configurația casei."
+    if (
+        option.requires_existing_high_power_electric
+        and not _has_existing_high_power_electric(building)
+    ):
+        return False, (
+            "Puterea electrică necesară nu este confirmată; centrala electrică nu intră "
+            "în optimizare până când branșamentul/circuitul de putere nu este validat."
+        )
+    if (
+        option.requires_existing_biomass_infrastructure
+        and not _has_existing_biomass_infrastructure(building)
+    ):
+        return False, (
+            "Coșul, spațiul tehnic și logistica de combustibil pentru biomasă nu sunt "
+            "confirmate; ramura pe peleți este exclusă din recomandarea automată."
+        )
     if _same_generator_family(building, option):
         return False, "Aceeași familie de generator este deja instalată; păstrarea sistemului actual este evaluată separat cu CAPEX zero."
     return True, None
