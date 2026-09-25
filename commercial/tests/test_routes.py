@@ -545,6 +545,9 @@ def test_invalid_roof_vs_walls_fact_is_retired() -> None:
 def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     response = client.get("/home-lab-next")
     assert response.status_code == 200
+    assert 'id="hlnReportHeatingRequiredPower"' in response.text
+    assert 'id="hlnReportHeatingSelectedPower"' in response.text
+    assert 'id="hlnReportHeatingPowerReserve"' in response.text
     assert 'data-home-lab-next' in response.text
     assert 'viewport-fit=cover' in response.text
     assert 'data-hln-screen="home"' in response.text
@@ -562,7 +565,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next361-cop-fuel" in response.text
-    assert "/static/home-lab-next.js?v=next71-cop-fuel" in response.text
+    assert "/static/home-lab-next.js?v=next72-heating-power" in response.text
     assert "/static/home-lab-3d.css?v=3d31" in response.text
     assert 'aria-label="Schiță conceptuală a casei"' not in response.text
     assert 'aria-label="Casă cu zone de îmbunătățire"' not in response.text
@@ -1996,7 +1999,7 @@ def test_home_lab_issue_359_adaptive_intro_contract() -> None:
     assert response.status_code == 200
     assert response.text.count('class="hln-screen-intro-copy"') == 2
     assert "/static/home-lab-next.css?v=next361-cop-fuel" in response.text
-    assert "/static/home-lab-next.js?v=next71-cop-fuel" in response.text
+    assert "/static/home-lab-next.js?v=next72-heating-power" in response.text
 
     css = client.get("/static/home-lab-next.css")
     assert css.status_code == 200
@@ -2613,4 +2616,4 @@ def test_heating_branch_report_uses_explicit_verdict_labels() -> None:
 def test_home_lab_next_uses_transient_retry_asset_version() -> None:
     response = client.get("/home-lab-next")
     assert response.status_code == 200
-    assert "/static/home-lab-next.js?v=next71-cop-fuel" in response.text
+    assert "/static/home-lab-next.js?v=next72-heating-power" in response.text
