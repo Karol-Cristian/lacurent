@@ -45,13 +45,16 @@ def _run_sharded(payload: dict[str, str]) -> tuple[dict, dict]:
     assert "heat-pump-ground-water" in branch_ids
     air_air = next(item for item in plan["branches"] if item["branch_id"] == "heat-pump-air-air")
     ground = next(item for item in plan["branches"] if item["branch_id"] == "heat-pump-ground-water")
-    assert air_air["economic_eligible"] is False
+    assert air_air["economic_eligible"] is True
+    assert air_air["commercialization_mode"] == "raw_parametric_then_product_match"
+    assert float(air_air["min_product_power_kw"]) == 4.0
+    assert float(air_air["max_product_power_kw"]) == 21.6
     assert ground["economic_eligible"] is False
+    assert "heat-pump-air-air" in plan["runBranchIds"]
     assert set(plan["technicalPreviewBranchIds"]) >= {
-        "heat-pump-air-air",
         "heat-pump-ground-water",
     }
-    assert "heat-pump-air-air" not in plan["runBranchIds"]
+    assert "heat-pump-air-air" not in plan["technicalPreviewBranchIds"]
     assert "heat-pump-ground-water" not in plan["runBranchIds"]
 
     results = [
@@ -149,10 +152,13 @@ def test_home_lab_auto_optimizer_runs_phased_and_returns_traceability() -> None:
     preview_ids = {
         item["branchId"] for item in meta["technicalHeatingAlternatives"]
     }
-    assert {
-        "heat-pump-air-air",
-        "heat-pump-ground-water",
-    } <= preview_ids
+    assert "heat-pump-ground-water" in preview_ids
+    assert "heat-pump-air-air" not in preview_ids
+    assert any(
+        item["branch_id"] == "heat-pump-air-air"
+        and item["economic_eligible"] is True
+        for item in meta["heatingBranches"]
+    )
     assert all(item["costKnown"] is False for item in meta["technicalHeatingAlternatives"])
 
 

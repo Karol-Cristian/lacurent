@@ -5535,6 +5535,114 @@
     $("#hlnReportHeatingSource").textContent =
       `LaCurent Light · ${heating.confidence || "—"} confidence · ${String(heating.performance_source || "model intern").replaceAll("_"," ")}`;
 
+    const annualFuel = scenarioResult.annual_fuel_use || null;
+    const fuelNode = $("#hlnReportFuelUse");
+    if (fuelNode) {
+      if (annualFuel?.fuel === "firewood") {
+        fuelNode.textContent = `${fmt(Number(annualFuel.quantity || 0),2)} m³/an lemn`;
+        fuelNode.title = `Energie finală biomasă ${fmt(Number(annualFuel.final_energy_kwh || 0))} kWh/an`;
+      } else if (annualFuel?.fuel === "pellets") {
+        fuelNode.textContent = `${fmt(Number(annualFuel.quantity || 0),0)} kg/an peleți`;
+        fuelNode.title = `Energie finală biomasă ${fmt(Number(annualFuel.final_energy_kwh || 0))} kWh/an`;
+      } else {
+        fuelNode.textContent = "Nu se aplică";
+        fuelNode.removeAttribute("title");
+      }
+    }
+
+    const hpCard = $("#hlnReportHeatPumpProfileCard");
+    const hpProfile = optimizationMeta?.heatPumpPerformanceProfile || null;
+    const isHeatPump = String(heating.generator_type || "").startsWith("heat_pump_")
+      || scenarioState.heating === "heat_pump";
+    if (hpCard) hpCard.hidden = !isHeatPump;
+    if (isHeatPump && hpCard) {
+      const engineKind = String(hpProfile?.engine_performance_kind || heating.generator_performance_kind || "scop").toUpperCase();
+      const engineValue = Number(hpProfile?.engine_performance_value ?? heating.generator_performance);
+      $("#hlnReportHpEngineScop").textContent = Number.isFinite(engineValue)
+        ? `${engineKind} ${fmt(engineValue,2)}`
+        : "—";
+
+      const declaredScop = Number(hpProfile?.declared_scop);
+      $("#hlnReportHpDeclaredScop").textContent = Number.isFinite(declaredScop)
+        ? `SCOP ${fmt(declaredScop,2)}`
+        : "—";
+
+      const modeledScop = Number(hpProfile?.modeled_scop_from_monthly_cop);
+      $("#hlnReportHpModeledScop").textContent = Number.isFinite(modeledScop)
+        ? `SCOP ${fmt(modeledScop,2)}`
+        : "n/a — fără curbă COP suficientă";
+
+      const refCop = Number(hpProfile?.reference_cop_at_7c);
+      $("#hlnReportHpReferenceCop").textContent = Number.isFinite(refCop)
+        ? `COP ${fmt(refCop,2)}`
+        : "—";
+
+      const hpRows = Array.isArray(hpProfile?.monthly) ? hpProfile.monthly : [];
+      const copRows = hpRows.filter(row => Number.isFinite(Number(row.cop)));
+      const hpChart = $("#hlnReportHpCopChart");
+      if (hpChart) {
+        if (hpProfile?.profile_kind === "cop_curve" && copRows.length >= 2) {
+          const maxLoad = Math.max(...hpRows.map(row => Number(row.useful_heating_kwh || 0)), 1);
+          const copValues = copRows.map(row => Number(row.cop));
+          const minCop = Math.min(...copValues);
+          const maxCop = Math.max(...copValues);
+          const copSpan = Math.max(maxCop - minCop, 0.5);
+          const width = 1200;
+          const height = 210;
+          const top = 16;
+          const bottom = 34;
+          const xStep = width / Math.max(hpRows.length, 1);
+          const points = hpRows.map((row, index) => {
+            const cop = Number(row.cop);
+            if (!Number.isFinite(cop)) return null;
+            const x = xStep * index + xStep / 2;
+            const y = top + (maxCop - cop) / copSpan * (height - top - bottom);
+            return `${x.toFixed(1)},${y.toFixed(1)}`;
+          }).filter(Boolean).join(" ");
+          const dots = hpRows.map((row, index) => {
+            const cop = Number(row.cop);
+            if (!Number.isFinite(cop)) return "";
+            const x = xStep * index + xStep / 2;
+            const y = top + (maxCop - cop) / copSpan * (height - top - bottom);
+            return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="6"><title>${escapeHtml(row.month)} · COP ${fmt(cop,2)}</title></circle>`;
+          }).join("");
+          hpChart.innerHTML = `
+            <div class="hln-hp-cop-plot">
+              <div class="hln-hp-load-bars">
+                ${hpRows.map(row => {
+                  const load = Number(row.useful_heating_kwh || 0);
+                  return `<i style="height:${Math.max(load ? 3 : 0, 100*load/maxLoad)}%" title="${escapeHtml(row.month)} · ${fmt(load)} kWh utili"></i>`;
+                }).join("")}
+              </div>
+              <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-label="Curba COP lunară">
+                <polyline points="${points}"></polyline>
+                ${dots}
+              </svg>
+            </div>
+            <div class="hln-hp-month-grid">
+              ${hpRows.map(row => {
+                const cop = Number(row.cop);
+                const load = Number(row.useful_heating_kwh || 0);
+                const temp = Number(row.outdoor_temperature_c);
+                const flow = Number(row.flow_temperature_c);
+                return `<div>
+                  <small>${escapeHtml(String(row.month || "").slice(0,3))}</small>
+                  <strong>${Number.isFinite(cop) ? "COP " + fmt(cop,2) : "COP n/a"}</strong>
+                  <span>${fmt(load)} kWh</span>
+                  <em>${Number.isFinite(temp) ? fmt(temp,1) + "°C ext." : ""}${Number.isFinite(flow) ? " · tur " + fmt(flow,0) + "°C" : ""}</em>
+                </div>`;
+              }).join("")}
+            </div>`;
+        } else {
+          hpChart.innerHTML = `<div class="hln-hp-scop-only"><strong>SCOP sezonier, fără curbă COP inventată</strong><span>${escapeHtml(hpProfile?.product_label || "Produsul selectat")} nu are suficiente puncte COP source-backed pentru interpolare lunară.</span></div>`;
+        }
+      }
+
+      const standards = Array.isArray(hpProfile?.test_standards) ? hpProfile.test_standards.join(" · ") : "";
+      const profileNote = hpProfile?.note || "SCOP este coeficient sezonier; COP este valoarea într-un punct de funcționare. Pentru acest scenariu nu este atașată o curbă comercială de produs.";
+      $("#hlnReportHpCopNote").textContent = `${profileNote}${standards ? " Standarde/date: " + standards + "." : ""}`;
+    }
+
     $("#hlnReportLocation").textContent = scenarioResult.locality || homeState.locality || "—";
     $("#hlnReportClimate").textContent =
       `Zona ${scenarioResult.climate_zone || "—"} · ${scenarioResult.climate_station || "stație climatică"}`;
