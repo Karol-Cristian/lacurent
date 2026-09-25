@@ -2548,3 +2548,9 @@ def test_heating_branch_report_uses_explicit_verdict_labels() -> None:
     assert "EXCLUS ÎNAINTE DE CALCUL" in source
     assert "ELIMINAT · PUTERE INSUFICIENTĂ" in source
     assert "nu a câștigat criteriul economic ales" in source
+
+
+def test_home_lab_next_uses_compact_refinement_asset_version() -> None:
+    response = client.get("/home-lab-next")
+    assert response.status_code == 200
+    assert "/static/home-lab-next.js?v=next62-compact-refinement" in response.text
