@@ -3383,7 +3383,7 @@
         `Finalizez selecția · ${completedEvaluations} calculați · ${failedMicroBatches.length} candidați de reexecutat`
       );
       const partialSearchText = failedMicroBatches.length
-        ? ` · ${failedMicroBatches.length} micro-loturi omise după faulturi tranzitorii`
+        ? ` · ${failedMicroBatches.length} candidați păstrați pentru reexecuție după faulturi tranzitorii`
         : "";
       setOptimizationNote(
         `<strong>${escapeHtml(settings.label)}</strong><span>Aplic criteriul economic final peste toți candidații validați.</span><small>${completedEvaluations} recalculări parametrice finalizate${escapeHtml(partialSearchText)}.</small>`
