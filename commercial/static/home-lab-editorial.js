@@ -9,6 +9,7 @@
   const localAutosaveAllowed = () => window.LaCurentPrivacy?.allowsLocalAutosave?.() === true;
   const pages = [...root.querySelectorAll("[data-page]")];
   const wizardOrder = ["intro", "house", "envelope", "systems", "renewables", "goal"];
+  const progressOrder = ["house", "envelope", "systems", "renewables", "goal", "report"];
   const stepNames = {intro:"Start",house:"Casa",envelope:"Anvelopa",systems:"Instalații",renewables:"Regenerabile",goal:"Obiectiv",run:"Rezultat",done:"Rezultat",report:"Rezultat",error:"Eroare"};
   const stepNumbers = {intro:"—",house:"01",envelope:"02",systems:"03",renewables:"04",goal:"05",run:"06",done:"06",report:"06",error:"—"};
   const stepNumber = $("#edStepNumber");
@@ -282,14 +283,20 @@
   }
 
   function renderProgressHistory() {
-    const currentIndex = wizardOrder.indexOf(current);
+    const visualCurrent = ["run","done","report"].includes(current) ? "report" : current;
     document.querySelectorAll("[data-progress-step]").forEach(button => {
-      const index = wizardOrder.indexOf(button.dataset.progressStep);
-      const reached = index >= 0 && index <= furthestWizardIndex;
+      const step = button.dataset.progressStep;
+      const index = progressOrder.indexOf(step);
+      const wizardIndex = wizardOrder.indexOf(step);
+      const reached = step === "report"
+        ? Boolean(optimizationResult)
+        : wizardIndex >= 0 && wizardIndex <= furthestWizardIndex;
+      const isCurrent = step === visualCurrent;
       button.disabled = !reached;
       button.classList.toggle("is-reached", reached);
-      button.classList.toggle("is-current", index === currentIndex);
-      button.setAttribute("aria-current", index === currentIndex ? "step" : "false");
+      button.classList.toggle("is-current", isCurrent);
+      button.setAttribute("aria-current", isCurrent ? "step" : "false");
+      if (index >= 0) button.setAttribute("aria-label", `Pasul ${index + 1}: ${stepNames[step] || step}`);
     });
   }
 
@@ -307,6 +314,12 @@
   document.querySelectorAll("[data-progress-step]").forEach(button => {
     button.addEventListener("click", () => {
       const target = button.dataset.progressStep;
+      if (target === "report") {
+        if (!optimizationResult) return;
+        renderReport();
+        showPage("report");
+        return;
+      }
       const index = wizardOrder.indexOf(target);
       if (index < 0 || index > furthestWizardIndex) return;
       syncTechnicalForm();
