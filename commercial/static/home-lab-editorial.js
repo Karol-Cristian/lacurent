@@ -5,6 +5,7 @@
 
   const $ = selector => document.querySelector(selector);
   const storageKey = `lacurent-home-lab-editorial-v1:${root.dataset.partnerId || "official"}`;
+  const storageHistoryKey = `${storageKey}:history`;
   const classicStorageKey = `lacurent-home-lab-next-v1:${root.dataset.partnerId || "official"}`;
   const localAutosaveAllowed = () => window.LaCurentPrivacy?.allowsLocalAutosave?.() === true;
   const pages = [...root.querySelectorAll("[data-page]")];
@@ -60,6 +61,7 @@
   let mapDrag = null;
   let mapPinch = null;
   let autosaveTimer = 0;
+  let draftDirty = false;
   const MAP_MIN_ZOOM = 1;
   const MAP_MAX_ZOOM = 6;
   const mapView = {zoom:1, centerX:null, centerY:null};
@@ -101,10 +103,58 @@
     };
   }
 
-  function persistEditorialDraft() {
-    if (!localAutosaveAllowed()) return false;
+  function draftLooksUsable(draft) {
+    return Boolean(
+      draft
+      && draft.version === 1
+      && draft.fields
+      && typeof draft.fields === "object"
+      && Object.keys(draft.fields).length >= 5
+    );
+  }
+
+  function readDraftHistory() {
     try {
-      localStorage.setItem(storageKey, JSON.stringify(editorialDraftSnapshot()));
+      const parsed = JSON.parse(localStorage.getItem(storageHistoryKey) || "[]");
+      return Array.isArray(parsed) ? parsed.filter(draftLooksUsable) : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function writeDraftHistory(entries) {
+    try {
+      localStorage.setItem(storageHistoryKey, JSON.stringify(entries.slice(-8)));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function preserveDraftInHistory(draft) {
+    if (!draftLooksUsable(draft)) return;
+    const history = readDraftHistory();
+    const serialized = JSON.stringify(draft);
+    if (!history.some(item => JSON.stringify(item) === serialized)) {
+      history.push(draft);
+      writeDraftHistory(history);
+    }
+  }
+
+  function markDraftDirty() {
+    draftDirty = true;
+  }
+
+  function persistEditorialDraft({force = false} = {}) {
+    if (!localAutosaveAllowed()) return false;
+    if (!force && !draftDirty) return false;
+    try {
+      const current = JSON.parse(localStorage.getItem(storageKey) || "null");
+      preserveDraftInHistory(current);
+      const next = editorialDraftSnapshot();
+      localStorage.setItem(storageKey, JSON.stringify(next));
+      preserveDraftInHistory(next);
+      draftDirty = false;
       return true;
     } catch (_) {
       return false;
@@ -230,7 +280,7 @@
       setMigratedField('[name="solar_thermal_orientation"]', state.solarThermalOrientation);
       setMigratedField('[name="solar_thermal_tilt_degrees"]', state.solarThermalTilt);
 
-      persistEditorialDraft();
+      persistEditorialDraft({force:true});
       return true;
     } catch (_) {
       return false;
@@ -241,7 +291,19 @@
     if (!localAutosaveAllowed()) return false;
     try {
       const ownDraft = JSON.parse(localStorage.getItem(storageKey) || "null");
-      if (applyEditorialDraft(ownDraft)) return true;
+      if (draftLooksUsable(ownDraft) && applyEditorialDraft(ownDraft)) {
+        preserveDraftInHistory(ownDraft);
+        draftDirty = false;
+        return true;
+      }
+      const history = readDraftHistory();
+      for (let index = history.length - 1; index >= 0; index -= 1) {
+        if (applyEditorialDraft(history[index])) {
+          localStorage.setItem(storageKey, JSON.stringify(history[index]));
+          draftDirty = false;
+          return true;
+        }
+      }
     } catch (_) {}
     return migrateClassicDraft();
   }
@@ -862,6 +924,7 @@
         button.classList.add("is-selected");
         field.value = button.dataset.value;
         if (group.dataset.choiceGroup === "_optimization_mode") syncGoalField();
+        markDraftDirty();
         scheduleEditorialDraftSave();
       });
     });
@@ -1345,6 +1408,7 @@
   $("#edLocalitySuggestions").addEventListener("click", event => {
     const button = event.target.closest("[data-locality-id]");
     if (!button) return;
+    markDraftDirty();
     selectLocality(localityMap.get(String(button.dataset.localityId)));
   });
   $("#edLocationMap").addEventListener("click", event => {
@@ -1362,6 +1426,7 @@
     if (performance.now() < mapSuppressClickUntil) return;
     const marker = event.target.closest("[data-map-locality-id]");
     if (marker) {
+      markDraftDirty();
       selectLocality(localityMap.get(String(marker.dataset.mapLocalityId)));
       return;
     }
@@ -1429,13 +1494,20 @@
   $("#edMapSuggestions").addEventListener("click", event => {
     const button = event.target.closest("[data-map-locality-id]");
     if (!button) return;
+    markDraftDirty();
     selectLocality(localityMap.get(String(button.dataset.mapLocalityId)));
   });
 
-  form.addEventListener("input", () => scheduleEditorialDraftSave());
-  form.addEventListener("change", () => scheduleEditorialDraftSave());
+  form.addEventListener("input", event => {
+    if (event.isTrusted) markDraftDirty();
+    scheduleEditorialDraftSave();
+  });
+  form.addEventListener("change", event => {
+    if (event.isTrusted) markDraftDirty();
+    scheduleEditorialDraftSave();
+  });
   window.addEventListener("lacurent:privacy-change", event => {
-    if (event.detail?.localAutosave === true) persistEditorialDraft();
+    if (event.detail?.localAutosave === true) persistEditorialDraft({force:true});
   });
   window.addEventListener("pagehide", () => persistEditorialDraft());
 
