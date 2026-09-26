@@ -629,6 +629,11 @@ def test_air_air_catalog_has_commercial_cost_and_monthly_cop_curve() -> None:
     assert profile["profile_kind"] == "cop_curve"
     assert profile["declared_scop"] == pytest.approx(5.2)
     assert profile["modeled_scop_from_monthly_cop"] > 1
+    assert "design_point" in profile
+    assert profile["design_point"]["outdoor_temperature_c"] is not None
+    if profile["design_point"]["covered"]:
+        assert profile["design_point"]["cop"] > 1
+        assert profile["design_point"]["heating_capacity_kw"] > 0
     heating_months = [
         row
         for row in profile["monthly"]
