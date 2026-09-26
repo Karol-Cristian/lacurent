@@ -813,6 +813,46 @@ def _interpolate_heat_pump_metric(
     return weighted / weight_sum if weight_sum > 0 else None
 
 
+def _interpolate_heat_pump_metric_strict(
+    points: list[HeatPumpPerformancePointV1],
+    *,
+    outdoor_temperature_c: float,
+    flow_temperature_c: float,
+    metric: Literal["cop", "heating_capacity_kw"],
+) -> tuple[float | None, bool]:
+    """Interpolate only inside the published A/W domain.
+
+    Returns (value, outside_published_domain). No endpoint clamping is allowed
+    for COP/capacity claims used in economics or reporting.
+    """
+
+    rows = [
+        point for point in points
+        if getattr(point, metric) is not None
+    ]
+    if not rows:
+        return None, False
+    outdoor_values = sorted({float(point.outdoor_temperature_c) for point in rows})
+    flow_values = sorted({float(point.flow_temperature_c) for point in rows})
+    outdoor = float(outdoor_temperature_c)
+    flow = float(flow_temperature_c)
+    outside = bool(
+        outdoor < outdoor_values[0] - 1e-9
+        or outdoor > outdoor_values[-1] + 1e-9
+        or flow < flow_values[0] - 1e-9
+        or flow > flow_values[-1] + 1e-9
+    )
+    if outside:
+        return None, True
+    value = _interpolate_heat_pump_metric(
+        points,
+        outdoor_temperature_c=outdoor,
+        flow_temperature_c=flow,
+        metric=metric,
+    )
+    return value, False
+
+
 def _interpolate_air_air_metric(
     points: list[HeatPumpPerformancePointV1],
     *,
@@ -890,7 +930,8 @@ def _estimated_heat_pump_scop(
             f"{product.label}: profilul climatic nu permite calculul SCOP specific produsului."
         ]
 
-    total_heat_weight = 0.0
+    total_possible_heat_weight = 0.0
+    covered_heat_weight = 0.0
     total_electric_weight = 0.0
     used_points = 0
     for month in months:
@@ -902,37 +943,50 @@ def _estimated_heat_pump_scop(
         ) * days
         if load_weight <= 0:
             continue
+        total_possible_heat_weight += load_weight
 
+        outside_curve = False
         if product.generator_type == HeatingGeneratorType.heat_pump_air_air:
-            cop, _ = _interpolate_air_air_metric(
+            cop, outside_curve = _interpolate_air_air_metric(
                 product.performance_points,
                 outdoor_temperature_c=outdoor,
                 metric="cop",
             )
+            if outside_curve:
+                cop = None
         else:
             flow_c, _ = _weather_compensated_flow_temperature_c(
                 building,
                 outdoor_temperature_c=outdoor,
                 winter_design_temperature_c=float(design_outdoor),
             )
-            cop = _interpolate_heat_pump_metric(
+            cop, outside_curve = _interpolate_heat_pump_metric_strict(
                 product.performance_points,
                 outdoor_temperature_c=outdoor,
                 flow_temperature_c=flow_c,
                 metric="cop",
             )
-        if cop is None or cop <= 1.0:
+        if outside_curve or cop is None or cop <= 1.0:
             continue
-        total_heat_weight += load_weight
+        covered_heat_weight += load_weight
         total_electric_weight += load_weight / cop
         used_points += 1
 
-    if used_points < 3 or total_electric_weight <= 0:
+    coverage_ratio = (
+        covered_heat_weight / total_possible_heat_weight
+        if total_possible_heat_weight > 0
+        else 0.0
+    )
+    if used_points < 3 or total_electric_weight <= 0 or coverage_ratio < 0.90:
         return None, [
-            f"{product.label}: curba COP nu acoperă suficient profilul climatic; se păstrează SCOP-ul declarat/fallback-ul Light Engine."
+            (
+                f"{product.label}: curba COP source-backed acoperă doar "
+                f"{coverage_ratio * 100:.1f}% din ponderarea climatică de încălzire; "
+                "SCOP-ul specific nu este extrapolat. Se păstrează SCOP-ul declarat/fallback-ul Light Engine."
+            )
         ]
 
-    scop = total_heat_weight / total_electric_weight
+    scop = covered_heat_weight / total_electric_weight
     topology = (
         "curba COP aer-aer"
         if product.generator_type == HeatingGeneratorType.heat_pump_air_air
@@ -941,7 +995,7 @@ def _estimated_heat_pump_scop(
     return round(scop, 4), [
         (
             f"{product.label}: SCOP LaCurent estimat {scop:.2f} din {topology}, "
-            "profilul climatic local și ponderarea sezonieră a sarcinii."
+            f"profilul climatic local și {coverage_ratio * 100:.1f}% acoperire source-backed a ponderării de încălzire."
         )
     ]
 
@@ -1060,8 +1114,9 @@ def heat_pump_monthly_performance_profile(
 
     rows: list[dict[str, Any]] = []
     total_useful = 0.0
+    covered_useful = 0.0
     total_electric = 0.0
-    clamped_months = 0
+    outside_curve_months = 0
     used_cop_months = 0
 
     for raw in monthly_rows:
@@ -1076,13 +1131,17 @@ def heat_pump_monthly_performance_profile(
 
         flow_c: float | None = None
         cop: float | None = None
-        clamped = False
+        outside_curve = False
+        if useful > 0:
+            total_useful += useful
         if has_curve and product.generator_type == HeatingGeneratorType.heat_pump_air_air:
-            cop, clamped = _interpolate_air_air_metric(
+            cop, outside_curve = _interpolate_air_air_metric(
                 points,
                 outdoor_temperature_c=outdoor,
                 metric="cop",
             )
+            if outside_curve:
+                cop = None
         elif (
             has_curve
             and product.generator_type == HeatingGeneratorType.heat_pump_air_water
@@ -1093,28 +1152,21 @@ def heat_pump_monthly_performance_profile(
                 outdoor_temperature_c=outdoor,
                 winter_design_temperature_c=float(design_outdoor),
             )
-            cop = _interpolate_heat_pump_metric(
+            cop, outside_curve = _interpolate_heat_pump_metric_strict(
                 points,
                 outdoor_temperature_c=outdoor,
                 flow_temperature_c=flow_c,
                 metric="cop",
             )
-            clamped = bool(
-                unique_outdoor
-                and (
-                    outdoor < unique_outdoor[0]
-                    or outdoor > unique_outdoor[-1]
-                )
-            )
 
         electric = None
+        if outside_curve and useful > 0:
+            outside_curve_months += 1
         if cop is not None and cop > 1.0 and useful > 0:
             electric = useful / float(cop)
-            total_useful += useful
+            covered_useful += useful
             total_electric += electric
             used_cop_months += 1
-            if clamped:
-                clamped_months += 1
 
         rows.append(
             {
@@ -1128,16 +1180,26 @@ def heat_pump_monthly_performance_profile(
                 "estimated_compressor_electricity_kwh": (
                     None if electric is None else round(electric, 3)
                 ),
-                "source_clamped": bool(clamped),
+                "outside_published_curve": bool(outside_curve),
+                "source_clamped": False,
             }
         )
 
+    coverage_ratio = (
+        covered_useful / total_useful
+        if total_useful > 0
+        else 0.0
+    )
     modeled_scop = (
-        total_useful / total_electric
-        if total_useful > 0 and total_electric > 0
+        covered_useful / total_electric
+        if covered_useful > 0 and total_electric > 0 and coverage_ratio >= 0.90
         else None
     )
-    profile_kind = "cop_curve" if used_cop_months >= 2 else "scop_only"
+    profile_kind = (
+        "cop_curve"
+        if used_cop_months >= 2 and coverage_ratio >= 0.90
+        else "scop_only"
+    )
     if profile_kind == "scop_only":
         for row in rows:
             row["cop"] = None
@@ -1154,11 +1216,12 @@ def heat_pump_monthly_performance_profile(
             "pentru o curbă lunară. Raportul nu inventează valori COP."
         )
     )
-    if clamped_months:
+    if outside_curve_months:
         note += (
-            f" {clamped_months} luni de încălzire au fost limitate la capătul "
-            "curbei COP publicate."
+            f" {outside_curve_months} luni cu sarcină de încălzire sunt în afara "
+            "domeniului COP publicat și nu sunt extrapolate."
         )
+    note += f" Acoperire energetică a curbei: {coverage_ratio * 100:.1f}%."
 
     return {
         "product_id": product.id,
@@ -1171,6 +1234,8 @@ def heat_pump_monthly_performance_profile(
         "modeled_scop_from_monthly_cop": (
             None if modeled_scop is None else round(modeled_scop, 4)
         ),
+        "cop_curve_heating_energy_coverage_percent": round(coverage_ratio * 100.0, 2),
+        "outside_curve_heating_months": int(outside_curve_months),
         "reference_cop_at_7c": (
             None
             if reference_cop_at_7c is None
