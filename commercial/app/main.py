@@ -72,8 +72,10 @@ from .heating_optimization import (
     run_mixed_heating_optimization,
 )
 from .heating_catalog_store import (
+    cached_heating_branch_catalog_from_d1,
     cached_heating_catalog_from_d1,
     cached_heating_catalog_summary_from_d1,
+    seed_heating_branch_catalog_payload,
     seed_heating_catalog_payload,
     seed_heating_catalog_summary_payload,
 )
@@ -1819,6 +1821,43 @@ async def _optimizer_heating_catalog_summary(request: Request) -> dict[str, Any]
     return seed_heating_catalog_summary_payload()
 
 
+async def _optimizer_heating_branch_catalog(
+    request: Request,
+    branch_id: str,
+) -> dict[str, Any]:
+    """Return only the fixed-size planning payload for one V3 branch.
+
+    Keep-current does not need heating marketplace data. Technology branches
+    receive one representative product plus their precomputed kW->CAPEX curve;
+    real SKU/COP maps remain downstream for finalist commercialization.
+    """
+
+    if branch_id == "keep-current-heating":
+        return {
+            "source": "not_required",
+            "catalog_mode": "keep_current_no_heating_catalog",
+            "options": [],
+            "heat_pump_performance_points": [],
+            "heat_pump_seasonal_performance": [],
+            "parametric_heating_nodes": [],
+            "catalog_stats": {
+                "products": 0,
+                "loaded_products": 0,
+                "parametric_nodes": 0,
+                "performance_points": 0,
+                "seasonal_points": 0,
+            },
+        }
+
+    env = request.scope.get("env")
+    db = getattr(env, "DB", None) if env is not None else None
+    if db is not None:
+        payload = await cached_heating_branch_catalog_from_d1(db, branch_id)
+        if payload is not None:
+            return payload
+    return seed_heating_branch_catalog_payload(branch_id)
+
+
 @app.get("/api/heating-products")
 async def heating_products_api(request: Request) -> JSONResponse:
     payload = await _optimizer_heating_catalog(request)
@@ -2760,7 +2799,10 @@ async def home_lab_optimization_v3_branch_api(request: Request) -> JSONResponse:
             if isinstance(item, dict)
         ]
         cost_catalog = await _optimizer_cost_catalog(request)
-        heating_catalog = await _optimizer_heating_catalog_summary(request)
+        heating_catalog = await _optimizer_heating_branch_catalog(
+            request,
+            branch_id,
+        )
         started = time.perf_counter()
         result = evaluate_worker_safe_branch_v2(
             optimization_request,
@@ -2785,6 +2827,8 @@ async def home_lab_optimization_v3_branch_api(request: Request) -> JSONResponse:
                 "fastEvaluations": int(result.fast_evaluations),
                 "calculationTimeMs": elapsed_ms,
                 "searchMethod": "halton_branch_batch_v3",
+                "heatingCatalogMode": heating_catalog.get("catalog_mode"),
+                "heatingCatalogStats": heating_catalog.get("catalog_stats") or {},
             }
         )
     except Exception as exc:
