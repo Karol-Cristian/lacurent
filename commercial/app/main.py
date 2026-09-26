@@ -1990,9 +1990,54 @@ async def favicon() -> RedirectResponse:
     return RedirectResponse("/static/favicon.svg", status_code=307)
 
 
+def _public_catalog_context(payload: dict[str, Any]) -> dict[str, Any]:
+    products = list(payload.get("options") or [])
+    counts: dict[str, dict[str, Any]] = {}
+    for product in products:
+        technology_id = str(product.get("technology_id") or "other")
+        technology_label = str(product.get("technology_label") or "Alte produse")
+        entry = counts.setdefault(
+            technology_id,
+            {"id": technology_id, "label": technology_label, "count": 0},
+        )
+        entry["count"] = int(entry["count"]) + 1
+    categories = sorted(
+        counts.values(),
+        key=lambda item: (-int(item["count"]), str(item["label"])),
+    )
+    stats = dict(payload.get("catalog_stats") or {})
+    return {
+        "products": products,
+        "product_categories": categories,
+        "catalog_product_count": int(stats.get("products") or len(products)),
+        "catalog_observed_on": payload.get("observed_on"),
+        "catalog_source": payload.get("source"),
+    }
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "landing.html", {"request": request})
+    catalog = await _optimizer_heating_catalog(request)
+    return templates.TemplateResponse(
+        request,
+        "landing.html",
+        {"request": request, **_public_catalog_context(catalog)},
+    )
+
+
+@app.get("/produse", response_class=HTMLResponse)
+async def product_catalog_page(request: Request) -> HTMLResponse:
+    catalog = await _optimizer_heating_catalog(request)
+    return templates.TemplateResponse(
+        request,
+        "product_catalog.html",
+        {"request": request, **_public_catalog_context(catalog)},
+    )
+
+
+@app.get("/catalog")
+async def product_catalog_alias() -> RedirectResponse:
+    return RedirectResponse("/produse", status_code=308)
 
 
 @app.get("/privacy", response_class=HTMLResponse)
@@ -2088,6 +2133,7 @@ async def sitemap_xml(request: Request) -> Response:
     urls = [
         "https://lacurent.com/",
         "https://lacurent.com/home-lab-next",
+        "https://lacurent.com/produse",
         "https://lacurent.com/home-lab/facts",
         "https://lacurent.com/privacy",
         "https://lacurent.com/terms",
