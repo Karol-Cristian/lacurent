@@ -1773,7 +1773,8 @@
               form:formPayload,
               runId,
               branchId,
-              batch
+              batch,
+              baselineAnnualBillLei:Number(baselineResult?.annual_cost_lei || 0)
             },
             {stageName:`branch ${i + 1}/${branchIds.length} ${label} batch ${batchIndex + 1}/${batchCount}`, runId, retries:2}
           );
