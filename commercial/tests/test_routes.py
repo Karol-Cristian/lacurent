@@ -1520,6 +1520,23 @@ def test_home_lab_next_calculates_pv_and_solar_thermal_from_solar_resource() -> 
     assert payload["gross_service_final_energy_kwh"] >= payload["final_energy_kwh"]
 
 
+def test_worker_memory_guard_and_v3_verification_use_bounded_state() -> None:
+    source = Path("commercial/app/main.py").read_text(encoding="utf-8")
+    assert "async def collect_python_worker_garbage(" in source
+    assert 'path.startswith(("/static/", "/home-lab-assets/"))' in source
+    assert "gc.collect()" in source
+
+    verify_section = source.split(
+        "async def home_lab_optimization_v3_verify_api",
+        1,
+    )[1].split(
+        '@app.post("/api/optimization/home-lab/v3/product")',
+        1,
+    )[0]
+    assert "_optimizer_heating_branch_catalog(" in verify_section
+    assert "_optimizer_heating_catalog(request)" not in verify_section
+
+
 def test_home_lab_next_calculation_is_single_pass_without_reference_engine_recursion() -> None:
     source = Path("commercial/app/main.py").read_text(encoding="utf-8")
     section = source.split("async def home_lab_next_calculation", 1)[1].split(

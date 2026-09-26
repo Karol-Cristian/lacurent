@@ -277,6 +277,7 @@ def verify_one_candidate_v3(
         ),
         original_building=request.baseline,
         technology=technology,
+        heating_catalog=heating_catalog,
     )
     if full_item is None:
         raise ValueError(

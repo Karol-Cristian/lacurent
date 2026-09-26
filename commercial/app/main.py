@@ -150,6 +150,24 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 
+@app.middleware("http")
+async def collect_python_worker_garbage(request: Request, call_next: Any) -> Any:
+    """Keep long-lived Cloudflare Python isolates from retaining cyclic garbage.
+
+    Cloudflare may route many sequential requests through the same Pyodide/CPython
+    isolate. The optimizer now avoids repeated server-side search, but ordinary
+    calculation/report requests can still arrive in long bursts. Static assets do
+    not allocate the application object graphs this protects, so skip them.
+    """
+
+    path = request.url.path
+    try:
+        return await call_next(request)
+    finally:
+        if not path.startswith(("/static/", "/home-lab-assets/")):
+            gc.collect()
+
+
 def _browser_navigation(request: Request) -> bool:
     if request.method.upper() not in {"GET", "HEAD"}:
         return False
@@ -3024,7 +3042,10 @@ async def home_lab_optimization_v3_verify_api(request: Request) -> JSONResponse:
 
         _, _, optimization_request = _home_lab_optimization_request_from_form(form)
         cost_catalog = await _optimizer_cost_catalog(request)
-        heating_catalog = await _optimizer_heating_catalog(request)
+        heating_catalog = await _optimizer_heating_branch_catalog(
+            request,
+            branch_id,
+        )
         fast_candidate = CandidateEvaluationV1(**candidate_raw)
         started = time.perf_counter()
         verified = verify_one_candidate_v3(

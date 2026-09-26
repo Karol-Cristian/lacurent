@@ -29,6 +29,7 @@ _heating_catalog_summary_retry_after = 0.0
 # fixed-size planning curve) instead of retaining all products in every fast
 # optimizer request.
 _heating_branch_catalog_lock = asyncio.Lock()
+HEATING_BRANCH_CATALOG_CACHE_MAX = 2
 _heating_branch_catalog_cached_payloads: dict[str, dict[str, Any]] = {}
 _heating_branch_catalog_cache_expires_at: dict[str, float] = {}
 _heating_branch_catalog_retry_after: dict[str, float] = {}
@@ -821,6 +822,26 @@ async def cached_heating_branch_catalog_from_d1(
             time.monotonic() + HEATING_CATALOG_CACHE_SECONDS
         )
         _heating_branch_catalog_retry_after[technology_id] = 0.0
+
+        # The V4 plan may touch every heating technology in one request. Keep
+        # the local request payloads, but do not retain a duplicate planning
+        # curve for every technology in the long-lived Worker isolate.
+        while (
+            len(_heating_branch_catalog_cached_payloads)
+            > HEATING_BRANCH_CATALOG_CACHE_MAX
+        ):
+            oldest = next(iter(_heating_branch_catalog_cached_payloads))
+            if oldest == technology_id and len(
+                _heating_branch_catalog_cached_payloads
+            ) > 1:
+                oldest = next(
+                    key
+                    for key in _heating_branch_catalog_cached_payloads
+                    if key != technology_id
+                )
+            _heating_branch_catalog_cached_payloads.pop(oldest, None)
+            _heating_branch_catalog_cache_expires_at.pop(oldest, None)
+            _heating_branch_catalog_retry_after.pop(oldest, None)
         return payload
 
 
