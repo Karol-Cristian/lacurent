@@ -824,26 +824,159 @@ async def cached_heating_branch_catalog_from_d1(
         return payload
 
 
+def _technology_summaries_from_profile_rows(
+    rows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    grouped: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        technology_id = str(row.get("technology_id") or "").strip()
+        if not technology_id:
+            continue
+        count = int(row.get("profile_product_count") or 0)
+        min_power = float(row.get("profile_min_power_kw") or 0.0)
+        max_power = float(row.get("profile_max_power_kw") or 0.0)
+        min_capex = float(row.get("profile_min_capex_lei") or 0.0)
+        entry = grouped.setdefault(
+            technology_id,
+            {
+                "technology_id": technology_id,
+                "technology_label": str(
+                    row.get("technology_label") or technology_id
+                ),
+                "product_count": 0,
+                "minimum_capex_lei": min_capex,
+                "min_product_power_kw": min_power,
+                "max_product_power_kw": max_power,
+                "generator_types": set(),
+                "requirement_profiles": [],
+            },
+        )
+        entry["product_count"] = int(entry["product_count"]) + count
+        entry["minimum_capex_lei"] = min(
+            float(entry["minimum_capex_lei"]),
+            min_capex,
+        )
+        entry["min_product_power_kw"] = min(
+            float(entry["min_product_power_kw"]),
+            min_power,
+        )
+        entry["max_product_power_kw"] = max(
+            float(entry["max_product_power_kw"]),
+            max_power,
+        )
+        generator = str(row.get("generator_type") or "").strip()
+        if generator:
+            entry["generator_types"].add(generator)
+        entry["requirement_profiles"].append(
+            {
+                "requires_hydronic": bool(row.get("requires_hydronic")),
+                "requires_existing_gas": bool(row.get("requires_existing_gas")),
+                "requires_existing_high_power_electric": bool(
+                    row.get("requires_existing_high_power_electric")
+                ),
+                "requires_existing_biomass_infrastructure": bool(
+                    row.get("requires_existing_biomass_infrastructure")
+                ),
+                "product_count": count,
+            }
+        )
+
+    summaries: list[dict[str, Any]] = []
+    for technology_id in sorted(grouped):
+        entry = grouped[technology_id]
+        entry["generator_types"] = sorted(entry["generator_types"])
+        summaries.append(entry)
+    return summaries
+
+
+def build_heating_technology_summaries(
+    product_rows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Collapse arbitrary product cardinality into bounded branch metadata."""
+
+    profiles: dict[tuple[Any, ...], dict[str, Any]] = {}
+    for item in product_rows:
+        technology_id = str(item.get("technology_id") or "").strip()
+        if not technology_id:
+            continue
+        key = (
+            technology_id,
+            str(item.get("generator_type") or ""),
+            bool(item.get("requires_hydronic")),
+            bool(item.get("requires_existing_gas")),
+            bool(item.get("requires_existing_high_power_electric")),
+            bool(item.get("requires_existing_biomass_infrastructure")),
+        )
+        power = float(item.get("rated_power_kw") or 0.0)
+        capex = float(item.get("equipment_price_lei") or 0.0) + float(
+            item.get("installation_allowance_lei") or 0.0
+        )
+        row = profiles.setdefault(
+            key,
+            {
+                "technology_id": technology_id,
+                "technology_label": str(
+                    item.get("technology_label") or technology_id
+                ),
+                "generator_type": str(item.get("generator_type") or ""),
+                "requires_hydronic": bool(item.get("requires_hydronic")),
+                "requires_existing_gas": bool(item.get("requires_existing_gas")),
+                "requires_existing_high_power_electric": bool(
+                    item.get("requires_existing_high_power_electric")
+                ),
+                "requires_existing_biomass_infrastructure": bool(
+                    item.get("requires_existing_biomass_infrastructure")
+                ),
+                "profile_product_count": 0,
+                "profile_min_power_kw": power,
+                "profile_max_power_kw": power,
+                "profile_min_capex_lei": capex,
+            },
+        )
+        row["profile_product_count"] = int(row["profile_product_count"]) + 1
+        row["profile_min_power_kw"] = min(
+            float(row["profile_min_power_kw"]),
+            power,
+        )
+        row["profile_max_power_kw"] = max(
+            float(row["profile_max_power_kw"]),
+            power,
+        )
+        row["profile_min_capex_lei"] = min(
+            float(row["profile_min_capex_lei"]),
+            capex,
+        )
+    return _technology_summaries_from_profile_rows(list(profiles.values()))
+
+
 async def _read_heating_catalog_summary_d1(db: Any) -> dict[str, Any]:
-    """Read only the rows required to build optimizer branch metadata.
+    """Read bounded technology metadata, never the complete marketplace."""
 
-    V3 planning must not transfer the 1000-row dense parametric grid into the
-    Worker heap. The grid is loaded later only by branch work units.
-    """
-
-    products_result = await db.prepare(
+    profiles_result = await db.prepare(
         """
-        SELECT id, external_id, technology_id, technology_label, label,
-               system_type, generator_type, carrier, cost_profile,
-               rated_power_kw, efficiency, scop, equipment_price_lei,
-               installation_allowance_lei, source_kind, source_url, confidence,
-               requires_hydronic, requires_existing_gas,
-               requires_existing_high_power_electric,
-               requires_existing_biomass_infrastructure, capacity_basis, note,
-               catalog_version, observed_on
+        SELECT
+          technology_id,
+          MIN(technology_label) AS technology_label,
+          generator_type,
+          requires_hydronic,
+          requires_existing_gas,
+          requires_existing_high_power_electric,
+          requires_existing_biomass_infrastructure,
+          COUNT(*) AS profile_product_count,
+          MIN(rated_power_kw) AS profile_min_power_kw,
+          MAX(rated_power_kw) AS profile_max_power_kw,
+          MIN(equipment_price_lei + installation_allowance_lei)
+            AS profile_min_capex_lei
         FROM heating_products
         WHERE active = 1
-        ORDER BY technology_id, rated_power_kw, equipment_price_lei, id
+        GROUP BY
+          technology_id,
+          generator_type,
+          requires_hydronic,
+          requires_existing_gas,
+          requires_existing_high_power_electric,
+          requires_existing_biomass_infrastructure
+        ORDER BY technology_id, generator_type
         """
     ).run()
     stats_result = await db.prepare(
@@ -862,29 +995,56 @@ async def _read_heating_catalog_summary_d1(db: Any) -> dict[str, Any]:
             FROM heat_pump_seasonal_performance AS sp
             INNER JOIN heating_products AS p ON p.id = sp.product_id
             WHERE p.active = 1
-          ) AS seasonal_points
+          ) AS seasonal_points,
+          (
+            SELECT COUNT(DISTINCT catalog_version)
+            FROM heating_products
+            WHERE active = 1
+          ) AS catalog_version_count,
+          (
+            SELECT MIN(catalog_version)
+            FROM heating_products
+            WHERE active = 1
+          ) AS catalog_version,
+          (
+            SELECT MAX(observed_on)
+            FROM heating_products
+            WHERE active = 1
+          ) AS observed_on
         """
     ).run()
 
-    payload = _catalog_payload_from_rows(
-        _d1_rows(products_result),
-        [],
-        [],
-        [],
-        source="d1",
+    seed = heating_planning_catalog()
+    summaries = _technology_summaries_from_profile_rows(
+        _d1_rows(profiles_result)
     )
     stats_rows = _d1_rows(stats_result)
-    if stats_rows:
-        row = stats_rows[0]
-        payload["catalog_stats"] = {
+    row = stats_rows[0] if stats_rows else {}
+    version_count = int(row.get("catalog_version_count") or 0)
+    return {
+        "schema_version": seed.get("schema_version"),
+        "catalog_version": (
+            str(row.get("catalog_version") or "")
+            if version_count == 1
+            else "d1-live-multi-version"
+        ),
+        "observed_on": row.get("observed_on") or seed.get("observed_on"),
+        "sizing_policy": seed.get("sizing_policy") or {},
+        "options": [],
+        "technology_summaries": summaries,
+        "heat_pump_performance_points": [],
+        "heat_pump_seasonal_performance": [],
+        "parametric_heating_nodes": [],
+        "catalog_stats": {
             "products": int(row.get("products") or 0),
+            "technology_summaries": len(summaries),
             "parametric_nodes": int(row.get("parametric_nodes") or 0),
             "performance_points": int(row.get("performance_points") or 0),
             "seasonal_points": int(row.get("seasonal_points") or 0),
-        }
-    payload["catalog_mode"] = "persistent_d1_summary"
-    return payload
-
+        },
+        "catalog_mode": "persistent_d1_technology_summary",
+        "source": "d1",
+    }
 
 async def cached_heating_catalog_summary_from_d1(
     db: Any,
@@ -913,8 +1073,8 @@ async def cached_heating_catalog_summary_from_d1(
             return None
         try:
             payload = await _read_heating_catalog_summary_d1(db)
-            if not payload.get("options"):
-                raise ValueError("D1 heating product summary is empty.")
+            if not payload.get("technology_summaries"):
+                raise ValueError("D1 heating technology summary is empty.")
         except Exception:
             _heating_catalog_summary_retry_after = (
                 time.monotonic() + HEATING_CATALOG_RETRY_SECONDS
@@ -934,19 +1094,27 @@ def seed_heating_catalog_summary_payload() -> dict[str, Any]:
     products = list(seed.get("options") or [])
     performance = list(seed.get("heat_pump_performance_points") or [])
     seasonal = list(seed.get("heat_pump_seasonal_performance") or [])
+    summaries = build_heating_technology_summaries(products)
     return {
-        **seed,
+        "schema_version": seed.get("schema_version"),
+        "catalog_version": seed.get("catalog_version"),
+        "observed_on": seed.get("observed_on"),
+        "sizing_policy": seed.get("sizing_policy") or {},
+        "options": [],
+        "technology_summaries": summaries,
+        "heat_pump_performance_points": [],
+        "heat_pump_seasonal_performance": [],
         "parametric_heating_nodes": [],
         "catalog_stats": {
             "products": len(products),
+            "technology_summaries": len(summaries),
             "parametric_nodes": HEATING_PARAMETRIC_NODE_TOTAL,
             "performance_points": len(performance),
             "seasonal_points": len(seasonal),
         },
-        "catalog_mode": "seed_summary",
+        "catalog_mode": "seed_technology_summary",
         "source": "seed_summary",
     }
-
 
 async def _read_heating_catalog_d1(db: Any) -> dict[str, Any]:
     products_result = await db.prepare(
