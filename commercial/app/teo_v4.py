@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .engine import dhw_energy, heating_system_performance
+from .engine import _dhw_useful_for_days, dhw_energy, heating_system_performance
 from .heating_optimization import (
     apply_heating_technology,
     heating_technologies,
@@ -199,26 +199,29 @@ def build_teo_v4_kernel(
 
     climate_months = list(climate.get("monthly_temperatures") or [])
     result_months = list(result.monthly)
-    renewable_months = list(result.renewables.monthly)
     monthly: list[dict[str, Any]] = []
     for index, row in enumerate(result_months):
         climate_row = climate_months[index]
-        hours = float(climate_row["days"]) * 24.0
+        days = int(climate_row["days"])
+        hours = float(days) * 24.0
         sky_coeff = sky_coeff_common * hours
         baseline_solar = float(row.solar_gains_kwh)
         monthly.append(
             {
                 "month": str(row.month),
-                "days": int(climate_row["days"]),
+                "days": days,
                 "outdoor_temperature_c": float(row.outdoor_temperature_c),
                 "internal_gains_kwh": float(row.internal_gains_kwh),
                 "gross_solar_gains_kwh": (
                     baseline_solar + sky_coeff * baseline_window_ua
                 ),
                 "sky_loss_kwh_per_window_ua": sky_coeff,
-                "dhw_useful_kwh": (
-                    float(renewable_months[index].solar_thermal_used_dhw_kwh)
-                    + float(renewable_months[index].dhw_backup_useful_kwh)
+                # MonthlyRenewableBalance intentionally exposes renewable
+                # production/use, not the pre-solar DHW useful load. Rebuild
+                # that load from the same canonical engine helper instead of
+                # depending on a transient field that is not in the public model.
+                "dhw_useful_kwh": float(
+                    _dhw_useful_for_days(baseline, days)
                 ),
             }
         )
