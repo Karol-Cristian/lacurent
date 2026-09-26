@@ -968,6 +968,69 @@ def heat_pump_monthly_performance_profile(
     climate = resolve_climate(building.locality)
     design_outdoor = climate.get("winter_design_temperature_c")
 
+    design_flow_c: float | None = None
+    design_return_c: float | None = None
+    design_cop: float | None = None
+    design_capacity_kw: float | None = None
+    design_capacity_basis: str | None = None
+    design_point_covered = False
+
+    if design_outdoor is not None:
+        available_capacity, capacity_basis = _product_available_capacity_at_design_kw(
+            building,
+            product,
+        )
+        design_capacity_basis = capacity_basis
+        if (
+            available_capacity is not None
+            and not any(
+                marker in capacity_basis
+                for marker in ("unverified", "unavailable", "missing", "does_not_cover")
+            )
+        ):
+            design_capacity_kw = float(available_capacity)
+            design_point_covered = True
+
+        if product.generator_type == HeatingGeneratorType.heat_pump_air_air:
+            cop_value, cop_clamped = _interpolate_air_air_metric(
+                points,
+                outdoor_temperature_c=float(design_outdoor),
+                metric="cop",
+            )
+            if cop_value is not None and not cop_clamped:
+                design_cop = float(cop_value)
+            else:
+                design_point_covered = False
+        elif product.generator_type == HeatingGeneratorType.heat_pump_air_water:
+            design_flow_c, design_return_c, _ = _heat_pump_design_temperatures(building)
+            outdoor_values = sorted(
+                {float(point.outdoor_temperature_c) for point in points}
+            )
+            flow_values = sorted(
+                {float(point.flow_temperature_c) for point in points}
+            )
+            inside_curve = bool(
+                outdoor_values
+                and flow_values
+                and float(design_outdoor) >= outdoor_values[0] - 1e-9
+                and float(design_outdoor) <= outdoor_values[-1] + 1e-9
+                and design_flow_c >= flow_values[0] - 1e-9
+                and design_flow_c <= flow_values[-1] + 1e-9
+            )
+            if inside_curve:
+                cop_value = _interpolate_heat_pump_metric(
+                    points,
+                    outdoor_temperature_c=float(design_outdoor),
+                    flow_temperature_c=design_flow_c,
+                    metric="cop",
+                )
+                if cop_value is not None:
+                    design_cop = float(cop_value)
+                else:
+                    design_point_covered = False
+            else:
+                design_point_covered = False
+
     source_urls = sorted(
         ({str(product.source_url)} if product.source_url else set())
         | {str(point.source_url) for point in points if point.source_url}
@@ -1113,6 +1176,23 @@ def heat_pump_monthly_performance_profile(
             if reference_cop_at_7c is None
             else round(reference_cop_at_7c, 4)
         ),
+        "design_point": {
+            "covered": bool(design_point_covered),
+            "outdoor_temperature_c": (
+                None if design_outdoor is None else round(float(design_outdoor), 2)
+            ),
+            "flow_temperature_c": (
+                None if design_flow_c is None else round(float(design_flow_c), 2)
+            ),
+            "return_temperature_c": (
+                None if design_return_c is None else round(float(design_return_c), 2)
+            ),
+            "cop": None if design_cop is None else round(float(design_cop), 4),
+            "heating_capacity_kw": (
+                None if design_capacity_kw is None else round(float(design_capacity_kw), 4)
+            ),
+            "capacity_basis": design_capacity_basis,
+        },
         "cop_curve_min_outdoor_c": (
             None if not unique_outdoor else unique_outdoor[0]
         ),
