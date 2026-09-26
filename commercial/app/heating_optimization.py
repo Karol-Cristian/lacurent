@@ -174,14 +174,20 @@ class HeatingTechnologyV2(BaseModel):
 
     @property
     def minimum_capex_lei(self) -> float:
+        if self.parametric_nodes:
+            return min(float(item.planning_capex_lei) for item in self.parametric_nodes)
         return min(item.installed_capex_lei for item in self.products)
 
     @property
     def min_power_kw(self) -> float:
+        if self.parametric_nodes:
+            return min(float(item.required_power_kw) for item in self.parametric_nodes)
         return min(item.rated_power_kw for item in self.products)
 
     @property
     def max_power_kw(self) -> float:
+        if self.parametric_nodes:
+            return max(float(item.required_power_kw) for item in self.parametric_nodes)
         return max(item.rated_power_kw for item in self.products)
 
 
@@ -228,6 +234,8 @@ def heating_planning_catalog() -> dict[str, Any]:
 
 def heating_planning_options(
     catalog: dict[str, Any] | None = None,
+    *,
+    technology_id: str | None = None,
 ) -> list[HeatingPlanningOptionV1]:
     raw = catalog or heating_planning_catalog()
     points_by_product: dict[str, list[dict[str, Any]]] = {}
@@ -243,6 +251,14 @@ def heating_planning_options(
 
     options: list[HeatingPlanningOptionV1] = []
     for item in raw.get("options", []):
+        if (
+            technology_id is not None
+            and str(item.get("technology_id") or "") != technology_id
+        ):
+            # Filter raw D1 rows before constructing Pydantic product models.
+            # Branch execution must scale with one technology, not the complete
+            # marketplace catalog.
+            continue
         product_id = str(item.get("id") or "")
         payload = {
             **item,
@@ -273,9 +289,7 @@ def heating_technologies(
 
     raw = catalog or heating_planning_catalog()
     grouped: dict[str, list[HeatingPlanningOptionV1]] = {}
-    for item in heating_planning_options(raw):
-        if technology_id is not None and item.technology_id != technology_id:
-            continue
+    for item in heating_planning_options(raw, technology_id=technology_id):
         grouped.setdefault(item.technology_id, []).append(item)
 
     nodes_by_technology: dict[str, list[HeatingParametricNodeV1]] = {}
@@ -363,11 +377,10 @@ def _has_existing_biomass_infrastructure(building: BuildingInput) -> bool:
     )
 
 
-def _same_generator_family(
+def _same_generator_type(
     building: BuildingInput,
-    technology: HeatingTechnologyV2,
+    generator: HeatingGeneratorType,
 ) -> bool:
-    generator = technology.representative.generator_type
     details = building.heating.details
     if details is not None and details.generator_type is not None:
         return details.generator_type == generator
@@ -386,6 +399,16 @@ def _same_generator_family(
     if generator == HeatingGeneratorType.condensing_gas_boiler:
         return building.heating.system_type == HeatingSystemType.condensing_gas_boiler
     return False
+
+
+def _same_generator_family(
+    building: BuildingInput,
+    technology: HeatingTechnologyV2,
+) -> bool:
+    return _same_generator_type(
+        building,
+        technology.representative.generator_type,
+    )
 
 
 def _product_infrastructure_eligible(
@@ -435,6 +458,108 @@ def technology_is_eligible(
             "comerciale disponibile nu este eligibilă."
         )
     if representative.requires_existing_biomass_infrastructure:
+        return False, (
+            "Coșul, spațiul tehnic și logistica de combustibil pentru biomasă nu sunt "
+            "confirmate."
+        )
+    return False, "Infrastructura necesară tehnologiei nu este confirmată."
+
+
+def _requirement_profile_is_eligible(
+    building: BuildingInput,
+    profile: dict[str, Any],
+) -> bool:
+    if bool(profile.get("requires_hydronic")) and not _is_hydronic(building):
+        return False
+    if bool(profile.get("requires_existing_gas")) and not _has_existing_gas(building):
+        return False
+    if (
+        bool(profile.get("requires_existing_high_power_electric"))
+        and not _has_existing_high_power_electric(building)
+    ):
+        return False
+    if (
+        bool(profile.get("requires_existing_biomass_infrastructure"))
+        and not _has_existing_biomass_infrastructure(building)
+    ):
+        return False
+    return True
+
+
+def technology_summary_is_eligible(
+    building: BuildingInput,
+    summary: dict[str, Any],
+) -> tuple[bool, str | None]:
+    """Evaluate branch eligibility from bounded technology metadata only."""
+
+    generator_values = [
+        value
+        for value in (summary.get("generator_types") or [])
+        if value
+    ]
+    if not generator_values and summary.get("generator_type"):
+        generator_values = [summary.get("generator_type")]
+    generators: list[HeatingGeneratorType] = []
+    for raw in generator_values:
+        try:
+            generators.append(HeatingGeneratorType(str(raw)))
+        except ValueError:
+            continue
+
+    if generators and all(
+        _same_generator_type(building, generator)
+        for generator in generators
+    ):
+        return False, (
+            "Aceeași familie de generator este deja instalată; păstrarea sistemului "
+            "actual este evaluată separat cu CAPEX zero."
+        )
+
+    profiles = list(summary.get("requirement_profiles") or [])
+    if not profiles:
+        profiles = [
+            {
+                "requires_hydronic": bool(summary.get("requires_hydronic")),
+                "requires_existing_gas": bool(summary.get("requires_existing_gas")),
+                "requires_existing_high_power_electric": bool(
+                    summary.get("requires_existing_high_power_electric")
+                ),
+                "requires_existing_biomass_infrastructure": bool(
+                    summary.get("requires_existing_biomass_infrastructure")
+                ),
+            }
+        ]
+    if any(
+        _requirement_profile_is_eligible(building, profile)
+        for profile in profiles
+    ):
+        return True, None
+
+    if all(bool(profile.get("requires_hydronic")) for profile in profiles) and not _is_hydronic(building):
+        return False, (
+            "Sistemul necesită o instalație hidronică existentă; conversia "
+            "emitatoarelor nu este încă inclusă."
+        )
+    if all(bool(profile.get("requires_existing_gas")) for profile in profiles) and not _has_existing_gas(building):
+        return False, "Gazul nu este confirmat ca disponibil în configurația casei."
+    if (
+        all(
+            bool(profile.get("requires_existing_high_power_electric"))
+            for profile in profiles
+        )
+        and not _has_existing_high_power_electric(building)
+    ):
+        return False, (
+            "Puterea electrică necesară nu este confirmată; niciun profil comercial "
+            "disponibil nu este eligibil."
+        )
+    if (
+        all(
+            bool(profile.get("requires_existing_biomass_infrastructure"))
+            for profile in profiles
+        )
+        and not _has_existing_biomass_infrastructure(building)
+    ):
         return False, (
             "Coșul, spațiul tehnic și logistica de combustibil pentru biomasă nu sunt "
             "confirmate."
@@ -1254,6 +1379,8 @@ def _planning_heating_capex(
     building: BuildingInput,
     technology: HeatingTechnologyV2,
     required_power_kw: float,
+    *,
+    planning_nodes: list[dict[str, Any]] | None = None,
 ) -> tuple[float, float, float, int] | None:
     """Interpolate a raw kW->CAPEX curve without selecting a commercial SKU.
 
@@ -1271,11 +1398,35 @@ def _planning_heating_capex(
     if not eligible_products:
         return None
 
-    use_dense_grid = (
+    raw_planning_nodes = [
+        item
+        for item in (planning_nodes or [])
+        if str(item.get("technology_id") or "") == technology.id
+    ]
+    use_dense_grid = bool(raw_planning_nodes) or (
         bool(technology.parametric_nodes)
         and len(eligible_products) == len(technology.products)
     )
-    if use_dense_grid:
+    if raw_planning_nodes:
+        # V3 branch requests keep the fixed-size CAPEX curve as raw dictionaries
+        # so the Worker does not construct hundreds of Pydantic node objects for
+        # every two-candidate micro-batch.
+        points = [
+            (
+                float(node.get("required_power_kw") or 0.0),
+                float(node.get("planning_capex_lei") or 0.0),
+            )
+            for node in raw_planning_nodes
+            if float(node.get("required_power_kw") or 0.0) > 0
+        ]
+        source_product_count = max(
+            (
+                int(node.get("source_product_count") or 0)
+                for node in raw_planning_nodes
+            ),
+            default=len(eligible_products),
+        )
+    elif use_dense_grid:
         points = [
             (float(node.required_power_kw), float(node.planning_capex_lei))
             for node in technology.parametric_nodes
@@ -1353,6 +1504,7 @@ def _rebase_candidate(
     original_building: BuildingInput,
     technology: HeatingTechnologyV2 | None,
     branch_id_override: str | None = None,
+    heating_catalog: dict[str, Any] | None = None,
 ) -> CandidateEvaluationV1 | None:
     """Attach branch economics without commercializing the generator.
 
@@ -1379,6 +1531,9 @@ def _rebase_candidate(
             original_building,
             technology,
             required_power_kw,
+            planning_nodes=list(
+                (heating_catalog or {}).get("parametric_heating_nodes") or []
+            ),
         )
         if planning is None:
             return None
@@ -1764,25 +1919,68 @@ def heating_branch_plan(
         )
     ]
 
-    for technology in heating_technologies(
-        heating_catalog,
-        include_parametric_nodes=False,
-    ):
-        eligible, reason = technology_is_eligible(request.baseline, technology)
-        plan.append(
-            HeatingBranchSummaryV1(
-                branch_id=technology.id,
-                label=technology.label,
-                fixed_capex_lei=round(technology.minimum_capex_lei, 2),
-                eligible=eligible,
-                economic_eligible=True,
-                commercialization_mode="raw_parametric_then_product_match",
-                min_product_power_kw=technology.min_power_kw,
-                max_product_power_kw=technology.max_power_kw,
-                sizing_mode="raw_design_load_then_product_match_finalists",
-                note=reason,
+    technology_summaries = list(
+        (heating_catalog or {}).get("technology_summaries") or []
+    )
+    if technology_summaries:
+        # V3 structural planning only needs bounded technology metadata.
+        # This path is independent of the number of commercial products in D1.
+        for summary in technology_summaries:
+            branch_id = str(summary.get("technology_id") or "").strip()
+            if not branch_id:
+                continue
+            eligible, reason = technology_summary_is_eligible(
+                request.baseline,
+                summary,
             )
-        )
+            plan.append(
+                HeatingBranchSummaryV1(
+                    branch_id=branch_id,
+                    label=str(
+                        summary.get("technology_label")
+                        or branch_id
+                    ),
+                    fixed_capex_lei=round(
+                        float(summary.get("minimum_capex_lei") or 0.0),
+                        2,
+                    ),
+                    eligible=eligible,
+                    economic_eligible=True,
+                    commercialization_mode="raw_parametric_then_product_match",
+                    min_product_power_kw=(
+                        None
+                        if summary.get("min_product_power_kw") is None
+                        else float(summary["min_product_power_kw"])
+                    ),
+                    max_product_power_kw=(
+                        None
+                        if summary.get("max_product_power_kw") is None
+                        else float(summary["max_product_power_kw"])
+                    ),
+                    sizing_mode="raw_design_load_then_product_match_finalists",
+                    note=reason,
+                )
+            )
+    else:
+        for technology in heating_technologies(
+            heating_catalog,
+            include_parametric_nodes=False,
+        ):
+            eligible, reason = technology_is_eligible(request.baseline, technology)
+            plan.append(
+                HeatingBranchSummaryV1(
+                    branch_id=technology.id,
+                    label=technology.label,
+                    fixed_capex_lei=round(technology.minimum_capex_lei, 2),
+                    eligible=eligible,
+                    economic_eligible=True,
+                    commercialization_mode="raw_parametric_then_product_match",
+                    min_product_power_kw=technology.min_power_kw,
+                    max_product_power_kw=technology.max_power_kw,
+                    sizing_mode="raw_design_load_then_product_match_finalists",
+                    note=reason,
+                )
+            )
 
     existing_ids = {item.branch_id for item in plan}
     for branch_id, profile in SUPPLEMENTAL_TECHNICAL_HEATING_BRANCHES.items():

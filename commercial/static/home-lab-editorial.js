@@ -1785,7 +1785,16 @@
           branchFeasible += Number(result.branch?.feasible_candidates || 0);
           branchFastEvaluations += Number(result.fastEvaluations || 0);
           backendElapsedMs += Number(result.calculationTimeMs || 0);
-          log(`   batch ${batchIndex + 1}/${batchCount}: ${candidates.length} candidați · ${result.fastEvaluations || 0} evaluări.`);
+          const branchCatalogStats = result.heatingCatalogStats || {};
+          const loadedProducts = Number(branchCatalogStats.loaded_products || 0);
+          const sourceProducts = Number(branchCatalogStats.products || 0);
+          const planningNodes = Number(branchCatalogStats.parametric_nodes || 0);
+          const catalogMeta = result.heatingCatalogMode
+            ? ` · catalog ${result.heatingCatalogMode}: ${loadedProducts}/${sourceProducts} produse încărcate · ${planningNodes} noduri`
+            : "";
+          log(
+            `   batch ${batchIndex + 1}/${batchCount}: ${candidates.length} candidați · ${result.fastEvaluations || 0} evaluări · server ${Number(result.calculationTimeMs || 0).toFixed(1)} ms${catalogMeta}.`
+          );
         }
 
         branchStats.push({

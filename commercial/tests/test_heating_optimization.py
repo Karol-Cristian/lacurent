@@ -5,8 +5,12 @@ import pytest
 from commercial.app.engine import calculate, demo_building
 from commercial.app.heating_catalog_store import (
     HEATING_PARAMETRIC_NODE_TOTAL,
+    build_heating_technology_summaries,
     build_parametric_heating_nodes,
+    compact_heating_branch_catalog_payload,
+    seed_heating_branch_catalog_payload,
     seed_heating_catalog_payload,
+    seed_heating_catalog_summary_payload,
 )
 from commercial.app.heating_optimization import (
     _estimated_heat_pump_scop,
@@ -62,6 +66,122 @@ def test_dense_parametric_heating_grid_has_1000_non_sku_nodes() -> None:
         for item in nodes
     )
     assert len({item["source_signature"] for item in nodes}) == 1
+
+
+def test_branch_filter_happens_before_non_target_product_validation() -> None:
+    seed = heating_planning_catalog()
+    target = dict(seed["options"][0])
+    catalog = {
+        **seed,
+        "options": [
+            target,
+            {
+                # Deliberately invalid if Pydantic attempts to parse it.
+                "id": "invalid-other-technology",
+                "technology_id": "other-technology",
+            },
+        ],
+    }
+
+    options = heating_planning_options(
+        catalog,
+        technology_id=str(target["technology_id"]),
+    )
+
+    assert [item.id for item in options] == [target["id"]]
+
+
+def test_compact_branch_catalog_is_independent_of_marketplace_product_count() -> None:
+    full = seed_heating_catalog_payload()
+    technology_id = "heat-pump-air-air"
+    source_products = [
+        item
+        for item in full["options"]
+        if item["technology_id"] == technology_id
+    ]
+
+    compact = compact_heating_branch_catalog_payload(full, technology_id)
+
+    assert compact["catalog_stats"]["products"] == len(source_products)
+    assert compact["catalog_stats"]["loaded_products"] == 1
+    assert len(compact["options"]) == 1
+    assert compact["options"][0]["id"] == min(
+        source_products,
+        key=lambda item: (
+            float(item["rated_power_kw"]),
+            float(item["equipment_price_lei"])
+            + float(item["installation_allowance_lei"]),
+            str(item["id"]),
+        ),
+    )["id"]
+    assert compact["parametric_heating_nodes"]
+    assert all(
+        item["technology_id"] == technology_id
+        for item in compact["parametric_heating_nodes"]
+    )
+    assert compact["heat_pump_performance_points"] == []
+    assert compact["heat_pump_seasonal_performance"] == []
+
+
+def test_compact_branch_profile_preserves_planning_power_range() -> None:
+    technology_id = "heat-pump-air-air"
+    full = seed_heating_catalog_payload()
+    compact = seed_heating_branch_catalog_payload(technology_id)
+
+    full_technology = next(
+        item
+        for item in heating_technologies(full)
+        if item.id == technology_id
+    )
+    compact_technology = heating_technologies(compact)[0]
+
+    assert compact_technology.representative.id == full_technology.representative.id
+    assert compact_technology.min_power_kw == pytest.approx(full_technology.min_power_kw)
+    assert compact_technology.max_power_kw == pytest.approx(full_technology.max_power_kw)
+    assert compact_technology.minimum_capex_lei == pytest.approx(
+        full_technology.minimum_capex_lei
+    )
+
+
+
+def test_bounded_technology_summary_preserves_branch_plan_semantics() -> None:
+    request = OptimizationRequestV1(
+        baseline=demo_building(),
+        mode=OptimizationMode.auto_economic,
+    )
+    full = seed_heating_catalog_payload()
+    summary = seed_heating_catalog_summary_payload()
+
+    full_plan = {
+        item.branch_id: (item.eligible, item.economic_eligible)
+        for item in heating_branch_plan(request, full)
+    }
+    summary_plan = {
+        item.branch_id: (item.eligible, item.economic_eligible)
+        for item in heating_branch_plan(request, summary)
+    }
+
+    assert summary["options"] == []
+    assert summary["technology_summaries"]
+    assert summary_plan == full_plan
+
+
+def test_technology_summary_count_does_not_grow_with_duplicate_skus() -> None:
+    seed = heating_planning_catalog()
+    base_products = list(seed.get("options") or [])
+    expanded: list[dict] = []
+    for copy_index in range(25):
+        for item in base_products:
+            clone = dict(item)
+            clone["id"] = f"{item['id']}:copy:{copy_index}"
+            expanded.append(clone)
+
+    summaries = build_heating_technology_summaries(expanded)
+
+    assert len(summaries) == len(
+        {str(item["technology_id"]) for item in base_products}
+    )
+    assert sum(int(item["product_count"]) for item in summaries) == len(expanded)
 
 
 def test_heating_technologies_use_dense_grid_without_creating_fake_products() -> None:

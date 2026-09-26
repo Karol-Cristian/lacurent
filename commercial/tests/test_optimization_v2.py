@@ -3,6 +3,11 @@ from __future__ import annotations
 import pytest
 
 from commercial.app.engine import calculate, demo_building
+from commercial.app.heating_catalog_store import (
+    compact_heating_branch_catalog_payload,
+    seed_heating_catalog_payload,
+)
+from commercial.app.heating_optimization import heating_branch_plan
 from commercial.app.optimization import (
     CandidateEvaluationV1,
     OptimizationMode,
@@ -232,6 +237,53 @@ def test_worker_safe_branch_reuses_supplied_baseline_bill_without_full_calculate
     assert result.fast_evaluations == 1
     assert len(result.candidates) == 1
     assert result.candidates[0].baseline_annual_bill_lei == pytest.approx(4321.0)
+
+
+def test_worker_safe_branch_does_not_rebuild_full_heating_plan(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    request = OptimizationRequestV1(
+        baseline=demo_building(),
+        mode=OptimizationMode.auto_economic,
+    )
+    full_catalog = seed_heating_catalog_payload()
+    branch_id = next(
+        item.branch_id
+        for item in heating_branch_plan(request, full_catalog)
+        if (
+            item.branch_id != "keep-current-heating"
+            and item.eligible
+            and item.economic_eligible
+        )
+    )
+    compact_catalog = compact_heating_branch_catalog_payload(
+        full_catalog,
+        branch_id,
+    )
+
+    def _unexpected_full_plan(*args, **kwargs):
+        raise AssertionError("V3 branch hot path must not rebuild the full heating plan")
+
+    monkeypatch.setattr(
+        "commercial.app.optimization_v2.heating_branch_plan",
+        _unexpected_full_plan,
+    )
+
+    baseline_result = calculate(request.baseline, include_reference=False)
+    baseline_bill = estimate_energy_cost(baseline_result)["priced_total_lei"]
+    result = evaluate_worker_safe_branch_v2(
+        request,
+        branch_id=branch_id,
+        shortlist=[ParametricMeasuresV1()],
+        bounds=OptimizationSearchBoundsV1(),
+        catalog=_catalog(),
+        heating_catalog=compact_catalog,
+        baseline_annual_bill_lei=float(baseline_bill),
+    )
+
+    assert result.fast_evaluations == 1
+    assert result.branch.branch_id == branch_id
+    assert result.candidates
 
 
 def test_worker_safe_v2_evaluates_only_shared_shortlist_per_branch() -> None:
