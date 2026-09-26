@@ -90,6 +90,9 @@
       if (field.dataset.geomAuto !== undefined) {
         fields[key].geomAuto = field.dataset.geomAuto;
       }
+      if (field.dataset.advancedAuto !== undefined) {
+        fields[key].advancedAuto = field.dataset.advancedAuto;
+      }
     });
     return {
       version:1,
@@ -139,6 +142,9 @@
       }
       if (saved.geomAuto !== undefined && field.dataset.geomAuto !== undefined) {
         field.dataset.geomAuto = String(saved.geomAuto);
+      }
+      if (saved.advancedAuto !== undefined) {
+        field.dataset.advancedAuto = String(saved.advancedAuto);
       }
       applied = true;
     });
@@ -266,9 +272,45 @@
 
   function optionalAdvancedNumber(id) {
     const field = document.getElementById(id);
-    if (!field || String(field.value ?? "").trim() === "") return null;
+    if (!field || field.dataset.advancedAuto === "true" || String(field.value ?? "").trim() === "") return null;
     const value = parseDecimal(field.value);
     return Number.isFinite(value) ? value : null;
+  }
+
+  function advancedFieldIsManual(id) {
+    const field = document.getElementById(id);
+    return Boolean(field && field.dataset.advancedAuto !== "true" && String(field.value ?? "").trim() !== "");
+  }
+
+  function setAdvancedDerivedValue(id, value, digits = 2) {
+    const field = document.getElementById(id);
+    if (!field || advancedFieldIsManual(id)) return;
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) {
+      field.value = "";
+      field.dataset.advancedAuto = "true";
+    } else {
+      field.value = decimalForDisplay(numeric, digits);
+      field.dataset.advancedAuto = "true";
+    }
+    const wrapper = field.closest(".ed-field");
+    wrapper?.classList.toggle("is-derived-value", Number.isFinite(numeric));
+    wrapper?.classList.remove("is-manual-value");
+  }
+
+  function refreshAdvancedFieldState(field) {
+    if (!field?.matches?.("[data-optional-advanced]")) return;
+    const hasValue = String(field.value ?? "").trim() !== "";
+    const auto = field.dataset.advancedAuto === "true";
+    const wrapper = field.closest(".ed-field");
+    wrapper?.classList.toggle("is-derived-value", hasValue && auto);
+    wrapper?.classList.toggle("is-manual-value", hasValue && !auto);
+  }
+
+  function markAdvancedManual(field) {
+    if (!field?.matches?.("[data-optional-advanced]")) return;
+    field.dataset.advancedAuto = "false";
+    refreshAdvancedFieldState(field);
   }
 
   function decimalForForm(value) {
@@ -525,6 +567,145 @@
     $("#solarThermalFields").classList.toggle("is-disabled", !$("#solarThermalEnabled").checked);
   }
 
+  function syncDerivedAdvancedFields() {
+    const topBoundary = $("#topBoundary").value;
+    const glazingU = {
+      single_clear_glazing:5.0,
+      double_clear_glazing:2.8,
+      double_low_e_face_3:1.6,
+      triple_low_e_faces_2_and_5:0.9,
+    };
+    // MC001-2022 Table 2.13 exact entries used by the project dataset.
+    const glazingG = {
+      single_clear_glazing:0.85,
+      double_clear_glazing:0.75,
+      double_low_e_face_3:0.65,
+      triple_low_e_faces_2_and_5:0.50,
+    };
+
+    setAdvancedDerivedValue("advWallU", insulationU(
+      wallBaseU(),
+      $("#wallIns").value,
+      insulationLambda($("#wallInsulationMaterial").value)
+    ), 3);
+    setAdvancedDerivedValue("advRoofU", insulationU(
+      Number(TOP_BOUNDARY_BASE_U[topBoundary]) || TOP_BOUNDARY_BASE_U.unknown,
+      $("#roofIns").value,
+      insulationLambda($("#roofInsulationMaterial").value)
+    ), 3);
+    setAdvancedDerivedValue("advFloorU", insulationU(
+      0.90,
+      $("#floorIns").value,
+      insulationLambda($("#floorInsulationMaterial").value)
+    ), 3);
+    setAdvancedDerivedValue("advWindowU", glazingU[$("#glazing").value] || 1.6, 2);
+    setAdvancedDerivedValue("advBridgePsi", 0.08, 2);
+    setAdvancedDerivedValue("advGroundConductivity", $("#floorBoundary").value === "ground" ? 2.0 : NaN, 1);
+    setAdvancedDerivedValue("advSolarGn", glazingG[$("#glazing").value], 2);
+
+    const ventilation = $("#ventilation").value;
+    const ach = ventilation === "mechanical" ? 0.65 : 0.5;
+    const recovery = ventilation === "hrv" ? 75 : 0;
+    setAdvancedDerivedValue("advAch", ach, 2);
+    setAdvancedDerivedValue("advHeatRecovery", recovery, 0);
+
+    const emitter = $("#heatingEmitter").value;
+    const emitterTemperatures = {
+      radiators_high_temp:[60,45],
+      radiators_low_temp:[45,35],
+      underfloor:[35,30],
+      fan_coils:[45,40],
+    };
+    const temps = emitterTemperatures[emitter] || null;
+    setAdvancedDerivedValue("advHeatingFlow", temps ? temps[0] : NaN, 0);
+    setAdvancedDerivedValue("advHeatingReturn", temps ? temps[1] : NaN, 0);
+
+    const choice = $("#heatingChoice").value;
+    const generator = heatingGeneratorType();
+    const auxByGenerator = {
+      gas_boiler:120,
+      condensing_gas_boiler:120,
+      electric_direct:0,
+      electric_boiler:120,
+      heat_pump_air_water:220,
+      heat_pump_ground_water:220,
+      heat_pump_air_air:30,
+      district_heat:120,
+      wood_stove:0,
+      wood_boiler:120,
+      pellet_boiler:180,
+    };
+    setAdvancedDerivedValue("advHeatingAux", auxByGenerator[generator] ?? 0, 0);
+
+    if (choice === "heat_pump") {
+      const scopByEmitter = {
+        local:3.0,
+        radiators_high_temp:2.3,
+        radiators_low_temp:2.8,
+        underfloor:3.2,
+        fan_coils:2.8,
+        air:3.0,
+      };
+      const sourceFactor = {
+        heat_pump_air_water:1.0,
+        heat_pump_ground_water:1.2,
+        heat_pump_air_air:1.0,
+      };
+      setAdvancedDerivedValue(
+        "advHeatingScop",
+        (scopByEmitter[emitter] || 3.0) * (sourceFactor[generator] || 1.0),
+        2
+      );
+      setAdvancedDerivedValue("advHeatingEfficiency", NaN, 0);
+    } else {
+      const efficiencyPct = {
+        condensing_gas_boiler:94,
+        gas_boiler:85,
+        electric_resistance:100,
+        electric_boiler:98,
+        district_heat:95,
+        wood_stove:75,
+        wood_boiler:80,
+        pellet_boiler:88,
+      };
+      setAdvancedDerivedValue("advHeatingEfficiency", efficiencyPct[choice], 0);
+      setAdvancedDerivedValue("advHeatingScop", NaN, 2);
+    }
+
+    const cooling = $("#cooling").value;
+    setAdvancedDerivedValue("advCoolingSeer", cooling === "none" ? NaN : (cooling === "split" ? 4.2 : 4.0), 1);
+    setAdvancedDerivedValue("advCoolingSetpoint", cooling === "none" ? NaN : 26, 0);
+
+    const dhw = $("#dhwSystem").value;
+    let dhwEfficiency = NaN;
+    let dhwCop = NaN;
+    if (dhw === "electric_boiler") dhwEfficiency = 98;
+    else if (dhw === "gas_boiler") dhwEfficiency = 88;
+    else if (dhw === "heat_pump_water_heater") dhwCop = 2.4;
+    else if (dhw === "district_heat") dhwEfficiency = 95;
+    else if (dhw === "same_as_heating") {
+      if (choice === "heat_pump") dhwCop = 2.4;
+      else {
+        dhwEfficiency = {
+          condensing_gas_boiler:88,
+          gas_boiler:88,
+          electric_resistance:98,
+          electric_boiler:98,
+          district_heat:95,
+          wood_stove:75,
+          wood_boiler:80,
+          pellet_boiler:88,
+        }[choice];
+      }
+    }
+    setAdvancedDerivedValue("advDhwEfficiency", dhwEfficiency, 0);
+    setAdvancedDerivedValue("advDhwCop", dhwCop, 1);
+    setAdvancedDerivedValue("advDhwLitres", 50, 0);
+
+    setAdvancedDerivedValue("advPvPerformanceRatio", 82, 0);
+    setAdvancedDerivedValue("advSolarThermalEfficiency", 45, 0);
+  }
+
   function heatingExpertProfile() {
     const choice = $("#heatingChoice").value;
     return {
@@ -549,6 +730,7 @@
   }
 
   function syncTechnicalForm() {
+    syncDerivedAdvancedFields();
     const g = updateGeometryDisplay(false);
     setValue("techLength", g.length.toFixed(3));
     setValue("techWidth", g.width.toFixed(3));
@@ -1601,10 +1783,18 @@
 
   form.addEventListener("input", event => {
     if (event.target?.type === "hidden") return;
+    if (event.target?.matches?.("[data-optional-advanced]") && event.isTrusted) {
+      markAdvancedManual(event.target);
+    }
+    syncDerivedAdvancedFields();
     scheduleBaselineSummary();
   });
   form.addEventListener("change", event => {
     if (event.target?.type === "hidden") return;
+    if (event.target?.matches?.("[data-optional-advanced]") && event.isTrusted) {
+      markAdvancedManual(event.target);
+    }
+    syncDerivedAdvancedFields();
     scheduleBaselineSummary(350);
   });
 
@@ -1641,6 +1831,8 @@
     syncRenewableVisibility();
   }
 
+  syncDerivedAdvancedFields();
+  form.querySelectorAll("[data-optional-advanced]").forEach(refreshAdvancedFieldState);
   syncTechnicalForm();
   showPage("intro");
   scheduleBaselineSummary(150);

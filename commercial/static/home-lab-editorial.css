@@ -1191,3 +1191,34 @@ body{
     padding-top:9px;
   }
 }
+
+
+/* Editorial v14: distinguish calculated values from manual overrides */
+.ed-advanced-grid .ed-field>span{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:wrap;
+}
+.ed-advanced-grid .ed-field.is-derived-value>span::after,
+.ed-advanced-grid .ed-field.is-manual-value>span::after{
+  padding:2px 5px;
+  border-radius:999px;
+  font-size:8px;
+  font-weight:700;
+  letter-spacing:.02em;
+  text-transform:uppercase;
+}
+.ed-advanced-grid .ed-field.is-derived-value>span::after{
+  content:"Calculat";
+  background:rgba(111,132,152,.10);
+  color:#687d90;
+}
+.ed-advanced-grid .ed-field.is-manual-value>span::after{
+  content:"Manual";
+  background:rgba(101,121,105,.11);
+  color:#637767;
+}
+.ed-advanced-grid .ed-field.is-derived-value input{
+  color:#5d6b78;
+}
