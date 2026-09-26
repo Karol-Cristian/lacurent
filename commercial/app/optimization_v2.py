@@ -32,6 +32,7 @@ from .heating_optimization import (
     apply_heating_technology,
     heating_branch_plan,
     heating_technologies,
+    technology_is_eligible,
 )
 from .methodology import resolve_climate
 from .models import BuildingInput
@@ -319,6 +320,7 @@ def _fast_branch_candidate(
         original_baseline_bill_lei=context.baseline_bill_lei,
         original_building=context.request.baseline,
         technology=technology,
+        heating_catalog=context.heating_catalog,
     )
     if rebased is not None:
         context.cache[cache_key] = rebased
@@ -996,24 +998,95 @@ def evaluate_worker_safe_branch_v2(
                 "Baseline annual bill is incomplete; optimizer V2 cannot run safely."
             )
 
-    branches = heating_branch_plan(request, heating_catalog)
-    branch = next(
-        (item for item in branches if item.branch_id == branch_id),
-        None,
-    )
-    if branch is None:
-        raise ValueError(f"Unknown heating branch {branch_id!r}.")
-    if not branch.eligible or not branch.economic_eligible:
-        return WorkerSafeBranchResultV2(branch=branch)
-
-    technologies = {
-        item.id: item
-        for item in heating_technologies(
-            heating_catalog,
-            include_parametric_nodes=False,
-            technology_id=branch_id,
+    # Hot-path branch execution must not rebuild the complete heating plan.
+    # The structural V3 plan already decided which branch IDs are eligible.
+    # Here we materialize at most one technology from the compact branch
+    # catalog; keep-current needs no heating catalog at all.
+    if branch_id == "keep-current-heating":
+        branch = HeatingBranchSummaryV1(
+            branch_id=branch_id,
+            label="Păstrează sistemul actual",
+            fixed_capex_lei=0.0,
+            eligible=True,
+            economic_eligible=True,
+            commercialization_mode="existing_system",
+            sizing_mode="existing_system",
         )
-    }
+        technologies: dict[str, HeatingTechnologyV2] = {}
+    else:
+        technologies = {
+            item.id: item
+            for item in heating_technologies(
+                heating_catalog,
+                include_parametric_nodes=False,
+                technology_id=branch_id,
+            )
+        }
+        technology_preview = technologies.get(branch_id)
+        if technology_preview is None:
+            # Preserve legacy behavior for technical-only branches or malformed
+            # requests, but keep this expensive full-plan path out of normal V3
+            # economic branch execution.
+            fallback_branch = next(
+                (
+                    item
+                    for item in heating_branch_plan(request, heating_catalog)
+                    if item.branch_id == branch_id
+                ),
+                None,
+            )
+            if fallback_branch is None:
+                raise ValueError(f"Unknown heating branch {branch_id!r}.")
+            if not fallback_branch.eligible or not fallback_branch.economic_eligible:
+                return WorkerSafeBranchResultV2(branch=fallback_branch)
+            raise ValueError(
+                f"Heating branch {branch_id!r} has no compact technology profile."
+            )
+
+        eligible, reason = technology_is_eligible(
+            request.baseline,
+            technology_preview,
+        )
+        raw_nodes = [
+            item
+            for item in (
+                (heating_catalog or {}).get("parametric_heating_nodes") or []
+            )
+            if str(item.get("technology_id") or "") == branch_id
+        ]
+        if raw_nodes:
+            fixed_capex = min(
+                float(item.get("planning_capex_lei") or 0.0)
+                for item in raw_nodes
+            )
+            min_power = min(
+                float(item.get("required_power_kw") or 0.0)
+                for item in raw_nodes
+            )
+            max_power = max(
+                float(item.get("required_power_kw") or 0.0)
+                for item in raw_nodes
+            )
+        else:
+            fixed_capex = float(technology_preview.minimum_capex_lei)
+            min_power = float(technology_preview.min_power_kw)
+            max_power = float(technology_preview.max_power_kw)
+
+        branch = HeatingBranchSummaryV1(
+            branch_id=branch_id,
+            label=technology_preview.label,
+            fixed_capex_lei=round(fixed_capex, 2),
+            eligible=eligible,
+            economic_eligible=True,
+            commercialization_mode="raw_parametric_then_product_match",
+            min_product_power_kw=min_power,
+            max_product_power_kw=max_power,
+            sizing_mode="raw_design_load_then_product_match_finalists",
+            note=reason,
+        )
+        if not branch.eligible:
+            return WorkerSafeBranchResultV2(branch=branch)
+
     branch_baseline, technology = _branch_baseline(
         request,
         branch_id,
