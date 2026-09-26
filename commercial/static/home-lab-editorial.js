@@ -1737,6 +1737,7 @@
       );
       stage("plan","done", `${lastPlan.shortlistSize || 0} configurații`);
       log(`Shortlist: ${lastPlan.shortlistSize || 0} configurații din ${lastPlan.representativePoolSize || 0} puncte reprezentative.`);
+      log(`Metodă V2: ${lastPlan.searchMethod || "necunoscută"}.`);
       const catalogStats = lastPlan.heatingCatalogStats || {};
       log(`Catalog încălzire: ${catalogStats.products ?? "?"} produse · ${catalogStats.performance_points ?? "?"} puncte COP/capacitate · sursă ${lastPlan.heatingCatalogSource || "?"}.`);
 
@@ -1901,7 +1902,32 @@
             ${metric("SCOP declarat", hp.declared_scop == null ? "—" : fmt(hp.declared_scop,2))}
             ${metric("SCOP modelat", hp.modeled_scop_from_monthly_cop == null ? "—" : fmt(hp.modeled_scop_from_monthly_cop,2))}
             ${metric("COP la +7 °C", hp.reference_cop_at_7c == null ? "—" : fmt(hp.reference_cop_at_7c,2))}
+            ${metric(
+              "Temperatură exterioară de proiect",
+              hp.design_point?.outdoor_temperature_c == null
+                ? "—"
+                : fmt(hp.design_point.outdoor_temperature_c,0) + " °C"
+            )}
+            ${metric(
+              "Tur la proiect",
+              hp.design_point?.flow_temperature_c == null
+                ? "—"
+                : fmt(hp.design_point.flow_temperature_c,0) + " °C"
+            )}
+            ${metric(
+              "COP la punctul de proiect",
+              hp.design_point?.cop == null
+                ? (hp.design_point?.covered ? "—" : "Neacoperit")
+                : fmt(hp.design_point.cop,2)
+            )}
+            ${metric(
+              "Capacitate la punctul de proiect",
+              hp.design_point?.heating_capacity_kw == null
+                ? (hp.design_point?.covered ? "—" : "Neacoperită")
+                : fmt(hp.design_point.heating_capacity_kw,2) + " kW"
+            )}
           </div>
+          ${hp.design_point && !hp.design_point.covered ? '<p class="ed-hint">Punctul extrem de proiect nu este acoperit complet de curba publicată pentru acest produs. LaCurent nu extrapolează COP-ul sau capacitatea dincolo de domeniul source-backed.</p>' : ""}
           ${Array.isArray(hp.monthly) && hp.monthly.some(x => x.cop != null) ? `
             <h3>COP lunar raportat la sarcina casei</h3>
             ${hp.monthly.map(row => `<div class="ed-measure"><span>${escapeHtml(row.month)} · ${fmt(row.outdoor_temperature_c,1)} °C · ${fmt(row.useful_heating_kwh,0)} kWh utili</span><b>${row.cop == null ? "—" : "COP " + fmt(row.cop,2)}</b></div>`).join("")}
