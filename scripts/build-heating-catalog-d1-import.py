@@ -244,19 +244,18 @@ def build_sql(payload: dict[str, Any], normalized: dict[str, Any]) -> str:
         "batch_id,source_name,source_url,imported_at,product_count,performance_point_count,seasonal_point_count,status,note"
         ") VALUES ("
         + ",".join(
-            q(v)
-            for v in [
-                batch_id,
-                source_name,
-                source_url,
-                None,
-                len(normalized["products"]),
-                len(normalized["points"]),
-                len(normalized["seasonal"]),
-                "imported",
-                note,
+            [
+                q(batch_id),
+                q(source_name),
+                q(source_url),
+                "CURRENT_TIMESTAMP",
+                q(len(normalized["products"])),
+                q(len(normalized["points"])),
+                q(len(normalized["seasonal"])),
+                q("imported"),
+                q(note),
             ]
-        ).replace("NULL", "CURRENT_TIMESTAMP", 1)
+        )
         + ");"
     )
     lines.extend(["", "COMMIT;", ""])
