@@ -322,7 +322,7 @@ def test_company_home_is_commercial_landing() -> None:
     assert "data-lacurent-landing" in response.text
     assert "Nu promitem." in response.text
     assert "Calculăm." in response.text
-    assert "clădiri noi și existente" in response.text
+    assert "clădire nouă sau existentă" in response.text
     assert "MC001" in response.text
     assert "Rapid Building Physics Engine" in response.text
     assert "Techno-Economic Optimizer" in response.text
