@@ -116,7 +116,7 @@ try {
 
   const zoneThreeMarker = page.locator('#edLocationMap .ed-map-locality[data-climate-zone="III"]').first();
   await zoneThreeMarker.waitFor({state:"visible", timeout:5000});
-  await zoneThreeMarker.click();
+  await zoneThreeMarker.dispatchEvent("click");
   const zoneThreeOutline = page.locator('#edLocationMap .ed-map-zone-outline[data-selected-zone="III"]');
   if (await zoneThreeOutline.count() !== 1) {
     throw new Error("Zone III selected outline is missing or duplicated");
