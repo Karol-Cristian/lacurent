@@ -160,12 +160,16 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'data-page="run"' in page.text
     assert 'data-page="report"' in page.text
     assert 'data-page="renewables"' in page.text
-    assert "/static/home-lab-editorial.css?v=3" in page.text
-    assert "/static/home-lab-editorial.js?v=3" in page.text
+    assert "/static/home-lab-editorial.css?v=4" in page.text
+    assert "/static/home-lab-editorial.js?v=4" in page.text
     assert "/static/home-lab-3d.js" not in page.text
     assert 'id="edBaselineClass"' in page.text
     assert 'id="edBaselineCost"' in page.text
     assert 'class="ed-baseline-bar"' in page.text
+    assert 'id="edLocalitySuggestions"' in page.text
+    assert 'id="edLocationMap"' in page.text
+    assert 'inputmode="decimal" data-decimal-input name="heated_floor_area_m2"' in page.text
+    assert 'inputmode="decimal" data-decimal-input name="wall_area_m2"' in page.text
 
     # Editorial changes presentation only. It must keep the technical input
     # granularity of Home Lab instead of collapsing the building to broad
@@ -215,6 +219,8 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert "backdrop-filter:blur(18px)" in css.text
     assert ".ed-baseline-bar" in css.text
     assert "width:min(100%,760px)" in css.text
+    assert ".ed-locality-suggestions" in css.text
+    assert ".ed-location-map-svg" in css.text
 
     js = client.get("/static/home-lab-editorial.js")
     assert js.status_code == 200
@@ -223,6 +229,13 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert "function syncTechnicalForm()" in js.text
     assert "function scheduleBaselineSummary(" in js.text
     assert "function paintBaselineSummary(" in js.text
+    assert "function parseDecimal(" in js.text
+    assert 'replace(",", ".")' in js.text
+    assert 'data.set(input.name, decimalForForm(input.value))' in js.text
+    assert 'fetch("/api/location-data"' in js.text
+    assert "function renderLocalitySuggestions(" in js.text
+    assert "function renderLocationMap(" in js.text
+    assert "function selectLocality(" in js.text
     assert '"/api/home-lab-next/calculate"' in js.text
     assert '"/api/optimization/home-lab/v2/plan"' in js.text
     assert '"/api/optimization/home-lab/v2/branch"' in js.text
