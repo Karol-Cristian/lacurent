@@ -244,6 +244,34 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert '$("#openReport").addEventListener("click", () => showPage("report"));' in js.text
 
 
+def test_home_lab_commercial_concept_is_dummy_navigation_only() -> None:
+    page = client.get("/home-lab-concept")
+    assert page.status_code == 200
+    assert "CONCEPT UX/UI · DATE DEMO · FĂRĂ CALCULE REALE" in page.text
+    assert 'data-screen="home"' in page.text
+    assert 'data-screen="house"' in page.text
+    assert 'data-screen="current"' in page.text
+    assert 'data-screen="plan"' in page.text
+    assert 'data-screen="report"' in page.text
+    assert "8.420 lei/an" in page.text
+    assert "48.600 lei" in page.text
+    assert "/static/home-lab-concept.css?v=concept1" in page.text
+    assert "/static/home-lab-concept.js?v=concept1" in page.text
+    assert "/api/home-lab-next/calculate" not in page.text
+    assert "/api/optimization/" not in page.text
+
+    js = client.get("/static/home-lab-concept.js")
+    assert js.status_code == 200
+    assert 'function go(name)' in js.text
+    assert 'fetch(' not in js.text
+
+    css = client.get("/static/home-lab-concept.css")
+    assert css.status_code == 200
+    assert ".lc-home-grid" in css.text
+    assert ".lc-plan-item" in css.text
+    assert ".lc-before-after" in css.text
+
+
 def test_privacy_and_terms_pages_expose_required_disclosures() -> None:
     privacy = client.get("/privacy")
     assert privacy.status_code == 200
