@@ -915,3 +915,85 @@ body{
     max-width:100%;
   }
 }
+
+
+/* Editorial v10: eliminate real horizontal overflow on mobile */
+.ed-header,
+.ed-baseline-bar,
+.ed-shell,
+.ed-page{
+  width:100%;
+  max-width:100%;
+}
+
+.ed-page>*,
+.ed-copy,
+.ed-form-page,
+.ed-run-card,
+.ed-report,
+.ed-actions,
+.ed-choice-list,
+.ed-details,
+.ed-location-picker,
+.ed-location-map,
+.ed-map-stage{
+  max-width:100%;
+}
+
+.ed-copy,
+.ed-form-page,
+.ed-run-card,
+.ed-report,
+.ed-field,
+.ed-choice-list button,
+.ed-switch-row,
+.ed-actions{
+  overflow-wrap:anywhere;
+}
+
+@media(max-width:720px){
+  .ed-page{
+    width:100%;
+    max-width:100%;
+    overflow-x:hidden;
+  }
+
+  .ed-actions{
+    margin-left:0;
+    margin-right:0;
+    width:100%;
+    max-width:100%;
+  }
+
+  .ed-progress{
+    width:auto;
+    max-width:100%;
+    flex:1 1 0;
+  }
+
+  .ed-progress-history{
+    width:100%;
+    max-width:100%;
+  }
+
+  .ed-baseline-inner{
+    width:100%;
+    max-width:100%;
+  }
+
+  .ed-grid,
+  .ed-field,
+  .ed-field>div,
+  .ed-switch-row,
+  .ed-choice-list,
+  .ed-choice-list button{
+    width:100%;
+    max-width:100%;
+  }
+
+  .ed-field input,
+  .ed-field select,
+  .ed-field>select{
+    max-width:100%;
+  }
+}
