@@ -1990,9 +1990,9 @@ async def favicon() -> RedirectResponse:
     return RedirectResponse("/static/favicon.svg", status_code=307)
 
 
-@app.get("/")
-async def index() -> RedirectResponse:
-    return RedirectResponse("/home-lab-next", status_code=308)
+@app.get("/", response_class=HTMLResponse)
+async def index(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "landing.html", {"request": request})
 
 
 @app.get("/privacy", response_class=HTMLResponse)
