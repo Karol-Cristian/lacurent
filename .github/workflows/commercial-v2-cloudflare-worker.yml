@@ -243,12 +243,12 @@ jobs:
               "/demo": "Cluj Demonstration House",
               "/static/app.css": ".app-shell",
               "/static/app.js": "initLocationSelector",
-              "/instalatii/calculator": "data-home-lab-next",
+              "/instalatii/calculator": "data-editorial-lab",
               "/home-lab/facts": "SIMULĂRI PUBLICE",
               "/robots.txt": "Sitemap: https://lacurent.com/sitemap.xml",
               "/sitemap.xml": "https://lacurent.com/home-lab/facts",
               "/static/simulation-facts.css": ".facts-grid",
-              "/home-lab-next": "data-home-lab-next",
+              "/home-lab-next": "data-editorial-lab",\n              "/home-lab-classic": "data-home-lab-next",
               "/static/home-lab-next.js": "function openMeasure",
               "/static/home-lab-next.css": ".hln-before-after",
               "/static/home-lab-product.js": "data-hlp-demo-shell",
@@ -368,7 +368,7 @@ jobs:
           if float(lab_payload.get("design_heat_load_kw", 0)) <= 0:
               raise AssertionError("Embedded house lab did not return design heat load.")
 
-          next_html = get("/home-lab-next")
+          next_html = get("/home-lab-classic")
           for marker in (
               'data-hln-screen="home"',
               'data-hln-screen="site"',
@@ -1108,25 +1108,27 @@ jobs:
               raise AssertionError("Production house lab did not return design heat load.")
 
           status, _, calculator_alias = open_url(apex + "/instalatii/calculator")
-          if status != 200 or "data-home-lab-next" not in calculator_alias:
-              raise AssertionError("Production calculator alias did not resolve directly to Home Lab.")
+          if status != 200 or "data-editorial-lab" not in calculator_alias:
+              raise AssertionError("Production calculator alias did not resolve to the Editorial Home Lab.")
 
           status, _, next_html = open_url(apex + "/home-lab-next")
           if status != 200:
               raise AssertionError(f"/home-lab-next returned HTTP {status}")
           for marker in (
-              'data-hln-screen="home"',
-              'data-hln-screen="site"',
-              'data-hln-screen="intervention"',
-              'data-hln-screen="scenario"',
-              "Salvează Casa mea și vezi îmbunătățirile",
-              "Păstrează intervenția",
-              'class="hln-house-board"',
-              'class="hln-impact-panel"',
-              'id="hln-i-wall"',
+              "data-editorial-lab",
+              'data-page="house"',
+              'data-page="envelope"',
+              'data-page="systems"',
+              'data-page="renewables"',
+              'data-page="goal"',
+              "Analiza este gata.",
           ):
               if marker not in next_html:
-                  raise AssertionError(f"Production Home Lab Next missing {marker!r}")
+                  raise AssertionError(f"Production Editorial Home Lab missing {marker!r}")
+
+          status, _, classic_html = open_url(apex + "/home-lab-classic")
+          if status != 200 or 'data-home-lab-next' not in classic_html:
+              raise AssertionError("Classic Home Lab rollback route is unavailable.")
 
           status, _, partner_next_html = open_url(apex + "/embed/demo-store/next")
           if status != 200 or 'data-partner-id="demo-store"' not in partner_next_html:
