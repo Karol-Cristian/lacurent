@@ -1649,8 +1649,13 @@
 
   function paintBaselineSummary(result, statusText = "Estimare pentru configurația curentă.") {
     if (!result) return;
-    const energyClass = String(result.energy_class || "—").trim() || "—";
+    const energyClass = String(result.energy_class || "—").trim().toUpperCase() || "—";
     baselineClass.textContent = energyClass;
+    if (["A+","A","B","C","D","E","F","G"].includes(energyClass)) {
+      baselineClass.dataset.energyClass = energyClass;
+    } else {
+      delete baselineClass.dataset.energyClass;
+    }
     baselineCost.textContent = result.annual_cost_lei == null ? "—" : money(result.annual_cost_lei) + "/an";
     baselineStatus.textContent = statusText;
     baselineBar.classList.remove("is-updating");
@@ -1661,6 +1666,7 @@
     const localityToken = ($("#localityId")?.value || "").trim();
     if (!localityToken) {
       baselineClass.textContent = "—";
+      delete baselineClass.dataset.energyClass;
       baselineCost.textContent = "—";
       baselineStatus.textContent = locality ? "Alege localitatea din sugestii sau de pe hartă." : "Completează localitatea.";
       baselineBar.classList.remove("is-updating");

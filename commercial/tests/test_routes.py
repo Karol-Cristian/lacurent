@@ -160,8 +160,8 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'data-page="run"' in page.text
     assert 'data-page="report"' in page.text
     assert 'data-page="renewables"' in page.text
-    assert "/static/home-lab-editorial.css?v=14" in page.text
-    assert "/static/home-lab-editorial.js?v=22" in page.text
+    assert "/static/home-lab-editorial.css?v=15" in page.text
+    assert "/static/home-lab-editorial.js?v=23" in page.text
     assert "/static/home-lab-3d.js" not in page.text
     assert 'id="edBaselineClass"' in page.text
     assert 'id="edBaselineCost"' in page.text
@@ -220,6 +220,13 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert "--max:820px" in css.text
     assert "backdrop-filter:blur(18px)" in css.text
     assert ".ed-baseline-bar" in css.text
+    assert '#edBaselineClass[data-energy-class="A"]{background:#00a651;color:#fff}' in css.text
+    assert '#edBaselineClass[data-energy-class="B"]{background:#50b848;color:#102219}' in css.text
+    assert '#edBaselineClass[data-energy-class="C"]{background:#bfd730;color:#102219}' in css.text
+    assert '#edBaselineClass[data-energy-class="D"]{background:#fff200;color:#252000}' in css.text
+    assert '#edBaselineClass[data-energy-class="E"]{background:#fdb913;color:#3b2600}' in css.text
+    assert '#edBaselineClass[data-energy-class="F"]{background:#f37021;color:#fff}' in css.text
+    assert '#edBaselineClass[data-energy-class="G"]{background:#ed1c24;color:#fff}' in css.text
     assert "width:min(100%,760px)" in css.text
     assert ".ed-locality-suggestions" in css.text
     assert ".ed-location-map-svg" in css.text
@@ -231,6 +238,8 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert "function syncTechnicalForm()" in js.text
     assert "function scheduleBaselineSummary(" in js.text
     assert "function paintBaselineSummary(" in js.text
+    assert 'baselineClass.dataset.energyClass = energyClass' in js.text
+    assert 'delete baselineClass.dataset.energyClass' in js.text
     assert "function parseDecimal(" in js.text
     assert "requestJsonWithRetry" in js.text
     assert "economicStatusText" in js.text
