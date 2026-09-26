@@ -444,6 +444,19 @@ jobs:
               raise AssertionError("Worker-safe V2 exceeded canonical verification bound.")
           if float((optimizer_final.get("scenario") or {}).get("final_energy_kwh", 0)) <= 0:
               raise AssertionError("Worker-safe V2 did not return a valid final scenario.")
+          if optimizer_meta.get("economicsComplete") is not True:
+              raise AssertionError("Worker-safe V2 finalized without complete economics.")
+          baseline_bill = float(optimizer_meta.get("baselineAnnualBillLei") or 0)
+          annual_bill = float(optimizer_meta.get("annualBillLei") or 0)
+          annual_saving = float(optimizer_meta.get("annualSavingLei") or 0)
+          if abs((baseline_bill - annual_bill) - annual_saving) > 0.05:
+              raise AssertionError("Worker-safe V2 economics identity is inconsistent.")
+          capex = float(optimizer_meta.get("capexLei") or 0)
+          payback = optimizer_meta.get("paybackYears")
+          if capex > 0 and annual_saving > 0 and payback is None:
+              raise AssertionError("Worker-safe V2 positive economics lost payback.")
+          if not isinstance(optimizer_meta.get("netBenefitLeiByHorizon"), dict):
+              raise AssertionError("Worker-safe V2 did not expose lifecycle horizon economics.")
 
           scenario_payload = json.loads(post_json(
               "/api/scenarios/wall-insulation",
@@ -1033,6 +1046,13 @@ jobs:
               raise AssertionError(
                   f"Production D1 heating category counts mismatch: {category_counts}"
               )
+          parametric_nodes = heating_catalog.get("parametric_heating_nodes") or []
+          if len(parametric_nodes) != 1000:
+              raise AssertionError(
+                  f"Production D1 parametric heating grid expected 1000 nodes, got {len(parametric_nodes)}"
+              )
+          if any(str(node.get("id") or "").find(":parametric:") < 0 for node in parametric_nodes):
+              raise AssertionError("Production D1 parametric grid contains a row presented as a commercial SKU.")
           performance_points = heating_catalog.get("heat_pump_performance_points") or []
           if len(performance_points) < 50:
               raise AssertionError(
@@ -1061,6 +1081,7 @@ jobs:
               heating_catalog.get("source"),
               heating_catalog.get("catalog_version"),
               len(products),
+              len(parametric_nodes),
               len(performance_points),
           )
 
