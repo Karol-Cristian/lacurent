@@ -624,7 +624,7 @@ def _verification_candidates(
 
 
 
-V2_WORKER_SHORTLIST_LIMIT = 6
+V2_WORKER_SHORTLIST_LIMIT = 8
 V2_WORKER_VERIFICATION_LIMIT = 3
 
 
@@ -634,7 +634,7 @@ class WorkerSafePlanV2(BaseModel):
     representative_candidates: list[CandidateEvaluationV1] = Field(default_factory=list)
     representative_evaluations: int = 0
     representative_pool_size: int = 0
-    search_method: str = "physics_informed_marginal_curve_worker_safe_v2"
+    search_method: str = "physics_informed_marginal_pairwise_worker_safe_v2"
 
 
 class WorkerSafeBranchResultV2(BaseModel):
@@ -773,6 +773,61 @@ def _marginal_curve_ladder(
     return list({item.candidate_id: item for item in ladder}.values())
 
 
+def _pairwise_interaction_probes(
+    context: _FastEvaluationContext,
+    *,
+    branch_id: str,
+    branch_baseline: BuildingInput,
+    technology: HeatingTechnologyV2 | None,
+    branch_baseline_cost: dict[str, Any],
+    axis_rows: list[CandidateEvaluationV1],
+    top_dimensions: int = 4,
+) -> list[CandidateEvaluationV1]:
+    """Probe pairwise interactions among the strongest isolated dimensions.
+
+    Axis-only search can miss combinations whose economics change when two
+    measures interact. To stay Worker-safe, rank isolated 50% axis moves and
+    evaluate only the six pairwise 50% combinations among the best four.
+    """
+
+    zero, axis = _axis_candidate_by_dimension(axis_rows, context.bounds)
+    if zero is None:
+        return []
+
+    ranked_dimensions: list[tuple[tuple[float, float, float], int]] = []
+    for dimension in range(7):
+        half = axis.get((dimension, 0.5))
+        if half is None:
+            continue
+        score = _marginal_score(zero, half)
+        if score[0] == -math.inf:
+            continue
+        ranked_dimensions.append((score, dimension))
+    ranked_dimensions.sort(
+        key=lambda row: (row[0][0], row[0][1], row[0][2], -row[1]),
+        reverse=True,
+    )
+    dimensions = [row[1] for row in ranked_dimensions[:max(top_dimensions, 0)]]
+
+    rows: list[CandidateEvaluationV1] = []
+    for left_index in range(len(dimensions)):
+        for right_index in range(left_index + 1, len(dimensions)):
+            vector = [0.0] * 7
+            vector[dimensions[left_index]] = 0.5
+            vector[dimensions[right_index]] = 0.5
+            candidate = _fast_branch_candidate(
+                context,
+                branch_id=branch_id,
+                measures=_measures_from_normalized(vector, context.bounds),
+                branch_baseline=branch_baseline,
+                technology=technology,
+                branch_baseline_cost=branch_baseline_cost,
+            )
+            if candidate is not None:
+                rows.append(candidate)
+    return rows
+
+
 def _worker_representative_pool(
     context: _FastEvaluationContext,
     *,
@@ -802,10 +857,18 @@ def _worker_representative_pool(
         branch_baseline_cost=branch_baseline_cost,
         axis_rows=axis_rows,
     )
+    pairwise = _pairwise_interaction_probes(
+        context,
+        branch_id=branch_id,
+        branch_baseline=branch_baseline,
+        technology=technology,
+        branch_baseline_cost=branch_baseline_cost,
+        axis_rows=axis_rows,
+    )
     return list(
         {
             item.candidate_id: item
-            for item in [*axis_rows, *ladder]
+            for item in [*axis_rows, *ladder, *pairwise]
         }.values()
     )
 
