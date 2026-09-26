@@ -88,6 +88,45 @@ try {
 
   const editorialMap = page.locator("#edLocationMap svg.ed-location-map-svg");
   const initialViewBox = await editorialMap.getAttribute("viewBox");
+
+  const defaultLocalityCount = await page.locator("#edLocationMap .ed-map-locality").count();
+  const defaultTier2Count = await page.locator("#edLocationMap .ed-map-locality.tier-2").count();
+  if (defaultLocalityCount < 8 || defaultTier2Count < 1) {
+    throw new Error(`Editorial climate map lost default localities: total=${defaultLocalityCount}, tier2=${defaultTier2Count}`);
+  }
+
+  const mapCentering = await page.evaluate(() => {
+    const svg = document.querySelector("#edLocationMap svg.ed-location-map-svg");
+    const boundary = svg?.querySelector(".ed-map-boundaries");
+    if (!svg || !boundary) return null;
+    const viewBox = svg.viewBox.baseVal;
+    const box = boundary.getBBox();
+    return {
+      viewCenterX:viewBox.x + viewBox.width / 2,
+      viewCenterY:viewBox.y + viewBox.height / 2,
+      mapCenterX:box.x + box.width / 2,
+      mapCenterY:box.y + box.height / 2,
+    };
+  });
+  if (!mapCentering ||
+      Math.abs(mapCentering.viewCenterX - mapCentering.mapCenterX) > 8 ||
+      Math.abs(mapCentering.viewCenterY - mapCentering.mapCenterY) > 8) {
+    throw new Error("Editorial climate map is not centered: " + JSON.stringify(mapCentering));
+  }
+
+  await page.locator("#localityInput").fill("Cluj-Napoca");
+  const clujSuggestion = page.locator("#edLocalitySuggestions button", {hasText:"Cluj-Napoca"}).first();
+  await clujSuggestion.waitFor({state:"visible", timeout:5000});
+  await clujSuggestion.click();
+  const zoneThreeOutline = page.locator('#edLocationMap .ed-map-zone-outline[data-selected-zone="III"]');
+  if (await zoneThreeOutline.count() !== 1) {
+    throw new Error("Zone III selected outline is missing or duplicated");
+  }
+  const zoneThreePath = await zoneThreeOutline.getAttribute("d");
+  const zoneThreeMoves = (zoneThreePath?.match(/M/g) || []).length;
+  if (zoneThreeMoves !== 1) {
+    throw new Error("Zone III outline includes internal rings instead of only its outer contour");
+  }
   await page.locator('#edLocationMap [data-map-zoom="in"]').click();
   await page.waitForTimeout(80);
   await page.locator('#edLocationMap [data-map-zoom="in"]').click();
