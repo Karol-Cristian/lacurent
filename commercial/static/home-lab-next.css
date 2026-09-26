@@ -930,14 +930,14 @@ svg{display:block}
   transition: opacity .16s ease, transform .16s ease;
 }
 
-.hln-energy-scale span:nth-child(1) { background: #79c86a; }
-.hln-energy-scale span:nth-child(2) { background: #9bd16a; }
-.hln-energy-scale span:nth-child(3) { background: #c4d866; }
-.hln-energy-scale span:nth-child(4) { background: #e5d95f; }
-.hln-energy-scale span:nth-child(5) { background: #eab85c; }
-.hln-energy-scale span:nth-child(6) { background: #df8d58; }
-.hln-energy-scale span:nth-child(7) { background: #d56d55; }
-.hln-energy-scale span:nth-child(8) { background: #c5524f; color: #fff; }
+.hln-energy-scale span:nth-child(1) { background: #007a33; color: #fff; }
+.hln-energy-scale span:nth-child(2) { background: #00a651; color: #fff; }
+.hln-energy-scale span:nth-child(3) { background: #50b848; color: #fff; }
+.hln-energy-scale span:nth-child(4) { background: #bfd730; color: #fff; text-shadow:0 1px 1px rgba(0,0,0,.45); }
+.hln-energy-scale span:nth-child(5) { background: #fff200; color: #fff; text-shadow:0 1px 1px rgba(0,0,0,.55); }
+.hln-energy-scale span:nth-child(6) { background: #fdb913; color: #fff; text-shadow:0 1px 1px rgba(0,0,0,.45); }
+.hln-energy-scale span:nth-child(7) { background: #f37021; color: #fff; }
+.hln-energy-scale span:nth-child(8) { background: #ed1c24; color: #fff; }
 
 .hln-energy-scale span.is-active {
   opacity: 1;
@@ -1780,14 +1780,18 @@ svg{display:block}
   filter:none!important;
   opacity:1!important;
 }
-.hln-live-summary[data-energy-class="A+"]{--hln-class-color:#087f3e}
-.hln-live-summary[data-energy-class="A"]{--hln-class-color:#2c9b46}
-.hln-live-summary[data-energy-class="B"]{--hln-class-color:#79ae39}
-.hln-live-summary[data-energy-class="C"]{--hln-class-color:#d2bd27}
-.hln-live-summary[data-energy-class="D"]{--hln-class-color:#e3a12c}
-.hln-live-summary[data-energy-class="E"]{--hln-class-color:#df712d}
-.hln-live-summary[data-energy-class="F"]{--hln-class-color:#d54a34}
-.hln-live-summary[data-energy-class="G"]{--hln-class-color:#a82f32}
+/* EU A-G energy-label palette.
+   Official print reference: A 100/0/100/0, B 70/0/100/0, C 30/0/100/0,
+   D 0/0/100/0, E 0/30/100/0, F 0/70/100/0, G 0/100/100/0 (CMYK).
+   The hex values below are the standard screen equivalents used for the HUD. */
+.hln-live-summary[data-energy-class="A+"]{--hln-class-color:#007a33}
+.hln-live-summary[data-energy-class="A"]{--hln-class-color:#00a651}
+.hln-live-summary[data-energy-class="B"]{--hln-class-color:#50b848}
+.hln-live-summary[data-energy-class="C"]{--hln-class-color:#bfd730}
+.hln-live-summary[data-energy-class="D"]{--hln-class-color:#fff200}
+.hln-live-summary[data-energy-class="E"]{--hln-class-color:#fdb913}
+.hln-live-summary[data-energy-class="F"]{--hln-class-color:#f37021}
+.hln-live-summary[data-energy-class="G"]{--hln-class-color:#ed1c24}
 .hln-live-metrics{
   display:grid;
   grid-template-columns:minmax(150px,.8fr) minmax(190px,1fr) minmax(190px,1fr);

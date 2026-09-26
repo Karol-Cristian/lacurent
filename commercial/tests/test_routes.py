@@ -651,7 +651,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next361-cop-fuel" in response.text
+    assert "/static/home-lab-next.css?v=next362-energy-class" in response.text
     assert "/static/home-lab-next.js?v=next72-heating-power" in response.text
     assert "/static/home-lab-3d.css?v=3d31" in response.text
     assert 'aria-label="Schiță conceptuală a casei"' not in response.text
@@ -688,6 +688,13 @@ def test_home_lab_persistent_summary_stays_bound_to_current_result_and_status() 
     assert ".hln-persistent-stack{" in css.text
     assert "position:sticky" in css.text
     assert 'data-energy-class="A+"' in css.text
+    assert '.hln-live-summary[data-energy-class="A"]{--hln-class-color:#00a651}' in css.text
+    assert '.hln-live-summary[data-energy-class="B"]{--hln-class-color:#50b848}' in css.text
+    assert '.hln-live-summary[data-energy-class="C"]{--hln-class-color:#bfd730}' in css.text
+    assert '.hln-live-summary[data-energy-class="D"]{--hln-class-color:#fff200}' in css.text
+    assert '.hln-live-summary[data-energy-class="E"]{--hln-class-color:#fdb913}' in css.text
+    assert '.hln-live-summary[data-energy-class="F"]{--hln-class-color:#f37021}' in css.text
+    assert '.hln-live-summary[data-energy-class="G"]{--hln-class-color:#ed1c24}' in css.text
     assert ".hln-live-class-card" in css.text
     assert ".hln-live-delta.is-good" in css.text
     assert ".hln-live-delta.is-bad" in css.text
@@ -2085,7 +2092,7 @@ def test_home_lab_issue_359_adaptive_intro_contract() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
     assert response.text.count('class="hln-screen-intro-copy"') == 2
-    assert "/static/home-lab-next.css?v=next361-cop-fuel" in response.text
+    assert "/static/home-lab-next.css?v=next362-energy-class" in response.text
     assert "/static/home-lab-next.js?v=next72-heating-power" in response.text
 
     css = client.get("/static/home-lab-next.css")
