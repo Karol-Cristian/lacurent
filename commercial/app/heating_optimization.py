@@ -149,10 +149,23 @@ class HeatingPlanningOptionV1(BaseModel):
         return float(self.equipment_price_lei) + float(self.installation_allowance_lei)
 
 
+class HeatingParametricNodeV1(BaseModel):
+    id: str
+    technology_id: str
+    technology_label: str
+    required_power_kw: float = Field(gt=0)
+    planning_capex_lei: float = Field(ge=0)
+    source_product_count: int = Field(gt=0)
+    min_source_power_kw: float = Field(gt=0)
+    max_source_power_kw: float = Field(gt=0)
+    interpolation_kind: str
+
+
 class HeatingTechnologyV2(BaseModel):
     id: str
     label: str
     products: list[HeatingPlanningOptionV1]
+    parametric_nodes: list[HeatingParametricNodeV1] = Field(default_factory=list)
 
     @property
     def representative(self) -> HeatingPlanningOptionV1:
@@ -207,6 +220,9 @@ class MixedHeatingOptimizationResultV1(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
+_heating_technology_cache: dict[tuple[str, str, int, int, int], list[HeatingTechnologyV2]] = {}
+
+
 @lru_cache(maxsize=1)
 def heating_planning_catalog() -> dict[str, Any]:
     return json.loads(DATA_PATH.read_text(encoding="utf-8"))
@@ -242,17 +258,49 @@ def heating_planning_options(
 def heating_technologies(
     catalog: dict[str, Any] | None = None,
 ) -> list[HeatingTechnologyV2]:
+    raw = catalog or heating_planning_catalog()
+    cache_key = (
+        str(raw.get("catalog_version") or ""),
+        str(raw.get("source") or "seed"),
+        len(raw.get("options") or []),
+        len(raw.get("parametric_heating_nodes") or []),
+        len(raw.get("heat_pump_performance_points") or []),
+    )
+    cached = _heating_technology_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     grouped: dict[str, list[HeatingPlanningOptionV1]] = {}
-    for item in heating_planning_options(catalog):
+    for item in heating_planning_options(raw):
         grouped.setdefault(item.technology_id, []).append(item)
-    return [
+
+    nodes_by_technology: dict[str, list[HeatingParametricNodeV1]] = {}
+    for raw_node in raw.get("parametric_heating_nodes", []) or []:
+        try:
+            node = HeatingParametricNodeV1(**raw_node)
+        except Exception:
+            continue
+        nodes_by_technology.setdefault(node.technology_id, []).append(node)
+
+    technologies = [
         HeatingTechnologyV2(
             id=technology_id,
             label=items[0].technology_label,
-            products=sorted(items, key=lambda item: (item.rated_power_kw, item.installed_capex_lei)),
+            products=sorted(
+                items,
+                key=lambda item: (item.rated_power_kw, item.installed_capex_lei),
+            ),
+            parametric_nodes=sorted(
+                nodes_by_technology.get(technology_id, []),
+                key=lambda node: node.required_power_kw,
+            ),
         )
         for technology_id, items in grouped.items()
     ]
+    if len(_heating_technology_cache) >= 4:
+        _heating_technology_cache.clear()
+    _heating_technology_cache[cache_key] = technologies
+    return technologies
 
 
 def _default_details(building: BuildingInput) -> HeatingSystemDetails:
@@ -1215,22 +1263,42 @@ def _planning_heating_capex(
     if not eligible_products:
         return None
 
-    by_power: dict[float, float] = {}
-    for product in eligible_products:
-        power = float(product.rated_power_kw)
-        capex = float(product.installed_capex_lei)
-        previous = by_power.get(power)
-        if previous is None or capex < previous:
-            by_power[power] = capex
+    use_dense_grid = (
+        bool(technology.parametric_nodes)
+        and len(eligible_products) == len(technology.products)
+    )
+    if use_dense_grid:
+        points = [
+            (float(node.required_power_kw), float(node.planning_capex_lei))
+            for node in technology.parametric_nodes
+        ]
+        source_point_count = max(
+            (int(node.source_product_count) for node in technology.parametric_nodes),
+            default=len(eligible_products),
+        )
+    else:
+        by_power: dict[float, float] = {}
+        for product in eligible_products:
+            power = float(product.rated_power_kw)
+            capex = float(product.installed_capex_lei)
+            previous = by_power.get(power)
+            if previous is None or capex < previous:
+                by_power[power] = capex
+        points = sorted(by_power.items())
+        source_point_count = len(points)
 
-    points = sorted(by_power.items())
     if not points:
         return None
     min_power = float(points[0][0])
     max_power = float(points[-1][0])
     target = max(float(required_power_kw), 0.0)
     if target <= min_power + 1e-9:
-        return round(float(points[0][1]), 2), min_power, max_power, len(points)
+        return (
+            round(float(points[0][1]), 2),
+            min_power,
+            max_power,
+            source_point_count,
+        )
 
     lower_power, lower_cost = points[0]
     upper_power, upper_cost = points[-1]
@@ -1267,7 +1335,12 @@ def _planning_heating_capex(
             interpolated = float(lower_cost) + (
                 target - float(lower_power)
             ) * slope
-    return round(max(interpolated, 0.0), 2), min_power, max_power, len(points)
+    return (
+        round(max(interpolated, 0.0), 2),
+        min_power,
+        max_power,
+        source_point_count,
+    )
 
 
 def _rebase_candidate(
