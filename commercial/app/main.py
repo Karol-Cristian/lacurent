@@ -2877,6 +2877,7 @@ async def home_lab_optimization_v2_finalize_api(request: Request) -> JSONRespons
             pareto_scope="worker_safe_v2_verified_finalists",
             raw_selected=raw_selected,
             technical_heating_alternatives=[],
+            heating_catalog=heating_catalog,
         )
         payload["optimization"].update(
             {
