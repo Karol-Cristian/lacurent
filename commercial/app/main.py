@@ -2647,14 +2647,12 @@ async def home_lab_optimization_v3_plan_api(request: Request) -> JSONResponse:
     form = dict(await request.form())
     try:
         mode, _, optimization_request = _home_lab_optimization_request_from_form(form)
-        cost_catalog = await _optimizer_cost_catalog(request)
         heating_catalog = await _optimizer_heating_catalog(request)
         run_id = str(form.get("_optimizer_run_id") or "").strip()
         started = time.perf_counter()
         plan = build_worker_safe_plan_v3(
             optimization_request,
             bounds=OptimizationSearchBoundsV1(),
-            catalog=cost_catalog,
             heating_catalog=heating_catalog,
         )
         elapsed_ms = round((time.perf_counter() - started) * 1000.0, 1)
@@ -2692,6 +2690,7 @@ async def home_lab_optimization_v3_plan_api(request: Request) -> JSONResponse:
                     plan.representative_pool_size
                 ),
                 "baseShortlistSize": int(plan.base_shortlist_size),
+                "deterministicAxisPoints": int(plan.deterministic_axis_points),
                 "lowDiscrepancyPoints": int(plan.low_discrepancy_points),
                 "searchPointCount": len(plan.search_points),
                 "branchBatchSize": int(plan.branch_batch_size),
