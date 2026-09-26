@@ -110,6 +110,9 @@ jobs:
           python scripts/build-heating-catalog-d1-import.py \
             commercial/data/heating-technology-planning.seed.json \
             /tmp/heating-catalog-import.sql
+          python scripts/build-heating-catalog-d1-import.py \
+            commercial/data/heating-market-import-2026-09-26.json \
+            /tmp/heating-market-import.sql
           python -m pytest commercial/tests -q
 
       - name: Install uv
@@ -682,6 +685,23 @@ jobs:
                   )
                   log(f"detach Pages custom domain {host}", status, deleted)
           PY
+
+      - name: Apply incremental heating catalog to production D1
+        working-directory: .wrangler/commercial-v2-worker
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::D1 catalog import requires CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID."
+            exit 1
+          fi
+          python ../../scripts/build-heating-catalog-d1-import.py \
+            ../../commercial/data/heating-market-import-2026-09-26.json \
+            /tmp/heating-market-import.sql
+          npx wrangler d1 execute lacurent-db --remote \
+            --file ../../commercial/migrations/0003_heating_parametric_nodes.sql
+          npx wrangler d1 execute lacurent-db --remote \
+            --file ../../commercial/migrations/0004_heating_performance_source_audit_2026_09_26.sql
+          npx wrangler d1 execute lacurent-db --remote \
+            --file /tmp/heating-market-import.sql
 
       - name: Deploy Commercial v2 Worker
         working-directory: .wrangler/commercial-v2-worker
