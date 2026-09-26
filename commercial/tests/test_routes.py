@@ -161,7 +161,7 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'data-page="report"' in page.text
     assert 'data-page="renewables"' in page.text
     assert "/static/home-lab-editorial.css?v=14" in page.text
-    assert "/static/home-lab-editorial.js?v=14" in page.text
+    assert "/static/home-lab-editorial.js?v=15" in page.text
     assert "/static/home-lab-3d.js" not in page.text
     assert 'id="edBaselineClass"' in page.text
     assert 'id="edBaselineCost"' in page.text
@@ -232,6 +232,9 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert "function scheduleBaselineSummary(" in js.text
     assert "function paintBaselineSummary(" in js.text
     assert "function parseDecimal(" in js.text
+    assert "storageHistoryKey" in js.text
+    assert "draftDirty" in js.text
+    assert "preserveDraftInHistory" in js.text
     assert 'replace(",", ".")' in js.text
     assert 'data.set(input.name, decimalForForm(input.value))' in js.text
     assert 'fetch("/api/location-data"' in js.text
