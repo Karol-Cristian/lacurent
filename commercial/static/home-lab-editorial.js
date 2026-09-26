@@ -1603,14 +1603,14 @@
 
   async function postForm(url, data, label = url) {
     return withTransientRetry(
-      () => readJson(fetch(url, {method:"POST", body:data, headers:{"Accept":"application/json"}})),
+      async () => readJson(await fetch(url, {method:"POST", body:data, headers:{"Accept":"application/json"}})),
       label
     );
   }
 
   async function postJson(url, data, label = url) {
     return withTransientRetry(
-      () => readJson(fetch(url, {
+      async () => readJson(await fetch(url, {
         method:"POST",
         body:JSON.stringify(data),
         headers:{"Content-Type":"application/json","Accept":"application/json"}
