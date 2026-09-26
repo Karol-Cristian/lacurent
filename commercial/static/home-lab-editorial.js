@@ -1571,20 +1571,80 @@
 
   async function readJson(response) {
     const data = await response.json().catch(() => ({}));
-    if (!response.ok || data.error) throw new Error(data.error || `HTTP ${response.status}`);
+    if (!response.ok || data.error) {
+      const error = new Error(data.error || data.detail || `HTTP ${response.status}`);
+      error.status = response.status;
+      error.payload = data;
+      throw error;
+    }
     return data;
   }
 
-  async function postForm(url, data) {
-    return readJson(await fetch(url, {method:"POST", body:data, headers:{"Accept":"application/json"}}));
+  const sleep = ms => new Promise(resolve => window.setTimeout(resolve, ms));
+
+  async function requestJsonWithRetry(url, init, {stageName = "request", runId = "", retries = 2} = {}) {
+    let lastError = null;
+    for (let attempt = 0; attempt <= retries; attempt += 1) {
+      try {
+        const response = await fetch(url, init);
+        return await readJson(response);
+      } catch (error) {
+        lastError = error;
+        const status = Number(error?.status || 0);
+        const retryable = status === 0 || [500, 502, 503, 504].includes(status);
+        if (!retryable || attempt >= retries) break;
+        const delay = attempt === 0 ? 700 : 1600;
+        log(`RETRY · ${stageName} · HTTP ${status || "network"} · ${attempt + 1}/${retries} · run ${runId || "—"}`);
+        await sleep(delay);
+      }
+    }
+    throw lastError || new Error("Request failed.");
   }
 
-  async function postJson(url, data) {
-    return readJson(await fetch(url, {
-      method:"POST",
-      body:JSON.stringify(data),
-      headers:{"Content-Type":"application/json","Accept":"application/json"}
-    }));
+  async function postForm(url, data, options = {}) {
+    return requestJsonWithRetry(
+      url,
+      {method:"POST", body:data, headers:{"Accept":"application/json"}},
+      options
+    );
+  }
+
+  async function postJson(url, data, options = {}) {
+    return requestJsonWithRetry(
+      url,
+      {
+        method:"POST",
+        body:JSON.stringify(data),
+        headers:{"Content-Type":"application/json","Accept":"application/json"}
+      },
+      options
+    );
+  }
+
+  function makeOptimizerRunId() {
+    if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+    return `hl-${Date.now().toString(36)}-${Math.floor(performance.now()).toString(36)}`;
+  }
+
+  function paybackDisplay(opt) {
+    if (opt.paybackStatus === "immediate") return "Imediată";
+    if (opt.paybackStatus === "not_applicable_no_investment") return "Fără investiție";
+    if (opt.paybackStatus === "never_at_current_prices") return "Nu se recuperează";
+    if (opt.paybackYears != null) return fmt(opt.paybackYears, 1) + " ani";
+    return "Nedeterminată";
+  }
+
+  function economicStatusText(opt) {
+    if (opt.economicStatus === "no_positive_intervention") {
+      return "În condițiile de preț și cost curente, optimizerul nu a găsit o intervenție cu beneficiu economic pozitiv față de casa actuală.";
+    }
+    if (opt.economicStatus === "non_positive_saving") {
+      return "Soluția reduce alte criterii tehnice, dar nu reduce factura anuală în condițiile curente; recuperarea economică nu există la prețurile folosite.";
+    }
+    if (opt.economicStatus === "positive_saving_zero_capex") {
+      return "Modelul indică o economie pozitivă fără CAPEX suplimentar în configurația analizată.";
+    }
+    return "";
   }
 
   function paintBaselineSummary(result, statusText = "Estimare pentru configurația curentă.") {
@@ -1650,37 +1710,57 @@
     optimizationResult = null;
     lastPlan = null;
     branchResults = [];
+    const runId = makeOptimizerRunId();
     showPage("run");
+    log(`RUN · ${runId}`);
 
     try {
       stage("baseline","active","rulează");
       log("Construiesc modelul termic al casei actuale din setul complet de inputuri Home Lab.");
-      baselineResult = await postForm("/api/home-lab-next/calculate", baseFormData());
+      baselineResult = await postForm(
+        "/api/home-lab-next/calculate",
+        baseFormData(),
+        {stageName:"baseline", runId, retries:1}
+      );
       paintBaselineSummary(baselineResult, "Baseline folosit în optimizare.");
       stage("baseline","done","gata");
       log(`Baseline gata: ${fmt(baselineResult.final_energy_kwh)} kWh/an · necesar ${fmt(baselineResult.design_heat_load_kw,1)} kW.`);
 
       stage("plan","active","rulează");
       log("Generez shortlist-ul parametric și ramurile tehnice eligibile.");
-      lastPlan = await postForm("/api/optimization/home-lab/v2/plan", baseFormData());
+      const planData = baseFormData();
+      planData.set("_optimizer_run_id", runId);
+      lastPlan = await postForm(
+        "/api/optimization/home-lab/v2/plan",
+        planData,
+        {stageName:"plan", runId, retries:2}
+      );
       stage("plan","done", `${lastPlan.shortlistSize || 0} configurații`);
       log(`Shortlist: ${lastPlan.shortlistSize || 0} configurații din ${lastPlan.representativePoolSize || 0} puncte reprezentative.`);
+      const catalogStats = lastPlan.heatingCatalogStats || {};
+      log(`Catalog încălzire: ${catalogStats.products ?? "?"} produse · ${catalogStats.performance_points ?? "?"} puncte COP/capacitate · sursă ${lastPlan.heatingCatalogSource || "?"}.`);
 
       const branchIds = lastPlan.runBranchIds || [];
       if (!branchIds.length) throw new Error("Optimizerul nu a returnat nicio ramură economică eligibilă.");
 
       stage("branches","active",`0 / ${branchIds.length}`);
       const formPayload = formObject();
+      formPayload._optimizer_run_id = runId;
       for (let i = 0; i < branchIds.length; i++) {
         const branchId = branchIds[i];
         const branchMeta = (lastPlan.branches || []).find(x => (x.branch_id || x.branchId) === branchId);
         const label = branchMeta?.label || branchId;
         log(`${i + 1}/${branchIds.length} · ${label}: evaluare parametrică.`);
-        const result = await postJson("/api/optimization/home-lab/v2/branch", {
-          form:formPayload,
-          branchId,
-          shortlist:lastPlan.shortlist
-        });
+        const result = await postJson(
+          "/api/optimization/home-lab/v2/branch",
+          {
+            form:formPayload,
+            runId,
+            branchId,
+            shortlist:lastPlan.shortlist
+          },
+          {stageName:`branch ${i + 1}/${branchIds.length} ${label}`, runId, retries:2}
+        );
         branchResults.push(result);
         stage("branches","active",`${i + 1} / ${branchIds.length}`);
         log(`   ${result.candidateCount || 0} candidați · ${result.fastEvaluations || 0} evaluări.`);
@@ -1689,17 +1769,22 @@
 
       stage("finalize","active","verifică");
       log("Verific finaliștii cu motorul complet și aplic discretizarea comercială disponibilă.");
-      optimizationResult = await postJson("/api/optimization/home-lab/v2/finalize", {
-        form:formPayload,
-        branchResults,
-        representativeEvaluations:lastPlan.representativeEvaluations || 0,
-        representativePoolSize:lastPlan.representativePoolSize || 0,
-        shortlistSize:lastPlan.shortlistSize || 0,
-        priorCalculationTimeMs:Number(lastPlan.calculationTimeMs || 0)
-      });
+      optimizationResult = await postJson(
+        "/api/optimization/home-lab/v2/finalize",
+        {
+          form:formPayload,
+          runId,
+          branchResults,
+          representativeEvaluations:lastPlan.representativeEvaluations || 0,
+          representativePoolSize:lastPlan.representativePoolSize || 0,
+          shortlistSize:lastPlan.shortlistSize || 0,
+          priorCalculationTimeMs:Number(lastPlan.calculationTimeMs || 0)
+        },
+        {stageName:"finalize", runId, retries:2}
+      );
       stage("finalize","done","gata");
       const opt = optimizationResult.optimization || {};
-      log(`Finalizat: ${opt.evaluatedCandidates || 0} candidați economici · ${opt.fullEngineVerifications || 0} verificări complete.`);
+      log(`Finalizat: ${opt.evaluatedCandidates || 0} candidați economici · ${opt.fullEngineVerifications || 0} verificări complete · status economic ${opt.economicStatus || "necunoscut"}.`);
 
       renderReport();
       const doneBits = [];
@@ -1760,11 +1845,21 @@
           <strong>${money(opt.capexLei)}</strong>
         </div>
         <div class="ed-metrics">
-          ${metric("Economii estimate", opt.annualSavingLei == null ? "—" : money(opt.annualSavingLei) + "/an")}
+          ${metric("Economii estimate", opt.annualSavingLei == null ? "Nedeterminate" : money(opt.annualSavingLei) + "/an")}
           ${metric("Cost după intervenții", money(finalBill))}
-          ${metric("Recuperare", opt.paybackYears == null ? "—" : fmt(opt.paybackYears,1) + " ani")}
+          ${metric("Recuperare", paybackDisplay(opt))}
           ${metric("Putere finală necesară · spații", commercial.designHeatLoadKw == null ? "—" : fmt(commercial.designHeatLoadKw,1) + " kW")}
         </div>
+        ${economicStatusText(opt) ? `<p class="ed-hint"><b>Interpretare economică:</b> ${escapeHtml(economicStatusText(opt))}</p>` : ""}
+        ${opt.simpleNetBenefitLeiByHorizon ? `
+          <h3>Beneficiu net simplu în timp</h3>
+          <p class="ed-hint">Economie anuală × orizont − CAPEX. Fără finanțare, inflație, mentenanță, înlocuiri sau valoare reziduală; acestea vor aparține modelului lifecycle.</p>
+          <div class="ed-metrics">
+            ${(opt.economicHorizonsYears || [5,10,15,20,25]).map(years =>
+              metric(`${years} ani`, money(opt.simpleNetBenefitLeiByHorizon[String(years)]))
+            ).join("")}
+          </div>
+        ` : ""}
         <h3>Intervențiile selectate</h3>
         ${measures.length ? measures.map(row => `
           <div class="ed-measure">
