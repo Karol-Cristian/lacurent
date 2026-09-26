@@ -2147,6 +2147,16 @@ async def home_lab_editorial(request: Request) -> HTMLResponse:
     )
 
 
+@app.get("/home-lab-concept", response_class=HTMLResponse)
+async def home_lab_concept(request: Request) -> HTMLResponse:
+    """Standalone commercial UX/UI concept with dummy data only."""
+    return templates.TemplateResponse(
+        request,
+        "home_lab_concept.html",
+        {"request": request},
+    )
+
+
 @app.get("/home-lab-classic", response_class=HTMLResponse)
 async def home_lab_classic(request: Request) -> HTMLResponse:
     """Previous Home Lab UI retained as a rollback and regression surface."""
