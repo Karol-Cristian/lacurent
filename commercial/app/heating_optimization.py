@@ -1268,6 +1268,8 @@ def _planning_heating_capex(
     building: BuildingInput,
     technology: HeatingTechnologyV2,
     required_power_kw: float,
+    *,
+    planning_nodes: list[dict[str, Any]] | None = None,
 ) -> tuple[float, float, float, int] | None:
     """Interpolate a raw kW->CAPEX curve without selecting a commercial SKU.
 
@@ -1285,11 +1287,35 @@ def _planning_heating_capex(
     if not eligible_products:
         return None
 
-    use_dense_grid = (
+    raw_planning_nodes = [
+        item
+        for item in (planning_nodes or [])
+        if str(item.get("technology_id") or "") == technology.id
+    ]
+    use_dense_grid = bool(raw_planning_nodes) or (
         bool(technology.parametric_nodes)
         and len(eligible_products) == len(technology.products)
     )
-    if use_dense_grid:
+    if raw_planning_nodes:
+        # V3 branch requests keep the fixed-size CAPEX curve as raw dictionaries
+        # so the Worker does not construct hundreds of Pydantic node objects for
+        # every two-candidate micro-batch.
+        points = [
+            (
+                float(node.get("required_power_kw") or 0.0),
+                float(node.get("planning_capex_lei") or 0.0),
+            )
+            for node in raw_planning_nodes
+            if float(node.get("required_power_kw") or 0.0) > 0
+        ]
+        source_product_count = max(
+            (
+                int(node.get("source_product_count") or 0)
+                for node in raw_planning_nodes
+            ),
+            default=len(eligible_products),
+        )
+    elif use_dense_grid:
         points = [
             (float(node.required_power_kw), float(node.planning_capex_lei))
             for node in technology.parametric_nodes
@@ -1367,6 +1393,7 @@ def _rebase_candidate(
     original_building: BuildingInput,
     technology: HeatingTechnologyV2 | None,
     branch_id_override: str | None = None,
+    heating_catalog: dict[str, Any] | None = None,
 ) -> CandidateEvaluationV1 | None:
     """Attach branch economics without commercializing the generator.
 
@@ -1393,6 +1420,9 @@ def _rebase_candidate(
             original_building,
             technology,
             required_power_kw,
+            planning_nodes=list(
+                (heating_catalog or {}).get("parametric_heating_nodes") or []
+            ),
         )
         if planning is None:
             return None
