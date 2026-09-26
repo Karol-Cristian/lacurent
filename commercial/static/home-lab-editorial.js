@@ -1727,7 +1727,7 @@
       log(`Baseline gata: ${fmt(baselineResult.final_energy_kwh)} kWh/an · necesar ${fmt(baselineResult.design_heat_load_kw,1)} kW.`);
 
       stage("plan","active","rulează");
-      log("Generez spațiul V3: ancoră physics-informed + acoperire multidimensională Halton.");
+      log("Generez planul structural V3: axe deterministe + acoperire multidimensională Halton; fără calcule energetice în plan.");
       const planData = baseFormData();
       planData.set("_optimizer_run_id", runId);
       lastPlan = await postForm(
@@ -1742,7 +1742,7 @@
         throw new Error("Optimizerul V3 nu a construit ramuri/puncte de căutare eligibile.");
       }
       stage("plan","done", `${searchPoints.length} puncte`);
-      log(`V3: ${searchPoints.length} puncte/ramură · ${lastPlan.baseShortlistSize || 0} physics-informed · ${lastPlan.lowDiscrepancyPoints || 0} low-discrepancy · batch ${batchSize}.`);
+      log(`V3: ${searchPoints.length} puncte/ramură · ${lastPlan.deterministicAxisPoints || lastPlan.baseShortlistSize || 0} axe deterministe · ${lastPlan.lowDiscrepancyPoints || 0} low-discrepancy · 0 evaluări în plan · batch ${batchSize}.`);
       log(`Metodă V3: ${lastPlan.searchMethod || "necunoscută"}.`);
       const catalogStats = lastPlan.heatingCatalogStats || {};
       log(`Catalog încălzire: ${catalogStats.products ?? "?"} SKU-uri comerciale · ${catalogStats.parametric_nodes ?? "?"} noduri parametrice · ${catalogStats.performance_points ?? "?"} puncte COP/capacitate · sursă ${lastPlan.heatingCatalogSource || "?"}.`);

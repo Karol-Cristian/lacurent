@@ -85,12 +85,14 @@ def test_v3_plan_expands_search_but_keeps_worker_batches_bounded() -> None:
         catalog=_catalog(),
     )
 
-    assert plan.search_method == "physics_informed_halton_sharded_v3"
+    assert plan.search_method == "deterministic_axis_halton_sharded_v3"
     assert plan.branch_batch_size == V3_BRANCH_BATCH_SIZE
-    assert plan.base_shortlist_size <= 8
-    assert len(plan.search_points) > plan.base_shortlist_size
-    assert len(plan.search_points) >= V3_HALTON_SAMPLES
-    assert plan.representative_evaluations >= 15
+    assert plan.representative_evaluations == 0
+    assert plan.representative_pool_size == 0
+    assert plan.deterministic_axis_points == 15
+    assert plan.base_shortlist_size == plan.deterministic_axis_points
+    assert len(plan.search_points) == 40
+    assert plan.low_discrepancy_points == V3_HALTON_SAMPLES
 
 
 def test_v3_verification_budget_adapts_between_four_and_eight() -> None:
