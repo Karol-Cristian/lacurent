@@ -926,7 +926,10 @@ def build_worker_safe_plan_v2(
     )
     technologies = {
         item.id: item
-        for item in heating_technologies(heating_catalog)
+        for item in heating_technologies(
+            heating_catalog,
+            include_parametric_nodes=False,
+        )
     }
     representative_baseline, representative_technology = _branch_baseline(
         request,
@@ -981,7 +984,10 @@ def evaluate_worker_safe_branch_v2(
 
     technologies = {
         item.id: item
-        for item in heating_technologies(heating_catalog)
+        for item in heating_technologies(
+            heating_catalog,
+            technology_id=branch_id,
+        )
     }
     branch_baseline, technology = _branch_baseline(
         request,
@@ -1045,7 +1051,10 @@ def verify_worker_safe_finalists_v2(
     baseline_result, baseline_cost = cached_baseline_evaluation(request.baseline)
     technologies = {
         item.id: item
-        for item in heating_technologies(heating_catalog)
+        for item in heating_technologies(
+            heating_catalog,
+            include_parametric_nodes=False,
+        )
     }
     verification_rows = _verification_candidates(
         request,
@@ -1137,7 +1146,13 @@ def run_physics_informed_optimization(
         heating_catalog=heating_catalog,
         cache={},
     )
-    technologies = {item.id: item for item in heating_technologies(heating_catalog)}
+    technologies = {
+        item.id: item
+        for item in heating_technologies(
+            heating_catalog,
+            include_parametric_nodes=False,
+        )
+    }
     plan = heating_branch_plan(request, heating_catalog)
     economic_plan = [
         branch for branch in plan

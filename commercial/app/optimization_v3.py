@@ -29,7 +29,7 @@ from .optimization_v2 import (
 
 
 V3_HALTON_SAMPLES = 24
-V3_BRANCH_BATCH_SIZE = 8
+V3_BRANCH_BATCH_SIZE = 4
 V3_VERIFICATION_MIN = 4
 V3_VERIFICATION_MAX = 8
 V3_DIMENSIONS = 7
@@ -230,7 +230,11 @@ def verify_one_candidate_v3(
 
     technologies = {
         item.id: item
-        for item in heating_technologies(heating_catalog)
+        for item in heating_technologies(
+            heating_catalog,
+            include_parametric_nodes=False,
+            technology_id=branch_id,
+        )
     }
     branch_baseline, technology = _branch_baseline(
         request,

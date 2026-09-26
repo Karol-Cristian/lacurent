@@ -1727,61 +1727,143 @@
       log(`Baseline gata: ${fmt(baselineResult.final_energy_kwh)} kWh/an · necesar ${fmt(baselineResult.design_heat_load_kw,1)} kW.`);
 
       stage("plan","active","rulează");
-      log("Generez shortlist-ul parametric și ramurile tehnice eligibile.");
+      log("Generez spațiul V3: ancoră physics-informed + acoperire multidimensională Halton.");
       const planData = baseFormData();
       planData.set("_optimizer_run_id", runId);
       lastPlan = await postForm(
-        "/api/optimization/home-lab/v2/plan",
+        "/api/optimization/home-lab/v3/plan",
         planData,
-        {stageName:"plan", runId, retries:2}
+        {stageName:"plan V3", runId, retries:2}
       );
-      stage("plan","done", `${lastPlan.shortlistSize || 0} configurații`);
-      log(`Shortlist: ${lastPlan.shortlistSize || 0} configurații din ${lastPlan.representativePoolSize || 0} puncte reprezentative.`);
-      log(`Metodă V2: ${lastPlan.searchMethod || "necunoscută"}.`);
+      const searchPoints = Array.isArray(lastPlan.searchPoints) ? lastPlan.searchPoints : [];
+      const branchIds = Array.isArray(lastPlan.runBranchIds) ? lastPlan.runBranchIds : [];
+      const batchSize = Math.max(1, Number(lastPlan.branchBatchSize || 4));
+      if (!branchIds.length || !searchPoints.length) {
+        throw new Error("Optimizerul V3 nu a construit ramuri/puncte de căutare eligibile.");
+      }
+      stage("plan","done", `${searchPoints.length} puncte`);
+      log(`V3: ${searchPoints.length} puncte/ramură · ${lastPlan.baseShortlistSize || 0} physics-informed · ${lastPlan.lowDiscrepancyPoints || 0} low-discrepancy · batch ${batchSize}.`);
+      log(`Metodă V3: ${lastPlan.searchMethod || "necunoscută"}.`);
       const catalogStats = lastPlan.heatingCatalogStats || {};
       log(`Catalog încălzire: ${catalogStats.products ?? "?"} SKU-uri comerciale · ${catalogStats.parametric_nodes ?? "?"} noduri parametrice · ${catalogStats.performance_points ?? "?"} puncte COP/capacitate · sursă ${lastPlan.heatingCatalogSource || "?"}.`);
-
-      const branchIds = lastPlan.runBranchIds || [];
-      if (!branchIds.length) throw new Error("Optimizerul nu a returnat nicio ramură economică eligibilă.");
 
       stage("branches","active",`0 / ${branchIds.length}`);
       const formPayload = formObject();
       formPayload._optimizer_run_id = runId;
+      const candidateRows = [];
+      const branchStats = [];
+      let branchFastEvaluations = 0;
+      let backendElapsedMs = Number(lastPlan.calculationTimeMs || 0);
+
       for (let i = 0; i < branchIds.length; i++) {
         const branchId = branchIds[i];
         const branchMeta = (lastPlan.branches || []).find(x => (x.branch_id || x.branchId) === branchId);
         const label = branchMeta?.label || branchId;
-        log(`${i + 1}/${branchIds.length} · ${label}: evaluare parametrică.`);
-        const result = await postJson(
-          "/api/optimization/home-lab/v2/branch",
-          {
-            form:formPayload,
-            runId,
-            branchId,
-            shortlist:lastPlan.shortlist
-          },
-          {stageName:`branch ${i + 1}/${branchIds.length} ${label}`, runId, retries:2}
-        );
-        branchResults.push(result);
+        const batchCount = Math.ceil(searchPoints.length / batchSize);
+        let branchAccepted = 0;
+        let branchEvaluated = 0;
+        let branchFeasible = 0;
+        log(`${i + 1}/${branchIds.length} · ${label}: ${batchCount} micro-batch-uri CPU-safe.`);
+
+        for (let offset = 0, batchIndex = 0; offset < searchPoints.length; offset += batchSize, batchIndex += 1) {
+          const batch = searchPoints.slice(offset, offset + batchSize);
+          const result = await postJson(
+            "/api/optimization/home-lab/v3/branch",
+            {
+              form:formPayload,
+              runId,
+              branchId,
+              batch
+            },
+            {stageName:`branch ${i + 1}/${branchIds.length} ${label} batch ${batchIndex + 1}/${batchCount}`, runId, retries:2}
+          );
+          const candidates = Array.isArray(result.candidates) ? result.candidates : [];
+          candidates.forEach(candidate => candidateRows.push({branchId, candidate}));
+          branchAccepted += candidates.length;
+          branchEvaluated += Number(result.fastEvaluations || 0);
+          branchFeasible += Number(result.branch?.feasible_candidates || 0);
+          branchFastEvaluations += Number(result.fastEvaluations || 0);
+          backendElapsedMs += Number(result.calculationTimeMs || 0);
+          log(`   batch ${batchIndex + 1}/${batchCount}: ${candidates.length} candidați · ${result.fastEvaluations || 0} evaluări.`);
+        }
+
+        branchStats.push({
+          branchId,
+          evaluatedCandidates:branchEvaluated,
+          acceptedCandidates:branchAccepted,
+          feasibleCandidates:branchFeasible
+        });
         stage("branches","active",`${i + 1} / ${branchIds.length}`);
-        log(`   ${result.candidateCount || 0} candidați · ${result.fastEvaluations || 0} evaluări.`);
       }
       stage("branches","done",`${branchIds.length} / ${branchIds.length}`);
 
-      stage("finalize","active","verifică");
-      log("Verific finaliștii cu motorul complet și aplic discretizarea comercială disponibilă.");
+      stage("finalize","active","selectează");
+      log(`Construiesc frontiera globală din ${candidateRows.length} candidați fast.`);
+      const verificationPlan = await postJson(
+        "/api/optimization/home-lab/v3/verification-plan",
+        {
+          form:formPayload,
+          candidateRows
+        },
+        {stageName:"verification plan V3", runId, retries:2}
+      );
+      const targets = Array.isArray(verificationPlan.targets) ? verificationPlan.targets : [];
+      if (!targets.length) throw new Error("V3 nu a selectat finaliști pentru verificare.");
+      log(`Pareto: ${verificationPlan.frontierCount || 0} · verificări canonice: ${targets.length}.`);
+
+      const verifiedRows = [];
+      for (let i = 0; i < targets.length; i++) {
+        const target = targets[i];
+        log(`VERIFY ${i + 1}/${targets.length} · ${target.branchId} · un singur calculate() complet.`);
+        const verified = await postJson(
+          "/api/optimization/home-lab/v3/verify",
+          {
+            form:formPayload,
+            branchId:target.branchId,
+            candidate:target.candidate
+          },
+          {stageName:`verify ${i + 1}/${targets.length}`, runId, retries:2}
+        );
+        verifiedRows.push(verified);
+        backendElapsedMs += Number(verified.calculationTimeMs || 0);
+      }
+
+      const commercialRows = [];
+      for (let i = 0; i < verifiedRows.length; i++) {
+        const verified = verifiedRows[i];
+        log(`PRODUCT ${i + 1}/${verifiedRows.length} · sizing + produs comercial separat.`);
+        const commercial = await postJson(
+          "/api/optimization/home-lab/v3/product",
+          {
+            form:formPayload,
+            branchId:verified.branchId,
+            candidate:verified.candidate,
+            sourceCandidateId:verified.candidate?.candidate_id
+          },
+          {stageName:`product ${i + 1}/${verifiedRows.length}`, runId, retries:2}
+        );
+        commercialRows.push(commercial);
+        backendElapsedMs += Number(commercial.calculationTimeMs || 0);
+      }
+
+      log("REPORT · aleg rezultatul dintre finaliști deja verificați; finalize nu mai rulează 3+3 calcule grele.");
       optimizationResult = await postJson(
-        "/api/optimization/home-lab/v2/finalize",
+        "/api/optimization/home-lab/v3/finalize",
         {
           form:formPayload,
           runId,
-          branchResults,
+          commercialRows,
+          verifiedRows,
+          branchStats,
           representativeEvaluations:lastPlan.representativeEvaluations || 0,
-          representativePoolSize:lastPlan.representativePoolSize || 0,
-          shortlistSize:lastPlan.shortlistSize || 0,
-          priorCalculationTimeMs:Number(lastPlan.calculationTimeMs || 0)
+          branchFastEvaluations,
+          priorCalculationTimeMs:backendElapsedMs,
+          sourceCandidateCount:Number(verificationPlan.sourceCandidateCount || candidateRows.length),
+          searchPointCount:searchPoints.length,
+          branchBatchSize:batchSize,
+          verificationFrontierCount:Number(verificationPlan.frontierCount || 0)
         },
-        {stageName:"finalize", runId, retries:2}
+        {stageName:"finalize V3", runId, retries:2}
       );
       stage("finalize","done","gata");
       const opt = optimizationResult.optimization || {};

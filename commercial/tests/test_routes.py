@@ -161,7 +161,7 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'data-page="report"' in page.text
     assert 'data-page="renewables"' in page.text
     assert "/static/home-lab-editorial.css?v=14" in page.text
-    assert "/static/home-lab-editorial.js?v=18" in page.text
+    assert "/static/home-lab-editorial.js?v=19" in page.text
     assert "/static/home-lab-3d.js" not in page.text
     assert 'id="edBaselineClass"' in page.text
     assert 'id="edBaselineCost"' in page.text
@@ -246,9 +246,12 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert "function renderLocationMap(" in js.text
     assert "function selectLocality(" in js.text
     assert '"/api/home-lab-next/calculate"' in js.text
-    assert '"/api/optimization/home-lab/v2/plan"' in js.text
-    assert '"/api/optimization/home-lab/v2/branch"' in js.text
-    assert '"/api/optimization/home-lab/v2/finalize"' in js.text
+    assert '"/api/optimization/home-lab/v3/plan"' in js.text
+    assert '"/api/optimization/home-lab/v3/branch"' in js.text
+    assert '"/api/optimization/home-lab/v3/verification-plan"' in js.text
+    assert '"/api/optimization/home-lab/v3/verify"' in js.text
+    assert '"/api/optimization/home-lab/v3/product"' in js.text
+    assert '"/api/optimization/home-lab/v3/finalize"' in js.text
     assert 'showPage("done");' in js.text
     assert '$("#openReport").addEventListener("click", () => showPage("report"));' in js.text
 

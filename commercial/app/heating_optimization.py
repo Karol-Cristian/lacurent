@@ -255,34 +255,59 @@ def heating_planning_options(
 
 def heating_technologies(
     catalog: dict[str, Any] | None = None,
+    *,
+    include_parametric_nodes: bool = True,
+    technology_id: str | None = None,
 ) -> list[HeatingTechnologyV2]:
+    """Build technology objects without materializing unnecessary D1 rows.
+
+    The runtime catalog can contain ~1000 dense parametric CAPEX nodes. V2/V3
+    previously parsed every node into a Pydantic model multiple times per
+    Worker request, even when a request was evaluating only one heating branch.
+    On Python Workers that creates avoidable CPU and heap pressure.
+
+    Plan/report/product-selection paths do not need the dense nodes at all.
+    Branch-evaluation paths may request a single technology, in which case only
+    that technology's nodes are parsed.
+    """
+
     raw = catalog or heating_planning_catalog()
     grouped: dict[str, list[HeatingPlanningOptionV1]] = {}
     for item in heating_planning_options(raw):
+        if technology_id is not None and item.technology_id != technology_id:
+            continue
         grouped.setdefault(item.technology_id, []).append(item)
 
     nodes_by_technology: dict[str, list[HeatingParametricNodeV1]] = {}
-    for raw_node in raw.get("parametric_heating_nodes", []) or []:
-        try:
-            node = HeatingParametricNodeV1(**raw_node)
-        except Exception:
-            continue
-        nodes_by_technology.setdefault(node.technology_id, []).append(node)
+    if include_parametric_nodes:
+        for raw_node in raw.get("parametric_heating_nodes", []) or []:
+            raw_technology_id = str(raw_node.get("technology_id") or "")
+            if technology_id is not None and raw_technology_id != technology_id:
+                continue
+            try:
+                node = HeatingParametricNodeV1(**raw_node)
+            except Exception:
+                continue
+            nodes_by_technology.setdefault(node.technology_id, []).append(node)
 
     return [
         HeatingTechnologyV2(
-            id=technology_id,
+            id=current_technology_id,
             label=items[0].technology_label,
             products=sorted(
                 items,
                 key=lambda item: (item.rated_power_kw, item.installed_capex_lei),
             ),
-            parametric_nodes=sorted(
-                nodes_by_technology.get(technology_id, []),
-                key=lambda item: item.required_power_kw,
+            parametric_nodes=(
+                sorted(
+                    nodes_by_technology.get(current_technology_id, []),
+                    key=lambda item: item.required_power_kw,
+                )
+                if include_parametric_nodes
+                else []
             ),
         )
-        for technology_id, items in grouped.items()
+        for current_technology_id, items in grouped.items()
     ]
 
 
@@ -1507,7 +1532,11 @@ def commercialize_heating_finalist(
             "Păstrează sistemul actual: finalistul nu necesită achiziția unui generator nou."
         ]
     catalog_technology_ids = {
-        item.id for item in heating_technologies(heating_catalog)
+        item.id
+        for item in heating_technologies(
+            heating_catalog,
+            include_parametric_nodes=False,
+        )
     }
     if (
         branch_id in SUPPLEMENTAL_TECHNICAL_HEATING_BRANCHES
@@ -1527,7 +1556,11 @@ def commercialize_heating_finalist(
     technology = next(
         (
             item
-            for item in heating_technologies(heating_catalog)
+            for item in heating_technologies(
+                heating_catalog,
+                include_parametric_nodes=False,
+                technology_id=technology_id,
+            )
             if item.id == technology_id
         ),
         None,
@@ -1731,7 +1764,10 @@ def heating_branch_plan(
         )
     ]
 
-    for technology in heating_technologies(heating_catalog):
+    for technology in heating_technologies(
+        heating_catalog,
+        include_parametric_nodes=False,
+    ):
         eligible, reason = technology_is_eligible(request.baseline, technology)
         plan.append(
             HeatingBranchSummaryV1(
@@ -1807,7 +1843,10 @@ def run_heating_branch_optimization(
         technology = next(
             (
                 item
-                for item in heating_technologies(heating_catalog)
+                for item in heating_technologies(
+                    heating_catalog,
+                    technology_id=branch_id,
+                )
                 if item.id == branch_id
             ),
             None,
