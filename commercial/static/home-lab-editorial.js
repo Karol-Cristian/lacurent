@@ -45,6 +45,10 @@
   let baselineSummaryTimer = 0;
   let baselineSummaryController = null;
   let baselineSummaryRevision = 0;
+  let locationData = null;
+  let localities = [];
+  let localityMap = new Map();
+  let locationProjection = null;
 
   const fmt = (value, digits = 0) => {
     if (value === null || value === undefined || Number.isNaN(Number(value))) return "—";
@@ -53,6 +57,30 @@
   const money = value => value === null || value === undefined ? "—" : fmt(value, 0) + " lei";
   const energy = value => value === null || value === undefined ? "—" : fmt(value, 0) + " kWh/an";
   const setValue = (id, value) => { const node = document.getElementById(id); if (node) node.value = value == null ? "" : String(value); };
+
+  function parseDecimal(value, fallback = NaN) {
+    const normalized = String(value ?? "").trim().replace(/\s+/g, "").replace(",", ".");
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+
+  function decimalForForm(value) {
+    const parsed = parseDecimal(value);
+    return Number.isFinite(parsed) ? String(parsed) : String(value ?? "").trim();
+  }
+
+  function decimalForDisplay(value, digits = 1) {
+    if (!Number.isFinite(Number(value))) return "";
+    return Number(value).toFixed(digits).replace(".", ",");
+  }
+
+  function normalizeSearch(value) {
+    return String(value ?? "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+  }
 
   function showPage(name) {
     current = name;
@@ -67,6 +95,15 @@
     if (!page) return true;
     const fields = [...page.querySelectorAll("input:not([type=hidden]),select")].filter(el => !el.disabled && !el.closest("[hidden]"));
     for (const field of fields) {
+      if (field.matches("[data-decimal-input]")) {
+        const value = parseDecimal(field.value);
+        const min = parseDecimal(field.dataset.min);
+        const max = parseDecimal(field.dataset.max);
+        field.setCustomValidity("");
+        if (!Number.isFinite(value)) field.setCustomValidity("Introdu o valoare numerică.");
+        else if (Number.isFinite(min) && value < min) field.setCustomValidity("Valoarea este prea mică.");
+        else if (Number.isFinite(max) && value > max) field.setCustomValidity("Valoarea este prea mare.");
+      }
       if (!field.checkValidity()) {
         field.reportValidity();
         return false;
@@ -82,14 +119,14 @@
   function insulationU(baseU, centimetres, lambda = 0.040) {
     const safeLambda = Number(lambda) > 0 ? Number(lambda) : 0.040;
     const baseR = 1 / Number(baseU);
-    const addedR = Math.max(0, Number(centimetres) || 0) / 100 / safeLambda;
+    const addedR = Math.max(0, parseDecimal(centimetres, 0)) / 100 / safeLambda;
     return 1 / (baseR + addedR);
   }
 
   function wallBaseU() {
     const preset = WALL_STRUCTURE_PRESETS[$("#wallStructure").value] || WALL_STRUCTURE_PRESETS.unknown;
     if (!preset.lambda) return preset.fallbackU;
-    const rawThickness = Number($("#wallStructureThickness").value);
+    const rawThickness = parseDecimal($("#wallStructureThickness").value);
     const thicknessCm = Number.isFinite(rawThickness) && rawThickness > 0
       ? Math.max(5, Math.min(80, rawThickness))
       : preset.defaultThicknessCm;
@@ -97,10 +134,10 @@
   }
 
   function geometryValues() {
-    const area = Math.max(Number($("#heatedArea").value) || 0, 1);
+    const area = Math.max(parseDecimal($("#heatedArea").value, 0), 1);
     const levels = Math.max(1, Number($("#heatedLevels").value) || 1);
-    const height = Math.max(Number($("#averageHeight").value) || 0, 0.1);
-    const windows = Math.max(Number($("#windowArea").value) || 0, 0);
+    const height = Math.max(parseDecimal($("#averageHeight").value, 0), 0.1);
+    const windows = Math.max(parseDecimal($("#windowArea").value, 0), 0);
     const doors = 2.2;
     const footprint = area / levels;
     const aspect = 1.25;
@@ -130,7 +167,7 @@
       if (!input) return;
       if (force || input.dataset.geomAuto !== "false") {
         input.dataset.geomAuto = "true";
-        input.value = Number(value).toFixed(digits);
+        input.value = decimalForDisplay(value, digits);
       }
     });
     $("#derivedFootprint").textContent = fmt(g.footprint,1) + " m²";
@@ -229,7 +266,7 @@
     setValue("techWidth", g.width.toFixed(3));
     setValue("techHouseWindows", g.windows);
     setValue("techGroundPerimeter", g.perimeter.toFixed(3));
-    setValue("techGroundWallThickness", (Math.max(Number($("#wallStructureThickness").value) || 30, 1) / 100).toFixed(3));
+    setValue("techGroundWallThickness", (Math.max(parseDecimal($("#wallStructureThickness").value, 30), 1) / 100).toFixed(3));
     setValue("techBridgeLength", (g.perimeter * g.levels).toFixed(3));
 
     const topBoundary = $("#topBoundary").value;
@@ -345,7 +382,207 @@
     }
   }
 
-  $("#localityInput").addEventListener("input", () => { $("#localityId").value = ""; });
+  function walkMapCoordinates(value, visit) {
+    if (Array.isArray(value) && value.length >= 2 && Number.isFinite(value[0]) && Number.isFinite(value[1])) {
+      visit(value);
+      return;
+    }
+    if (Array.isArray(value)) value.forEach(item => walkMapCoordinates(item, visit));
+  }
+
+  function createLocationProjection(data) {
+    const bounds = {minLon:Infinity,maxLon:-Infinity,minLat:Infinity,maxLat:-Infinity};
+    [data?.climateZones, data?.romaniaBoundary].forEach(collection => {
+      (collection?.features || []).forEach(feature => {
+        walkMapCoordinates(feature.geometry?.coordinates, ([lon, lat]) => {
+          bounds.minLon = Math.min(bounds.minLon, lon);
+          bounds.maxLon = Math.max(bounds.maxLon, lon);
+          bounds.minLat = Math.min(bounds.minLat, lat);
+          bounds.maxLat = Math.max(bounds.maxLat, lat);
+        });
+      });
+    });
+    if (!Number.isFinite(bounds.minLon)) return null;
+    const width = 760;
+    const height = 390;
+    const pad = 15;
+    const midLat = (bounds.minLat + bounds.maxLat) / 2;
+    const lonScale = Math.cos(midLat * Math.PI / 180);
+    const spanX = Math.max((bounds.maxLon - bounds.minLon) * lonScale, 0.01);
+    const spanY = Math.max(bounds.maxLat - bounds.minLat, 0.01);
+    const scale = Math.min((width - 2 * pad) / spanX, (height - 2 * pad) / spanY);
+    return {
+      width,height,
+      project(lon,lat) {
+        return [
+          pad + (lon - bounds.minLon) * lonScale * scale,
+          pad + (bounds.maxLat - lat) * scale,
+        ];
+      },
+    };
+  }
+
+  function mapGeometryPath(geometry, projection) {
+    const polygons = geometry?.type === "Polygon"
+      ? [geometry.coordinates || []]
+      : geometry?.type === "MultiPolygon"
+        ? geometry.coordinates || []
+        : [];
+    const parts = [];
+    polygons.forEach(polygon => polygon.forEach(ring => {
+      if (!ring.length) return;
+      parts.push(ring.map((point,index) => {
+        const [x,y] = projection.project(point[0],point[1]);
+        return `${index ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`;
+      }).join(" ") + " Z");
+    }));
+    return parts.join(" ");
+  }
+
+  function localityTier(locality) {
+    const population = Number(locality.population2002) || 0;
+    const rank = String(locality.rank ?? "");
+    if (rank === "0" || rank === "I" || population >= 200000) return 1;
+    if (rank === "II" || population >= 55000) return 2;
+    if (rank === "III" || population >= 12000) return 3;
+    return 4;
+  }
+
+  function visibleMapLocalities(selectedId) {
+    if (!locationProjection) return [];
+    return localities
+      .filter(item => Number.isFinite(item.lon) && Number.isFinite(item.lat))
+      .map(item => {
+        const [x,y] = locationProjection.project(item.lon,item.lat);
+        return {item,x,y,tier:localityTier(item)};
+      })
+      .filter(entry => entry.tier <= 2 || String(entry.item.id) === String(selectedId))
+      .sort((a,b) => {
+        if (String(a.item.id) === String(selectedId)) return -1;
+        if (String(b.item.id) === String(selectedId)) return 1;
+        return a.tier - b.tier || Number(b.item.importance || 0) - Number(a.item.importance || 0);
+      })
+      .slice(0, window.innerWidth <= 720 ? 40 : 70);
+  }
+
+  function renderLocationMap() {
+    const target = $("#edLocationMap");
+    if (!target) return;
+    if (!locationData || !locationProjection) {
+      target.innerHTML = "<p>Se încarcă harta…</p>";
+      return;
+    }
+    const selected = localityMap.get(String($("#localityId").value));
+    const selectedId = selected?.id;
+    const selectedZone = String(selected?.climateZone || "");
+    const zonePaths = (locationData.climateZones?.features || []).map(feature => {
+      const zone = String(feature.properties?.zone || "");
+      return `<path class="ed-map-zone zone-${escapeHtml(zone)}${zone === selectedZone ? " is-selected" : ""}" d="${mapGeometryPath(feature.geometry,locationProjection)}"></path>`;
+    }).join("");
+    const boundary = (locationData.romaniaBoundary?.features || []).map(feature =>
+      `<path class="ed-map-boundary" d="${mapGeometryPath(feature.geometry,locationProjection)}"></path>`
+    ).join("");
+    const markers = visibleMapLocalities(selectedId).map(marker => {
+      const selectedMarker = String(marker.item.id) === String(selectedId);
+      const radius = selectedMarker ? 5.2 : marker.tier === 1 ? 3.6 : 2.5;
+      const label = selectedMarker || marker.tier === 1
+        ? `<text x="${radius + 5}" y="-2">${escapeHtml(marker.item.name)}</text>`
+        : "";
+      return `<g class="ed-map-locality${selectedMarker ? " is-selected" : ""}" data-map-locality-id="${escapeHtml(marker.item.id)}" transform="translate(${marker.x.toFixed(1)} ${marker.y.toFixed(1)})"><circle r="${radius}"></circle>${label}</g>`;
+    }).join("");
+    target.innerHTML = `
+      <svg class="ed-location-map-svg" viewBox="0 0 ${locationProjection.width} ${locationProjection.height}" preserveAspectRatio="xMidYMid meet" aria-label="Harta climatică a României">
+        <g class="ed-map-zones">${zonePaths}</g>
+        <g class="ed-map-boundaries">${boundary}</g>
+        <g class="ed-map-localities">${markers}</g>
+      </svg>
+      <div class="ed-map-caption"><span>Zone climatice I–V</span><span>Apasă pe un punct sau caută localitatea.</span></div>
+    `;
+  }
+
+  function renderLocalitySuggestions(query) {
+    const target = $("#edLocalitySuggestions");
+    if (!target) return;
+    const q = normalizeSearch(query);
+    if (q.length < 2 || !localities.length) {
+      target.hidden = true;
+      target.innerHTML = "";
+      return;
+    }
+    const hits = localities
+      .filter(item => normalizeSearch(item.search || `${item.name} ${item.county || ""} ${item.uatName || ""}`).includes(q))
+      .sort((a,b) => Number(b.importance || 0) - Number(a.importance || 0))
+      .slice(0,8);
+    target.innerHTML = hits.map(item => `
+      <button type="button" data-locality-id="${escapeHtml(item.id)}">
+        <span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.county || "")}${item.uatName && item.uatName !== item.name ? " · " + escapeHtml(item.uatName) : ""}</small></span>
+        <em>${item.climateZone ? "Zona " + escapeHtml(item.climateZone) : ""}</em>
+      </button>
+    `).join("");
+    target.hidden = !hits.length;
+  }
+
+  function selectLocality(locality) {
+    if (!locality) return;
+    $("#localityId").value = locality.id;
+    $("#localityInput").value = locality.name;
+    $("#edLocationMeta").textContent =
+      `${locality.county || ""}${locality.climateZone ? " · zona climatică " + locality.climateZone : ""}${locality.stationName ? " · " + locality.stationName : ""}`;
+    $("#edLocalitySuggestions").hidden = true;
+    $("#edMapSuggestions").hidden = true;
+    renderLocationMap();
+    scheduleBaselineSummary(120);
+  }
+
+  function nearestMapLocalities(event, limit = 5) {
+    const svg = event.target.closest("svg.ed-location-map-svg");
+    if (!svg || !locationProjection) return [];
+    const rect = svg.getBoundingClientRect();
+    if (!rect.width || !rect.height) return [];
+    const x = ((event.clientX - rect.left) / rect.width) * locationProjection.width;
+    const y = ((event.clientY - rect.top) / rect.height) * locationProjection.height;
+    return localities
+      .filter(item => Number.isFinite(item.lon) && Number.isFinite(item.lat))
+      .map(item => {
+        const [px,py] = locationProjection.project(item.lon,item.lat);
+        return {item,distance:Math.hypot(px-x,py-y)};
+      })
+      .sort((a,b) => a.distance-b.distance || Number(b.item.importance || 0)-Number(a.item.importance || 0))
+      .slice(0,limit)
+      .map(entry => entry.item);
+  }
+
+  function renderMapSuggestions(items) {
+    const target = $("#edMapSuggestions");
+    target.innerHTML = items.map(item => `<button type="button" data-map-locality-id="${escapeHtml(item.id)}"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.county || "")}</small></button>`).join("");
+    target.hidden = !items.length;
+  }
+
+  $("#localityInput").addEventListener("input", event => {
+    $("#localityId").value = "";
+    $("#edLocationMeta").textContent = "Alege o sugestie pentru a fixa profilul climatic.";
+    renderLocalitySuggestions(event.target.value);
+    renderLocationMap();
+  });
+  $("#localityInput").addEventListener("focus", event => renderLocalitySuggestions(event.target.value));
+  $("#edLocalitySuggestions").addEventListener("click", event => {
+    const button = event.target.closest("[data-locality-id]");
+    if (!button) return;
+    selectLocality(localityMap.get(String(button.dataset.localityId)));
+  });
+  $("#edLocationMap").addEventListener("click", event => {
+    const marker = event.target.closest("[data-map-locality-id]");
+    if (marker) {
+      selectLocality(localityMap.get(String(marker.dataset.mapLocalityId)));
+      return;
+    }
+    if (event.target.closest("svg.ed-location-map-svg")) renderMapSuggestions(nearestMapLocalities(event));
+  });
+  $("#edMapSuggestions").addEventListener("click", event => {
+    const button = event.target.closest("[data-map-locality-id]");
+    if (!button) return;
+    selectLocality(localityMap.get(String(button.dataset.mapLocalityId)));
+  });
 
   ["#heatedArea","#heatedLevels","#averageHeight","#windowArea"].forEach(selector => {
     $(selector).addEventListener("input", () => { updateGeometryDisplay(false); });
@@ -392,7 +629,11 @@
 
   function baseFormData() {
     syncTechnicalForm();
-    return new FormData(form);
+    const data = new FormData(form);
+    form.querySelectorAll("[data-decimal-input][name]").forEach(input => {
+      data.set(input.name, decimalForForm(input.value));
+    });
+    return data;
   }
 
   function formObject() {
@@ -431,10 +672,10 @@
   function baselineSummaryReady() {
     const locality = ($("#localityInput")?.value || "").trim();
     const localityToken = ($("#localityId")?.value || "").trim();
-    if (!locality && !localityToken) {
+    if (!localityToken) {
       baselineClass.textContent = "—";
       baselineCost.textContent = "—";
-      baselineStatus.textContent = "Completează localitatea.";
+      baselineStatus.textContent = locality ? "Alege localitatea din sugestii sau de pe hartă." : "Completează localitatea.";
       baselineBar.classList.remove("is-updating");
       return false;
     }
@@ -452,7 +693,7 @@
       syncTechnicalForm();
       const response = await fetch("/api/home-lab-next/calculate", {
         method:"POST",
-        body:new FormData(form),
+        body:baseFormData(),
         headers:{"Accept":"application/json"},
         signal:baselineSummaryController.signal,
       });
@@ -695,6 +936,22 @@
     if (event.target?.type === "hidden") return;
     scheduleBaselineSummary(350);
   });
+
+  fetch("/api/location-data", {headers:{"Accept":"application/json"}})
+    .then(readJson)
+    .then(data => {
+      locationData = data;
+      localities = Array.isArray(data.localities) ? data.localities : [];
+      localityMap = new Map(localities.map(item => [String(item.id), item]));
+      locationProjection = createLocationProjection(data);
+      const selected = localityMap.get(String($("#localityId").value));
+      if (selected) selectLocality(selected);
+      else renderLocationMap();
+    })
+    .catch(error => {
+      $("#edLocationMap").innerHTML = "<p>Harta nu a putut fi încărcată. Căutarea localității rămâne disponibilă.</p>";
+      $("#edLocationMap").dataset.mapError = error?.message || "location-map-error";
+    });
 
   syncGoalField();
   updateGeometryDisplay(true);
