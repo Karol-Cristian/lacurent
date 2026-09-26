@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import gc
 import json
 import math
 from functools import lru_cache
@@ -2767,6 +2768,23 @@ async def home_lab_optimization_v3_plan_api(request: Request) -> JSONResponse:
         )
 
 
+def _compact_fast_candidate_payload(candidate: CandidateEvaluationV1) -> dict[str, Any]:
+    """Serialize only data needed for global ranking and canonical verification.
+
+    Fast search candidates can contain a full BuildingInput plus cost lines,
+    assumptions and warnings. Shipping those transient object graphs thousands
+    of times increases Python/WASM heap pressure without helping ranking.
+    Canonical verification rebuilds the selected finalists from parameters.
+    """
+
+    data = model_to_dict(candidate)
+    data.pop("resulting_configuration", None)
+    data.pop("cost_breakdown", None)
+    data.pop("assumptions", None)
+    data.pop("warnings", None)
+    return data
+
+
 @app.post("/api/optimization/home-lab/v3/branch")
 async def home_lab_optimization_v3_branch_api(request: Request) -> JSONResponse:
     """Evaluate one small branch/search batch with the V2 fast kernel."""
@@ -2814,23 +2832,34 @@ async def home_lab_optimization_v3_branch_api(request: Request) -> JSONResponse:
             baseline_annual_bill_lei=baseline_annual_bill_lei,
         )
         elapsed_ms = round((time.perf_counter() - started) * 1000.0, 1)
-        return JSONResponse(
-            {
-                "optimizerVersion": "v3-sharded",
-                "runId": run_id,
-                "branch": model_to_dict(result.branch),
-                "candidates": [
-                    model_to_dict(item)
-                    for item in result.candidates
-                ],
-                "candidateCount": len(result.candidates),
-                "fastEvaluations": int(result.fast_evaluations),
-                "calculationTimeMs": elapsed_ms,
-                "searchMethod": "halton_branch_batch_v3",
-                "heatingCatalogMode": heating_catalog.get("catalog_mode"),
-                "heatingCatalogStats": heating_catalog.get("catalog_stats") or {},
-            }
-        )
+        payload = {
+            "optimizerVersion": "v3-sharded",
+            "runId": run_id,
+            "branch": model_to_dict(result.branch),
+            "candidates": [
+                _compact_fast_candidate_payload(item)
+                for item in result.candidates
+            ],
+            "candidateCount": len(result.candidates),
+            "fastEvaluations": int(result.fast_evaluations),
+            "calculationTimeMs": elapsed_ms,
+            "searchMethod": "halton_branch_batch_v3",
+            "heatingCatalogMode": heating_catalog.get("catalog_mode"),
+            "heatingCatalogStats": heating_catalog.get("catalog_stats") or {},
+        }
+        response = JSONResponse(payload)
+
+        # Cloudflare Python Workers reuse isolates. Explicitly drop the heavy
+        # transient graph after JSONResponse has encoded it, then collect cyclic
+        # garbage before this isolate accepts another optimizer request.
+        del result
+        del batch
+        del optimization_request
+        del cost_catalog
+        del heating_catalog
+        del payload
+        gc.collect()
+        return response
     except Exception as exc:
         return JSONResponse(
             {
