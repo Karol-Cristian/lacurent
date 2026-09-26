@@ -9,7 +9,7 @@ from typing import Any, Callable, Literal
 from pydantic import BaseModel, Field, root_validator
 
 from .cost_curves import ParametricCostCurveV1, curve_cost_per_basis
-from .engine import calculate
+from .engine import calculate, design_heat_load_breakdown
 from .extended_costs import SystemCostCurveV1, system_curve_cost
 from .methodology import methodology
 from .models import BuildingInput, model_to_dict
@@ -648,15 +648,14 @@ def apply_parametric_measures(
 
 
 def _design_heat_load_kw(result: Any) -> float | None:
-    design_temperature = result.climate.get("winter_design_temperature_c")
-    if design_temperature is None:
-        return None
-    delta_t = max(
-        float(result.input.indoor_design_temperature_c)
-        - float(design_temperature),
-        0.0,
+    load = design_heat_load_breakdown(
+        result.input,
+        result.transmission_components,
+        result.h_ve_w_k,
+        result.climate,
     )
-    return round(float(result.heat_loss_w_k) * delta_t / 1000.0, 4)
+    value = load.get("total_kw")
+    return None if value is None else round(float(value), 4)
 
 
 def evaluate_parametric_candidate(
