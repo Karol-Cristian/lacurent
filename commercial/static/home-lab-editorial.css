@@ -1123,3 +1123,71 @@ body{
     margin-bottom:10px;
   }
 }
+
+
+/* Editorial v13: flat advanced engineering expanders */
+.ed-advanced-details{
+  margin-top:12px;
+  border:0;
+  border-top:1px solid rgba(91,108,124,.14);
+  border-radius:0;
+  background:transparent;
+  overflow:visible;
+}
+.ed-advanced-details summary{
+  padding:11px 0 0;
+  border:0;
+  align-items:center;
+}
+.ed-advanced-details summary::after{
+  content:"+";
+  margin-left:auto;
+  color:var(--muted);
+  font-size:17px;
+  font-weight:500;
+  line-height:1;
+}
+.ed-advanced-details[open] summary{
+  border-bottom:0;
+}
+.ed-advanced-details[open] summary::after{
+  content:"−";
+}
+.ed-advanced-details summary span{
+  font-size:11px;
+  font-weight:680;
+  color:#566676;
+}
+.ed-advanced-details summary small{
+  font-size:9px;
+  color:#8a929c;
+}
+.ed-advanced-details .ed-details-body{
+  padding:11px 0 0;
+}
+.ed-advanced-grid{
+  gap:8px;
+}
+.ed-advanced-grid .ed-field{
+  background:rgba(255,255,255,.72);
+}
+.ed-advanced-grid input::placeholder{
+  color:#a6adb5;
+  opacity:1;
+}
+
+@media(max-width:720px){
+  .ed-advanced-details{
+    margin-top:10px;
+  }
+  .ed-advanced-details summary{
+    padding-top:10px;
+    gap:4px;
+  }
+  .ed-advanced-details summary small{
+    max-width:58%;
+  }
+  .ed-advanced-details .ed-details-body{
+    padding-top:9px;
+  }
+}
