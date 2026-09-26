@@ -160,9 +160,12 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'data-page="run"' in page.text
     assert 'data-page="report"' in page.text
     assert 'data-page="renewables"' in page.text
-    assert "/static/home-lab-editorial.css?v=2" in page.text
-    assert "/static/home-lab-editorial.js?v=2" in page.text
+    assert "/static/home-lab-editorial.css?v=3" in page.text
+    assert "/static/home-lab-editorial.js?v=3" in page.text
     assert "/static/home-lab-3d.js" not in page.text
+    assert 'id="edBaselineClass"' in page.text
+    assert 'id="edBaselineCost"' in page.text
+    assert 'class="ed-baseline-bar"' in page.text
 
     # Editorial changes presentation only. It must keep the technical input
     # granularity of Home Lab instead of collapsing the building to broad
@@ -210,12 +213,17 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert css.status_code == 200
     assert "--max:820px" in css.text
     assert "backdrop-filter:blur(18px)" in css.text
+    assert ".ed-baseline-bar" in css.text
+    assert "width:min(100%,760px)" in css.text
 
     js = client.get("/static/home-lab-editorial.js")
     assert js.status_code == 200
     assert "WALL_STRUCTURE_PRESETS" in js.text
     assert "INSULATION_LAMBDA_W_MK" in js.text
     assert "function syncTechnicalForm()" in js.text
+    assert "function scheduleBaselineSummary(" in js.text
+    assert "function paintBaselineSummary(" in js.text
+    assert '"/api/home-lab-next/calculate"' in js.text
     assert '"/api/optimization/home-lab/v2/plan"' in js.text
     assert '"/api/optimization/home-lab/v2/branch"' in js.text
     assert '"/api/optimization/home-lab/v2/finalize"' in js.text

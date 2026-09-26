@@ -13,6 +13,10 @@
   const runLog = $("#runLog");
   const logDialog = $("#logDialog");
   const logDialogBody = $("#logDialogBody");
+  const baselineBar = document.querySelector(".ed-baseline-bar");
+  const baselineClass = $("#edBaselineClass");
+  const baselineCost = $("#edBaselineCost");
+  const baselineStatus = $("#edBaselineStatus");
   const stageEls = Object.fromEntries([...document.querySelectorAll("[data-run-stage]")].map(el => [el.dataset.runStage, el]));
 
   const WALL_STRUCTURE_PRESETS = Object.freeze({
@@ -38,6 +42,9 @@
   let lastPlan = null;
   let branchResults = [];
   let logLines = [];
+  let baselineSummaryTimer = 0;
+  let baselineSummaryController = null;
+  let baselineSummaryRevision = 0;
 
   const fmt = (value, digits = 0) => {
     if (value === null || value === undefined || Number.isNaN(Number(value))) return "—";
@@ -350,6 +357,7 @@
   $("#resetGeometry").addEventListener("click", () => {
     document.querySelectorAll("[data-geom-auto]").forEach(input => { input.dataset.geomAuto = "true"; });
     updateGeometryDisplay(true);
+    scheduleBaselineSummary(250);
   });
 
   $("#heatingChoice").addEventListener("change", applyHeatingDefaults);
@@ -411,6 +419,61 @@
     }));
   }
 
+  function paintBaselineSummary(result, statusText = "Estimare pentru configurația curentă.") {
+    if (!result) return;
+    const energyClass = String(result.energy_class || "—").trim() || "—";
+    baselineClass.textContent = energyClass;
+    baselineCost.textContent = result.annual_cost_lei == null ? "—" : money(result.annual_cost_lei) + "/an";
+    baselineStatus.textContent = statusText;
+    baselineBar.classList.remove("is-updating");
+  }
+
+  function baselineSummaryReady() {
+    const locality = ($("#localityInput")?.value || "").trim();
+    const localityToken = ($("#localityId")?.value || "").trim();
+    if (!locality && !localityToken) {
+      baselineClass.textContent = "—";
+      baselineCost.textContent = "—";
+      baselineStatus.textContent = "Completează localitatea.";
+      baselineBar.classList.remove("is-updating");
+      return false;
+    }
+    return true;
+  }
+
+  async function refreshBaselineSummary() {
+    if (current === "run" || !baselineSummaryReady()) return;
+    const revision = ++baselineSummaryRevision;
+    baselineSummaryController?.abort();
+    baselineSummaryController = new AbortController();
+    baselineBar.classList.add("is-updating");
+    baselineStatus.textContent = "Actualizare…";
+    try {
+      syncTechnicalForm();
+      const response = await fetch("/api/home-lab-next/calculate", {
+        method:"POST",
+        body:new FormData(form),
+        headers:{"Accept":"application/json"},
+        signal:baselineSummaryController.signal,
+      });
+      const data = await readJson(response);
+      if (revision !== baselineSummaryRevision) return;
+      baselineResult = data;
+      paintBaselineSummary(data);
+    } catch (error) {
+      if (error?.name === "AbortError" || revision !== baselineSummaryRevision) return;
+      baselineBar.classList.remove("is-updating");
+      baselineStatus.textContent = "Estimarea se actualizează după completarea datelor.";
+    }
+  }
+
+  function scheduleBaselineSummary(delay = 650) {
+    window.clearTimeout(baselineSummaryTimer);
+    if (!baselineSummaryReady()) return;
+    baselineBar.classList.add("is-updating");
+    baselineSummaryTimer = window.setTimeout(refreshBaselineSummary, delay);
+  }
+
   async function runAnalysis() {
     syncTechnicalForm();
     if (!validatePage("goal")) return;
@@ -425,6 +488,7 @@
       stage("baseline","active","rulează");
       log("Construiesc modelul termic al casei actuale din setul complet de inputuri Home Lab.");
       baselineResult = await postForm("/api/home-lab-next/calculate", baseFormData());
+      paintBaselineSummary(baselineResult, "Baseline folosit în optimizare.");
       stage("baseline","done","gata");
       log(`Baseline gata: ${fmt(baselineResult.final_energy_kwh)} kWh/an · necesar ${fmt(baselineResult.design_heat_load_kw,1)} kW.`);
 
@@ -623,10 +687,20 @@
   $("#closeLog").addEventListener("click", () => logDialog.close());
   logDialog.addEventListener("click", event => { if (event.target === logDialog) logDialog.close(); });
 
+  form.addEventListener("input", event => {
+    if (event.target?.type === "hidden") return;
+    scheduleBaselineSummary();
+  });
+  form.addEventListener("change", event => {
+    if (event.target?.type === "hidden") return;
+    scheduleBaselineSummary(350);
+  });
+
   syncGoalField();
   updateGeometryDisplay(true);
   applyHeatingDefaults();
   syncRenewableVisibility();
   syncTechnicalForm();
   showPage("intro");
+  scheduleBaselineSummary(150);
 })();
