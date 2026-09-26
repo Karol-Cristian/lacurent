@@ -467,7 +467,7 @@ def test_heat_pump_catalog_contains_source_backed_operating_points() -> None:
     }
 
 
-def test_heat_pump_scop_responds_to_existing_emitter_temperature() -> None:
+def test_sparse_heat_pump_curve_is_not_extrapolated_into_scop() -> None:
     baseline = demo_building()
     nibe = next(
         item
@@ -510,11 +510,22 @@ def test_heat_pump_scop_responds_to_existing_emitter_temperature() -> None:
     low_scop, low_notes = _estimated_heat_pump_scop(low_temp_house, nibe)
     high_scop, high_notes = _estimated_heat_pump_scop(high_temp_house, nibe)
 
-    assert low_scop is not None
-    assert high_scop is not None
-    assert low_scop > high_scop > 1
-    assert any("SCOP LaCurent estimat" in item for item in low_notes)
-    assert any("SCOP LaCurent estimat" in item for item in high_notes)
+    assert low_scop is None
+    assert high_scop is None
+    assert any("nu este extrapolat" in item for item in low_notes)
+    assert any("nu este extrapolat" in item for item in high_notes)
+
+    low_declared = next(
+        item.scop
+        for item in nibe.seasonal_performance
+        if item.climate == "average" and item.application_temperature_c == 35
+    )
+    high_declared = next(
+        item.scop
+        for item in nibe.seasonal_performance
+        if item.climate == "average" and item.application_temperature_c == 55
+    )
+    assert low_declared > high_declared > 1
 
 
 def test_heating_catalog_can_be_injected_from_d1_shape() -> None:
@@ -640,7 +651,13 @@ def test_air_air_catalog_has_commercial_cost_and_monthly_cop_curve() -> None:
         if row["useful_heating_kwh"] > 0
     ]
     assert heating_months
-    assert all(row["cop"] is not None and row["cop"] > 1 for row in heating_months)
+    covered_months = [
+        row for row in heating_months
+        if not row["outside_published_curve"]
+    ]
+    assert covered_months
+    assert all(row["cop"] is not None and row["cop"] > 1 for row in covered_months)
+    assert profile["cop_curve_heating_energy_coverage_percent"] >= 90
 
 
 def test_air_air_single_cop_reference_does_not_replace_declared_scop() -> None:
