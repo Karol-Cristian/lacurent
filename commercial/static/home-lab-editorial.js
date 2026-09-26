@@ -53,6 +53,7 @@
   let mapRenderFrame = 0;
   let mapSuppressClickUntil = 0;
   let mapDrag = null;
+  let mapPinch = null;
   const MAP_MIN_ZOOM = 1;
   const MAP_MAX_ZOOM = 6;
   const mapView = {zoom:1, centerX:null, centerY:null};
@@ -640,6 +641,66 @@
     svg.setAttribute("viewBox", `${box.x.toFixed(2)} ${box.y.toFixed(2)} ${box.width.toFixed(2)} ${box.height.toFixed(2)}`);
   }
 
+  function touchDistance(touchA, touchB) {
+    return Math.hypot(touchB.clientX - touchA.clientX, touchB.clientY - touchA.clientY);
+  }
+
+  function touchMidpoint(touchA, touchB) {
+    return {
+      x:(touchA.clientX + touchB.clientX) / 2,
+      y:(touchA.clientY + touchB.clientY) / 2,
+    };
+  }
+
+  function beginMapPinch(event) {
+    if (!locationProjection || event.touches.length < 2) return;
+    const svg = $("#edLocationMap")?.querySelector("svg.ed-location-map-svg");
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const midpoint = touchMidpoint(event.touches[0], event.touches[1]);
+    const box = currentMapViewBox();
+    const ratioX = Math.max(0, Math.min(1, (midpoint.x - rect.left) / rect.width));
+    const ratioY = Math.max(0, Math.min(1, (midpoint.y - rect.top) / rect.height));
+    mapPinch = {
+      startDistance:Math.max(touchDistance(event.touches[0], event.touches[1]), 1),
+      startZoom:mapView.zoom,
+      worldX:box.x + ratioX * box.width,
+      worldY:box.y + ratioY * box.height,
+    };
+    mapDrag = null;
+    svg.classList.add("is-panning");
+  }
+
+  function updateMapPinch(event) {
+    if (!mapPinch || !locationProjection || event.touches.length < 2) return;
+    const svg = $("#edLocationMap")?.querySelector("svg.ed-location-map-svg");
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const midpoint = touchMidpoint(event.touches[0], event.touches[1]);
+    const distance = Math.max(touchDistance(event.touches[0], event.touches[1]), 1);
+    const nextZoom = Math.max(MAP_MIN_ZOOM, Math.min(MAP_MAX_ZOOM, mapPinch.startZoom * distance / mapPinch.startDistance));
+    const ratioX = Math.max(0, Math.min(1, (midpoint.x - rect.left) / rect.width));
+    const ratioY = Math.max(0, Math.min(1, (midpoint.y - rect.top) / rect.height));
+    const width = locationProjection.width / nextZoom;
+    const height = locationProjection.height / nextZoom;
+    mapView.zoom = nextZoom;
+    mapView.centerX = mapPinch.worldX + (0.5 - ratioX) * width;
+    mapView.centerY = mapPinch.worldY + (0.5 - ratioY) * height;
+    clampMapView();
+    const box = currentMapViewBox();
+    svg.setAttribute("viewBox", `${box.x.toFixed(2)} ${box.y.toFixed(2)} ${box.width.toFixed(2)} ${box.height.toFixed(2)}`);
+  }
+
+  function finishMapPinch() {
+    if (!mapPinch) return;
+    mapPinch = null;
+    mapSuppressClickUntil = performance.now() + 260;
+    $("#edLocationMap")?.querySelector("svg.ed-location-map-svg")?.classList.remove("is-panning");
+    scheduleMapRender();
+  }
+
   function renderLocationMap() {
     const target = $("#edLocationMap");
     if (!target) return;
@@ -702,7 +763,7 @@
           <button type="button" data-map-zoom="reset" class="ed-map-zoom-value" aria-label="Resetează harta">${zoomLabel}</button>
           <button type="button" data-map-zoom="out" aria-label="Micșorează harta">−</button>
         </div>
-        <div class="ed-map-nav-hint">Trage pentru deplasare · rotiță / ± pentru zoom</div>
+        <div class="ed-map-nav-hint">Trage pentru deplasare · două degete / rotiță / ± pentru zoom</div>
       </div>
       <div class="ed-map-caption">
         <div class="ed-map-legend" aria-label="Legendă zone climatice">${legend}</div>
@@ -809,9 +870,24 @@
     event.preventDefault();
     applyMapZoom(mapView.zoom * 1.6, event.clientX, event.clientY);
   });
+  $("#edLocationMap").addEventListener("touchstart", event => {
+    if (!event.target.closest("svg.ed-location-map-svg") || event.touches.length < 2) return;
+    event.preventDefault();
+    beginMapPinch(event);
+  }, {passive:false});
+  $("#edLocationMap").addEventListener("touchmove", event => {
+    if (!mapPinch || event.touches.length < 2) return;
+    event.preventDefault();
+    updateMapPinch(event);
+  }, {passive:false});
+  $("#edLocationMap").addEventListener("touchend", event => {
+    if (mapPinch && event.touches.length < 2) finishMapPinch();
+  }, {passive:false});
+  $("#edLocationMap").addEventListener("touchcancel", () => finishMapPinch(), {passive:false});
+
   $("#edLocationMap").addEventListener("pointerdown", event => {
     const svg = event.target.closest("svg.ed-location-map-svg");
-    if (!svg || event.target.closest("[data-map-locality-id]") || (event.pointerType === "mouse" && event.button !== 0)) return;
+    if (!svg || mapPinch || event.target.closest("[data-map-locality-id]") || (event.pointerType === "mouse" && event.button !== 0)) return;
     const box = currentMapViewBox();
     mapDrag = {
       pointerId:event.pointerId,
@@ -826,7 +902,7 @@
     svg.classList.add("is-panning");
   });
   $("#edLocationMap").addEventListener("pointermove", event => {
-    if (!mapDrag || event.pointerId !== mapDrag.pointerId) return;
+    if (mapPinch || !mapDrag || event.pointerId !== mapDrag.pointerId) return;
     event.preventDefault();
     panMapFromDrag(event.clientX,event.clientY);
   });
