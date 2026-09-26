@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 import time
 from typing import Any
 
@@ -9,6 +11,7 @@ from .heating_optimization import heating_planning_catalog
 
 HEATING_CATALOG_CACHE_SECONDS = 900
 HEATING_CATALOG_RETRY_SECONDS = 30
+HEATING_PARAMETRIC_NODE_TOTAL = 1000
 
 _heating_catalog_lock = asyncio.Lock()
 _heating_catalog_cached_payload: dict[str, Any] | None = None
@@ -80,6 +83,16 @@ CREATE TABLE IF NOT EXISTS heat_pump_seasonal_performance (
     catalog_version TEXT NOT NULL,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY(product_id, climate, application_temperature_c)
+)
+"""
+
+
+HEATING_PARAMETRIC_GRID_CREATE_SQL = """
+CREATE TABLE IF NOT EXISTS heating_parametric_grids (
+    catalog_signature TEXT PRIMARY KEY,
+    node_count INTEGER NOT NULL CHECK(node_count > 0),
+    nodes_json TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 )
 """
 
@@ -169,10 +182,157 @@ def _d1_rows(result: Any) -> list[dict[str, Any]]:
     return [dict(row) for row in (raw_rows or [])]
 
 
+def _interpolate_anchor_curve(
+    anchors: list[tuple[float, float]],
+    power_kw: float,
+) -> float:
+    if not anchors:
+        raise ValueError("Cannot interpolate an empty heating CAPEX curve.")
+    if len(anchors) == 1:
+        return float(anchors[0][1])
+    target = min(max(float(power_kw), float(anchors[0][0])), float(anchors[-1][0]))
+    if target <= float(anchors[0][0]) + 1e-12:
+        return float(anchors[0][1])
+    for index in range(1, len(anchors)):
+        low_power, low_cost = anchors[index - 1]
+        high_power, high_cost = anchors[index]
+        if target <= float(high_power) + 1e-12:
+            span = float(high_power) - float(low_power)
+            if span <= 1e-12:
+                return min(float(low_cost), float(high_cost))
+            fraction = (target - float(low_power)) / span
+            return float(low_cost) + fraction * (float(high_cost) - float(low_cost))
+    return float(anchors[-1][1])
+
+
+def _heating_catalog_signature(product_rows: list[dict[str, Any]]) -> str:
+    fingerprint = [
+        {
+            "id": str(item.get("id") or ""),
+            "technology_id": str(item.get("technology_id") or ""),
+            "rated_power_kw": float(item.get("rated_power_kw") or 0.0),
+            "equipment_price_lei": float(item.get("equipment_price_lei") or 0.0),
+            "installation_allowance_lei": float(item.get("installation_allowance_lei") or 0.0),
+            "active": int(item.get("active", 1) or 0),
+        }
+        for item in sorted(product_rows, key=lambda row: str(row.get("id") or ""))
+    ]
+    raw = json.dumps(fingerprint, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()
+
+
+def build_parametric_heating_nodes(
+    product_rows: list[dict[str, Any]],
+    *,
+    total_nodes: int = HEATING_PARAMETRIC_NODE_TOTAL,
+) -> list[dict[str, Any]]:
+    """Create a dense planning grid from live D1 commercial anchors.
+
+    Nodes are mathematical kW→CAPEX interpolation points, never commercial
+    SKUs and never a source of synthetic COP/capacity performance.
+    """
+
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for item in product_rows:
+        technology_id = str(item.get("technology_id") or "").strip()
+        if technology_id:
+            grouped.setdefault(technology_id, []).append(item)
+    technology_ids = sorted(grouped)
+    if not technology_ids or total_nodes <= 0:
+        return []
+
+    base_count = int(total_nodes) // len(technology_ids)
+    remainder = int(total_nodes) % len(technology_ids)
+    nodes: list[dict[str, Any]] = []
+
+    for tech_index, technology_id in enumerate(technology_ids):
+        items = grouped[technology_id]
+        by_power: dict[float, float] = {}
+        for item in items:
+            power = float(item.get("rated_power_kw") or 0.0)
+            if power <= 0:
+                continue
+            capex = float(item.get("equipment_price_lei") or 0.0) + float(
+                item.get("installation_allowance_lei") or 0.0
+            )
+            previous = by_power.get(power)
+            if previous is None or capex < previous:
+                by_power[power] = capex
+        anchors = sorted(by_power.items())
+        if not anchors:
+            continue
+
+        count = max(base_count + (1 if tech_index < remainder else 0), 1)
+        min_power = float(anchors[0][0])
+        max_power = float(anchors[-1][0])
+        label = str(items[0].get("technology_label") or technology_id)
+        for node_index in range(count):
+            fraction = 0.0 if count == 1 else node_index / (count - 1)
+            power = min_power + fraction * (max_power - min_power)
+            nodes.append(
+                {
+                    "id": f"{technology_id}:parametric:{node_index:04d}",
+                    "technology_id": technology_id,
+                    "technology_label": label,
+                    "required_power_kw": round(power, 6),
+                    "planning_capex_lei": round(
+                        max(_interpolate_anchor_curve(anchors, power), 0.0),
+                        2,
+                    ),
+                    "source_product_count": len(items),
+                    "min_source_power_kw": round(min_power, 6),
+                    "max_source_power_kw": round(max_power, 6),
+                    "interpolation_kind": "linear_between_live_d1_market_anchors",
+                }
+            )
+    return nodes
+
+
+async def _load_or_build_parametric_grid(
+    db: Any,
+    product_rows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    signature = _heating_catalog_signature(product_rows)
+    result = await db.prepare(
+        "SELECT node_count, nodes_json FROM heating_parametric_grids "
+        "WHERE catalog_signature = ?"
+    ).bind(signature).run()
+    rows = _d1_rows(result)
+    if rows:
+        try:
+            nodes = json.loads(str(rows[0].get("nodes_json") or "[]"))
+            if (
+                isinstance(nodes, list)
+                and len(nodes) == HEATING_PARAMETRIC_NODE_TOTAL
+                and int(rows[0].get("node_count") or 0) == len(nodes)
+            ):
+                return nodes
+        except (TypeError, ValueError, json.JSONDecodeError):
+            pass
+
+    nodes = build_parametric_heating_nodes(product_rows)
+    if not nodes:
+        return []
+    await db.prepare(
+        "INSERT OR REPLACE INTO heating_parametric_grids "
+        "(catalog_signature, node_count, nodes_json, updated_at) "
+        "VALUES (?, ?, ?, CURRENT_TIMESTAMP)"
+    ).bind(
+        signature,
+        len(nodes),
+        json.dumps(nodes, separators=(",", ":")),
+    ).run()
+    await db.prepare(
+        "DELETE FROM heating_parametric_grids WHERE catalog_signature <> ?"
+    ).bind(signature).run()
+    return nodes
+
+
 async def _create_heating_catalog_tables(db: Any) -> None:
     await db.prepare(HEATING_PRODUCTS_CREATE_SQL).run()
     await db.prepare(HEAT_PUMP_POINTS_CREATE_SQL).run()
     await db.prepare(HEAT_PUMP_SEASONAL_CREATE_SQL).run()
+    await db.prepare(HEATING_PARAMETRIC_GRID_CREATE_SQL).run()
     await db.prepare(HEATING_PRODUCT_CERTIFICATION_CREATE_SQL).run()
     await db.prepare(HEATING_PRODUCT_OFFERS_CREATE_SQL).run()
     await db.prepare(HEATING_CATALOG_IMPORT_BATCHES_CREATE_SQL).run()
@@ -228,63 +388,101 @@ async def _ensure_heating_catalog_d1(db: Any) -> None:
     expected_version = str(seed.get("catalog_version") or "")
     observed_on = str(seed.get("observed_on") or "")
 
-    for item in products:
-        await db.prepare(HEATING_PRODUCT_UPSERT_SQL).bind(
-            item["id"],
-            item.get("external_id") or item["id"],
-            item["technology_id"],
-            item["technology_label"],
-            item["label"],
-            item["system_type"],
-            item["generator_type"],
-            item["carrier"],
-            item["cost_profile"],
-            float(item["rated_power_kw"]),
-            None if item.get("efficiency") is None else float(item["efficiency"]),
-            None if item.get("scop") is None else float(item["scop"]),
-            float(item["equipment_price_lei"]),
-            float(item["installation_allowance_lei"]),
-            item["source_kind"],
-            item.get("source_url"),
-            item.get("confidence") or "low",
-            int(bool(item.get("requires_hydronic", True))),
-            int(bool(item.get("requires_existing_gas", False))),
-            int(bool(item.get("requires_existing_high_power_electric", False))),
-            int(bool(item.get("requires_existing_biomass_infrastructure", False))),
-            item.get("capacity_basis") or "catalog_nominal_output",
-            item.get("note") or "",
-            expected_version,
-            observed_on,
-        ).run()
+    # Bootstrap through three JSON bulk queries. This stays under the Workers
+    # Free D1 limit of 50 queries per invocation even on a fresh database.
+    await db.prepare(
+        """
+        INSERT OR REPLACE INTO heating_products (
+            id, external_id, technology_id, technology_label, label,
+            system_type, generator_type, carrier, cost_profile,
+            rated_power_kw, efficiency, scop, equipment_price_lei,
+            installation_allowance_lei, source_kind, source_url, confidence,
+            requires_hydronic, requires_existing_gas,
+            requires_existing_high_power_electric,
+            requires_existing_biomass_infrastructure, capacity_basis, note,
+            catalog_version, observed_on, active, updated_at
+        )
+        SELECT
+            json_extract(value, '$.id'),
+            COALESCE(json_extract(value, '$.external_id'), json_extract(value, '$.id')),
+            json_extract(value, '$.technology_id'),
+            json_extract(value, '$.technology_label'),
+            json_extract(value, '$.label'),
+            json_extract(value, '$.system_type'),
+            json_extract(value, '$.generator_type'),
+            json_extract(value, '$.carrier'),
+            json_extract(value, '$.cost_profile'),
+            CAST(json_extract(value, '$.rated_power_kw') AS REAL),
+            CAST(json_extract(value, '$.efficiency') AS REAL),
+            CAST(json_extract(value, '$.scop') AS REAL),
+            CAST(json_extract(value, '$.equipment_price_lei') AS REAL),
+            CAST(json_extract(value, '$.installation_allowance_lei') AS REAL),
+            json_extract(value, '$.source_kind'),
+            json_extract(value, '$.source_url'),
+            COALESCE(json_extract(value, '$.confidence'), 'low'),
+            COALESCE(CAST(json_extract(value, '$.requires_hydronic') AS INTEGER), 1),
+            COALESCE(CAST(json_extract(value, '$.requires_existing_gas') AS INTEGER), 0),
+            COALESCE(CAST(json_extract(value, '$.requires_existing_high_power_electric') AS INTEGER), 0),
+            COALESCE(CAST(json_extract(value, '$.requires_existing_biomass_infrastructure') AS INTEGER), 0),
+            COALESCE(json_extract(value, '$.capacity_basis'), 'catalog_nominal_output'),
+            COALESCE(json_extract(value, '$.note'), ''),
+            ?,
+            ?,
+            1,
+            CURRENT_TIMESTAMP
+        FROM json_each(?)
+        """
+    ).bind(
+        expected_version,
+        observed_on,
+        json.dumps(products, separators=(",", ":")),
+    ).run()
 
-    for point in points:
-        await db.prepare(HEAT_PUMP_POINT_UPSERT_SQL).bind(
-            point["product_id"],
-            float(point["outdoor_temperature_c"]),
-            float(point["flow_temperature_c"]),
-            None if point.get("return_temperature_c") is None else float(point["return_temperature_c"]),
-            None if point.get("delta_t_k") is None else float(point["delta_t_k"]),
-            None if point.get("heating_capacity_kw") is None else float(point["heating_capacity_kw"]),
-            float(point["cop"]),
-            point.get("test_standard"),
-            point["source_kind"],
-            point.get("source_url"),
-            point.get("note") or "",
-            expected_version,
-        ).run()
+    await db.prepare(
+        """
+        INSERT OR REPLACE INTO heat_pump_performance_points (
+            product_id, outdoor_temperature_c, flow_temperature_c,
+            return_temperature_c, delta_t_k, heating_capacity_kw, cop,
+            test_standard, source_kind, source_url, note, catalog_version, updated_at
+        )
+        SELECT
+            json_extract(value, '$.product_id'),
+            CAST(json_extract(value, '$.outdoor_temperature_c') AS REAL),
+            CAST(json_extract(value, '$.flow_temperature_c') AS REAL),
+            CAST(json_extract(value, '$.return_temperature_c') AS REAL),
+            CAST(json_extract(value, '$.delta_t_k') AS REAL),
+            CAST(json_extract(value, '$.heating_capacity_kw') AS REAL),
+            CAST(json_extract(value, '$.cop') AS REAL),
+            json_extract(value, '$.test_standard'),
+            json_extract(value, '$.source_kind'),
+            json_extract(value, '$.source_url'),
+            COALESCE(json_extract(value, '$.note'), ''),
+            ?,
+            CURRENT_TIMESTAMP
+        FROM json_each(?)
+        """
+    ).bind(expected_version, json.dumps(points, separators=(",", ":"))).run()
 
-    for item in seasonal:
-        await db.prepare(HEAT_PUMP_SEASONAL_UPSERT_SQL).bind(
-            item["product_id"],
-            item["climate"],
-            float(item["application_temperature_c"]),
-            float(item["scop"]),
-            None if item.get("design_load_kw") is None else float(item["design_load_kw"]),
-            item["source_kind"],
-            item.get("source_url"),
-            item.get("test_standard"),
-            expected_version,
-        ).run()
+    await db.prepare(
+        """
+        INSERT OR REPLACE INTO heat_pump_seasonal_performance (
+            product_id, climate, application_temperature_c, scop, design_load_kw,
+            source_kind, source_url, test_standard, catalog_version, updated_at
+        )
+        SELECT
+            json_extract(value, '$.product_id'),
+            json_extract(value, '$.climate'),
+            CAST(json_extract(value, '$.application_temperature_c') AS REAL),
+            CAST(json_extract(value, '$.scop') AS REAL),
+            CAST(json_extract(value, '$.design_load_kw') AS REAL),
+            json_extract(value, '$.source_kind'),
+            json_extract(value, '$.source_url'),
+            json_extract(value, '$.test_standard'),
+            ?,
+            CURRENT_TIMESTAMP
+        FROM json_each(?)
+        """
+    ).bind(expected_version, json.dumps(seasonal, separators=(",", ":"))).run()
 
 def _catalog_payload_from_rows(
     product_rows: list[dict[str, Any]],
@@ -292,6 +490,7 @@ def _catalog_payload_from_rows(
     seasonal_rows: list[dict[str, Any]],
     *,
     source: str,
+    parametric_nodes: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     seed = heating_planning_catalog()
     boolean_fields = {
@@ -344,10 +543,12 @@ def _catalog_payload_from_rows(
         "options": options,
         "heat_pump_performance_points": clean_rows(point_rows),
         "heat_pump_seasonal_performance": clean_rows(seasonal_rows),
+        "parametric_heating_nodes": list(parametric_nodes or []),
         "catalog_stats": {
             "products": len(options),
             "performance_points": len(point_rows),
             "seasonal_points": len(seasonal_rows),
+            "parametric_nodes": len(parametric_nodes or []),
         },
         "catalog_mode": "persistent_d1",
         "source": source,
@@ -393,11 +594,14 @@ async def _read_heating_catalog_d1(db: Any) -> dict[str, Any]:
         ORDER BY sp.product_id, sp.climate, sp.application_temperature_c
         """
     ).run()
+    product_rows = _d1_rows(products_result)
+    parametric_nodes = await _load_or_build_parametric_grid(db, product_rows)
     return _catalog_payload_from_rows(
-        _d1_rows(products_result),
+        product_rows,
         _d1_rows(points_result),
         _d1_rows(seasonal_result),
         source="d1",
+        parametric_nodes=parametric_nodes,
     )
 
 
@@ -440,4 +644,17 @@ async def cached_heating_catalog_from_d1(db: Any) -> dict[str, Any] | None:
 
 
 def seed_heating_catalog_payload() -> dict[str, Any]:
-    return {**heating_planning_catalog(), "source": "seed_fallback"}
+    seed = heating_planning_catalog()
+    product_rows = list(seed.get("options") or [])
+    nodes = build_parametric_heating_nodes(product_rows)
+    return {
+        **seed,
+        "parametric_heating_nodes": nodes,
+        "catalog_stats": {
+            "products": len(product_rows),
+            "performance_points": len(seed.get("heat_pump_performance_points") or []),
+            "seasonal_points": len(seed.get("heat_pump_seasonal_performance") or []),
+            "parametric_nodes": len(nodes),
+        },
+        "source": "seed_fallback",
+    }
