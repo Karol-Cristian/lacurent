@@ -607,6 +607,7 @@
     const ach = ventilation === "mechanical" ? 0.65 : 0.5;
     const recovery = ventilation === "hrv" ? 75 : 0;
     setAdvancedDerivedValue("advAch", ach, 2);
+    setAdvancedDerivedValue("advInfiltrationAch", 0, 2);
     setAdvancedDerivedValue("advHeatRecovery", recovery, 0);
 
     const emitter = $("#heatingEmitter").value;
@@ -788,6 +789,7 @@
       ach = 0.65; recovery = 0;
     }
     setValue("techAch", optionalAdvancedNumber("advAch") ?? ach);
+    setValue("techInfiltrationAch", optionalAdvancedNumber("advInfiltrationAch") ?? 0);
     const advancedRecovery = optionalAdvancedNumber("advHeatRecovery");
     setValue("techHeatRecovery", advancedRecovery === null ? recovery : advancedRecovery / 100);
 
