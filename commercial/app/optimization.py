@@ -189,7 +189,11 @@ class OptimizationSearchResultV1(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
-@lru_cache(maxsize=32)
+# Keep only a very small cross-request baseline cache. Cloudflare Python
+# isolates are long-lived and a cached CalculationResult retains the complete
+# monthly/report object graph. A large LRU therefore trades a little CPU for a
+# material memory leak across unrelated households.
+@lru_cache(maxsize=2)
 def _cached_baseline_evaluation_serialized(
     serialized_building: str,
 ) -> tuple[Any, dict[str, Any]]:
