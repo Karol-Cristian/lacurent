@@ -605,6 +605,8 @@ def design_heat_load_breakdown(
             "delta_t_ground_k": None,
             "exterior_transmission_kw": None,
             "ground_transmission_kw": None,
+            "ventilation_kw": None,
+            "infiltration_kw": None,
             "ventilation_infiltration_kw": None,
         }
 
