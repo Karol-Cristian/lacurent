@@ -49,6 +49,13 @@
   let localities = [];
   let localityMap = new Map();
   let locationProjection = null;
+  let projectedLocalities = [];
+  let mapRenderFrame = 0;
+  let mapSuppressClickUntil = 0;
+  let mapDrag = null;
+  const MAP_MIN_ZOOM = 1;
+  const MAP_MAX_ZOOM = 6;
+  const mapView = {zoom:1, centerX:null, centerY:null};
 
   const fmt = (value, digits = 0) => {
     if (value === null || value === undefined || Number.isNaN(Number(value))) return "—";
@@ -448,21 +455,177 @@
     return 4;
   }
 
-  function visibleMapLocalities(selectedId) {
-    if (!locationProjection) return [];
-    return localities
+  function initializeProjectedLocalities() {
+    if (!locationProjection) {
+      projectedLocalities = [];
+      return;
+    }
+    projectedLocalities = localities
       .filter(item => Number.isFinite(item.lon) && Number.isFinite(item.lat))
       .map(item => {
         const [x,y] = locationProjection.project(item.lon,item.lat);
         return {item,x,y,tier:localityTier(item)};
-      })
-      .filter(entry => entry.tier <= 2 || String(entry.item.id) === String(selectedId))
+      });
+  }
+
+  function resetMapView() {
+    if (!locationProjection) return;
+    mapView.zoom = MAP_MIN_ZOOM;
+    mapView.centerX = locationProjection.width / 2;
+    mapView.centerY = locationProjection.height / 2;
+  }
+
+  function clampMapView() {
+    if (!locationProjection) return;
+    mapView.zoom = Math.max(MAP_MIN_ZOOM, Math.min(MAP_MAX_ZOOM, Number(mapView.zoom) || MAP_MIN_ZOOM));
+    const width = locationProjection.width / mapView.zoom;
+    const height = locationProjection.height / mapView.zoom;
+    const halfWidth = width / 2;
+    const halfHeight = height / 2;
+    mapView.centerX = Math.max(halfWidth, Math.min(locationProjection.width - halfWidth, Number(mapView.centerX) || locationProjection.width / 2));
+    mapView.centerY = Math.max(halfHeight, Math.min(locationProjection.height - halfHeight, Number(mapView.centerY) || locationProjection.height / 2));
+  }
+
+  function currentMapViewBox() {
+    if (!locationProjection) return {x:0,y:0,width:760,height:390};
+    if (!Number.isFinite(mapView.centerX) || !Number.isFinite(mapView.centerY)) resetMapView();
+    clampMapView();
+    const width = locationProjection.width / mapView.zoom;
+    const height = locationProjection.height / mapView.zoom;
+    return {
+      x:mapView.centerX - width / 2,
+      y:mapView.centerY - height / 2,
+      width,
+      height,
+    };
+  }
+
+  function localityTierLimitForZoom() {
+    if (mapView.zoom < 1.45) return 1;
+    if (mapView.zoom < 2.35) return 2;
+    if (mapView.zoom < 3.65) return 3;
+    return 4;
+  }
+
+  function visibleMapLocalities(selectedId) {
+    if (!locationProjection) return [];
+    if (!projectedLocalities.length) initializeProjectedLocalities();
+    const box = currentMapViewBox();
+    const maxTier = localityTierLimitForZoom();
+    const selectedKey = String(selectedId ?? "");
+    const margin = 26 / mapView.zoom;
+    const candidates = projectedLocalities
+      .filter(entry =>
+        String(entry.item.id) === selectedKey ||
+        (
+          entry.tier <= maxTier &&
+          entry.x >= box.x - margin &&
+          entry.x <= box.x + box.width + margin &&
+          entry.y >= box.y - margin &&
+          entry.y <= box.y + box.height + margin
+        )
+      )
       .sort((a,b) => {
-        if (String(a.item.id) === String(selectedId)) return -1;
-        if (String(b.item.id) === String(selectedId)) return 1;
+        if (String(a.item.id) === selectedKey) return -1;
+        if (String(b.item.id) === selectedKey) return 1;
         return a.tier - b.tier || Number(b.item.importance || 0) - Number(a.item.importance || 0);
-      })
-      .slice(0, window.innerWidth <= 720 ? 40 : 70);
+      });
+
+    const mobile = window.innerWidth <= 720;
+    const maxMarkers = mobile
+      ? (mapView.zoom < 1.45 ? 28 : mapView.zoom < 2.35 ? 55 : mapView.zoom < 3.65 ? 105 : 180)
+      : (mapView.zoom < 1.45 ? 48 : mapView.zoom < 2.35 ? 95 : mapView.zoom < 3.65 ? 180 : 300);
+    const cellSize = (mobile ? 54 : 48) / mapView.zoom;
+    const occupied = new Set();
+    const accepted = [];
+
+    function cellKey(cx,cy) {
+      return `${cx}:${cy}`;
+    }
+
+    for (const entry of candidates) {
+      const selectedEntry = String(entry.item.id) === selectedKey;
+      const cx = Math.floor((entry.x - box.x) / cellSize);
+      const cy = Math.floor((entry.y - box.y) / cellSize);
+      let blocked = false;
+      if (!selectedEntry) {
+        for (let dx=-1; dx<=1 && !blocked; dx += 1) {
+          for (let dy=-1; dy<=1; dy += 1) {
+            if (occupied.has(cellKey(cx + dx, cy + dy))) {
+              blocked = true;
+              break;
+            }
+          }
+        }
+      }
+      if (blocked) continue;
+      occupied.add(cellKey(cx,cy));
+      accepted.push({...entry, showLabel:selectedEntry || entry.tier < maxTier || mapView.zoom >= 4.4});
+      if (accepted.length >= maxMarkers && !selectedEntry) break;
+    }
+    return accepted;
+  }
+
+  function climateZoneLegendEntries() {
+    const order = ["I","II","III","IV","V"];
+    const byZone = new Map();
+    (locationData?.climateZones?.features || []).forEach(feature => {
+      const zone = String(feature.properties?.zone || "");
+      if (!zone || byZone.has(zone)) return;
+      byZone.set(zone, {
+        zone,
+        temperature:Number(feature.properties?.design_temperature_c),
+      });
+    });
+    return order.map(zone => byZone.get(zone)).filter(Boolean);
+  }
+
+  function scheduleMapRender() {
+    if (mapRenderFrame) return;
+    mapRenderFrame = requestAnimationFrame(() => {
+      mapRenderFrame = 0;
+      renderLocationMap();
+    });
+  }
+
+  function applyMapZoom(nextZoom, clientX = null, clientY = null) {
+    if (!locationProjection) return;
+    const target = $("#edLocationMap");
+    const svg = target?.querySelector("svg.ed-location-map-svg");
+    const oldBox = currentMapViewBox();
+    let ratioX = 0.5;
+    let ratioY = 0.5;
+    if (svg && Number.isFinite(clientX) && Number.isFinite(clientY)) {
+      const rect = svg.getBoundingClientRect();
+      if (rect.width && rect.height) {
+        ratioX = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+        ratioY = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+      }
+    }
+    const worldX = oldBox.x + ratioX * oldBox.width;
+    const worldY = oldBox.y + ratioY * oldBox.height;
+    mapView.zoom = Math.max(MAP_MIN_ZOOM, Math.min(MAP_MAX_ZOOM, nextZoom));
+    const width = locationProjection.width / mapView.zoom;
+    const height = locationProjection.height / mapView.zoom;
+    mapView.centerX = worldX + (0.5 - ratioX) * width;
+    mapView.centerY = worldY + (0.5 - ratioY) * height;
+    clampMapView();
+    scheduleMapRender();
+  }
+
+  function panMapFromDrag(clientX, clientY) {
+    if (!mapDrag || !locationProjection) return;
+    const svg = $("#edLocationMap")?.querySelector("svg.ed-location-map-svg");
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const dx = clientX - mapDrag.startX;
+    const dy = clientY - mapDrag.startY;
+    if (Math.hypot(dx,dy) > 3) mapDrag.moved = true;
+    mapView.centerX = mapDrag.startCenterX - dx * (mapDrag.startBox.width / rect.width);
+    mapView.centerY = mapDrag.startCenterY - dy * (mapDrag.startBox.height / rect.height);
+    clampMapView();
+    scheduleMapRender();
   }
 
   function renderLocationMap() {
@@ -472,31 +635,58 @@
       target.innerHTML = "<p>Se încarcă harta…</p>";
       return;
     }
+    if (!Number.isFinite(mapView.centerX)) resetMapView();
+    const box = currentMapViewBox();
     const selected = localityMap.get(String($("#localityId").value));
     const selectedId = selected?.id;
     const selectedZone = String(selected?.climateZone || "");
     const zonePaths = (locationData.climateZones?.features || []).map(feature => {
       const zone = String(feature.properties?.zone || "");
-      return `<path class="ed-map-zone zone-${escapeHtml(zone)}${zone === selectedZone ? " is-selected" : ""}" d="${mapGeometryPath(feature.geometry,locationProjection)}"></path>`;
+      const temp = Number(feature.properties?.design_temperature_c);
+      const title = Number.isFinite(temp) ? `Zona ${zone} · ${String(temp).replace("-", "−")}°C` : `Zona ${zone}`;
+      return `<path class="ed-map-zone zone-${escapeHtml(zone)}${zone === selectedZone ? " is-selected" : ""}" data-climate-zone="${escapeHtml(zone)}" d="${mapGeometryPath(feature.geometry,locationProjection)}"><title>${escapeHtml(title)}</title></path>`;
     }).join("");
     const boundary = (locationData.romaniaBoundary?.features || []).map(feature =>
       `<path class="ed-map-boundary" d="${mapGeometryPath(feature.geometry,locationProjection)}"></path>`
     ).join("");
     const markers = visibleMapLocalities(selectedId).map(marker => {
       const selectedMarker = String(marker.item.id) === String(selectedId);
-      const radius = selectedMarker ? 5.2 : marker.tier === 1 ? 3.6 : 2.5;
-      const label = selectedMarker || marker.tier === 1
-        ? `<text x="${radius + 5}" y="-2">${escapeHtml(marker.item.name)}</text>`
+      const inverseZoom = 1 / mapView.zoom;
+      const baseRadius = selectedMarker ? 5.2 : marker.tier === 1 ? 3.6 : marker.tier === 2 ? 3.0 : 2.5;
+      const radius = baseRadius * inverseZoom;
+      const textX = (baseRadius + 5) * inverseZoom;
+      const textY = -2 * inverseZoom;
+      const fontSize = 9 * inverseZoom;
+      const textStroke = 3 * inverseZoom;
+      const label = marker.showLabel
+        ? `<text x="${textX.toFixed(2)}" y="${textY.toFixed(2)}" style="font-size:${fontSize.toFixed(2)}px;stroke-width:${textStroke.toFixed(2)}px">${escapeHtml(marker.item.name)}</text>`
         : "";
-      return `<g class="ed-map-locality${selectedMarker ? " is-selected" : ""}" data-map-locality-id="${escapeHtml(marker.item.id)}" transform="translate(${marker.x.toFixed(1)} ${marker.y.toFixed(1)})"><circle r="${radius}"></circle>${label}</g>`;
+      return `<g class="ed-map-locality tier-${marker.tier}${selectedMarker ? " is-selected" : ""}" data-map-locality-id="${escapeHtml(marker.item.id)}" transform="translate(${marker.x.toFixed(1)} ${marker.y.toFixed(1)})"><circle r="${radius.toFixed(2)}"></circle>${label}</g>`;
     }).join("");
+    const legend = climateZoneLegendEntries().map(entry => {
+      const temperature = Number.isFinite(entry.temperature)
+        ? String(entry.temperature).replace("-", "−") + "°C"
+        : "—";
+      return `<span class="ed-map-legend-item zone-${escapeHtml(entry.zone)}"><i aria-hidden="true"></i><b>${escapeHtml(entry.zone)}</b><em>${escapeHtml(temperature)}</em></span>`;
+    }).join("");
+    const zoomLabel = Math.abs(mapView.zoom - 1) < 0.05 ? "1×" : mapView.zoom.toFixed(1).replace(".0","") + "×";
     target.innerHTML = `
-      <svg class="ed-location-map-svg" viewBox="0 0 ${locationProjection.width} ${locationProjection.height}" preserveAspectRatio="xMidYMid meet" aria-label="Harta climatică a României">
-        <g class="ed-map-zones">${zonePaths}</g>
-        <g class="ed-map-boundaries">${boundary}</g>
-        <g class="ed-map-localities">${markers}</g>
-      </svg>
-      <div class="ed-map-caption"><span>Zone climatice I–V</span><span>Apasă pe un punct sau caută localitatea.</span></div>
+      <div class="ed-map-stage">
+        <svg class="ed-location-map-svg" viewBox="${box.x.toFixed(2)} ${box.y.toFixed(2)} ${box.width.toFixed(2)} ${box.height.toFixed(2)}" preserveAspectRatio="xMidYMid meet" aria-label="Harta climatică a României" tabindex="0">
+          <g class="ed-map-zones">${zonePaths}</g>
+          <g class="ed-map-boundaries">${boundary}</g>
+          <g class="ed-map-localities">${markers}</g>
+        </svg>
+        <div class="ed-map-controls" aria-label="Zoom hartă">
+          <button type="button" data-map-zoom="in" aria-label="Mărește harta">+</button>
+          <button type="button" data-map-zoom="reset" class="ed-map-zoom-value" aria-label="Resetează harta">${zoomLabel}</button>
+          <button type="button" data-map-zoom="out" aria-label="Micșorează harta">−</button>
+        </div>
+        <div class="ed-map-nav-hint">Trage pentru deplasare · rotiță / ± pentru zoom</div>
+      </div>
+      <div class="ed-map-caption">
+        <div class="ed-map-legend" aria-label="Legendă zone climatice">${legend}</div>
+      </div>
     `;
   }
 
@@ -539,14 +729,12 @@
     if (!svg || !locationProjection) return [];
     const rect = svg.getBoundingClientRect();
     if (!rect.width || !rect.height) return [];
-    const x = ((event.clientX - rect.left) / rect.width) * locationProjection.width;
-    const y = ((event.clientY - rect.top) / rect.height) * locationProjection.height;
-    return localities
-      .filter(item => Number.isFinite(item.lon) && Number.isFinite(item.lat))
-      .map(item => {
-        const [px,py] = locationProjection.project(item.lon,item.lat);
-        return {item,distance:Math.hypot(px-x,py-y)};
-      })
+    const box = currentMapViewBox();
+    const x = box.x + ((event.clientX - rect.left) / rect.width) * box.width;
+    const y = box.y + ((event.clientY - rect.top) / rect.height) * box.height;
+    if (!projectedLocalities.length) initializeProjectedLocalities();
+    return projectedLocalities
+      .map(entry => ({item:entry.item,distance:Math.hypot(entry.x-x,entry.y-y)}))
       .sort((a,b) => a.distance-b.distance || Number(b.item.importance || 0)-Number(a.item.importance || 0))
       .slice(0,limit)
       .map(entry => entry.item);
@@ -571,6 +759,18 @@
     selectLocality(localityMap.get(String(button.dataset.localityId)));
   });
   $("#edLocationMap").addEventListener("click", event => {
+    const zoomControl = event.target.closest("[data-map-zoom]");
+    if (zoomControl) {
+      const action = zoomControl.dataset.mapZoom;
+      if (action === "in") applyMapZoom(mapView.zoom * 1.45);
+      else if (action === "out") applyMapZoom(mapView.zoom / 1.45);
+      else {
+        resetMapView();
+        scheduleMapRender();
+      }
+      return;
+    }
+    if (performance.now() < mapSuppressClickUntil) return;
     const marker = event.target.closest("[data-map-locality-id]");
     if (marker) {
       selectLocality(localityMap.get(String(marker.dataset.mapLocalityId)));
@@ -578,6 +778,47 @@
     }
     if (event.target.closest("svg.ed-location-map-svg")) renderMapSuggestions(nearestMapLocalities(event));
   });
+  $("#edLocationMap").addEventListener("wheel", event => {
+    if (!event.target.closest("svg.ed-location-map-svg")) return;
+    event.preventDefault();
+    const factor = event.deltaY < 0 ? 1.18 : 1 / 1.18;
+    applyMapZoom(mapView.zoom * factor, event.clientX, event.clientY);
+  }, {passive:false});
+  $("#edLocationMap").addEventListener("dblclick", event => {
+    if (!event.target.closest("svg.ed-location-map-svg")) return;
+    event.preventDefault();
+    applyMapZoom(mapView.zoom * 1.6, event.clientX, event.clientY);
+  });
+  $("#edLocationMap").addEventListener("pointerdown", event => {
+    const svg = event.target.closest("svg.ed-location-map-svg");
+    if (!svg || event.target.closest("[data-map-locality-id]") || (event.pointerType === "mouse" && event.button !== 0)) return;
+    const box = currentMapViewBox();
+    mapDrag = {
+      pointerId:event.pointerId,
+      startX:event.clientX,
+      startY:event.clientY,
+      startCenterX:mapView.centerX,
+      startCenterY:mapView.centerY,
+      startBox:box,
+      moved:false,
+    };
+    svg.setPointerCapture?.(event.pointerId);
+    svg.classList.add("is-panning");
+  });
+  $("#edLocationMap").addEventListener("pointermove", event => {
+    if (!mapDrag || event.pointerId !== mapDrag.pointerId) return;
+    event.preventDefault();
+    panMapFromDrag(event.clientX,event.clientY);
+  });
+  function finishMapDrag(event) {
+    if (!mapDrag || event.pointerId !== mapDrag.pointerId) return;
+    const moved = mapDrag.moved;
+    mapDrag = null;
+    $("#edLocationMap")?.querySelector("svg.ed-location-map-svg")?.classList.remove("is-panning");
+    if (moved) mapSuppressClickUntil = performance.now() + 220;
+  }
+  $("#edLocationMap").addEventListener("pointerup", finishMapDrag);
+  $("#edLocationMap").addEventListener("pointercancel", finishMapDrag);
   $("#edMapSuggestions").addEventListener("click", event => {
     const button = event.target.closest("[data-map-locality-id]");
     if (!button) return;
@@ -944,6 +1185,8 @@
       localities = Array.isArray(data.localities) ? data.localities : [];
       localityMap = new Map(localities.map(item => [String(item.id), item]));
       locationProjection = createLocationProjection(data);
+      initializeProjectedLocalities();
+      resetMapView();
       const selected = localityMap.get(String($("#localityId").value));
       if (selected) selectLocality(selected);
       else renderLocationMap();
