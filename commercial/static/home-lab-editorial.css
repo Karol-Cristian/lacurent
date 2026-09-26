@@ -1022,30 +1022,24 @@ body{
   position:relative;
   margin:0 0 12px;
   padding:16px;
-  border:1px solid var(--line);
-  border-radius:16px;
+  border:0;
+  border-radius:12px;
   background:#fff;
   overflow:hidden;
 }
 
 .ed-subsection.ed-domain-card{
-  border-top:1px solid var(--line);
+  border-top:0;
   padding:16px;
 }
 
 .ed-subsection.ed-domain-card:first-of-type{
-  border-top:1px solid var(--line);
+  border-top:0;
   padding-top:16px;
 }
 
 .ed-domain-card::before{
-  content:"";
-  position:absolute;
-  top:0;
-  left:0;
-  right:0;
-  height:3px;
-  opacity:.72;
+  content:none;
 }
 
 .ed-domain-card>h3{
@@ -1056,7 +1050,6 @@ body{
 
 .ed-domain-card .ed-field{
   background:rgba(255,255,255,.88);
-  border-color:rgba(112,126,141,.17);
 }
 
 .ed-domain-card .ed-switch-row{
@@ -1065,60 +1058,46 @@ body{
 
 .ed-tone-blue{
   background:var(--tone-blue-bg);
-  border-color:var(--tone-blue-line);
 }
-.ed-tone-blue::before{background:#71879b}
 .ed-tone-blue>h3,
 .ed-tone-blue .ed-switch-row b{color:var(--tone-blue-ink)}
 
 .ed-tone-aqua{
   background:var(--tone-aqua-bg);
-  border-color:var(--tone-aqua-line);
 }
-.ed-tone-aqua::before{background:#789496}
 .ed-tone-aqua>h3,
 .ed-tone-aqua .ed-switch-row b{color:var(--tone-aqua-ink)}
 
 .ed-tone-sand{
   background:var(--tone-sand-bg);
-  border-color:var(--tone-sand-line);
 }
-.ed-tone-sand::before{background:#a49376}
 .ed-tone-sand>h3,
 .ed-tone-sand .ed-switch-row b{color:var(--tone-sand-ink)}
 
 .ed-tone-sage{
   background:var(--tone-sage-bg);
-  border-color:var(--tone-sage-line);
 }
-.ed-tone-sage::before{background:#829786}
 .ed-tone-sage>h3,
 .ed-tone-sage .ed-switch-row b{color:var(--tone-sage-ink)}
 
 .ed-tone-lilac{
   background:var(--tone-lilac-bg);
-  border-color:var(--tone-lilac-line);
 }
-.ed-tone-lilac::before{background:#90869a}
 .ed-tone-lilac>h3,
 .ed-tone-lilac .ed-switch-row b{color:var(--tone-lilac-ink)}
 
 /* Give the economic goals the same restrained visual language. */
 .ed-choice-list button[data-value="auto_economic"]{
   background:var(--tone-blue-bg);
-  border-color:var(--tone-blue-line);
 }
 .ed-choice-list button[data-value="investment_budget"]{
   background:var(--tone-sand-bg);
-  border-color:var(--tone-sand-line);
 }
 .ed-choice-list button[data-value="annual_bill_target"]{
   background:var(--tone-sage-bg);
-  border-color:var(--tone-sage-line);
 }
 .ed-choice-list button[data-value="max_payback_years"]{
   background:var(--tone-lilac-bg);
-  border-color:var(--tone-lilac-line);
 }
 .ed-choice-list button[data-value].is-selected{
   border-color:#71879b;
