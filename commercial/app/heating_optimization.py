@@ -697,6 +697,24 @@ def _select_sized_product(
         )
         if available_kw is None:
             continue
+        if product.generator_type in {
+            HeatingGeneratorType.heat_pump_air_water,
+            HeatingGeneratorType.heat_pump_air_air,
+            HeatingGeneratorType.heat_pump_ground_water,
+        } and any(
+            marker in str(basis)
+            for marker in (
+                "unverified",
+                "unavailable",
+                "missing",
+                "does_not_cover",
+                "not_interpolable",
+            )
+        ):
+            # Keep incomplete retail SKUs in D1 for market coverage and CAPEX
+            # parametrization, but do not present them as design-verified
+            # equipment at the Romanian winter design condition.
+            continue
         if float(available_kw) + 1e-9 < float(required_power_kw):
             continue
         candidates.append((product, float(available_kw), basis))
