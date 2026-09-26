@@ -2820,6 +2820,30 @@ async def home_lab_optimization_v2_finalize_api(request: Request) -> JSONRespons
             if len(ordered_rechecks) >= V2_WORKER_VERIFICATION_LIMIT:
                 break
 
+        # Always retain a verified keep-current candidate as a safe fallback.
+        # A generic technology candidate that cannot be mapped to a verified
+        # product must never win merely because its raw economics looked good.
+        keep_current_candidate = next(
+            (
+                item
+                for item in verified
+                if verified_branch_ids.get(item.candidate_id)
+                == "keep-current-heating"
+            ),
+            None,
+        )
+        if (
+            keep_current_candidate is not None
+            and all(
+                item.candidate_id != keep_current_candidate.candidate_id
+                for item in ordered_rechecks
+            )
+        ):
+            ordered_rechecks.append(keep_current_candidate)
+
+        catalog_technology_ids = {
+            item.id for item in heating_technologies(heating_catalog)
+        }
         commercial_rows: list[CandidateEvaluationV1] = []
         commercial_warnings: list[str] = []
         commercial_recheck_count = 0
@@ -2834,8 +2858,21 @@ async def home_lab_optimization_v2_finalize_api(request: Request) -> JSONRespons
                     ),
                 )
             )
-            commercial_rows.append(commercial_candidate)
+            branch_id = verified_branch_ids.get(
+                raw_candidate.candidate_id
+            )
             commercial_warnings.extend(product_warnings)
+            if (
+                branch_id != "keep-current-heating"
+                and branch_id in catalog_technology_ids
+                and matched_product is None
+            ):
+                commercial_warnings.append(
+                    f"{branch_id}: candidatul brut a fost exclus din selecția finală "
+                    "deoarece niciun SKU real nu a trecut verificarea de dimensionare/performance."
+                )
+                continue
+            commercial_rows.append(commercial_candidate)
             if matched_product is not None:
                 commercial_recheck_count += 1
 
@@ -2844,7 +2881,9 @@ async def home_lab_optimization_v2_finalize_api(request: Request) -> JSONRespons
             commercial_rows,
         )
         if selection.selected is None:
-            selection = raw_selection
+            raise ValueError(
+                "Niciun candidat comercial verificat nu a rămas după dimensionarea produselor."
+            )
 
         # Rebuild complete branch metadata cheaply for the report. Technical
         # branches are listed explicitly but are not simulated in this final
