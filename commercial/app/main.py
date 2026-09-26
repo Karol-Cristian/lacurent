@@ -45,6 +45,12 @@ from .optimization_v2 import (
     select_optimization_candidate_v2,
     verify_worker_safe_finalists_v2,
 )
+from .optimization_v3 import (
+    V3_BRANCH_BATCH_SIZE,
+    build_verification_plan_v3,
+    build_worker_safe_plan_v3,
+    verify_one_candidate_v3,
+)
 from .commercialization import (
     WallCommercializationRequestV1,
     WallProductBackedOptimizationRequestV1,
@@ -2631,6 +2637,484 @@ def _home_lab_optimizer_success_payload(
         "optimization": optimization_payload,
     }
 
+
+
+
+@app.post("/api/optimization/home-lab/v3/plan")
+async def home_lab_optimization_v3_plan_api(request: Request) -> JSONResponse:
+    """Build a deep V3 search grid without evaluating it monolithically."""
+
+    form = dict(await request.form())
+    try:
+        mode, _, optimization_request = _home_lab_optimization_request_from_form(form)
+        cost_catalog = await _optimizer_cost_catalog(request)
+        heating_catalog = await _optimizer_heating_catalog(request)
+        run_id = str(form.get("_optimizer_run_id") or "").strip()
+        started = time.perf_counter()
+        plan = build_worker_safe_plan_v3(
+            optimization_request,
+            bounds=OptimizationSearchBoundsV1(),
+            catalog=cost_catalog,
+            heating_catalog=heating_catalog,
+        )
+        elapsed_ms = round((time.perf_counter() - started) * 1000.0, 1)
+        economic_ids = [
+            item.branch_id
+            for item in plan.branches
+            if item.eligible and item.economic_eligible
+        ]
+        technical_ids = [
+            item.branch_id
+            for item in plan.branches
+            if item.eligible and not item.economic_eligible
+        ]
+        return JSONResponse(
+            {
+                "optimizerVersion": "v3-sharded",
+                "runId": run_id,
+                "economicMode": mode.value,
+                "label": _home_lab_optimizer_label(mode, form),
+                "searchMethod": plan.search_method,
+                "searchPoints": [
+                    model_to_dict(item)
+                    for item in plan.search_points
+                ],
+                "branches": [
+                    model_to_dict(item)
+                    for item in plan.branches
+                ],
+                "runBranchIds": economic_ids,
+                "technicalPreviewBranchIds": technical_ids,
+                "representativeEvaluations": int(
+                    plan.representative_evaluations
+                ),
+                "representativePoolSize": int(
+                    plan.representative_pool_size
+                ),
+                "baseShortlistSize": int(plan.base_shortlist_size),
+                "lowDiscrepancyPoints": int(plan.low_discrepancy_points),
+                "searchPointCount": len(plan.search_points),
+                "branchBatchSize": int(plan.branch_batch_size),
+                "calculationTimeMs": elapsed_ms,
+                "executionMode": "ui_orchestrated_sharded_v3",
+                "heatingCatalogSource": heating_catalog.get("source"),
+                "heatingCatalogStats": heating_catalog.get("catalog_stats") or {
+                    "products": len(heating_catalog.get("options") or []),
+                    "performance_points": len(heating_catalog.get("heat_pump_performance_points") or []),
+                    "seasonal_points": len(heating_catalog.get("heat_pump_seasonal_performance") or []),
+                },
+            }
+        )
+    except Exception as exc:
+        return JSONResponse(
+            {
+                "error": user_error(exc),
+                "optimizerVersion": "v3-sharded",
+                "stage": "plan",
+            },
+            status_code=422,
+        )
+
+
+@app.post("/api/optimization/home-lab/v3/branch")
+async def home_lab_optimization_v3_branch_api(request: Request) -> JSONResponse:
+    """Evaluate one small branch/search batch with the V2 fast kernel."""
+
+    try:
+        raw = await request.json()
+        form = dict(raw.get("form") or {})
+        branch_id = str(raw.get("branchId", "") or "").strip()
+        run_id = str(raw.get("runId") or "").strip()
+        batch_raw = raw.get("batch") or []
+        if not branch_id:
+            raise ValueError("Lipsește ramura de încălzire V3.")
+        if not isinstance(batch_raw, list) or not batch_raw:
+            raise ValueError("Lipsește batch-ul de căutare V3.")
+        if len(batch_raw) > V3_BRANCH_BATCH_SIZE:
+            raise ValueError(
+                f"Batch-ul V3 depășește limita CPU-safe de {V3_BRANCH_BATCH_SIZE} configurații."
+            )
+
+        _, _, optimization_request = _home_lab_optimization_request_from_form(form)
+        batch = [
+            ParametricMeasuresV1(**item)
+            for item in batch_raw
+            if isinstance(item, dict)
+        ]
+        cost_catalog = await _optimizer_cost_catalog(request)
+        heating_catalog = await _optimizer_heating_catalog(request)
+        started = time.perf_counter()
+        result = evaluate_worker_safe_branch_v2(
+            optimization_request,
+            branch_id=branch_id,
+            shortlist=batch,
+            bounds=OptimizationSearchBoundsV1(),
+            catalog=cost_catalog,
+            heating_catalog=heating_catalog,
+        )
+        elapsed_ms = round((time.perf_counter() - started) * 1000.0, 1)
+        return JSONResponse(
+            {
+                "optimizerVersion": "v3-sharded",
+                "runId": run_id,
+                "branch": model_to_dict(result.branch),
+                "candidates": [
+                    model_to_dict(item)
+                    for item in result.candidates
+                ],
+                "candidateCount": len(result.candidates),
+                "fastEvaluations": int(result.fast_evaluations),
+                "calculationTimeMs": elapsed_ms,
+                "searchMethod": "halton_branch_batch_v3",
+            }
+        )
+    except Exception as exc:
+        return JSONResponse(
+            {
+                "error": user_error(exc),
+                "optimizerVersion": "v3-sharded",
+                "stage": "branch",
+            },
+            status_code=422,
+        )
+
+
+@app.post("/api/optimization/home-lab/v3/verification-plan")
+async def home_lab_optimization_v3_verification_plan_api(
+    request: Request,
+) -> JSONResponse:
+    """Rank the global fast pool and choose an adaptive canonical verify set."""
+
+    try:
+        raw = await request.json()
+        form = dict(raw.get("form") or {})
+        rows = raw.get("candidateRows") or []
+        if not isinstance(rows, list) or not rows:
+            raise ValueError("Lipsesc candidații V3 pentru planul de verificare.")
+
+        _, _, optimization_request = _home_lab_optimization_request_from_form(form)
+        candidates: list[CandidateEvaluationV1] = []
+        branch_ids: dict[str, str] = {}
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            candidate_raw = row.get("candidate")
+            branch_id = str(row.get("branchId") or "").strip()
+            if not isinstance(candidate_raw, dict) or not branch_id:
+                continue
+            candidate = CandidateEvaluationV1(**candidate_raw)
+            candidates.append(candidate)
+            branch_ids[candidate.candidate_id] = branch_id
+
+        plan = build_verification_plan_v3(
+            optimization_request,
+            candidates=candidates,
+            candidate_branch_ids=branch_ids,
+        )
+        return JSONResponse(
+            {
+                "optimizerVersion": "v3-sharded",
+                "strategy": plan.strategy,
+                "sourceCandidateCount": int(plan.source_candidate_count),
+                "frontierCount": int(plan.frontier_count),
+                "verificationCount": int(plan.requested_count),
+                "targets": [
+                    {
+                        "branchId": plan.candidate_branch_ids.get(
+                            item.candidate_id
+                        ),
+                        "candidate": model_to_dict(item),
+                    }
+                    for item in plan.candidates
+                ],
+            }
+        )
+    except Exception as exc:
+        return JSONResponse(
+            {
+                "error": user_error(exc),
+                "optimizerVersion": "v3-sharded",
+                "stage": "verification-plan",
+            },
+            status_code=422,
+        )
+
+
+@app.post("/api/optimization/home-lab/v3/verify")
+async def home_lab_optimization_v3_verify_api(request: Request) -> JSONResponse:
+    """Canonical verification work unit: exactly one finalist per request."""
+
+    try:
+        raw = await request.json()
+        form = dict(raw.get("form") or {})
+        branch_id = str(raw.get("branchId") or "").strip()
+        candidate_raw = raw.get("candidate")
+        if not branch_id or not isinstance(candidate_raw, dict):
+            raise ValueError("Lipsește finalistul V3 pentru verificare.")
+
+        _, _, optimization_request = _home_lab_optimization_request_from_form(form)
+        cost_catalog = await _optimizer_cost_catalog(request)
+        heating_catalog = await _optimizer_heating_catalog(request)
+        fast_candidate = CandidateEvaluationV1(**candidate_raw)
+        started = time.perf_counter()
+        verified = verify_one_candidate_v3(
+            optimization_request,
+            fast_candidate=fast_candidate,
+            branch_id=branch_id,
+            catalog=cost_catalog,
+            heating_catalog=heating_catalog,
+        )
+        elapsed_ms = round((time.perf_counter() - started) * 1000.0, 1)
+        return JSONResponse(
+            {
+                "optimizerVersion": "v3-sharded",
+                "branchId": branch_id,
+                "candidate": model_to_dict(verified.candidate),
+                "sourceCandidateId": fast_candidate.candidate_id,
+                "annualBillDeltaLei": verified.annual_bill_delta_lei,
+                "designLoadDeltaKw": verified.design_load_delta_kw,
+                "warnings": verified.warnings,
+                "calculationTimeMs": elapsed_ms,
+            }
+        )
+    except Exception as exc:
+        return JSONResponse(
+            {
+                "error": user_error(exc),
+                "optimizerVersion": "v3-sharded",
+                "stage": "verify",
+            },
+            status_code=422,
+        )
+
+
+@app.post("/api/optimization/home-lab/v3/product")
+async def home_lab_optimization_v3_product_api(request: Request) -> JSONResponse:
+    """Commercial work unit: match and recalculate at most one finalist."""
+
+    try:
+        raw = await request.json()
+        form = dict(raw.get("form") or {})
+        branch_id = str(raw.get("branchId") or "").strip()
+        candidate_raw = raw.get("candidate")
+        source_candidate_id = str(
+            raw.get("sourceCandidateId") or ""
+        ).strip()
+        if not branch_id or not isinstance(candidate_raw, dict):
+            raise ValueError("Lipsește finalistul V3 pentru maparea comercială.")
+
+        _, _, optimization_request = _home_lab_optimization_request_from_form(form)
+        heating_catalog = await _optimizer_heating_catalog(request)
+        candidate = CandidateEvaluationV1(**candidate_raw)
+        started = time.perf_counter()
+        commercial_candidate, matched_product, warnings = (
+            commercialize_heating_finalist(
+                candidate,
+                original_building=optimization_request.baseline,
+                heating_catalog=heating_catalog,
+                branch_id=branch_id,
+            )
+        )
+        elapsed_ms = round((time.perf_counter() - started) * 1000.0, 1)
+        return JSONResponse(
+            {
+                "optimizerVersion": "v3-sharded",
+                "branchId": branch_id,
+                "candidate": model_to_dict(commercial_candidate),
+                "sourceCandidateId": (
+                    source_candidate_id or candidate.candidate_id
+                ),
+                "matchedProduct": (
+                    None
+                    if matched_product is None
+                    else model_to_dict(matched_product)
+                ),
+                "warnings": warnings,
+                "calculationTimeMs": elapsed_ms,
+            }
+        )
+    except Exception as exc:
+        return JSONResponse(
+            {
+                "error": user_error(exc),
+                "optimizerVersion": "v3-sharded",
+                "stage": "product",
+            },
+            status_code=422,
+        )
+
+
+@app.post("/api/optimization/home-lab/v3/finalize")
+async def home_lab_optimization_v3_finalize_api(request: Request) -> JSONResponse:
+    """Select already verified/product-matched rows; only render the winner once."""
+
+    try:
+        raw = await request.json()
+        form = dict(raw.get("form") or {})
+        commercial_rows = raw.get("commercialRows") or []
+        verified_rows = raw.get("verifiedRows") or []
+        branch_stats = raw.get("branchStats") or []
+        if not isinstance(commercial_rows, list) or not commercial_rows:
+            raise ValueError("Lipsesc finaliștii comerciali V3.")
+
+        mode, _, optimization_request = _home_lab_optimization_request_from_form(form)
+        heating_catalog = await _optimizer_heating_catalog(request)
+        started = time.perf_counter()
+
+        commercial_candidates: list[CandidateEvaluationV1] = []
+        source_by_commercial_id: dict[str, str] = {}
+        for row in commercial_rows:
+            if not isinstance(row, dict):
+                continue
+            candidate_raw = row.get("candidate")
+            if not isinstance(candidate_raw, dict):
+                continue
+            candidate = CandidateEvaluationV1(**candidate_raw)
+            commercial_candidates.append(candidate)
+            source_by_commercial_id[candidate.candidate_id] = str(
+                row.get("sourceCandidateId") or ""
+            )
+
+        verified_by_id: dict[str, CandidateEvaluationV1] = {}
+        for row in verified_rows:
+            if not isinstance(row, dict):
+                continue
+            candidate_raw = row.get("candidate")
+            if not isinstance(candidate_raw, dict):
+                continue
+            candidate = CandidateEvaluationV1(**candidate_raw)
+            verified_by_id[candidate.candidate_id] = candidate
+
+        selection = select_optimization_candidate_v2(
+            optimization_request,
+            commercial_candidates,
+        )
+        if selection.selected is None:
+            raise ValueError("Nicio soluție V3 verificată nu satisface regula economică.")
+
+        selected = selection.selected
+        raw_selected = verified_by_id.get(
+            source_by_commercial_id.get(selected.candidate_id, "")
+        )
+        if raw_selected is None:
+            raw_selected = selected
+
+        branch_plan = heating_branch_plan(
+            optimization_request,
+            heating_catalog,
+        )
+        stats_by_id: dict[str, dict[str, Any]] = {
+            str(item.get("branchId") or ""): item
+            for item in branch_stats
+            if isinstance(item, dict)
+        }
+        branches: list[HeatingBranchSummaryV1] = []
+        for branch in branch_plan:
+            stats = stats_by_id.get(branch.branch_id)
+            if not stats:
+                branches.append(branch)
+                continue
+            data = model_to_dict(branch)
+            data["evaluated_candidates"] = int(
+                stats.get("evaluatedCandidates") or 0
+            )
+            data["accepted_candidates"] = int(
+                stats.get("acceptedCandidates") or 0
+            )
+            data["feasible_candidates"] = int(
+                stats.get("feasibleCandidates") or 0
+            )
+            branches.append(HeatingBranchSummaryV1(**data))
+
+        representative_evaluations = int(
+            raw.get("representativeEvaluations") or 0
+        )
+        branch_fast_evaluations = int(
+            raw.get("branchFastEvaluations") or 0
+        )
+        prior_elapsed_ms = float(
+            raw.get("priorCalculationTimeMs") or 0.0
+        )
+        elapsed_ms = round(
+            prior_elapsed_ms
+            + (time.perf_counter() - started) * 1000.0,
+            1,
+        )
+        commercial_matches = sum(
+            1
+            for row in commercial_rows
+            if isinstance(row, dict) and row.get("matchedProduct")
+        )
+        warnings = [
+            (
+                "Optimizer V3: căutarea multidimensională a fost împărțită în "
+                "batch-uri CPU-safe orchestrate de UI."
+            ),
+            (
+                "Fiecare finalist a fost verificat canonic într-un request separat; "
+                "maparea pe produs a rulat de asemenea un finalist per request."
+            ),
+            (
+                "Finalizarea nu mai repetă verificarea tuturor finaliștilor și nu "
+                "mai execută mapări comerciale multiple în același Worker request."
+            ),
+        ]
+        for row in [*verified_rows, *commercial_rows]:
+            if isinstance(row, dict):
+                warnings.extend(
+                    str(item)
+                    for item in (row.get("warnings") or [])
+                    if item
+                )
+
+        payload = _home_lab_optimizer_success_payload(
+            mode=mode,
+            form=form,
+            selection=selection,
+            branches=branches,
+            evaluated_candidates=int(raw.get("sourceCandidateCount") or 0),
+            parametric_evaluations=(
+                representative_evaluations + branch_fast_evaluations
+            ),
+            heating_branch_evaluations=branch_fast_evaluations,
+            warnings=warnings,
+            calculation_time_ms=elapsed_ms,
+            pareto_scope="v3_verified_commercial_finalists",
+            raw_selected=raw_selected,
+            technical_heating_alternatives=[],
+            heating_catalog=heating_catalog,
+        )
+        payload["optimization"].update(
+            {
+                "optimizerVersion": "v3-sharded",
+                "searchMethod": "physics_informed_halton_sharded_v3",
+                "executionMode": "ui_orchestrated_sharded_v3",
+                "representativeEvaluations": representative_evaluations,
+                "branchFastEvaluations": branch_fast_evaluations,
+                "fullEngineVerifications": len(verified_rows),
+                "commercialRechecks": len(commercial_rows),
+                "commercialMatches": commercial_matches,
+                "searchPointCount": int(raw.get("searchPointCount") or 0),
+                "branchBatchSize": int(
+                    raw.get("branchBatchSize") or V3_BRANCH_BATCH_SIZE
+                ),
+                "verificationFrontierCount": int(
+                    raw.get("verificationFrontierCount") or 0
+                ),
+                "runId": str(raw.get("runId") or ""),
+                "heatingCatalogSource": heating_catalog.get("source"),
+            }
+        )
+        return JSONResponse(payload)
+    except Exception as exc:
+        return JSONResponse(
+            {
+                "error": user_error(exc),
+                "optimizerVersion": "v3-sharded",
+                "stage": "finalize",
+            },
+            status_code=422,
+        )
 
 
 @app.post("/api/optimization/home-lab/v2/plan")
