@@ -102,6 +102,8 @@ class CostLineV1(BaseModel):
     quantity_unit: str | None = None
     material_subtotal_lei: float | None = None
     nonmaterial_subtotal_lei: float | None = None
+    design_available_capacity_kw: float | None = None
+    capacity_basis: str | None = None
 
 
 class CandidateEvaluationV1(BaseModel):
