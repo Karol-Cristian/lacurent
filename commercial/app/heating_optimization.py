@@ -174,14 +174,20 @@ class HeatingTechnologyV2(BaseModel):
 
     @property
     def minimum_capex_lei(self) -> float:
+        if self.parametric_nodes:
+            return min(float(item.planning_capex_lei) for item in self.parametric_nodes)
         return min(item.installed_capex_lei for item in self.products)
 
     @property
     def min_power_kw(self) -> float:
+        if self.parametric_nodes:
+            return min(float(item.required_power_kw) for item in self.parametric_nodes)
         return min(item.rated_power_kw for item in self.products)
 
     @property
     def max_power_kw(self) -> float:
+        if self.parametric_nodes:
+            return max(float(item.required_power_kw) for item in self.parametric_nodes)
         return max(item.rated_power_kw for item in self.products)
 
 
@@ -228,6 +234,8 @@ def heating_planning_catalog() -> dict[str, Any]:
 
 def heating_planning_options(
     catalog: dict[str, Any] | None = None,
+    *,
+    technology_id: str | None = None,
 ) -> list[HeatingPlanningOptionV1]:
     raw = catalog or heating_planning_catalog()
     points_by_product: dict[str, list[dict[str, Any]]] = {}
@@ -243,6 +251,14 @@ def heating_planning_options(
 
     options: list[HeatingPlanningOptionV1] = []
     for item in raw.get("options", []):
+        if (
+            technology_id is not None
+            and str(item.get("technology_id") or "") != technology_id
+        ):
+            # Filter raw D1 rows before constructing Pydantic product models.
+            # Branch execution must scale with one technology, not the complete
+            # marketplace catalog.
+            continue
         product_id = str(item.get("id") or "")
         payload = {
             **item,
@@ -273,9 +289,7 @@ def heating_technologies(
 
     raw = catalog or heating_planning_catalog()
     grouped: dict[str, list[HeatingPlanningOptionV1]] = {}
-    for item in heating_planning_options(raw):
-        if technology_id is not None and item.technology_id != technology_id:
-            continue
+    for item in heating_planning_options(raw, technology_id=technology_id):
         grouped.setdefault(item.technology_id, []).append(item)
 
     nodes_by_technology: dict[str, list[HeatingParametricNodeV1]] = {}
