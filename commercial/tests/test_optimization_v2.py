@@ -12,6 +12,7 @@ from commercial.app.optimization import (
     evaluate_parametric_candidate,
 )
 from commercial.app.optimization_v2 import (
+    V2_WORKER_SHORTLIST_LIMIT,
     _fast_engine_candidate,
     axis_probe_measures_v2,
     build_worker_safe_plan_v2,
@@ -62,6 +63,24 @@ def _synthetic(
         energy_class="B",
         resulting_configuration=baseline,
     )
+
+
+def test_worker_safe_v2_uses_pairwise_search_and_eight_slot_shortlist() -> None:
+    request = OptimizationRequestV1(
+        baseline=demo_building(),
+        mode=OptimizationMode.auto_economic,
+    )
+    plan = build_worker_safe_plan_v2(
+        request,
+        bounds=OptimizationSearchBoundsV1(),
+        catalog=_catalog(),
+    )
+
+    assert V2_WORKER_SHORTLIST_LIMIT == 8
+    assert plan.search_method == "physics_informed_marginal_pairwise_worker_safe_v2"
+    assert 1 <= len(plan.shortlist) <= V2_WORKER_SHORTLIST_LIMIT
+    assert plan.representative_evaluations >= 15
+    assert plan.representative_pool_size >= len(plan.shortlist)
 
 
 def test_v2_axis_probe_covers_all_seven_dimensions_symmetrically() -> None:
