@@ -53,6 +53,13 @@ Worker-safe V2 remains staged:
 
 This separation is intentional: selecting/recalculating real SKUs for every raw candidate was a major CPU-risk pattern.
 
+The Worker-safe physical search now has two layers:
+
+- a bounded physics-informed representative search (axis, marginal ladder and strongest pairwise interactions);
+- deterministic Halton coverage expanded to 32 distinct physical configurations.
+
+The 32 configurations are not evaluated in one large request. The browser shards them into batches of at most 8 configurations per heating branch and retains completed shard results. This raises total search depth into the hundreds of branch evaluations while keeping each Worker request CPU-bounded.
+
 ## D1 catalog architecture
 
 The catalog now has two different layers.
@@ -73,7 +80,7 @@ These nodes:
 - densify the kW -> planning-CAPEX relationship used during raw optimization;
 - defer final discretization to the commercial-product stage.
 
-D1 synchronization uses bounded `DB.batch()` operations rather than one remote round trip per row.
+D1 synchronization uses bulk JSON ingestion through D1 `json_each()`: products, COP/capacity points, seasonal rows and the 1000-node parametric grid are each written with one SQL query. This keeps a catalog refresh below the Workers Free limit of 50 D1 queries per invocation; `DB.batch()` alone is not treated as a way around that limit.
 
 ## Heat-pump performance
 
@@ -125,7 +132,8 @@ Changes:
 - V2 remains sharded by heating branch;
 - completed branch results are retained client-side during the run;
 - transient HTTP 500/502/503/504 requests are retried up to three times at the current stage only;
-- D1 writes are batched;
+- D1 catalog refreshes use four bulk JSON-to-SQL writes instead of one query per catalog row;
+- the deeper 32-point physical search is split into <=8-candidate branch shards;
 - the production gate validates optimizer economic identities and D1 parametric-node count.
 
 Retries are a resilience layer, not a substitute for fixing deterministic calculation failures.
