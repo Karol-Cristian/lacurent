@@ -708,6 +708,9 @@ button{cursor:pointer}
 
 
 /* Editorial v6: centered map geometry + correct selected-zone outer contour */
+.ed-map-zone{
+  pointer-events:none;
+}
 .ed-map-zone.is-selected{
   stroke:rgba(255,255,255,.92);
   stroke-width:1.05;
