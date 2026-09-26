@@ -255,14 +255,47 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert "function renderLocationMap(" in js.text
     assert "function selectLocality(" in js.text
     assert '"/api/home-lab-next/calculate"' in js.text
-    assert '"/api/optimization/home-lab/v3/plan"' in js.text
-    assert '"/api/optimization/home-lab/v3/branch"' in js.text
+    assert '"/api/optimization/home-lab/v4/plan"' in js.text
+    assert '"/static/teo-v4-worker.js?v=1"' in js.text
     assert '"/api/optimization/home-lab/v3/verification-plan"' in js.text
     assert '"/api/optimization/home-lab/v3/verify"' in js.text
     assert '"/api/optimization/home-lab/v3/product"' in js.text
     assert '"/api/optimization/home-lab/v3/finalize"' in js.text
     assert 'showPage("done");' in js.text
     assert '$("#openReport").addEventListener("click", () => showPage("report"));' in js.text
+
+
+def test_teo_v4_plan_builds_thousands_of_browser_points_without_server_candidate_evaluations() -> None:
+    data = demo_form_data()
+    data.update(
+        {
+            "_optimization_mode": "auto_economic",
+            "_optimizer_run_id": "test-v4",
+        }
+    )
+    response = client.post("/api/optimization/home-lab/v4/plan", data=data)
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["optimizerVersion"] == "teo-v4-browser"
+    assert payload["executionMode"] == "browser_web_worker_v4"
+    assert payload["serverCandidateEvaluations"] == 0
+    assert payload["baselineCanonicalPasses"] == 1
+    assert payload["searchPointCount"] >= 2000
+    assert payload["lowDiscrepancyPoints"] >= 2000
+    assert payload["runBranchIds"]
+    kernel = payload["kernel"]
+    assert kernel["version"] == "teo-v4-browser-kernel-1"
+    assert kernel["branches"]
+    assert len(kernel["monthly"]) == 12
+    assert kernel["cost_catalog"]
+    assert all("planning_nodes" in branch for branch in kernel["branches"])
+
+    worker = client.get("/static/teo-v4-worker.js")
+    assert worker.status_code == 200
+    assert "teo_v4_browser_worker_mc001_kernel" in worker.text
+    assert "function monthlyBalance(" in worker.text
+    assert "function shortlist(" in worker.text
 
 
 def test_privacy_and_terms_pages_expose_required_disclosures() -> None:
