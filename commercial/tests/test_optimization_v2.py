@@ -19,6 +19,7 @@ from commercial.app.optimization_v2 import (
     evaluate_worker_safe_branch_v2,
     run_physics_informed_optimization,
     select_optimization_candidate_v2,
+    worker_search_measures_v2,
 )
 from commercial.app.pricing import estimate_energy_cost
 
@@ -104,6 +105,35 @@ def test_v2_axis_probe_covers_all_seven_dimensions_symmetrically() -> None:
         == pytest.approx(bounds.solar_thermal_added_m2_max)
         for item in rows
     )
+
+
+def test_worker_safe_deep_search_expands_shortlist_to_32_unique_measures() -> None:
+    bounds = OptimizationSearchBoundsV1()
+    plan = build_worker_safe_plan_v2(
+        OptimizationRequestV1(
+            baseline=demo_building(),
+            mode=OptimizationMode.auto_economic,
+        ),
+        bounds=bounds,
+        catalog=_catalog(),
+    )
+    rows = worker_search_measures_v2(plan.shortlist, bounds)
+
+    assert len(rows) == 32
+    signatures = {
+        (
+            round(item.wall_added_r_m2k_w, 8),
+            round(item.roof_added_r_m2k_w, 8),
+            round(item.floor_added_r_m2k_w, 8),
+            round(item.window_replacement_fraction, 8),
+            round(item.ventilation_heat_recovery_efficiency_target, 8),
+            round(item.pv_added_kwp, 8),
+            round(item.solar_thermal_added_m2, 8),
+        )
+        for item in rows
+    }
+    assert len(signatures) == 32
+    assert all(item in rows for item in plan.shortlist)
 
 
 def test_v2_fast_kernel_matches_canonical_engine_for_candidate_economics() -> None:
