@@ -896,6 +896,42 @@ def _interpolate_air_air_metric(
     return curve[-1][1], clamped
 
 
+def _declared_seasonal_scop_for_building(
+    building: BuildingInput,
+    product: HeatingPlanningOptionV1,
+) -> tuple[float | None, str | None]:
+    """Resolve the best source-backed seasonal SCOP for the configured emitter."""
+
+    if product.scop is not None:
+        return float(product.scop), "product_declared_scop"
+    if not product.seasonal_performance:
+        return None, None
+
+    flow_c: float | None = None
+    if product.generator_type == HeatingGeneratorType.heat_pump_air_water:
+        flow_c, _, _ = _heat_pump_design_temperatures(building)
+    target_application_c = 35.0 if flow_c is None else float(flow_c)
+
+    preferred = sorted(
+        product.seasonal_performance,
+        key=lambda item: (
+            0 if str(item.climate).lower() == "average" else 1,
+            abs(float(item.application_temperature_c) - target_application_c),
+        ),
+    )
+    if not preferred:
+        return None, None
+    selected = preferred[0]
+    return (
+        float(selected.scop),
+        (
+            f"EN14825 seasonal SCOP {float(selected.scop):.2f} "
+            f"at {float(selected.application_temperature_c):.0f}°C application "
+            f"({selected.climate} climate)"
+        ),
+    )
+
+
 def _estimated_heat_pump_scop(
     building: BuildingInput,
     product: HeatingPlanningOptionV1,
@@ -1229,8 +1265,27 @@ def heat_pump_monthly_performance_profile(
         "generator_type": product.generator_type.value,
         "profile_kind": profile_kind,
         "declared_scop": (
-            None if product.scop is None else round(float(product.scop), 4)
+            None
+            if _declared_seasonal_scop_for_building(building, product)[0] is None
+            else round(
+                float(_declared_seasonal_scop_for_building(building, product)[0]),
+                4,
+            )
         ),
+        "declared_scop_basis": _declared_seasonal_scop_for_building(building, product)[1],
+        "seasonal_performance_points": [
+            {
+                "climate": item.climate,
+                "application_temperature_c": float(item.application_temperature_c),
+                "scop": float(item.scop),
+                "design_load_kw": (
+                    None if item.design_load_kw is None else float(item.design_load_kw)
+                ),
+                "test_standard": item.test_standard,
+                "source_url": item.source_url,
+            }
+            for item in product.seasonal_performance
+        ],
         "modeled_scop_from_monthly_cop": (
             None if modeled_scop is None else round(modeled_scop, 4)
         ),
@@ -1653,6 +1708,17 @@ def commercialize_heating_finalist(
         product_assumptions.extend(hp_assumptions)
         if estimated_scop is not None:
             building_data["heating"]["scop"] = float(estimated_scop)
+        else:
+            declared_scop, declared_basis = _declared_seasonal_scop_for_building(
+                raw_building,
+                product,
+            )
+            if declared_scop is not None:
+                building_data["heating"]["scop"] = float(declared_scop)
+                product_assumptions.append(
+                    f"{product.label}: {declared_basis}; used because the source-backed COP curve "
+                    "does not cover enough of the local heating profile for a non-extrapolated modeled SCOP."
+                )
 
     product_building = BuildingInput(**building_data)
     result = calculate(product_building, include_reference=False)
