@@ -46,7 +46,7 @@ class WorkerSafePlanV3(BaseModel):
     deterministic_axis_points: int = 0
     low_discrepancy_points: int = 0
     branch_batch_size: int = V3_BRANCH_BATCH_SIZE
-    search_method: str = "physics_informed_halton_sharded_v3"
+    search_method: str = "deterministic_axis_halton_sharded_v3"
 
 
 class VerificationPlanV3(BaseModel):
