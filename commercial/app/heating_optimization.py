@@ -377,11 +377,10 @@ def _has_existing_biomass_infrastructure(building: BuildingInput) -> bool:
     )
 
 
-def _same_generator_family(
+def _same_generator_type(
     building: BuildingInput,
-    technology: HeatingTechnologyV2,
+    generator: HeatingGeneratorType,
 ) -> bool:
-    generator = technology.representative.generator_type
     details = building.heating.details
     if details is not None and details.generator_type is not None:
         return details.generator_type == generator
@@ -400,6 +399,16 @@ def _same_generator_family(
     if generator == HeatingGeneratorType.condensing_gas_boiler:
         return building.heating.system_type == HeatingSystemType.condensing_gas_boiler
     return False
+
+
+def _same_generator_family(
+    building: BuildingInput,
+    technology: HeatingTechnologyV2,
+) -> bool:
+    return _same_generator_type(
+        building,
+        technology.representative.generator_type,
+    )
 
 
 def _product_infrastructure_eligible(
@@ -449,6 +458,108 @@ def technology_is_eligible(
             "comerciale disponibile nu este eligibilă."
         )
     if representative.requires_existing_biomass_infrastructure:
+        return False, (
+            "Coșul, spațiul tehnic și logistica de combustibil pentru biomasă nu sunt "
+            "confirmate."
+        )
+    return False, "Infrastructura necesară tehnologiei nu este confirmată."
+
+
+def _requirement_profile_is_eligible(
+    building: BuildingInput,
+    profile: dict[str, Any],
+) -> bool:
+    if bool(profile.get("requires_hydronic")) and not _is_hydronic(building):
+        return False
+    if bool(profile.get("requires_existing_gas")) and not _has_existing_gas(building):
+        return False
+    if (
+        bool(profile.get("requires_existing_high_power_electric"))
+        and not _has_existing_high_power_electric(building)
+    ):
+        return False
+    if (
+        bool(profile.get("requires_existing_biomass_infrastructure"))
+        and not _has_existing_biomass_infrastructure(building)
+    ):
+        return False
+    return True
+
+
+def technology_summary_is_eligible(
+    building: BuildingInput,
+    summary: dict[str, Any],
+) -> tuple[bool, str | None]:
+    """Evaluate branch eligibility from bounded technology metadata only."""
+
+    generator_values = [
+        value
+        for value in (summary.get("generator_types") or [])
+        if value
+    ]
+    if not generator_values and summary.get("generator_type"):
+        generator_values = [summary.get("generator_type")]
+    generators: list[HeatingGeneratorType] = []
+    for raw in generator_values:
+        try:
+            generators.append(HeatingGeneratorType(str(raw)))
+        except ValueError:
+            continue
+
+    if generators and all(
+        _same_generator_type(building, generator)
+        for generator in generators
+    ):
+        return False, (
+            "Aceeași familie de generator este deja instalată; păstrarea sistemului "
+            "actual este evaluată separat cu CAPEX zero."
+        )
+
+    profiles = list(summary.get("requirement_profiles") or [])
+    if not profiles:
+        profiles = [
+            {
+                "requires_hydronic": bool(summary.get("requires_hydronic")),
+                "requires_existing_gas": bool(summary.get("requires_existing_gas")),
+                "requires_existing_high_power_electric": bool(
+                    summary.get("requires_existing_high_power_electric")
+                ),
+                "requires_existing_biomass_infrastructure": bool(
+                    summary.get("requires_existing_biomass_infrastructure")
+                ),
+            }
+        ]
+    if any(
+        _requirement_profile_is_eligible(building, profile)
+        for profile in profiles
+    ):
+        return True, None
+
+    if all(bool(profile.get("requires_hydronic")) for profile in profiles) and not _is_hydronic(building):
+        return False, (
+            "Sistemul necesită o instalație hidronică existentă; conversia "
+            "emitatoarelor nu este încă inclusă."
+        )
+    if all(bool(profile.get("requires_existing_gas")) for profile in profiles) and not _has_existing_gas(building):
+        return False, "Gazul nu este confirmat ca disponibil în configurația casei."
+    if (
+        all(
+            bool(profile.get("requires_existing_high_power_electric"))
+            for profile in profiles
+        )
+        and not _has_existing_high_power_electric(building)
+    ):
+        return False, (
+            "Puterea electrică necesară nu este confirmată; niciun profil comercial "
+            "disponibil nu este eligibil."
+        )
+    if (
+        all(
+            bool(profile.get("requires_existing_biomass_infrastructure"))
+            for profile in profiles
+        )
+        and not _has_existing_biomass_infrastructure(building)
+    ):
         return False, (
             "Coșul, spațiul tehnic și logistica de combustibil pentru biomasă nu sunt "
             "confirmate."
