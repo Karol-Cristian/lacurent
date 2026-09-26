@@ -404,27 +404,38 @@ jobs:
           if optimizer_plan.get("optimizerVersion") != "v2-worker-safe":
               raise AssertionError("Worker-safe V2 plan returned the wrong optimizer version.")
           shortlist = optimizer_plan.get("shortlist") or []
+          search_measures = optimizer_plan.get("searchMeasures") or shortlist
+          branch_chunk_size = int(optimizer_plan.get("branchChunkSize") or 8)
           run_branch_ids = optimizer_plan.get("runBranchIds") or []
-          if not shortlist or not run_branch_ids:
-              raise AssertionError("Worker-safe V2 plan did not expose shortlist/branches.")
+          if not shortlist or not search_measures or not run_branch_ids:
+              raise AssertionError("Worker-safe V2 plan did not expose shortlist/deep-search/branches.")
           if int(optimizer_plan.get("representativeEvaluations") or 0) > 29:
               raise AssertionError("Worker-safe V2 representative search exceeded its CPU bound.")
+          if int(optimizer_plan.get("searchMeasureCount") or 0) != 32:
+              raise AssertionError(
+                  "Worker-safe V2 deep search expected 32 unique measures, got "
+                  f"{optimizer_plan.get('searchMeasureCount')!r}"
+              )
+          if branch_chunk_size > 8:
+              raise AssertionError("Worker-safe V2 branch shard exceeded 8 candidate measures.")
 
           optimizer_branch_results = []
           for branch_id in run_branch_ids:
-              branch_payload = json.loads(post_json(
-                  "/api/optimization/home-lab/v2/branch",
-                  {
-                      "form": optimizer_form,
-                      "branchId": branch_id,
-                      "shortlist": shortlist,
-                  },
-              ))
-              if branch_payload.get("optimizerVersion") != "v2-worker-safe":
-                  raise AssertionError(f"V2 branch {branch_id} returned the wrong version.")
-              if int(branch_payload.get("fastEvaluations") or 0) > len(shortlist):
-                  raise AssertionError(f"V2 branch {branch_id} exceeded shortlist evaluation bound.")
-              optimizer_branch_results.append(branch_payload)
+              for offset in range(0, len(search_measures), branch_chunk_size):
+                  chunk = search_measures[offset:offset + branch_chunk_size]
+                  branch_payload = json.loads(post_json(
+                      "/api/optimization/home-lab/v2/branch",
+                      {
+                          "form": optimizer_form,
+                          "branchId": branch_id,
+                          "shortlist": chunk,
+                      },
+                  ))
+                  if branch_payload.get("optimizerVersion") != "v2-worker-safe":
+                      raise AssertionError(f"V2 branch {branch_id} returned the wrong version.")
+                  if int(branch_payload.get("fastEvaluations") or 0) > len(chunk):
+                      raise AssertionError(f"V2 branch {branch_id} exceeded shard evaluation bound.")
+                  optimizer_branch_results.append(branch_payload)
 
           optimizer_final = json.loads(post_json(
               "/api/optimization/home-lab/v2/finalize",
