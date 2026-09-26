@@ -9,8 +9,8 @@
   const localAutosaveAllowed = () => window.LaCurentPrivacy?.allowsLocalAutosave?.() === true;
   const pages = [...root.querySelectorAll("[data-page]")];
   const wizardOrder = ["intro", "house", "envelope", "systems", "renewables", "goal"];
-  const stepNames = {intro:"Start",house:"Casa",envelope:"Anvelopa",systems:"Instalații",renewables:"Regenerabile",goal:"Obiectiv",run:"Calcul",done:"Gata",report:"Raport",error:"Eroare"};
-  const stepNumbers = {intro:"—",house:"01",envelope:"02",systems:"03",renewables:"04",goal:"05",run:"06",done:"07",report:"08",error:"—"};
+  const stepNames = {intro:"Start",house:"Casa",envelope:"Anvelopa",systems:"Instalații",renewables:"Regenerabile",goal:"Obiectiv",run:"Rezultat",done:"Rezultat",report:"Rezultat",error:"Eroare"};
+  const stepNumbers = {intro:"—",house:"01",envelope:"02",systems:"03",renewables:"04",goal:"05",run:"06",done:"06",report:"06",error:"—"};
   const stepNumber = $("#edStepNumber");
   const stepName = $("#edStepName");
   const runLog = $("#runLog");
