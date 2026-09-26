@@ -7,7 +7,7 @@
   <title>Home Lab Editorial — experiment | LaCurent</title>
   <meta name="robots" content="noindex,nofollow">
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="/static/home-lab-editorial.css?v=10">
+  <link rel="stylesheet" href="/static/home-lab-editorial.css?v=11">
   <link rel="stylesheet" href="/static/privacy-consent.css?v=privacy1">
 </head>
 <body>
@@ -181,7 +181,7 @@
           <h2>Din ce este făcută?</h2>
           <p class="ed-hint">Materialele și grosimile sunt transformate în rezistențe termice. Nu mai folosim profilul simplificat „slab / mediu / bun”.</p>
 
-          <div class="ed-subsection">
+          <div class="ed-subsection ed-domain-card ed-tone-blue">
             <h3>Pereți</h3>
             <div class="ed-grid">
               <label class="ed-field"><span>Structură perete</span>
@@ -210,7 +210,7 @@
             </div>
           </div>
 
-          <div class="ed-subsection">
+          <div class="ed-subsection ed-domain-card ed-tone-sand">
             <h3>Acoperiș / pod</h3>
             <label class="ed-field ed-wide"><span>Deasupra ultimului nivel încălzit</span>
               <select id="topBoundary">
@@ -235,7 +235,7 @@
             </div>
           </div>
 
-          <div class="ed-subsection">
+          <div class="ed-subsection ed-domain-card ed-tone-sage">
             <h3>Pardoseală</h3>
             <label class="ed-field ed-wide"><span>Sub pardoseala nivelului încălzit</span>
               <select id="floorBoundary">
@@ -260,7 +260,7 @@
             </div>
           </div>
 
-          <div class="ed-subsection">
+          <div class="ed-subsection ed-domain-card ed-tone-lilac">
             <h3>Ferestre și orientare</h3>
             <div class="ed-grid">
               <label class="ed-field"><span>Suprafață ferestre</span><div><input type="text" inputmode="decimal" data-decimal-input name="window_area_m2" id="windowArea" data-min="2" data-max="60" value="18"><em>m²</em></div></label>
@@ -291,7 +291,9 @@
           <h2>Cum funcționează casa acum?</h2>
           <p class="ed-hint">Generatorul, emisia, distribuția și reglajul sunt aceleași inputuri folosite de Home Lab-ul actual.</p>
 
-          <label class="ed-field ed-wide"><span>Generator de încălzire</span>
+          <div class="ed-domain-card ed-tone-blue">
+            <h3>Încălzire</h3>
+            <label class="ed-field ed-wide"><span>Generator de încălzire</span>
             <select name="heating_choice" id="heatingChoice">
               <option value="condensing_gas_boiler">Centrală gaz în condensare</option>
               <option value="gas_boiler">Centrală gaz convențională</option>
@@ -322,8 +324,9 @@
               <select id="heatingControl"><option value="manual">Manual</option><option value="room_thermostat">Termostat de ambient</option><option value="thermostatic_valves">Robineți termostatici</option><option value="zoned">Control pe zone</option><option value="weather_compensated">Compensare climatică</option></select>
             </label>
           </div>
+          </div>
 
-          <div class="ed-subsection">
+          <div class="ed-subsection ed-domain-card ed-tone-aqua">
             <h3>Apă, aer și răcire</h3>
             <div class="ed-grid">
               <label class="ed-field"><span>Apă caldă menajeră</span>
@@ -354,6 +357,7 @@
           <h2>Ce produce deja casa?</h2>
           <p class="ed-hint">Dacă nu există regenerabile, lași opțiunile oprite. Optimizerul poate propune ulterior instalații noi.</p>
 
+          <div class="ed-domain-card ed-tone-blue">
           <div class="ed-switch-row">
             <div><b>Panouri fotovoltaice existente</b><span>Producție electrică locală.</span></div>
             <label class="ed-switch"><input type="checkbox" name="pv_enabled" id="pvEnabled"><i></i></label>
@@ -365,8 +369,10 @@
             </label>
             <label class="ed-field"><span>Înclinare PV</span><div><input type="number" name="pv_tilt_degrees" value="30" min="0" max="90" step="5"><em>°</em></div></label>
           </div>
+          </div>
 
-          <div class="ed-switch-row ed-top-gap">
+          <div class="ed-domain-card ed-tone-sand ed-top-gap">
+          <div class="ed-switch-row">
             <div><b>Panouri solare termice existente</b><span>Producție termică pentru apă caldă.</span></div>
             <label class="ed-switch"><input type="checkbox" name="solar_thermal_enabled" id="solarThermalEnabled"><i></i></label>
           </div>
@@ -376,6 +382,7 @@
               <select name="solar_thermal_orientation"><option value="south">Sud</option><option value="south_west">Sud-vest</option><option value="west">Vest</option><option value="north_west">Nord-vest</option><option value="north">Nord</option><option value="north_east">Nord-est</option><option value="east">Est</option><option value="south_east">Sud-est</option></select>
             </label>
             <label class="ed-field"><span>Înclinare solar termic</span><div><input type="number" name="solar_thermal_tilt_degrees" value="45" min="0" max="90" step="5"><em>°</em></div></label>
+          </div>
           </div>
 
           <div class="ed-actions"><button type="button" class="ed-back" data-back>Înapoi</button><button type="button" class="ed-primary" data-next>Continuă <span>→</span></button></div>
