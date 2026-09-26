@@ -80,6 +80,7 @@
       <input type="hidden" name="floor_unheated_conditioned_zone_heat_transfer_w_k" value="">
       <input type="hidden" name="expert_ventilation_override" value="on">
       <input type="hidden" name="air_changes_per_hour" id="techAch">
+      <input type="hidden" name="infiltration_air_changes_per_hour" id="techInfiltrationAch" value="0">
       <input type="hidden" name="heat_recovery_efficiency" id="techHeatRecovery">
       <input type="hidden" name="expert_heating_override" id="techHeatingExpert" value="">
       <input type="hidden" name="heating_system_type" id="techHeatingSystemType" value="">
@@ -401,7 +402,8 @@
               <summary><span>Valori avansate / calculate</span><small>Presetul folosit de motor · poți introduce valoarea măsurată</small></summary>
               <div class="ed-details-body">
                 <div class="ed-grid ed-advanced-grid">
-                  <label class="ed-field"><span>Schimburi de aer n</span><div><input id="advAch" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0" data-max="5" value="" placeholder="ex. 0,50"><em>1/h</em></div></label>
+                  <label class="ed-field"><span>Ventilație n</span><div><input id="advAch" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0" data-max="5" value="" placeholder="ex. 0,50"><em>1/h</em></div></label>
+                  <label class="ed-field"><span>Infiltrații suplimentare n</span><div><input id="advInfiltrationAch" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0" data-max="5" value="" placeholder="ex. 0,15"><em>1/h</em></div></label>
                   <label class="ed-field"><span>Recuperare căldură</span><div><input id="advHeatRecovery" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0" data-max="99" value="" placeholder="ex. 75"><em>%</em></div></label>
                   <label class="ed-field"><span>SEER răcire</span><div><input id="advCoolingSeer" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="1" data-max="15" value="" placeholder="ex. 4,2"><em>—</em></div></label>
                   <label class="ed-field"><span>Setpoint răcire</span><div><input id="advCoolingSetpoint" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="18" data-max="30" value="" placeholder="ex. 26"><em>°C</em></div></label>
@@ -559,6 +561,6 @@
   {% include "_legal_footer.html" %}
   {% include "_privacy_controls.html" %}
   <script src="/static/privacy-consent.js?v=privacy1"></script>
-  <script src="/static/home-lab-editorial.js?v=12"></script>
+  <script src="/static/home-lab-editorial.js?v=13"></script>
 </body>
 </html>
