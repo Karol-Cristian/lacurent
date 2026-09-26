@@ -1919,25 +1919,68 @@ def heating_branch_plan(
         )
     ]
 
-    for technology in heating_technologies(
-        heating_catalog,
-        include_parametric_nodes=False,
-    ):
-        eligible, reason = technology_is_eligible(request.baseline, technology)
-        plan.append(
-            HeatingBranchSummaryV1(
-                branch_id=technology.id,
-                label=technology.label,
-                fixed_capex_lei=round(technology.minimum_capex_lei, 2),
-                eligible=eligible,
-                economic_eligible=True,
-                commercialization_mode="raw_parametric_then_product_match",
-                min_product_power_kw=technology.min_power_kw,
-                max_product_power_kw=technology.max_power_kw,
-                sizing_mode="raw_design_load_then_product_match_finalists",
-                note=reason,
+    technology_summaries = list(
+        (heating_catalog or {}).get("technology_summaries") or []
+    )
+    if technology_summaries:
+        # V3 structural planning only needs bounded technology metadata.
+        # This path is independent of the number of commercial products in D1.
+        for summary in technology_summaries:
+            branch_id = str(summary.get("technology_id") or "").strip()
+            if not branch_id:
+                continue
+            eligible, reason = technology_summary_is_eligible(
+                request.baseline,
+                summary,
             )
-        )
+            plan.append(
+                HeatingBranchSummaryV1(
+                    branch_id=branch_id,
+                    label=str(
+                        summary.get("technology_label")
+                        or branch_id
+                    ),
+                    fixed_capex_lei=round(
+                        float(summary.get("minimum_capex_lei") or 0.0),
+                        2,
+                    ),
+                    eligible=eligible,
+                    economic_eligible=True,
+                    commercialization_mode="raw_parametric_then_product_match",
+                    min_product_power_kw=(
+                        None
+                        if summary.get("min_product_power_kw") is None
+                        else float(summary["min_product_power_kw"])
+                    ),
+                    max_product_power_kw=(
+                        None
+                        if summary.get("max_product_power_kw") is None
+                        else float(summary["max_product_power_kw"])
+                    ),
+                    sizing_mode="raw_design_load_then_product_match_finalists",
+                    note=reason,
+                )
+            )
+    else:
+        for technology in heating_technologies(
+            heating_catalog,
+            include_parametric_nodes=False,
+        ):
+            eligible, reason = technology_is_eligible(request.baseline, technology)
+            plan.append(
+                HeatingBranchSummaryV1(
+                    branch_id=technology.id,
+                    label=technology.label,
+                    fixed_capex_lei=round(technology.minimum_capex_lei, 2),
+                    eligible=eligible,
+                    economic_eligible=True,
+                    commercialization_mode="raw_parametric_then_product_match",
+                    min_product_power_kw=technology.min_power_kw,
+                    max_product_power_kw=technology.max_power_kw,
+                    sizing_mode="raw_design_load_then_product_match_finalists",
+                    note=reason,
+                )
+            )
 
     existing_ids = {item.branch_id for item in plan}
     for branch_id, profile in SUPPLEMENTAL_TECHNICAL_HEATING_BRANCHES.items():
