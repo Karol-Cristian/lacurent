@@ -220,6 +220,9 @@ class MixedHeatingOptimizationResultV1(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
+_heating_technology_cache: dict[tuple[str, str, int, int, int], list[HeatingTechnologyV2]] = {}
+
+
 @lru_cache(maxsize=1)
 def heating_planning_catalog() -> dict[str, Any]:
     return json.loads(DATA_PATH.read_text(encoding="utf-8"))
@@ -256,6 +259,17 @@ def heating_technologies(
     catalog: dict[str, Any] | None = None,
 ) -> list[HeatingTechnologyV2]:
     raw = catalog or heating_planning_catalog()
+    cache_key = (
+        str(raw.get("catalog_version") or ""),
+        str(raw.get("source") or "seed"),
+        len(raw.get("options") or []),
+        len(raw.get("parametric_heating_nodes") or []),
+        len(raw.get("heat_pump_performance_points") or []),
+    )
+    cached = _heating_technology_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     grouped: dict[str, list[HeatingPlanningOptionV1]] = {}
     for item in heating_planning_options(raw):
         grouped.setdefault(item.technology_id, []).append(item)
@@ -266,7 +280,7 @@ def heating_technologies(
         except Exception:
             continue
         nodes_by_technology.setdefault(node.technology_id, []).append(node)
-    return [
+    technologies = [
         HeatingTechnologyV2(
             id=technology_id,
             label=items[0].technology_label,
@@ -278,6 +292,10 @@ def heating_technologies(
         )
         for technology_id, items in grouped.items()
     ]
+    if len(_heating_technology_cache) >= 4:
+        _heating_technology_cache.clear()
+    _heating_technology_cache[cache_key] = technologies
+    return technologies
 
 
 def _default_details(building: BuildingInput) -> HeatingSystemDetails:
@@ -1388,7 +1406,12 @@ def _planning_heating_capex(
     max_power = float(points[-1][0])
     target = max(float(required_power_kw), 0.0)
     if target <= min_power + 1e-9:
-        return round(float(points[0][1]), 2), min_power, max_power, len(points)
+        return (
+            round(float(points[0][1]), 2),
+            min_power,
+            max_power,
+            source_point_count,
+        )
 
     lower_power, lower_cost = points[0]
     upper_power, upper_cost = points[-1]
