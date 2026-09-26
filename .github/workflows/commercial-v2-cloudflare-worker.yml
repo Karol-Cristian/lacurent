@@ -219,7 +219,7 @@ jobs:
                   return text
 
           checks = {
-              "/": "data-editorial-lab",
+              "/": "data-lacurent-landing",
               "/instalatii": "data-editorial-lab",
               "/instalatii/calculator/legacy": "romaniaLocationMap",
               "/embed": "LaCurent Embed",
@@ -324,7 +324,7 @@ jobs:
               raise AssertionError("Embed runtime did not request/reflect mobile focus mode.")
 
           home_html = get("/")
-          assert "data-editorial-lab" in home_html
+          assert "data-lacurent-landing" in home_html
 
           location_payload = json.loads(get("/api/location-data"))
           localities = location_payload.get("localities", [])
@@ -734,16 +734,16 @@ jobs:
           else:
               raise AssertionError("Production /health did not become healthy.")
 
-          homepage_marker = "data-editorial-lab"
+          homepage_marker = "data-lacurent-landing"
           for attempt in range(1, 21):
               status, _, body = open_url(apex + f"/?deploy={attempt}")
               if status == 200 and homepage_marker in body:
                   print("/", status)
                   break
-              print(f"waiting for Home Lab homepage redirect, attempt {attempt}: HTTP {status}")
+              print(f"waiting for commercial homepage, attempt {attempt}: HTTP {status}")
               time.sleep(5)
           else:
-              raise AssertionError(f"/ did not resolve to Home Lab marker {homepage_marker!r}")
+              raise AssertionError(f"/ did not expose commercial landing marker {homepage_marker!r}")
 
           checks = {
               "/instalatii": "data-editorial-lab",
@@ -854,7 +854,7 @@ jobs:
 
           home_status, _, home_html = open_url(apex + "/")
           assert home_status == 200
-          assert "data-editorial-lab" in home_html
+          assert "data-lacurent-landing" in home_html
 
           status, _, location_body = open_url(apex + "/api/location-data")
           if status != 200:
