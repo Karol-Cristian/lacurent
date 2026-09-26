@@ -5,6 +5,7 @@
   const CONSENT_VERSION = 1;
   const LOCAL_DRAFT_PREFIXES = [
     "lacurent-home-lab-next-v1:",
+    "lacurent-home-lab-editorial-v1:",
     "lacurent-calculator-draft-v1",
   ];
 
