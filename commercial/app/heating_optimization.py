@@ -563,24 +563,120 @@ def _required_generator_power_kw(candidate: CandidateEvaluationV1) -> float | No
     return max(float(candidate.design_heat_load_kw), 0.0)
 
 
+def _product_available_capacity_at_design_kw(
+    building: BuildingInput,
+    product: HeatingPlanningOptionV1,
+) -> tuple[float | None, str]:
+    """Return generator capacity available at the building design condition.
+
+    Non-heat-pump products use their catalog rated output. Heat pumps use
+    source-backed capacity points when those points actually bracket the
+    locality winter design temperature and the required hydronic flow
+    temperature. We deliberately do not clamp/extrapolate capacity beyond the
+    published operating map for equipment sufficiency checks.
+    """
+
+    if product.generator_type not in {
+        HeatingGeneratorType.heat_pump_air_water,
+        HeatingGeneratorType.heat_pump_air_air,
+        HeatingGeneratorType.heat_pump_ground_water,
+    }:
+        return float(product.rated_power_kw), "catalog_rated_output"
+
+    capacity_points = [
+        point for point in product.performance_points
+        if point.heating_capacity_kw is not None
+    ]
+    if not capacity_points:
+        return float(product.rated_power_kw), "catalog_rated_output_unverified_at_design_point"
+
+    climate = resolve_climate(building.locality)
+    design_outdoor = climate.get("winter_design_temperature_c")
+    if design_outdoor is None:
+        return float(product.rated_power_kw), "catalog_rated_output_missing_design_climate"
+
+    design_outdoor = float(design_outdoor)
+
+    if product.generator_type == HeatingGeneratorType.heat_pump_air_air:
+        outdoor_values = sorted(
+            {float(point.outdoor_temperature_c) for point in capacity_points}
+        )
+        if (
+            not outdoor_values
+            or design_outdoor < outdoor_values[0] - 1e-9
+            or design_outdoor > outdoor_values[-1] + 1e-9
+        ):
+            return None, "capacity_curve_does_not_cover_design_temperature"
+        capacity, clamped = _interpolate_air_air_metric(
+            capacity_points,
+            outdoor_temperature_c=design_outdoor,
+            metric="heating_capacity_kw",
+        )
+        if capacity is None or clamped:
+            return None, "capacity_curve_does_not_cover_design_temperature"
+        return float(capacity), "manufacturer_capacity_curve_at_design_temperature"
+
+    if product.generator_type == HeatingGeneratorType.heat_pump_air_water:
+        design_flow_c, _, _ = _heat_pump_design_temperatures(building)
+        outdoor_values = sorted(
+            {float(point.outdoor_temperature_c) for point in capacity_points}
+        )
+        flow_values = sorted(
+            {float(point.flow_temperature_c) for point in capacity_points}
+        )
+        if (
+            not outdoor_values
+            or design_outdoor < outdoor_values[0] - 1e-9
+            or design_outdoor > outdoor_values[-1] + 1e-9
+        ):
+            return None, "capacity_curve_does_not_cover_design_temperature"
+        if (
+            not flow_values
+            or design_flow_c < flow_values[0] - 1e-9
+            or design_flow_c > flow_values[-1] + 1e-9
+        ):
+            return None, "capacity_curve_does_not_cover_design_flow_temperature"
+        capacity = _interpolate_heat_pump_metric(
+            capacity_points,
+            outdoor_temperature_c=design_outdoor,
+            flow_temperature_c=design_flow_c,
+            metric="heating_capacity_kw",
+        )
+        if capacity is None:
+            return None, "capacity_curve_not_interpolable_at_design_point"
+        return float(capacity), "manufacturer_capacity_curve_at_design_air_water_point"
+
+    # Ground-source output depends on source-side conditions that are not
+    # represented by outdoor-air temperature in the current catalog schema.
+    return float(product.rated_power_kw), "catalog_rated_output_ground_source_design_curve_unavailable"
+
+
 def _select_sized_product(
     building: BuildingInput,
     technology: HeatingTechnologyV2,
     required_power_kw: float,
-) -> HeatingPlanningOptionV1 | None:
-    products = [
-        product
-        for product in technology.products
-        if _product_infrastructure_eligible(building, product)
-        and float(product.rated_power_kw) + 1e-9 >= float(required_power_kw)
-    ]
-    if not products:
+) -> tuple[HeatingPlanningOptionV1, float, str] | None:
+    candidates: list[tuple[HeatingPlanningOptionV1, float, str]] = []
+    for product in technology.products:
+        if not _product_infrastructure_eligible(building, product):
+            continue
+        available_kw, basis = _product_available_capacity_at_design_kw(
+            building,
+            product,
+        )
+        if available_kw is None:
+            continue
+        if float(available_kw) + 1e-9 < float(required_power_kw):
+            continue
+        candidates.append((product, float(available_kw), basis))
+
+    if not candidates:
         return None
     return min(
-        products,
+        candidates,
         key=lambda item: (
-            float(item.rated_power_kw),
-            float(item.installed_capex_lei),
+            float(item[0].rated_power_kw),
+            float(item[0].installed_capex_lei),
         ),
     )
 
@@ -1310,20 +1406,23 @@ def commercialize_heating_finalist(
         return candidate, None, [
             f"{technology.label}: necesarul de putere nu este disponibil pentru selecția produsului."
         ]
-    product = _select_sized_product(
-        original_building,
+
+    raw_building = candidate.resulting_configuration
+    sized = _select_sized_product(
+        raw_building,
         technology,
         required_power_kw,
     )
-    if product is None:
+    if sized is None:
         return candidate, None, [
             (
-                f"{technology.label}: niciun produs din catalog nu acoperă necesarul "
-                f"final recalculat de {required_power_kw:.2f} kW."
+                f"{technology.label}: niciun produs verificabil din catalog nu acoperă "
+                f"necesarul final recalculat de {required_power_kw:.2f} kW la condiția "
+                "de proiect a clădirii. Pentru pompele de căldură nu se extrapolează "
+                "capacitatea dincolo de curba publicată."
             )
         ]
-
-    raw_building = candidate.resulting_configuration
+    product, available_design_capacity_kw, capacity_basis = sized
     building_data = model_to_dict(raw_building)
     product_heating = HeatingInput(
         system_type=product.system_type,
@@ -1338,7 +1437,18 @@ def commercialize_heating_finalist(
     building_data["heating"] = model_to_dict(product_heating)
     building_data["dhw"] = _dhw_for_product(raw_building, product)
 
-    product_assumptions: list[str] = []
+    product_assumptions: list[str] = [
+        (
+            f"Generator sizing check: required {required_power_kw:.2f} kW; "
+            f"available at design condition {available_design_capacity_kw:.2f} kW "
+            f"using {capacity_basis}."
+        )
+    ]
+    if "unverified" in capacity_basis or "unavailable" in capacity_basis or "missing" in capacity_basis:
+        product_assumptions.append(
+            "Generator capacity is not source-verified at the exact design operating point; "
+            "catalog rated output is used only as a provisional fallback."
+        )
     if product.generator_type in {
         HeatingGeneratorType.heat_pump_air_water,
         HeatingGeneratorType.heat_pump_air_air,
@@ -1376,7 +1486,9 @@ def commercialize_heating_finalist(
             catalog_unit="finalist_product_plus_installation_allowance",
             note=(
                 f"{product.label}: produs real ales numai după optimizarea parametrică; "
-                f"necesar final {required_power_kw:.2f} kW → treaptă comercială "
+                f"necesar final {required_power_kw:.2f} kW; capacitate disponibilă "
+                f"la condiția de proiect {available_design_capacity_kw:.2f} kW "
+                f"({capacity_basis}); putere nominală catalog "
                 f"{product.rated_power_kw:.2f} kW. {product.note}"
             ),
             product_id=product.id,
