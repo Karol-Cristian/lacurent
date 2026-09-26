@@ -1499,6 +1499,11 @@ def commercialize_heating_finalist(
                 float(product.installation_allowance_lei),
                 2,
             ),
+            design_available_capacity_kw=round(
+                float(available_design_capacity_kw),
+                4,
+            ),
+            capacity_basis=capacity_basis,
         )
     )
 
