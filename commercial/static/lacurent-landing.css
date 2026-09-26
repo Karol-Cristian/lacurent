@@ -243,3 +243,27 @@ main{overflow:hidden}
   .lc-catalog-promo-stat{min-height:230px;padding:24px}
   .lc-catalog-promo-stat strong{font-size:4.4rem}
 }
+
+/* Homepage section-by-section scroll */
+.lc-snap-root{
+  scroll-snap-type:y mandatory;
+  scroll-padding-block:12px;
+}
+.lc-snap-root body[data-lacurent-landing] .lc-hero,
+.lc-snap-root body[data-lacurent-landing] .lc-intro,
+.lc-snap-root body[data-lacurent-landing] .lc-method,
+.lc-snap-root body[data-lacurent-landing] .lc-budget,
+.lc-snap-root body[data-lacurent-landing] .lc-catalog-promo,
+.lc-snap-root body[data-lacurent-landing] .lc-close{
+  scroll-snap-align:start;
+  scroll-snap-stop:always;
+}
+@media(max-width:720px){
+  .lc-snap-root{scroll-snap-type:y proximity}
+}
+@media(prefers-reduced-motion:reduce){
+  .lc-snap-root{
+    scroll-behavior:auto;
+    scroll-snap-type:y proximity;
+  }
+}
