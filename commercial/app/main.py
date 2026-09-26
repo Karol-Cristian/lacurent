@@ -2134,7 +2134,22 @@ async def sitemap_xml(request: Request) -> Response:
 
 
 @app.get("/home-lab-next", response_class=HTMLResponse)
-async def home_lab_next(request: Request) -> HTMLResponse:
+@app.get("/home-lab-editorial", response_class=HTMLResponse)
+async def home_lab_editorial(request: Request) -> HTMLResponse:
+    """Primary Home Lab UI using the Technical Editorial experience."""
+    return templates.TemplateResponse(
+        request,
+        "home_lab_editorial.html",
+        {
+            "request": request,
+            **calculator_context(),
+        },
+    )
+
+
+@app.get("/home-lab-classic", response_class=HTMLResponse)
+async def home_lab_classic(request: Request) -> HTMLResponse:
+    """Previous Home Lab UI retained as a rollback and regression surface."""
     return templates.TemplateResponse(
         request,
         "home_lab_next.html",
@@ -2145,24 +2160,6 @@ async def home_lab_next(request: Request) -> HTMLResponse:
             "embed_mode": False,
             "calculate_url": "/api/home-lab-next/calculate",
             "energy_overview": home_lab_price_overview(),
-        },
-    )
-
-
-@app.get("/home-lab-editorial", response_class=HTMLResponse)
-async def home_lab_editorial(request: Request) -> HTMLResponse:
-    """Experimental Technical Editorial UI.
-
-    This route deliberately reuses the production calculation and optimizer
-    APIs. It changes presentation and interaction only; no engine behavior is
-    forked for the experiment.
-    """
-    return templates.TemplateResponse(
-        request,
-        "home_lab_editorial.html",
-        {
-            "request": request,
-            **calculator_context(),
         },
     )
 
