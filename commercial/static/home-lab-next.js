@@ -2918,7 +2918,7 @@
                 runId:runIdV3,
                 branchId:taskV3.branchId,
                 batch:taskV3.batch,
-                baselineAnnualBillLei:Number(baselineResult?.annual_cost_lei || currentResult?.annual_cost_lei || 0),
+                baselineAnnualBillLei:Number(homeResult?.annual_cost_lei || 0),
               }),
             },
             optimizerAbortController?.signal || null,
