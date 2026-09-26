@@ -4,6 +4,9 @@
   if (!root || !form) return;
 
   const $ = selector => document.querySelector(selector);
+  const storageKey = `lacurent-home-lab-editorial-v1:${root.dataset.partnerId || "official"}`;
+  const classicStorageKey = `lacurent-home-lab-next-v1:${root.dataset.partnerId || "official"}`;
+  const localAutosaveAllowed = () => window.LaCurentPrivacy?.allowsLocalAutosave?.() === true;
   const pages = [...root.querySelectorAll("[data-page]")];
   const wizardOrder = ["intro", "house", "envelope", "systems", "renewables", "goal"];
   const stepNames = {intro:"Start",house:"Casa",envelope:"Anvelopa",systems:"Instalații",renewables:"Regenerabile",goal:"Obiectiv",run:"Calcul",done:"Gata",report:"Raport",error:"Eroare"};
@@ -54,9 +57,189 @@
   let mapSuppressClickUntil = 0;
   let mapDrag = null;
   let mapPinch = null;
+  let autosaveTimer = 0;
   const MAP_MIN_ZOOM = 1;
   const MAP_MAX_ZOOM = 6;
   const mapView = {zoom:1, centerX:null, centerY:null};
+
+  function persistedFieldKey(field) {
+    if (field.id) return `id:${field.id}`;
+    if (field.name) return `name:${field.name}`;
+    return "";
+  }
+
+  function isPersistableField(field) {
+    if (!field || field.disabled) return false;
+    if (field.type === "hidden") {
+      return field.id === "localityId" || field.name === "_optimization_mode";
+    }
+    return Boolean(field.id || field.name);
+  }
+
+  function editorialDraftSnapshot() {
+    const fields = {};
+    form.querySelectorAll("input,select,textarea").forEach(field => {
+      if (!isPersistableField(field)) return;
+      const key = persistedFieldKey(field);
+      if (!key) return;
+      fields[key] = field.type === "checkbox" || field.type === "radio"
+        ? {checked:Boolean(field.checked)}
+        : {value:String(field.value ?? "")};
+      if (field.dataset.geomAuto !== undefined) {
+        fields[key].geomAuto = field.dataset.geomAuto;
+      }
+    });
+    return {
+      version:1,
+      fields,
+      savedAt:new Date().toISOString(),
+    };
+  }
+
+  function persistEditorialDraft() {
+    if (!localAutosaveAllowed()) return false;
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(editorialDraftSnapshot()));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function scheduleEditorialDraftSave(delay = 120) {
+    window.clearTimeout(autosaveTimer);
+    autosaveTimer = window.setTimeout(() => persistEditorialDraft(), delay);
+  }
+
+  function resolvePersistedField(key) {
+    if (key.startsWith("id:")) return document.getElementById(key.slice(3));
+    if (key.startsWith("name:")) {
+      const name = key.slice(5).replace(/"/g, "\\"");
+      return form.querySelector(`[name="${name}"]`);
+    }
+    return null;
+  }
+
+  function applyEditorialDraft(draft) {
+    if (!draft || draft.version !== 1 || !draft.fields || typeof draft.fields !== "object") return false;
+    let applied = false;
+    Object.entries(draft.fields).forEach(([key, saved]) => {
+      const field = resolvePersistedField(key);
+      if (!field || !isPersistableField(field) || !saved || typeof saved !== "object") return;
+      if (field.type === "checkbox" || field.type === "radio") {
+        field.checked = Boolean(saved.checked);
+      } else if (Object.prototype.hasOwnProperty.call(saved, "value")) {
+        if (field.tagName === "SELECT") {
+          const hasOption = [...field.options].some(option => option.value === String(saved.value));
+          if (!hasOption) return;
+        }
+        field.value = String(saved.value);
+      }
+      if (saved.geomAuto !== undefined && field.dataset.geomAuto !== undefined) {
+        field.dataset.geomAuto = String(saved.geomAuto);
+      }
+      applied = true;
+    });
+    return applied;
+  }
+
+  function setMigratedField(selector, value, checked = false) {
+    if (value === undefined || value === null) return;
+    const field = selector.startsWith("#")
+      ? document.getElementById(selector.slice(1))
+      : form.querySelector(selector);
+    if (!field) return;
+    if (checked || field.type === "checkbox") field.checked = Boolean(value);
+    else field.value = String(value);
+  }
+
+  function migrateClassicDraft() {
+    if (!localAutosaveAllowed()) return false;
+    try {
+      const saved = JSON.parse(localStorage.getItem(classicStorageKey) || "null");
+      const state = saved?.homeState;
+      if (!state || typeof state !== "object") return false;
+
+      setMigratedField("#localityId", state.localityId);
+      setMigratedField("#localityInput", state.locality);
+      setMigratedField("#heatedArea", state.area);
+      setMigratedField("#heatedLevels", state.levels);
+      setMigratedField("#averageHeight", state.height);
+      setMigratedField('[name="indoor_design_temperature_c"]', state.temperature);
+      setMigratedField('[name="construction_year"]', state.constructionYear);
+      setMigratedField('[name="dhw_occupants"]', state.occupants);
+      setMigratedField("#windowArea", state.windows);
+
+      const geometryOverrides = [
+        ["#wallArea", state.wallAreaOverride],
+        ["#roofArea", state.topAreaOverride],
+        ["#floorArea", state.floorAreaOverride],
+        ["#heatedVolume", state.volumeOverride],
+      ];
+      geometryOverrides.forEach(([selector,value]) => {
+        if (value === undefined || value === null) return;
+        setMigratedField(selector, value);
+        const field = document.querySelector(selector);
+        if (field?.dataset.geomAuto !== undefined) field.dataset.geomAuto = "false";
+      });
+
+      setMigratedField("#wallStructure", state.wallStructure);
+      setMigratedField("#wallStructureThickness", state.wallStructureThickness);
+      setMigratedField("#wallInsulationMaterial", state.wallInsulationMaterial);
+      setMigratedField("#wallIns", state.wallIns);
+      setMigratedField("#topBoundary", state.topBoundary);
+      setMigratedField("#roofInsulationMaterial", state.roofInsulationMaterial);
+      setMigratedField("#roofIns", state.roofIns);
+      setMigratedField("#floorBoundary", state.floorBoundary);
+      setMigratedField("#floorInsulationMaterial", state.floorInsulationMaterial);
+      setMigratedField("#floorIns", state.floorIns);
+      setMigratedField("#glazing", state.glazing);
+      setMigratedField("#orientation", state.orientation);
+
+      setMigratedField("#heatingChoice", state.heating);
+      setMigratedField("#heatPumpSource", state.heatPumpSource);
+      setMigratedField("#heatingEmitter", state.heatingEmitter);
+      setMigratedField("#heatingDistribution", state.heatingDistribution);
+      setMigratedField("#heatingStorage", state.heatingStorage);
+      setMigratedField("#heatingControl", state.heatingControl);
+      setMigratedField("#dhwSystem", state.dhwSystem);
+      setMigratedField("#ventilation", state.ventilation);
+      setMigratedField("#cooling", state.cooling);
+
+      setMigratedField("#pvEnabled", state.pvEnabled, true);
+      setMigratedField('[name="pv_installed_power_kwp"]', state.pvKwp);
+      setMigratedField('[name="pv_orientation"]', state.pvOrientation);
+      setMigratedField('[name="pv_tilt_degrees"]', state.pvTilt);
+      setMigratedField("#solarThermalEnabled", state.solarThermalEnabled, true);
+      setMigratedField('[name="solar_thermal_collector_area_m2"]', state.solarThermalArea);
+      setMigratedField('[name="solar_thermal_orientation"]', state.solarThermalOrientation);
+      setMigratedField('[name="solar_thermal_tilt_degrees"]', state.solarThermalTilt);
+
+      persistEditorialDraft();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function restoreEditorialDraft() {
+    if (!localAutosaveAllowed()) return false;
+    try {
+      const ownDraft = JSON.parse(localStorage.getItem(storageKey) || "null");
+      if (applyEditorialDraft(ownDraft)) return true;
+    } catch (_) {}
+    return migrateClassicDraft();
+  }
+
+  function syncChoiceGroupSelections() {
+    document.querySelectorAll("[data-choice-group]").forEach(group => {
+      const field = form.querySelector(`[name="${group.dataset.choiceGroup}"]`);
+      if (!field) return;
+      group.querySelectorAll("button[data-value]").forEach(button => {
+        button.classList.toggle("is-selected", button.dataset.value === field.value);
+      });
+    });
+  }
 
   const fmt = (value, digits = 0) => {
     if (value === null || value === undefined || Number.isNaN(Number(value))) return "—";
@@ -356,6 +539,7 @@
         button.classList.add("is-selected");
         field.value = button.dataset.value;
         if (group.dataset.choiceGroup === "_optimization_mode") syncGoalField();
+        scheduleEditorialDraftSave();
       });
     });
   });
@@ -803,6 +987,7 @@
     $("#edMapSuggestions").hidden = true;
     renderLocationMap();
     scheduleBaselineSummary(120);
+    scheduleEditorialDraftSave();
   }
 
   function nearestMapLocalities(event, limit = 5) {
@@ -922,6 +1107,12 @@
     const button = event.target.closest("[data-map-locality-id]");
     if (!button) return;
     selectLocality(localityMap.get(String(button.dataset.mapLocalityId)));
+  });
+
+  form.addEventListener("input", () => scheduleEditorialDraftSave());
+  form.addEventListener("change", () => scheduleEditorialDraftSave());
+  window.addEventListener("lacurent:privacy-change", event => {
+    if (event.detail?.localAutosave === true) scheduleEditorialDraftSave(0);
   });
 
   ["#heatedArea","#heatedLevels","#averageHeight","#windowArea"].forEach(selector => {
@@ -1298,7 +1489,18 @@
   syncGoalField();
   updateGeometryDisplay(true);
   applyHeatingDefaults();
-  syncRenewableVisibility();
+
+  const restoredDraft = restoreEditorialDraft();
+  if (restoredDraft) {
+    normalizeHeatingUi();
+    syncRenewableVisibility();
+    updateGeometryDisplay(false);
+    syncGoalField();
+    syncChoiceGroupSelections();
+  } else {
+    syncRenewableVisibility();
+  }
+
   syncTechnicalForm();
   showPage("intro");
   scheduleBaselineSummary(150);
