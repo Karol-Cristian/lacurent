@@ -725,3 +725,108 @@ button{cursor:pointer}
   vector-effect:non-scaling-stroke;
   pointer-events:none;
 }
+
+
+/* Editorial v7: persistent clickable progress history */
+.ed-progress{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  min-width:0;
+}
+.ed-progress-history{
+  display:flex;
+  align-items:center;
+  gap:4px;
+  min-width:0;
+}
+.ed-progress-history button{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  min-height:34px;
+  padding:0 9px;
+  border:0;
+  border-radius:10px;
+  background:transparent;
+  color:#a0a6b0;
+  cursor:default;
+  white-space:nowrap;
+}
+.ed-progress-history button b{
+  width:22px;
+  height:22px;
+  display:grid;
+  place-items:center;
+  border:1px solid #dfe2e8;
+  border-radius:50%;
+  font-size:10px;
+  font-variant-numeric:tabular-nums;
+  color:#8b929e;
+  background:#fff;
+}
+.ed-progress-history button span{
+  font-size:11px;
+  font-weight:650;
+}
+.ed-progress-history button.is-reached{
+  color:#555e6b;
+  cursor:pointer;
+}
+.ed-progress-history button.is-reached b{
+  border-color:#bfc7d2;
+  color:#404955;
+}
+.ed-progress-history button.is-reached:hover{
+  background:var(--soft);
+  color:var(--ink);
+}
+.ed-progress-history button.is-current{
+  background:#f2f5fa;
+  color:var(--ink);
+}
+.ed-progress-history button.is-current b{
+  border-color:var(--ink);
+  background:var(--ink);
+  color:#fff;
+}
+.ed-progress-current{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  color:var(--muted);
+  font-size:12px;
+  white-space:nowrap;
+}
+.ed-progress-current i{
+  width:24px;
+  height:1px;
+  background:var(--line);
+}
+.ed-progress-current span:first-child{
+  color:var(--ink);
+  font-variant-numeric:tabular-nums;
+}
+
+@media(max-width:920px){
+  .ed-progress-history button span{display:none}
+  .ed-progress-history button{padding:0 4px}
+  .ed-progress{gap:9px}
+}
+@media(max-width:720px){
+  .ed-header{gap:10px}
+  .ed-brand>span:last-child{display:none}
+  .ed-progress-history{gap:1px}
+  .ed-progress-history button{
+    min-height:30px;
+    padding:0 2px;
+  }
+  .ed-progress-history button b{
+    width:20px;
+    height:20px;
+    font-size:9px;
+  }
+  .ed-progress-current{
+    display:none;
+  }
+}
