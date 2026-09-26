@@ -64,7 +64,7 @@ async function expectVisible(selector) {
 }
 
 try {
-  await page.goto(baseUrl + "/home-lab-next", {waitUntil:"networkidle", timeout:30000});
+  await page.goto(baseUrl + "/home-lab-classic", {waitUntil:"networkidle", timeout:30000});
   await expectVisible("[data-home-lab-next]");
   await expectVisible('[data-hln-screen="home"].is-active');
   await expectVisible("#hlnPersistentClass");
@@ -574,7 +574,7 @@ try {
   // Issue #359 replacement: keep the normal house scale, reclaim intro space
   // only after the user starts working with the house.
   await page.setViewportSize({width:1024,height:768});
-  await page.goto(baseUrl + "/home-lab-next", {waitUntil:"networkidle", timeout:30000});
+  await page.goto(baseUrl + "/home-lab-classic", {waitUntil:"networkidle", timeout:30000});
   await expectVisible('[data-hln-screen="home"].is-active');
   const laptopIntroBefore = await page.evaluate(() => {
     const screen = document.querySelector('[data-hln-screen="home"]');
@@ -619,7 +619,7 @@ try {
   }
 
   await page.setViewportSize({width:390,height:844});
-  await page.goto(baseUrl + "/home-lab-next", {waitUntil:"networkidle", timeout:30000});
+  await page.goto(baseUrl + "/home-lab-classic", {waitUntil:"networkidle", timeout:30000});
   await expectVisible('[data-hln-screen="home"].is-active');
   const mobileIntroBefore = await page.evaluate(() => {
     const screen = document.querySelector('[data-hln-screen="home"]');
@@ -671,7 +671,7 @@ try {
   }
 
   await page.setViewportSize({width:390,height:844});
-  await page.goto(baseUrl + "/home-lab-next", {waitUntil:"networkidle", timeout:30000});
+  await page.goto(baseUrl + "/home-lab-classic", {waitUntil:"networkidle", timeout:30000});
   await expectVisible("[data-home-lab-next]");
   const mobileDock = await page.evaluate(() => {
     const dock = document.querySelector(".hln-dock");
