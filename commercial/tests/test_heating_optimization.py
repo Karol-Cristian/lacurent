@@ -5,10 +5,12 @@ import pytest
 from commercial.app.engine import calculate, demo_building
 from commercial.app.heating_catalog_store import (
     HEATING_PARAMETRIC_NODE_TOTAL,
+    build_heating_technology_summaries,
     build_parametric_heating_nodes,
     compact_heating_branch_catalog_payload,
     seed_heating_branch_catalog_payload,
     seed_heating_catalog_payload,
+    seed_heating_catalog_summary_payload,
 )
 from commercial.app.heating_optimization import (
     _estimated_heat_pump_scop,
@@ -139,6 +141,47 @@ def test_compact_branch_profile_preserves_planning_power_range() -> None:
     assert compact_technology.minimum_capex_lei == pytest.approx(
         full_technology.minimum_capex_lei
     )
+
+
+
+def test_bounded_technology_summary_preserves_branch_plan_semantics() -> None:
+    request = OptimizationRequestV1(
+        baseline=demo_building(),
+        mode=OptimizationMode.auto_economic,
+    )
+    full = seed_heating_catalog_payload()
+    summary = seed_heating_catalog_summary_payload()
+
+    full_plan = {
+        item.branch_id: (item.eligible, item.economic_eligible)
+        for item in heating_branch_plan(request, full)
+    }
+    summary_plan = {
+        item.branch_id: (item.eligible, item.economic_eligible)
+        for item in heating_branch_plan(request, summary)
+    }
+
+    assert summary["options"] == []
+    assert summary["technology_summaries"]
+    assert summary_plan == full_plan
+
+
+def test_technology_summary_count_does_not_grow_with_duplicate_skus() -> None:
+    seed = heating_planning_catalog()
+    base_products = list(seed.get("options") or [])
+    expanded: list[dict] = []
+    for copy_index in range(25):
+        for item in base_products:
+            clone = dict(item)
+            clone["id"] = f"{item['id']}:copy:{copy_index}"
+            expanded.append(clone)
+
+    summaries = build_heating_technology_summaries(expanded)
+
+    assert len(summaries) == len(
+        {str(item["technology_id"]) for item in base_products}
+    )
+    assert sum(int(item["product_count"]) for item in summaries) == len(expanded)
 
 
 def test_heating_technologies_use_dense_grid_without_creating_fake_products() -> None:
