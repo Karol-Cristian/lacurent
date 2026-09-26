@@ -2818,7 +2818,7 @@
 
       if (OPTIMIZER_BACKEND_V3) {
         appendOptimizerConsole("info","V3","UI orchestrator: plan → căutare sharded → verificări canonice → produse → raport.");
-        appendOptimizerConsole("info","MATH","Păstrez probele physics-informed V2 și adaug acoperire Halton pe toate cele 7 dimensiuni; niciun batch nu depășește limita Worker CPU-safe.");
+        appendOptimizerConsole("info","MATH","Planul V3 nu rulează fizică: generează axe deterministe + Halton pe 7 dimensiuni; toate evaluările sunt mutate în batch-uri Worker CPU-safe.");
 
         const planCallV3 = await fetchOptimizerWithRetry(
           "/api/optimization/home-lab/v3/plan",
@@ -2874,9 +2874,9 @@
         );
         appendOptimizerConsole(
           "ok","PLAN",
-          Number(planV3.representativeEvaluations || 0) + " evaluări physics-informed → " +
-          searchPointsV3.length + " puncte de căutare (" + Number(planV3.lowDiscrepancyPoints || 0) +
-          " low-discrepancy) · batch " + batchSizeV3 + "."
+          Number(planV3.deterministicAxisPoints || planV3.baseShortlistSize || 0) + " axe deterministe + " +
+          Number(planV3.lowDiscrepancyPoints || 0) + " low-discrepancy → " +
+          searchPointsV3.length + " puncte de căutare · 0 evaluări în plan · batch " + batchSizeV3 + "."
         );
 
         for (const technicalIdV3 of technicalIdsV3) {
