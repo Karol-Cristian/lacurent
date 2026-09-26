@@ -621,8 +621,11 @@ def design_heat_load_breakdown(
     )
     exterior_kw = exterior_h_w_k * delta_t_outdoor / 1000.0
     ground_kw = float(transmission.hg_w_k) * delta_t_ground / 1000.0
-    ventilation_kw = float(h_ve_w_k) * delta_t_outdoor / 1000.0
-    total_kw = exterior_kw + ground_kw + ventilation_kw
+    airflow = ventilation_heat_transfer_components(building)
+    ventilation_kw = float(airflow["ventilation_w_k"]) * delta_t_outdoor / 1000.0
+    infiltration_kw = float(airflow["infiltration_w_k"]) * delta_t_outdoor / 1000.0
+    airflow_total_kw = float(h_ve_w_k) * delta_t_outdoor / 1000.0
+    total_kw = exterior_kw + ground_kw + airflow_total_kw
 
     return {
         "total_kw": _round(total_kw, 4),
@@ -633,7 +636,9 @@ def design_heat_load_breakdown(
         "delta_t_ground_k": _round(delta_t_ground, 3),
         "exterior_transmission_kw": _round(exterior_kw, 4),
         "ground_transmission_kw": _round(ground_kw, 4),
-        "ventilation_infiltration_kw": _round(ventilation_kw, 4),
+        "ventilation_kw": _round(ventilation_kw, 4),
+        "infiltration_kw": _round(infiltration_kw, 4),
+        "ventilation_infiltration_kw": _round(airflow_total_kw, 4),
     }
 
 
