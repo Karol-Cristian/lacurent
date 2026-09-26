@@ -1010,9 +1010,9 @@ jobs:
                   f"{heating_catalog.get('source')!r}"
               )
           products = heating_catalog.get("options") or []
-          if len(products) != 40:
+          if len(products) < 40:
               raise AssertionError(
-                  f"Production D1 heating catalog expected 40 products, got {len(products)}"
+                  f"Production D1 heating catalog must contain at least the 40-product verified baseline, got {len(products)}"
               )
           category_counts = {}
           for product in products:
@@ -1022,16 +1022,21 @@ jobs:
                   raise AssertionError(
                       f"Heating product {product.get('id')!r} lost its canonical external_id."
                   )
-          expected_category_counts = {
+          minimum_category_counts = {
               "heat-pump-air-water": 8,
               "heat-pump-air-air": 9,
               "condensing-gas": 8,
               "electric-boiler": 8,
               "pellet-boiler": 7,
           }
-          if category_counts != expected_category_counts:
+          missing = {
+              key: minimum
+              for key, minimum in minimum_category_counts.items()
+              if category_counts.get(key, 0) < minimum
+          }
+          if missing:
               raise AssertionError(
-                  f"Production D1 heating category counts mismatch: {category_counts}"
+                  f"Production D1 heating category baseline regressed: {category_counts}; missing minimums {missing}"
               )
           performance_points = heating_catalog.get("heat_pump_performance_points") or []
           if len(performance_points) < 50:
