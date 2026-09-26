@@ -672,10 +672,10 @@
   function baselineSummaryReady() {
     const locality = ($("#localityInput")?.value || "").trim();
     const localityToken = ($("#localityId")?.value || "").trim();
-    if (!locality && !localityToken) {
+    if (!localityToken) {
       baselineClass.textContent = "—";
       baselineCost.textContent = "—";
-      baselineStatus.textContent = "Completează localitatea.";
+      baselineStatus.textContent = locality ? "Alege localitatea din sugestii sau de pe hartă." : "Completează localitatea.";
       baselineBar.classList.remove("is-updating");
       return false;
     }
