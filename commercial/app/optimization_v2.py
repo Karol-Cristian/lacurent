@@ -13,6 +13,7 @@ from .engine import (
     co2_emissions,
     cooling_final_energy,
     dhw_energy,
+    design_heat_load_breakdown,
     final_energy_by_carrier,
     final_energy_by_service,
     heating_system_performance,
@@ -229,18 +230,13 @@ def _fast_engine_candidate(
         if capex_lei > 0
         else None
     )
-    design_temperature = climate.get("winter_design_temperature_c")
-    design_heat_load_kw = None
-    if design_temperature is not None:
-        delta_t = max(
-            float(candidate_building.indoor_design_temperature_c)
-            - float(design_temperature),
-            0.0,
-        )
-        design_heat_load_kw = round(
-            float(transmission.htr_w_k + h_ve) * delta_t / 1000.0,
-            4,
-        )
+    design_load = design_heat_load_breakdown(
+        candidate_building,
+        transmission,
+        h_ve,
+        climate,
+    )
+    design_heat_load_kw = design_load.get("total_kw")
 
     active_families = [
         line.family
