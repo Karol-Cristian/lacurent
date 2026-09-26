@@ -143,7 +143,7 @@
       if (saved.geomAuto !== undefined && field.dataset.geomAuto !== undefined) {
         field.dataset.geomAuto = String(saved.geomAuto);
       }
-      if (saved.advancedAuto !== undefined && field.dataset.advancedAuto !== undefined) {
+      if (saved.advancedAuto !== undefined) {
         field.dataset.advancedAuto = String(saved.advancedAuto);
       }
       applied = true;
