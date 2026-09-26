@@ -93,6 +93,41 @@ client-side abort. Re-read this register and remote branch heads first.
   server execution, and verify recovery after timeout without stale UI state or
   automatic retry amplification.
 
+## 2026-09-27 — remove unused reference passes from wall scenarios
+
+- Fast-forwarded the exclusive stability branch from `0bbee2f` to the verified
+  production revision `4d6fb9a3e3f70ca13d6bba131dee594e7a24b624` before
+  changing it. The production deployment run `36268850448` had published its
+  Worker successfully but failed live verification twice with HTTP 503: first
+  at `/api/scenarios/wall-insulation/product`, then at the separate legacy
+  embed calculation route. No production traffic was generated in this work.
+- Reproduction on that exact production tree: one wall-insulation scenario
+  executed **4 complete physics-engine passes**. Both the baseline and renovated
+  calculations requested a reference-building comparison, even though the
+  versioned scenario response never reads either comparison.
+- Remediation: calculate the baseline and renovated scenario snapshots with
+  `include_reference=False`. The physical formulas, two required house
+  calculations and response contract are unchanged.
+- Independent before/after instrumentation counted **4 -> 2** complete engine
+  passes. The canonical 9,373-byte response remained bit-identical
+  (`sha256:45198f3d91f1e5f2a85c1b4b4bd327c8ccd673e54bca6235222ce6c3df53081b`).
+  A regression now requires both top-level scenario calculations to suppress
+  unused reference work.
+- Verification: renovation/product tests **17 passed**; complete commercial
+  suite **412 passed** with 31 existing Pydantic deprecation warnings;
+  `git diff --check` passed. The existing bounded local calculation load profile
+  (one Uvicorn process, 16 requests/user, 160 ms think time, 12 s timeout,
+  2% stop threshold) completed at 10/50/100 users with 0 errors. At 100 users:
+  1,600 requests, 438.63 req/s, p50 46.88 ms, p95 149.03 ms, p99 190.89 ms.
+  RSS is omitted because this environment exposed the `uv` launcher PID rather
+  than the Python server process, producing an invalid 2.02 MiB sample.
+- Limits: this halves deterministic work on the scenario endpoint implicated by
+  the first live failure, but it does not prove Cloudflare capacity and does not
+  explain or fix the second failure at `/embed/demo-store/calculate`. The fix is
+  only on the stability branch until explicitly integrated later.
+- Next: instrument the legacy HTML calculation route and remove only work its
+  rendered result does not consume; do not infer resolution from retries.
+
 ## 2026-09-24 — keep calculation timeout active through response body
 
 - Base: `0bbee2fbb9d49e58f8179bf9854d41e0a95de5a3`, isolated worktree.
