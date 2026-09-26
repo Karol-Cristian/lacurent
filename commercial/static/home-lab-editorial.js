@@ -1708,6 +1708,58 @@
     baselineSummaryTimer = window.setTimeout(refreshBaselineSummary, delay);
   }
 
+  function runTeoV4Worker({kernel, searchPoints, branchIds, mode, goals, baselineAnnualBillLei}) {
+    return new Promise((resolve, reject) => {
+      if (!("Worker" in window)) {
+        reject(new Error("Browserul nu suportă Web Worker pentru TEO V4."));
+        return;
+      }
+      const worker = new Worker("/static/teo-v4-worker.js?v=1");
+      let settled = false;
+      const finish = (fn, value) => {
+        if (settled) return;
+        settled = true;
+        worker.terminate();
+        fn(value);
+      };
+      worker.onerror = event => {
+        finish(reject, new Error(event?.message || "TEO V4 Web Worker a eșuat."));
+      };
+      worker.onmessage = event => {
+        const message = event.data || {};
+        if (message.type === "progress") {
+          const completed = Number(message.completed || 0);
+          const total = Number(message.total || 0);
+          const branchIndex = Number(message.branchIndex || 0);
+          const branchCount = Number(message.branchCount || 0);
+          stage("branches","active",`${completed} / ${total}`);
+          if (completed === total || completed % 1000 === 0) {
+            log(
+              `TEO V4 local · ${completed}/${total} evaluări · ramură ${branchIndex}/${branchCount} · ${Number(message.accepted || 0)} candidați valizi.`
+            );
+          }
+          return;
+        }
+        if (message.type === "error") {
+          finish(reject, new Error(message.message || "TEO V4 Web Worker a eșuat."));
+          return;
+        }
+        if (message.type === "done") {
+          finish(resolve, message);
+        }
+      };
+      worker.postMessage({
+        type:"run",
+        kernel,
+        searchPoints,
+        branchIds,
+        mode,
+        goals,
+        baselineAnnualBillLei,
+      });
+    });
+  }
+
   async function runAnalysis() {
     syncTechnicalForm();
     if (!validatePage("goal")) return;
@@ -1733,88 +1785,63 @@
       log(`Baseline gata: ${fmt(baselineResult.final_energy_kwh)} kWh/an · necesar ${fmt(baselineResult.design_heat_load_kw,1)} kW.`);
 
       stage("plan","active","rulează");
-      log("Generez planul structural V3: axe deterministe + acoperire multidimensională Halton; fără calcule energetice în plan.");
+      log("Generez TEO V4: mii de puncte parametrice pentru execuție locală în Web Worker; Python rămâne autoritatea pentru finaliști.");
       const planData = baseFormData();
       planData.set("_optimizer_run_id", runId);
       lastPlan = await postForm(
-        "/api/optimization/home-lab/v3/plan",
+        "/api/optimization/home-lab/v4/plan",
         planData,
-        {stageName:"plan V3", runId, retries:2}
+        {stageName:"plan TEO V4", runId, retries:2}
       );
       const searchPoints = Array.isArray(lastPlan.searchPoints) ? lastPlan.searchPoints : [];
       const branchIds = Array.isArray(lastPlan.runBranchIds) ? lastPlan.runBranchIds : [];
-      const batchSize = Math.max(1, Number(lastPlan.branchBatchSize || 4));
-      if (!branchIds.length || !searchPoints.length) {
-        throw new Error("Optimizerul V3 nu a construit ramuri/puncte de căutare eligibile.");
+      if (!branchIds.length || !searchPoints.length || !lastPlan.kernel) {
+        throw new Error("TEO V4 nu a construit kernelul sau punctele de căutare eligibile.");
       }
       stage("plan","done", `${searchPoints.length} puncte`);
-      log(`V3: ${searchPoints.length} puncte/ramură · ${lastPlan.deterministicAxisPoints || lastPlan.baseShortlistSize || 0} axe deterministe · ${lastPlan.lowDiscrepancyPoints || 0} low-discrepancy · 0 evaluări în plan · batch ${batchSize}.`);
-      log(`Metodă V3: ${lastPlan.searchMethod || "necunoscută"}.`);
+      log(`TEO V4: ${searchPoints.length} puncte/ramură · ${lastPlan.deterministicAxisPoints || 0} axe deterministe · ${lastPlan.lowDiscrepancyPoints || 0} low-discrepancy · 0 evaluări candidat pe server.`);
+      log(`Metodă: ${lastPlan.searchMethod || "teo_v4_browser_worker_mc001_kernel"} · execuție ${lastPlan.executionMode || "browser_web_worker_v4"}.`);
       const catalogStats = lastPlan.heatingCatalogStats || {};
       log(`Catalog încălzire: ${catalogStats.products ?? "?"} SKU-uri comerciale · ${catalogStats.parametric_nodes ?? "?"} noduri parametrice · ${catalogStats.performance_points ?? "?"} puncte COP/capacitate · sursă ${lastPlan.heatingCatalogSource || "?"}.`);
 
-      stage("branches","active",`0 / ${branchIds.length}`);
+      stage("branches","active","pornește Web Worker");
       const formPayload = formObject();
       formPayload._optimizer_run_id = runId;
-      const candidateRows = [];
-      const branchStats = [];
-      let branchFastEvaluations = 0;
       let backendElapsedMs = Number(lastPlan.calculationTimeMs || 0);
-
-      for (let i = 0; i < branchIds.length; i++) {
-        const branchId = branchIds[i];
-        const branchMeta = (lastPlan.branches || []).find(x => (x.branch_id || x.branchId) === branchId);
-        const label = branchMeta?.label || branchId;
-        const batchCount = Math.ceil(searchPoints.length / batchSize);
-        let branchAccepted = 0;
-        let branchEvaluated = 0;
-        let branchFeasible = 0;
-        log(`${i + 1}/${branchIds.length} · ${label}: ${batchCount} micro-batch-uri CPU-safe.`);
-
-        for (let offset = 0, batchIndex = 0; offset < searchPoints.length; offset += batchSize, batchIndex += 1) {
-          const batch = searchPoints.slice(offset, offset + batchSize);
-          const result = await postJson(
-            "/api/optimization/home-lab/v3/branch",
-            {
-              form:formPayload,
-              runId,
-              branchId,
-              batch,
-              baselineAnnualBillLei:Number(baselineResult?.annual_cost_lei || 0)
-            },
-            {stageName:`branch ${i + 1}/${branchIds.length} ${label} batch ${batchIndex + 1}/${batchCount}`, runId, retries:2}
-          );
-          const candidates = Array.isArray(result.candidates) ? result.candidates : [];
-          candidates.forEach(candidate => candidateRows.push({branchId, candidate}));
-          branchAccepted += candidates.length;
-          branchEvaluated += Number(result.fastEvaluations || 0);
-          branchFeasible += Number(result.branch?.feasible_candidates || 0);
-          branchFastEvaluations += Number(result.fastEvaluations || 0);
-          backendElapsedMs += Number(result.calculationTimeMs || 0);
-          const branchCatalogStats = result.heatingCatalogStats || {};
-          const loadedProducts = Number(branchCatalogStats.loaded_products || 0);
-          const sourceProducts = Number(branchCatalogStats.products || 0);
-          const planningNodes = Number(branchCatalogStats.parametric_nodes || 0);
-          const catalogMeta = result.heatingCatalogMode
-            ? ` · catalog ${result.heatingCatalogMode}: ${loadedProducts}/${sourceProducts} produse încărcate · ${planningNodes} noduri`
-            : "";
-          log(
-            `   batch ${batchIndex + 1}/${batchCount}: ${candidates.length} candidați · ${result.fastEvaluations || 0} evaluări · server ${Number(result.calculationTimeMs || 0).toFixed(1)} ms${catalogMeta}.`
-          );
-        }
-
-        branchStats.push({
-          branchId,
-          evaluatedCandidates:branchEvaluated,
-          acceptedCandidates:branchAccepted,
-          feasibleCandidates:branchFeasible
-        });
-        stage("branches","active",`${i + 1} / ${branchIds.length}`);
+      const goals = {
+        investment_budget_lei:Number(formPayload._investment_budget_lei || 0),
+        annual_bill_target_lei:Number(formPayload._annual_bill_target_lei || 0),
+        max_payback_years:Number(formPayload._max_payback_years || 0),
+      };
+      log(`TEO V4 local: ${searchPoints.length * branchIds.length} evaluări planificate în browser, fără request HTTP per candidat.`);
+      const localSearch = await runTeoV4Worker({
+        kernel:lastPlan.kernel,
+        searchPoints,
+        branchIds,
+        mode:lastPlan.economicMode || formPayload._optimization_mode || "auto_economic",
+        goals,
+        baselineAnnualBillLei:Number(baselineResult?.annual_cost_lei || 0),
+      });
+      const candidateRows = Array.isArray(localSearch.candidateRows)
+        ? localSearch.candidateRows
+        : [];
+      const branchStats = Array.isArray(localSearch.branchStats)
+        ? localSearch.branchStats
+        : [];
+      const branchFastEvaluations = Number(localSearch.fastEvaluations || 0);
+      const localSourceCandidateCount = Number(
+        localSearch.sourceCandidateCount || candidateRows.length
+      );
+      if (!candidateRows.length) {
+        throw new Error("TEO V4 nu a produs candidați valizi pentru verificarea canonică.");
       }
-      stage("branches","done",`${branchIds.length} / ${branchIds.length}`);
+      stage("branches","done",`${branchFastEvaluations} evaluări locale`);
+      log(
+        `TEO V4 local gata în ${Number(localSearch.calculationTimeMs || 0).toFixed(1)} ms · ${localSourceCandidateCount} candidați valizi · frontiera locală ${Number(localSearch.frontierCount || 0)} · ${candidateRows.length} candidați diverși trimiși la verificare.`
+      );
 
       stage("finalize","active","selectează");
-      log(`Construiesc frontiera globală din ${candidateRows.length} candidați fast.`);
+      log(`Construiesc shortlist-ul canonic din ${candidateRows.length} candidați TEO V4 selectați din ${localSourceCandidateCount} evaluări locale.`);
       const verificationPlan = await postJson(
         "/api/optimization/home-lab/v3/verification-plan",
         {
@@ -1874,9 +1901,9 @@
           representativeEvaluations:lastPlan.representativeEvaluations || 0,
           branchFastEvaluations,
           priorCalculationTimeMs:backendElapsedMs,
-          sourceCandidateCount:Number(verificationPlan.sourceCandidateCount || candidateRows.length),
+          sourceCandidateCount:localSourceCandidateCount,
           searchPointCount:searchPoints.length,
-          branchBatchSize:batchSize,
+          branchBatchSize:0,
           verificationFrontierCount:Number(verificationPlan.frontierCount || 0)
         },
         {stageName:"finalize V3", runId, retries:2}
