@@ -1709,10 +1709,16 @@
           <p>Sistemul finalist este dimensionat față de necesarul termic de calcul al configurației rezultate, nu față de o putere nominală aleasă arbitrar.</p>
           <div class="ed-metrics">
             ${metric("Necesar încălzire spații", heating.requiredPowerKw == null ? "—" : fmt(heating.requiredPowerKw,2) + " kW")}
-            ${metric("Capacitate disponibilă la proiect", heating.availableDesignCapacityKw == null ? "—" : fmt(heating.availableDesignCapacityKw,2) + " kW")}
+            ${metric(
+              heating.capacityVerified ? "Capacitate disponibilă la proiect" : "Capacitate la proiect",
+              heating.capacityVerified && heating.availableDesignCapacityKw != null
+                ? fmt(heating.availableDesignCapacityKw,2) + " kW"
+                : "Neverificată"
+            )}
             ${metric("Putere nominală catalog", heating.ratedPowerKw == null ? (heating.label || "—") : fmt(heating.ratedPowerKw,2) + " kW")}
           </div>
           <p><b>${escapeHtml(heating.label || "Sistem de încălzire")}</b>${heating.oversizePercent == null ? "" : ` · rezervă la punctul de proiect ${fmt(heating.oversizePercent,1)}%`}.</p>
+          ${heating.capacityVerified ? "" : '<p class="ed-hint">Curba de capacitate publicată nu acoperă punctul exact de proiect; puterea nominală poate fi folosită doar ca reper provizoriu, nu ca dovadă că echipamentul acoperă necesarul.</p>'}
           <p class="ed-hint">Necesarul de mai sus este pentru încălzirea spațiilor. Dacă același generator prepară ACM, puterea de reîncălzire a boilerului trebuie verificată separat în funcție de volumul de stocare și timpul de reîncălzire.</p>
         </section>
       `;
