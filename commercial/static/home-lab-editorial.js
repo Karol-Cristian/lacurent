@@ -1408,6 +1408,7 @@
   $("#edLocalitySuggestions").addEventListener("click", event => {
     const button = event.target.closest("[data-locality-id]");
     if (!button) return;
+    markDraftDirty();
     selectLocality(localityMap.get(String(button.dataset.localityId)));
   });
   $("#edLocationMap").addEventListener("click", event => {
@@ -1425,6 +1426,7 @@
     if (performance.now() < mapSuppressClickUntil) return;
     const marker = event.target.closest("[data-map-locality-id]");
     if (marker) {
+      markDraftDirty();
       selectLocality(localityMap.get(String(marker.dataset.mapLocalityId)));
       return;
     }
@@ -1492,6 +1494,7 @@
   $("#edMapSuggestions").addEventListener("click", event => {
     const button = event.target.closest("[data-map-locality-id]");
     if (!button) return;
+    markDraftDirty();
     selectLocality(localityMap.get(String(button.dataset.mapLocalityId)));
   });
 
