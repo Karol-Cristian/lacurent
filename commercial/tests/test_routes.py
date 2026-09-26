@@ -248,6 +248,9 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert "withTransientRetry" in js.text
     assert "isTransientHttpError" in js.text
     assert "Nu se amortizează" in js.text
+    assert "searchMeasures" in js.text
+    assert "branchChunkSize" in js.text
+    assert "Căutare aprofundată" in js.text
     assert 'showPage("done");' in js.text
     assert '$("#openReport").addEventListener("click", () => showPage("report"));' in js.text
 
