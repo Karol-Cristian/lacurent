@@ -65,14 +65,17 @@ async function expectVisible(selector) {
 
 try {
   await page.goto(baseUrl + "/home-lab-next", {waitUntil:"networkidle", timeout:30000});
-  await expectVisible("#edLocationMap svg.ed-location-map-svg");
-  await expectVisible(".ed-map-legend");
 
   const editorialPrivacyFirstUse = page.locator("[data-lacurent-first-use-consent]");
   if (await editorialPrivacyFirstUse.isVisible()) {
     await editorialPrivacyFirstUse.locator("[data-lacurent-deny-local]").click();
     await editorialPrivacyFirstUse.waitFor({state:"hidden", timeout:5000});
   }
+
+  await page.locator('[data-page="intro"] [data-next]').click();
+  await expectVisible('[data-page="house"].is-active');
+  await expectVisible("#edLocationMap svg.ed-location-map-svg");
+  await expectVisible(".ed-map-legend");
 
   const legendItems = await page.locator(".ed-map-legend-item").allInnerTexts();
   const expectedLegend = ["I−12°C","II−15°C","III−18°C","IV−21°C","V−24°C"];
