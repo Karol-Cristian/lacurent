@@ -19,6 +19,11 @@ _heating_catalog_cached_payload: dict[str, Any] | None = None
 _heating_catalog_cache_expires_at = 0.0
 _heating_catalog_retry_after = 0.0
 
+_heating_catalog_summary_lock = asyncio.Lock()
+_heating_catalog_summary_cached_payload: dict[str, Any] | None = None
+_heating_catalog_summary_cache_expires_at = 0.0
+_heating_catalog_summary_retry_after = 0.0
+
 
 HEATING_PRODUCTS_CREATE_SQL = """
 CREATE TABLE IF NOT EXISTS heating_products (
@@ -589,6 +594,130 @@ def _catalog_payload_from_rows(
         },
         "catalog_mode": "persistent_d1",
         "source": source,
+    }
+
+
+async def _read_heating_catalog_summary_d1(db: Any) -> dict[str, Any]:
+    """Read only the rows required to build optimizer branch metadata.
+
+    V3 planning must not transfer the 1000-row dense parametric grid into the
+    Worker heap. The grid is loaded later only by branch work units.
+    """
+
+    products_result = await db.prepare(
+        """
+        SELECT id, external_id, technology_id, technology_label, label,
+               system_type, generator_type, carrier, cost_profile,
+               rated_power_kw, efficiency, scop, equipment_price_lei,
+               installation_allowance_lei, source_kind, source_url, confidence,
+               requires_hydronic, requires_existing_gas,
+               requires_existing_high_power_electric,
+               requires_existing_biomass_infrastructure, capacity_basis, note,
+               catalog_version, observed_on
+        FROM heating_products
+        WHERE active = 1
+        ORDER BY technology_id, rated_power_kw, equipment_price_lei, id
+        """
+    ).run()
+    stats_result = await db.prepare(
+        """
+        SELECT
+          (SELECT COUNT(*) FROM heating_products WHERE active = 1) AS products,
+          (SELECT COUNT(*) FROM heating_parametric_nodes) AS parametric_nodes,
+          (
+            SELECT COUNT(*)
+            FROM heat_pump_performance_points AS pp
+            INNER JOIN heating_products AS p ON p.id = pp.product_id
+            WHERE p.active = 1
+          ) AS performance_points,
+          (
+            SELECT COUNT(*)
+            FROM heat_pump_seasonal_performance AS sp
+            INNER JOIN heating_products AS p ON p.id = sp.product_id
+            WHERE p.active = 1
+          ) AS seasonal_points
+        """
+    ).run()
+
+    payload = _catalog_payload_from_rows(
+        _d1_rows(products_result),
+        [],
+        [],
+        [],
+        source="d1",
+    )
+    stats_rows = _d1_rows(stats_result)
+    if stats_rows:
+        row = stats_rows[0]
+        payload["catalog_stats"] = {
+            "products": int(row.get("products") or 0),
+            "parametric_nodes": int(row.get("parametric_nodes") or 0),
+            "performance_points": int(row.get("performance_points") or 0),
+            "seasonal_points": int(row.get("seasonal_points") or 0),
+        }
+    payload["catalog_mode"] = "persistent_d1_summary"
+    return payload
+
+
+async def cached_heating_catalog_summary_from_d1(
+    db: Any,
+) -> dict[str, Any] | None:
+    global _heating_catalog_summary_cached_payload
+    global _heating_catalog_summary_cache_expires_at
+    global _heating_catalog_summary_retry_after
+
+    now = time.monotonic()
+    if (
+        _heating_catalog_summary_cached_payload is not None
+        and now < _heating_catalog_summary_cache_expires_at
+    ):
+        return _heating_catalog_summary_cached_payload
+    if now < _heating_catalog_summary_retry_after:
+        return None
+
+    async with _heating_catalog_summary_lock:
+        now = time.monotonic()
+        if (
+            _heating_catalog_summary_cached_payload is not None
+            and now < _heating_catalog_summary_cache_expires_at
+        ):
+            return _heating_catalog_summary_cached_payload
+        if now < _heating_catalog_summary_retry_after:
+            return None
+        try:
+            payload = await _read_heating_catalog_summary_d1(db)
+            if not payload.get("options"):
+                raise ValueError("D1 heating product summary is empty.")
+        except Exception:
+            _heating_catalog_summary_retry_after = (
+                time.monotonic() + HEATING_CATALOG_RETRY_SECONDS
+            )
+            return None
+
+        _heating_catalog_summary_cached_payload = payload
+        _heating_catalog_summary_cache_expires_at = (
+            time.monotonic() + HEATING_CATALOG_CACHE_SECONDS
+        )
+        _heating_catalog_summary_retry_after = 0.0
+        return payload
+
+
+def seed_heating_catalog_summary_payload() -> dict[str, Any]:
+    seed = heating_planning_catalog()
+    products = list(seed.get("options") or [])
+    performance = list(seed.get("heat_pump_performance_points") or [])
+    seasonal = list(seed.get("heat_pump_seasonal_performance") or [])
+    return {
+        **seed,
+        "parametric_heating_nodes": [],
+        "catalog_stats": {
+            "products": len(products),
+            "parametric_nodes": HEATING_PARAMETRIC_NODE_TOTAL,
+            "performance_points": len(performance),
+            "seasonal_points": len(seasonal),
+        },
+        "catalog_mode": "seed_summary",
+        "source": "seed_summary",
     }
 
 
