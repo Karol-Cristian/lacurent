@@ -203,6 +203,37 @@ def test_worker_safe_v2_bounds_representative_search_and_shortlist() -> None:
     assert plan.search_method == "physics_informed_marginal_pairwise_worker_safe_v2"
 
 
+def test_worker_safe_branch_reuses_supplied_baseline_bill_without_full_calculate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    request = OptimizationRequestV1(
+        baseline=demo_building(),
+        mode=OptimizationMode.auto_economic,
+    )
+
+    def _unexpected_baseline_calculation(*args, **kwargs):
+        raise AssertionError("full baseline calculate must not run in V3 fast branch")
+
+    monkeypatch.setattr(
+        "commercial.app.optimization_v2.cached_baseline_evaluation",
+        _unexpected_baseline_calculation,
+    )
+
+    result = evaluate_worker_safe_branch_v2(
+        request,
+        branch_id="keep-current-heating",
+        shortlist=[ParametricMeasuresV1()],
+        bounds=OptimizationSearchBoundsV1(),
+        catalog=_catalog(),
+        heating_catalog={"options": [], "parametric_heating_nodes": []},
+        baseline_annual_bill_lei=4321.0,
+    )
+
+    assert result.fast_evaluations == 1
+    assert len(result.candidates) == 1
+    assert result.candidates[0].baseline_annual_bill_lei == pytest.approx(4321.0)
+
+
 def test_worker_safe_v2_evaluates_only_shared_shortlist_per_branch() -> None:
     request = OptimizationRequestV1(
         baseline=demo_building(),
