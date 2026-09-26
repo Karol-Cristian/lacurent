@@ -14,7 +14,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from .engine import calculate, demo_building
+from .engine import calculate, demo_building, design_heat_load_breakdown
 from .error_page import render_error_html
 from .elivio import router as elivio_router
 from .home_lab_images import HOME_LAB_IMAGE_BYTES
@@ -887,6 +887,7 @@ def _technical_values(form: dict[str, Any]) -> dict[str, Any]:
         recovery = parse_optional_float(form.get("heat_recovery_efficiency")) or 0
     else:
         ach, recovery = VENTILATION_PROFILES.get(str(form.get("ventilation_type") or "unknown"), VENTILATION_PROFILES["unknown"])
+    infiltration_ach = parse_optional_float(form.get("infiltration_air_changes_per_hour")) or 0
 
     heating_override = form.get("expert_heating_override") == "on" or not simple
     if heating_override:
@@ -943,6 +944,7 @@ def _technical_values(form: dict[str, Any]) -> dict[str, Any]:
         **geometry,
         **u_values,
         "air_changes_per_hour": ach,
+        "infiltration_air_changes_per_hour": infiltration_ach,
         "heat_recovery_efficiency": recovery,
         "heating": heating,
     }
@@ -1184,6 +1186,7 @@ def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
         thermal_bridges=thermal_bridges,
         ventilation={
             "air_changes_per_hour": technical.get("air_changes_per_hour"),
+            "infiltration_air_changes_per_hour": technical.get("infiltration_air_changes_per_hour") or 0,
             "heat_recovery_efficiency": technical.get("heat_recovery_efficiency") or 0,
         },
         heating=heating,
@@ -1277,34 +1280,14 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
     climate = result.climate or {}
     selected = climate.get("selected_locality", {})
     design_temperature = climate.get("winter_design_temperature_c")
-    delta_t = (
-        max(float(result.input.indoor_design_temperature_c) - float(design_temperature), 0.0)
-        if design_temperature is not None
-        else None
-    )
     annual_outdoor_temperature_c = float(result.annual_outdoor_temperature_c)
-
-    design_heat_load_kw = None
-    if delta_t is not None:
-        transmission = result.transmission_components
-        outside_and_buffer_w_k = (
-            float(transmission.hd_w_k)
-            + float(transmission.hu_w_k)
-            + float(transmission.ha_w_k)
-            + float(result.h_ve_w_k)
-        )
-        ground_delta_t = (
-            max(
-                float(result.input.indoor_design_temperature_c) - annual_outdoor_temperature_c,
-                0.0,
-            )
-            if annual_outdoor_temperature_c is not None
-            else delta_t
-        )
-        design_heat_load_kw = (
-            outside_and_buffer_w_k * delta_t
-            + float(transmission.hg_w_k) * ground_delta_t
-        ) / 1000.0
+    design_load = design_heat_load_breakdown(
+        result.input,
+        result.transmission_components,
+        result.h_ve_w_k,
+        climate,
+    )
+    design_heat_load_kw = design_load.get("total_kw")
 
     loss_rows = [
         {
@@ -1467,6 +1450,7 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
         "annual_cost_lei": float(cost["priced_total_lei"]) if cost.get("complete") else None,
         "average_monthly_cost_lei": float(cost["average_monthly_priced_lei"]) if cost.get("complete") else None,
         "design_heat_load_kw": design_heat_load_kw,
+        "design_heat_load_breakdown": design_load,
         "locality": selected.get("display_name") or result.input.locality,
         "climate_station": climate.get("station") or "",
         "climate_zone": climate_zone or None,
