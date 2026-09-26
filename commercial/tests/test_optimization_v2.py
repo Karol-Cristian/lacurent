@@ -196,10 +196,11 @@ def test_worker_safe_v2_bounds_representative_search_and_shortlist() -> None:
 
     assert plan.shortlist
     assert len(plan.shortlist) <= 6
-    # 15 symmetric axis probes + at most 14 combined marginal-curve steps.
-    assert plan.representative_evaluations <= 29
+    # 15 symmetric axis probes + at most 14 marginal-ladder steps
+    # + at most 6 bounded pairwise interaction probes.
+    assert plan.representative_evaluations <= 35
     assert plan.representative_pool_size >= len(plan.shortlist)
-    assert plan.search_method == "physics_informed_marginal_curve_worker_safe_v2"
+    assert plan.search_method == "physics_informed_marginal_pairwise_worker_safe_v2"
 
 
 def test_worker_safe_v2_evaluates_only_shared_shortlist_per_branch() -> None:
