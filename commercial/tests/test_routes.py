@@ -316,10 +316,17 @@ def test_home_lab_local_persistence_and_analytics_are_consent_gated() -> None:
     assert "if (!autosaveAllowed()) return false;" in autosave_js.text
 
 
-def test_company_home_redirects_to_home_lab() -> None:
-    response = client.get("/", follow_redirects=False)
-    assert response.status_code == 308
-    assert response.headers["location"] == "/home-lab-next"
+def test_company_home_is_commercial_landing() -> None:
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "data-lacurent-landing" in response.text
+    assert "Nu promitem." in response.text
+    assert "Calculăm." in response.text
+    assert "clădiri noi și existente" in response.text
+    assert "MC001" in response.text
+    assert "Energia ta și bugetul tău merită luate în serios." in response.text
+    assert 'href="/home-lab-next"' in response.text
+    assert "/static/lacurent-landing.css" in response.text
 
 
 def test_separated_sites_are_not_served_by_lacurent() -> None:
