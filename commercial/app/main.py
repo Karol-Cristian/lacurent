@@ -2882,7 +2882,7 @@ async def home_lab_optimization_v2_finalize_api(request: Request) -> JSONRespons
         payload["optimization"].update(
             {
                 "optimizerVersion": "v2-worker-safe",
-                "searchMethod": "physics_informed_marginal_curve_worker_safe_v2",
+                "searchMethod": "physics_informed_marginal_pairwise_worker_safe_v2",
                 "executionMode": "worker_safe_staged_v2",
                 "fastEvaluations": int(total_fast),
                 "representativeEvaluations": int(
