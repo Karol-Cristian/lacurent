@@ -982,6 +982,7 @@ def evaluate_worker_safe_branch_v2(
         if baseline_bill < 0:
             raise ValueError("Baseline annual bill must be non-negative.")
         baseline_result = SimpleNamespace(
+            input=request.baseline,
             envelope_geometry=envelope_geometry(request.baseline),
         )
         baseline_cost = {
