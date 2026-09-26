@@ -106,6 +106,10 @@ jobs:
           node --check commercial/static/home-lab-3d.js
           node --test commercial/tests/intake.test.cjs
           python -m compileall -q commercial
+          python -m py_compile scripts/build-heating-catalog-d1-import.py
+          python scripts/build-heating-catalog-d1-import.py \
+            commercial/data/heating-technology-planning.seed.json \
+            /tmp/heating-catalog-import.sql
           python -m pytest commercial/tests -q
 
       - name: Install uv
@@ -442,6 +446,31 @@ jobs:
               raise AssertionError("Worker-safe V2 finalize returned the wrong optimizer version.")
           if int(optimizer_meta.get("fullEngineVerifications") or 0) > 3:
               raise AssertionError("Worker-safe V2 exceeded canonical verification bound.")
+          if optimizer_meta.get("economicStatus") not in {
+              "positive_saving",
+              "positive_saving_zero_capex",
+              "no_positive_intervention",
+              "non_positive_saving",
+              "incomplete_economic_result",
+          }:
+              raise AssertionError(
+                  f"Worker-safe V2 returned invalid economicStatus: {optimizer_meta.get('economicStatus')!r}"
+              )
+          if optimizer_meta.get("paybackStatus") not in {
+              "finite",
+              "immediate",
+              "not_applicable_no_investment",
+              "never_at_current_prices",
+              "unavailable",
+          }:
+              raise AssertionError(
+                  f"Worker-safe V2 returned invalid paybackStatus: {optimizer_meta.get('paybackStatus')!r}"
+              )
+          horizons = optimizer_meta.get("simpleNetBenefitLeiByHorizon") or {}
+          if set(horizons) != {"5", "10", "15", "20", "25"}:
+              raise AssertionError(
+                  f"Worker-safe V2 economic horizons incomplete: {sorted(horizons)}"
+              )
           if float((optimizer_final.get("scenario") or {}).get("final_energy_kwh", 0)) <= 0:
               raise AssertionError("Worker-safe V2 did not return a valid final scenario.")
 
@@ -1010,9 +1039,9 @@ jobs:
                   f"{heating_catalog.get('source')!r}"
               )
           products = heating_catalog.get("options") or []
-          if len(products) != 40:
+          if len(products) < 40:
               raise AssertionError(
-                  f"Production D1 heating catalog expected 40 products, got {len(products)}"
+                  f"Production D1 heating catalog must contain at least the 40-product verified baseline, got {len(products)}"
               )
           category_counts = {}
           for product in products:
@@ -1022,16 +1051,21 @@ jobs:
                   raise AssertionError(
                       f"Heating product {product.get('id')!r} lost its canonical external_id."
                   )
-          expected_category_counts = {
+          minimum_category_counts = {
               "heat-pump-air-water": 8,
               "heat-pump-air-air": 9,
               "condensing-gas": 8,
               "electric-boiler": 8,
               "pellet-boiler": 7,
           }
-          if category_counts != expected_category_counts:
+          missing = {
+              key: minimum
+              for key, minimum in minimum_category_counts.items()
+              if category_counts.get(key, 0) < minimum
+          }
+          if missing:
               raise AssertionError(
-                  f"Production D1 heating category counts mismatch: {category_counts}"
+                  f"Production D1 heating category baseline regressed: {category_counts}; missing minimums {missing}"
               )
           performance_points = heating_catalog.get("heat_pump_performance_points") or []
           if len(performance_points) < 50:
