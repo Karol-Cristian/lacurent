@@ -130,7 +130,7 @@ def test_dhw_expert_override_preserves_explicit_carrier_and_efficiency() -> None
 
 
 def test_home_lab_exposes_explicit_dhw_source_selection() -> None:
-    page = client.get("/home-lab-next")
+    page = client.get("/home-lab-classic")
     assert page.status_code == 200
     assert 'id="hlnHomeDhwSystem"' in page.text
     assert 'value="same_as_heating">Același sistem ca încălzirea' in page.text
@@ -148,6 +148,11 @@ def test_home_lab_exposes_explicit_dhw_source_selection() -> None:
 
 
 def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report() -> None:
+    primary = client.get("/home-lab-next")
+    assert primary.status_code == 200
+    assert 'data-editorial-lab' in primary.text
+    assert "Home Lab Editorial — experiment" in primary.text
+
     page = client.get("/home-lab-editorial")
     assert page.status_code == 200
     assert "Home Lab Editorial — experiment" in page.text
@@ -254,7 +259,7 @@ def test_commercial_pages_expose_legal_links_and_privacy_controls_where_needed()
 
 
 def test_home_lab_local_persistence_and_analytics_are_consent_gated() -> None:
-    response = client.get("/home-lab-next")
+    response = client.get("/home-lab-classic")
     assert response.status_code == 200
     assert 'data-lacurent-first-use-consent' in response.text
     assert 'href="/privacy"' in response.text
@@ -422,7 +427,7 @@ def test_energy_calculator_alias_goes_straight_to_home_lab() -> None:
     assert response.status_code == 308
     assert response.headers["location"] == "/home-lab-next"
 
-    home_lab = client.get("/home-lab-next")
+    home_lab = client.get("/home-lab-classic")
     assert home_lab.status_code == 200
     assert 'data-home-lab-next' in home_lab.text
     assert 'data-hln-screen="home"' in home_lab.text
@@ -614,7 +619,7 @@ def test_invalid_roof_vs_walls_fact_is_retired() -> None:
 
 
 def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
-    response = client.get("/home-lab-next")
+    response = client.get("/home-lab-classic")
     assert response.status_code == 200
     assert 'id="hlnReportHeatingRequiredPower"' in response.text
     assert 'id="hlnReportHeatingSelectedPower"' in response.text
@@ -643,7 +648,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
 
 
 def test_home_lab_persistent_summary_stays_bound_to_current_result_and_status() -> None:
-    response = client.get("/home-lab-next")
+    response = client.get("/home-lab-classic")
     assert response.status_code == 200
     assert 'class="hln-persistent-stack"' in response.text
     assert 'class="hln-live-summary"' in response.text
@@ -716,7 +721,7 @@ def test_home_lab_persistent_summary_stays_bound_to_current_result_and_status() 
 
 
 def test_home_lab_energy_strip_labels_references_and_sen_source() -> None:
-    response = client.get("/home-lab-next")
+    response = client.get("/home-lab-classic")
     assert response.status_code == 200
     assert 'class="hln-energy-strip"' in response.text
     assert "Prețuri de referință, nu cotații live." in response.text
@@ -1501,7 +1506,7 @@ def test_home_lab_next_live_calculation_avoids_startup_request_storms_and_hangs(
 
 
 def test_home_lab_next_roi_uses_catalog_without_homeowner_price_form() -> None:
-    response = client.get("/home-lab-next")
+    response = client.get("/home-lab-classic")
     assert response.status_code == 200
     assert 'id="hlnProjectMode"' in response.text
     assert 'value="existing_standard"' in response.text
@@ -1813,7 +1818,7 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert 'scheduleCalculate("home", 280)' in response.text
     assert 'quickEditRange.addEventListener("pointerup"' not in response.text
     assert 'quickEditRange.addEventListener("touchend"' not in response.text
-    assert 'data-hln-quick-edit-commit' in client.get("/home-lab-next").text
+    assert 'data-hln-quick-edit-commit' in client.get("/home-lab-classic").text
     assert '$("[data-hln-quick-edit-commit]").addEventListener("click", commitQuickMeasureEditor);' in response.text
     assert "scenarioOverrides" in response.text
     assert "pvEnabled" in response.text
@@ -1899,7 +1904,7 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
 
 
 def test_home_lab_envelope_editor_exposes_structure_and_material_inputs() -> None:
-    response = client.get("/home-lab-next")
+    response = client.get("/home-lab-classic")
     assert response.status_code == 200
     html = response.text
     assert 'id="hlnHomeWallStructure"' in html
@@ -2066,7 +2071,7 @@ def test_home_lab_mobile_house_first_controls_keep_context_visible() -> None:
 
 
 def test_home_lab_issue_359_adaptive_intro_contract() -> None:
-    response = client.get("/home-lab-next")
+    response = client.get("/home-lab-classic")
     assert response.status_code == 200
     assert response.text.count('class="hln-screen-intro-copy"') == 2
     assert "/static/home-lab-next.css?v=next361-cop-fuel" in response.text
@@ -2095,7 +2100,7 @@ def test_home_lab_issue_359_adaptive_intro_contract() -> None:
 
 
 def test_home_lab_mobile_declutter_contract() -> None:
-    response = client.get("/home-lab-next")
+    response = client.get("/home-lab-classic")
     assert response.status_code == 200
     assert 'class="hln-copy-mobile"' in response.text
     assert "Alege ce vrei să îmbunătățești." in response.text
@@ -2119,7 +2124,7 @@ def test_home_lab_mobile_declutter_contract() -> None:
 
 
 def test_home_lab_gameified_controls_are_separate_from_technical_mode() -> None:
-    response = client.get("/home-lab-next")
+    response = client.get("/home-lab-classic")
     assert response.status_code == 200
     assert 'data-hln-technical-open' in response.text
     assert 'data-hln-technical-nav' in response.text
@@ -2413,7 +2418,7 @@ def test_embed_integration_documents_mobile_focus_opt_out() -> None:
 
 
 def test_normal_calculator_does_not_get_embed_frame_policy() -> None:
-    response = client.get("/home-lab-next")
+    response = client.get("/home-lab-classic")
     assert response.status_code == 200
     assert "content-security-policy" not in response.headers
 
@@ -2661,7 +2666,7 @@ def test_home_lab_report_3d_stage_is_contained_by_positioned_wrapper() -> None:
 
 
 def test_home_lab_report_exposes_heating_branch_traceability() -> None:
-    response = client.get("/home-lab-next")
+    response = client.get("/home-lab-classic")
     assert response.status_code == 200
     assert 'id="hlnReportHeatingBranches"' in response.text
 
@@ -2685,7 +2690,7 @@ def test_heating_branch_report_uses_explicit_verdict_labels() -> None:
 
 
 def test_home_lab_next_uses_transient_retry_asset_version() -> None:
-    response = client.get("/home-lab-next")
+    response = client.get("/home-lab-classic")
     assert response.status_code == 200
     assert "/static/home-lab-next.js?v=next72-heating-power" in response.text
 
