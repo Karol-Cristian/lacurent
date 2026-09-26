@@ -219,7 +219,7 @@ jobs:
           checks = {
               "/": 'data-page="testing-home"',
               "/software-testing": 'data-page="software-testing"',
-              "/instalatii": "data-home-lab-next",
+              "/instalatii": "data-editorial-lab",
               "/instalatii/calculator/legacy": "romaniaLocationMap",
               "/embed": "LaCurent Embed",
               "/embed-host-demo": "SITE DEMO PARTENER",
@@ -336,8 +336,8 @@ jobs:
           assert 'data-page="software-testing"' not in home_html
           assert 'data-page="testing-home"' not in sales_html
           energy_html = get("/instalatii")
-          assert "data-home-lab-next" in energy_html
-          assert "Casa este interfața." in energy_html
+          assert "data-editorial-lab" in energy_html
+          assert "Spune-ne cum este casa." in energy_html
           for marker in ('id="quick-check"', 'id="brief-preview"', 'id="copy-brief"', 'id="open-email"', 'href="#quick-check"'):
               assert marker in sales_html, f"Missing sales-flow marker: {marker}"
 
@@ -737,7 +737,7 @@ jobs:
 
           checks = {
               "/software-testing": 'data-page="software-testing"',
-              "/instalatii": "data-home-lab-next",
+              "/instalatii": "data-editorial-lab",
               "/instalatii/calculator/legacy": "romaniaLocationMap",
               "/embed": "LaCurent Embed",
               "/embed-host-demo": "SITE DEMO PARTENER",
@@ -960,8 +960,8 @@ jobs:
           assert 'data-page="testing-home"' not in sales_html
           energy_status, _, energy_html = open_url(apex + "/instalatii")
           assert energy_status == 200
-          assert "data-home-lab-next" in energy_html
-          assert "Casa este interfața." in energy_html
+          assert "data-editorial-lab" in energy_html
+          assert "Spune-ne cum este casa." in energy_html
           for marker in ('id="quick-check"', 'id="brief-preview"', 'id="copy-brief"', 'id="open-email"', 'href="#quick-check"'):
               assert marker in sales_html, f"Missing sales-flow marker: {marker}"
 
