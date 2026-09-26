@@ -2321,6 +2321,7 @@ def _home_lab_optimizer_success_payload(
     pareto_scope: str = "all_candidates",
     raw_selected: CandidateEvaluationV1 | None = None,
     technical_heating_alternatives: list[dict[str, Any]] | None = None,
+    heating_catalog: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     selected = selection.selected
     if selected is None or selected.resulting_configuration is None:
@@ -2422,7 +2423,7 @@ def _home_lab_optimizer_success_payload(
                 "technologyId": next(
                     (
                         product.technology_id
-                        for product in heating_planning_options()
+                        for product in heating_planning_options(heating_catalog)
                         if product.id == line.product_id
                     ),
                     None,
@@ -2441,7 +2442,7 @@ def _home_lab_optimizer_success_payload(
         matched_product = next(
             (
                 product
-                for product in heating_planning_options()
+                for product in heating_planning_options(heating_catalog)
                 if product.id == selected_heating["optionId"]
             ),
             None,
@@ -3059,6 +3060,7 @@ async def home_lab_optimization_v2_api(request: Request) -> JSONResponse:
             pareto_scope="v2_verified_finalists_then_commercial",
             raw_selected=raw_selected,
             technical_heating_alternatives=technical_heating_alternatives,
+            heating_catalog=heating_catalog,
         )
         payload["optimization"].update(
             {
@@ -3591,6 +3593,7 @@ async def home_lab_optimization_finalize_api(request: Request) -> JSONResponse:
             pareto_scope="raw_all_then_bounded_commercial_recheck",
             raw_selected=raw_selected,
             technical_heating_alternatives=technical_heating_alternatives,
+            heating_catalog=heating_catalog,
         )
         return JSONResponse(payload)
     except Exception as exc:
