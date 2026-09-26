@@ -57,11 +57,15 @@ def test_editorial_map_supports_zoom_pan_and_progressive_localities() -> None:
         'addEventListener("dblclick"',
         "design_temperature_c",
         "ed-map-legend",
+        "offsetX = (width - projectedWidth) / 2",
+        "offsetY = (height - projectedHeight) / 2",
+        "mapGeometryOuterOutlinePath",
+        'data-selected-zone="',
     ):
         assert token in script
 
 
 def test_editorial_template_busts_map_asset_cache() -> None:
     template = (TEMPLATES / "home_lab_editorial.html").read_text(encoding="utf-8")
-    assert "/static/home-lab-editorial.css?v=5" in template
-    assert "/static/home-lab-editorial.js?v=5" in template
+    assert "/static/home-lab-editorial.css?v=6" in template
+    assert "/static/home-lab-editorial.js?v=6" in template
