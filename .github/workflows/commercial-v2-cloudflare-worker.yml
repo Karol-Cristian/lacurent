@@ -8,6 +8,7 @@ on:
     paths:
       - ".github/workflows/commercial-v2-cloudflare-worker.yml"
       - "commercial/**"
+      - "scripts/build-heating-catalog-d1-import.py"
       - "scripts/prepare-commercial-cloudflare-worker.mjs"
 
 # Production deploys must finish in queue order. Without a shared concurrency

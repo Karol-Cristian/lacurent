@@ -18,3 +18,10 @@ jobs:"""
 
     assert expected_gate in workflow
     assert "cancel-in-progress: true" not in workflow
+
+
+def test_production_deploy_trigger_covers_executed_catalog_builder() -> None:
+    workflow = PRODUCTION_WORKFLOW.read_text(encoding="utf-8")
+    script = "scripts/build-heating-catalog-d1-import.py"
+
+    assert f'- "{script}"' in workflow
