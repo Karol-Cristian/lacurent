@@ -680,7 +680,7 @@
       const label = marker.showLabel
         ? `<text x="${textX.toFixed(2)}" y="${textY.toFixed(2)}" style="font-size:${fontSize.toFixed(2)}px;stroke-width:${textStroke.toFixed(2)}px">${escapeHtml(marker.item.name)}</text>`
         : "";
-      return `<g class="ed-map-locality tier-${marker.tier}${selectedMarker ? " is-selected" : ""}" data-map-locality-id="${escapeHtml(marker.item.id)}" transform="translate(${marker.x.toFixed(1)} ${marker.y.toFixed(1)})"><circle r="${radius.toFixed(2)}"></circle>${label}</g>`;
+      return `<g class="ed-map-locality tier-${marker.tier}${selectedMarker ? " is-selected" : ""}" data-map-locality-id="${escapeHtml(marker.item.id)}" data-climate-zone="${escapeHtml(marker.item.climateZone || "")}" transform="translate(${marker.x.toFixed(1)} ${marker.y.toFixed(1)})"><circle r="${radius.toFixed(2)}"></circle>${label}</g>`;
     }).join("");
     const legend = climateZoneLegendEntries().map(entry => {
       const temperature = Number.isFinite(entry.temperature)
