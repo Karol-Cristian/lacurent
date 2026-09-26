@@ -39,12 +39,15 @@ from .optimization import (
     select_optimization_candidate,
 )
 from .optimization_v2 import (
+    V2_WORKER_SEARCH_MEASURE_LIMIT,
+    V2_WORKER_SHORTLIST_LIMIT,
     V2_WORKER_VERIFICATION_LIMIT,
     build_worker_safe_plan_v2,
     evaluate_worker_safe_branch_v2,
     run_physics_informed_optimization,
     select_optimization_candidate_v2,
     verify_worker_safe_finalists_v2,
+    worker_search_measures_v2,
 )
 from .commercialization import (
     WallCommercializationRequestV1,
@@ -2616,16 +2619,27 @@ async def home_lab_optimization_v2_plan_api(request: Request) -> JSONResponse:
             for item in plan.branches
             if item.eligible and not item.economic_eligible
         ]
+        search_measures = worker_search_measures_v2(
+            plan.shortlist,
+            OptimizationSearchBoundsV1(),
+            limit=V2_WORKER_SEARCH_MEASURE_LIMIT,
+        )
         return JSONResponse(
             {
                 "optimizerVersion": "v2-worker-safe",
                 "economicMode": mode.value,
                 "label": _home_lab_optimizer_label(mode, form),
-                "searchMethod": plan.search_method,
+                "searchMethod": plan.search_method + "+halton_shards",
                 "shortlist": [
                     model_to_dict(item)
                     for item in plan.shortlist
                 ],
+                "searchMeasures": [
+                    model_to_dict(item)
+                    for item in search_measures
+                ],
+                "searchMeasureCount": len(search_measures),
+                "branchChunkSize": int(V2_WORKER_SHORTLIST_LIMIT),
                 "branches": [
                     model_to_dict(item)
                     for item in plan.branches
@@ -2752,7 +2766,28 @@ async def home_lab_optimization_v2_finalize_api(request: Request) -> JSONRespons
             if not isinstance(item, dict):
                 continue
             branch = HeatingBranchSummaryV1(**(item.get("branch") or {}))
-            branch_summaries_by_id[branch.branch_id] = branch
+            existing_branch = branch_summaries_by_id.get(branch.branch_id)
+            if existing_branch is None:
+                branch_summaries_by_id[branch.branch_id] = branch
+            else:
+                merged = model_to_dict(existing_branch)
+                merged["evaluated_candidates"] = (
+                    int(existing_branch.evaluated_candidates)
+                    + int(branch.evaluated_candidates)
+                )
+                merged["accepted_candidates"] = (
+                    int(existing_branch.accepted_candidates)
+                    + int(branch.accepted_candidates)
+                )
+                merged["rejected_for_capacity"] = (
+                    int(existing_branch.rejected_for_capacity)
+                    + int(branch.rejected_for_capacity)
+                )
+                merged["feasible_candidates"] = (
+                    int(existing_branch.feasible_candidates)
+                    + int(branch.feasible_candidates)
+                )
+                branch_summaries_by_id[branch.branch_id] = HeatingBranchSummaryV1(**merged)
             branch_evals = int(item.get("fastEvaluations") or 0)
             branch_fast_evaluations += branch_evals
             if branch.branch_id != "keep-current-heating":
