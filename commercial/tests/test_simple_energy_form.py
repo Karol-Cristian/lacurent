@@ -127,7 +127,7 @@ def test_retired_installations_offer_no_longer_serves_a_separate_landing() -> No
     calculator = client.get("/home-lab-next")
     assert calculator.status_code == 200
     assert "Home Lab" in calculator.text
-    assert 'data-home-lab-next' in calculator.text
+    assert 'data-editorial-lab' in calculator.text
 
 
 def test_ui_heating_profiles_use_canonical_methodology_defaults() -> None:
