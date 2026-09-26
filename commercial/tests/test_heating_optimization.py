@@ -73,6 +73,32 @@ def test_heating_technologies_use_dense_grid_without_creating_fake_products() ->
     assert len(catalog["options"]) < len(catalog["parametric_heating_nodes"])
 
 
+def test_heating_technology_branch_filter_materializes_only_requested_dense_nodes() -> None:
+    catalog = seed_heating_catalog_payload()
+    target = "heat-pump-air-air"
+
+    filtered = heating_technologies(
+        catalog,
+        technology_id=target,
+    )
+    expected_node_count = sum(
+        1
+        for item in catalog["parametric_heating_nodes"]
+        if item["technology_id"] == target
+    )
+
+    assert [item.id for item in filtered] == [target]
+    assert len(filtered[0].parametric_nodes) == expected_node_count
+    assert expected_node_count < len(catalog["parametric_heating_nodes"])
+
+    lightweight = heating_technologies(
+        catalog,
+        include_parametric_nodes=False,
+    )
+    assert lightweight
+    assert all(not item.parametric_nodes for item in lightweight)
+
+
 def test_heating_catalog_groups_products_into_technology_branches() -> None:
     options = heating_planning_options()
     technologies = heating_technologies()
