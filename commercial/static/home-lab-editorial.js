@@ -40,6 +40,7 @@
   const WALL_SURFACE_RESISTANCE_M2K_W = 0.17;
 
   let current = "intro";
+  let furthestWizardIndex = -1;
   let baselineResult = null;
   let optimizationResult = null;
   let lastPlan = null;
@@ -280,13 +281,39 @@
       .trim();
   }
 
+  function renderProgressHistory() {
+    const currentIndex = wizardOrder.indexOf(current);
+    document.querySelectorAll("[data-progress-step]").forEach(button => {
+      const index = wizardOrder.indexOf(button.dataset.progressStep);
+      const reached = index >= 0 && index <= furthestWizardIndex;
+      button.disabled = !reached;
+      button.classList.toggle("is-reached", reached);
+      button.classList.toggle("is-current", index === currentIndex);
+      button.setAttribute("aria-current", index === currentIndex ? "step" : "false");
+    });
+  }
+
   function showPage(name) {
     current = name;
+    const wizardIndex = wizardOrder.indexOf(name);
+    if (wizardIndex >= 0) furthestWizardIndex = Math.max(furthestWizardIndex, wizardIndex);
     pages.forEach(page => page.classList.toggle("is-active", page.dataset.page === name));
     stepNumber.textContent = stepNumbers[name] || "—";
     stepName.textContent = stepNames[name] || name;
+    renderProgressHistory();
     window.scrollTo({top:0, behavior:"instant"});
   }
+
+  document.querySelectorAll("[data-progress-step]").forEach(button => {
+    button.addEventListener("click", () => {
+      const target = button.dataset.progressStep;
+      const index = wizardOrder.indexOf(target);
+      if (index < 0 || index > furthestWizardIndex) return;
+      syncTechnicalForm();
+      scheduleEditorialDraftSave(0);
+      showPage(target);
+    });
+  });
 
   function validatePage(name) {
     const page = pages.find(p => p.dataset.page === name);
