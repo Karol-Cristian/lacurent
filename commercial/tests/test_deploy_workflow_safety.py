@@ -18,3 +18,10 @@ def test_production_deploys_are_serialized_in_fifo_queue() -> None:
     concurrency_index = workflow.index("concurrency:")
     jobs_index = workflow.index("jobs:")
     assert concurrency_index < jobs_index
+
+
+def test_production_deploy_trigger_covers_executed_catalog_builder() -> None:
+    workflow = PRODUCTION_WORKFLOW.read_text(encoding="utf-8")
+    script = "scripts/build-heating-catalog-d1-import.py"
+
+    assert f'- "{script}"' in workflow
