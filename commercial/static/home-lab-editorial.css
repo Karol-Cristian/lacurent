@@ -705,3 +705,20 @@ button{cursor:pointer}
     border-radius:2px;
   }
 }
+
+
+/* Editorial v6: centered map geometry + correct selected-zone outer contour */
+.ed-map-zone.is-selected{
+  stroke:rgba(255,255,255,.92);
+  stroke-width:1.05;
+  filter:saturate(1.08) brightness(.985);
+}
+.ed-map-zone-outline{
+  fill:none;
+  stroke:#60778e;
+  stroke-width:2;
+  stroke-linejoin:round;
+  stroke-linecap:round;
+  vector-effect:non-scaling-stroke;
+  pointer-events:none;
+}
