@@ -114,8 +114,8 @@
   function resolvePersistedField(key) {
     if (key.startsWith("id:")) return document.getElementById(key.slice(3));
     if (key.startsWith("name:")) {
-      const name = key.slice(5).replace(/"/g, "\\"");
-      return form.querySelector(`[name="${name}"]`);
+      const name = key.slice(5);
+      return [...form.elements].find(field => field.name === name) || null;
     }
     return null;
   }
@@ -149,8 +149,15 @@
       ? document.getElementById(selector.slice(1))
       : form.querySelector(selector);
     if (!field) return;
-    if (checked || field.type === "checkbox") field.checked = Boolean(value);
-    else field.value = String(value);
+    if (checked || field.type === "checkbox") {
+      field.checked = Boolean(value);
+      return;
+    }
+    if (field.tagName === "SELECT") {
+      const next = String(value);
+      if (![...field.options].some(option => option.value === next)) return;
+    }
+    field.value = String(value);
   }
 
   function migrateClassicDraft() {
