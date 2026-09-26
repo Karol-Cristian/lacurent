@@ -106,6 +106,10 @@ jobs:
           node --check commercial/static/home-lab-3d.js
           node --test commercial/tests/intake.test.cjs
           python -m compileall -q commercial
+          python -m py_compile scripts/build-heating-catalog-d1-import.py
+          python scripts/build-heating-catalog-d1-import.py \
+            commercial/data/heating-technology-planning.seed.json \
+            /tmp/heating-catalog-import.sql
           python -m pytest commercial/tests -q
 
       - name: Install uv
