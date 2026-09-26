@@ -23,6 +23,7 @@
     <nav class="lc-nav" aria-label="Navigare principală">
       <a href="#model">Cum funcționează</a>
       <a href="#metoda">RBPE & TEO</a>
+      <a href="/produse">Produse <span class="lc-nav-count">{{ catalog_product_count }}</span></a>
       <a href="#buget">Decizia</a>
     </nav>
     <a class="lc-top-cta" href="/home-lab-next">Pornește optimizarea <span>→</span></a>
@@ -205,6 +206,31 @@
       </div>
     </section>
 
+    <section class="lc-catalog-promo" id="catalog">
+      <div class="lc-catalog-promo-copy">
+        <p class="lc-section-kicker">CATALOG COMERCIAL</p>
+        <h2><span>{{ catalog_product_count }}</span> produse reale.<br>Și catalogul continuă să crească.</h2>
+        <p>
+          TEO Engine nu trebuie să recomande doar o tehnologie. Îl legăm de produse comerciale
+          reale, cu putere, preț de referință și sursa datelor. Nodurile parametrice interne
+          nu sunt numărate ca produse.
+        </p>
+        <p>
+          <strong>Ținta noastră este să extindem catalogul spre acoperirea cât mai completă
+          a produselor relevante disponibile pe piață</strong>, astfel încât soluția finală
+          să poată ajunge de la calcul la un coș concret.
+        </p>
+        <a class="lc-button lc-button-primary" href="/produse">Explorează produsele <span>→</span></a>
+      </div>
+      <div class="lc-catalog-promo-stat">
+        <small>CATALOG ACTIV</small>
+        <strong>{{ catalog_product_count }}</strong>
+        <span>produse comerciale</span>
+        <b>{{ product_categories|length }} familii de produse</b>
+        <i>actualizat {{ catalog_observed_on or "—" }}</i>
+      </div>
+    </section>
+
     <section class="lc-close">
       <div>
         <p class="lc-section-kicker">SOLUȚIA FINALĂ</p>
@@ -225,6 +251,7 @@
     </a>
     <div>
       <a href="/home-lab-next">Home Lab</a>
+      <a href="/produse">Produse</a>
       <a href="/home-lab/facts">Facts</a>
       <a href="/privacy">Confidențialitate</a>
       <a href="/terms">Termeni</a>
