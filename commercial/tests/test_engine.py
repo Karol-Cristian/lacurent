@@ -11,6 +11,7 @@ from commercial.app.engine import (
     calculate,
     co2_emissions,
     demo_building,
+    design_heat_load_breakdown,
     final_energy_by_carrier,
     heating_final_energy,
     heating_system_performance,
@@ -19,6 +20,7 @@ from commercial.app.engine import (
     transmission_heat_transfer,
     transmission_heat_transfer_components,
     ventilation_heat_transfer,
+    ventilation_heat_transfer_components,
 )
 from commercial.app.methodology import climate_data, methodology, resolve_monthly_hsol, resolve_monthly_plane_hsol
 from commercial.app.models import BuildingInput, EnergyServiceResult
@@ -421,6 +423,61 @@ def test_ventilation_coefficient_uses_air_change_volume_and_recovery() -> None:
     building = simple_building()
 
     assert_close(ventilation_heat_transfer(building), 40.8)
+
+
+def test_explicit_infiltration_bypasses_heat_recovery() -> None:
+    building = simple_building(
+        ventilation={
+            "air_changes_per_hour": 0.5,
+            "infiltration_air_changes_per_hour": 0.2,
+            "heat_recovery_efficiency": 0.8,
+        }
+    )
+
+    parts = ventilation_heat_transfer_components(building)
+
+    assert_close(parts["ventilation_w_k"], 0.34 * 0.5 * 300 * 0.2)
+    assert_close(parts["infiltration_w_k"], 0.34 * 0.2 * 300)
+    assert_close(
+        ventilation_heat_transfer(building),
+        parts["ventilation_w_k"] + parts["infiltration_w_k"],
+    )
+
+
+def test_design_heat_load_keeps_ground_on_ground_temperature_path() -> None:
+    building = simple_building(
+        envelope=[
+            {
+                "name": "Wall",
+                "type": "exterior_wall",
+                "area_m2": 100,
+                "u_value_w_m2k": 0.4,
+            },
+            {
+                "name": "Ground floor",
+                "type": "floor",
+                "area_m2": 80,
+                "u_value_w_m2k": 0.3,
+                "boundary_type": "ground",
+                "boundary_correction_factor": 1.0,
+            },
+        ],
+        thermal_bridges=[],
+    )
+    result = calculate(building, include_reference=False)
+    load = design_heat_load_breakdown(
+        result.input,
+        result.transmission_components,
+        result.h_ve_w_k,
+        result.climate,
+    )
+
+    assert load["total_kw"] is not None
+    assert load["ground_transmission_kw"] > 0
+    naive_all_at_outdoor = (
+        float(result.transmission_components.htr_w_k) + float(result.h_ve_w_k)
+    ) * float(load["delta_t_outdoor_k"]) / 1000.0
+    assert float(load["total_kw"]) < naive_all_at_outdoor
 
 
 def test_heating_final_energy_uses_efficiency() -> None:

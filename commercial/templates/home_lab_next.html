@@ -2,13 +2,15 @@
 <html lang="ro">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <script src="/static/no-zoom.js?v=2" defer></script>
   <title>Home Lab | Calculator energetic pentru locuințe | LaCurent</title>
   <meta name="description" content="Modelează casa, compară îmbunătățiri și vezi instant impactul asupra energiei, costului și necesarului termic.">
   {% if not embed_mode %}<link rel="canonical" href="https://lacurent.com/home-lab-next">{% endif %}
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="/static/home-lab-next.css?v=next27">
-  <link rel="stylesheet" href="/static/home-lab-3d.css?v=3d29">
+  <link rel="stylesheet" href="/static/home-lab-next.css?v=next361-cop-fuel">
+  <link rel="stylesheet" href="/static/home-lab-3d.css?v=3d31">
+  <link rel="stylesheet" href="/static/privacy-consent.css?v=privacy1">
 </head>
 <body class="hln-page{% if embed_mode %} hln-page-embed{% endif %}">
   <svg class="hln-icon-sprite" aria-hidden="true">
@@ -56,29 +58,59 @@
         </button>
         <i></i>
         <button type="button" data-hln-go="site">
-          <span>02</span><b>Îmbunătățiri</b>
-        </button>
-        <i></i>
-        <button type="button" data-hln-go="scenario">
-          <span>03</span><b>Scenariu</b>
+          <span>02</span><b>Optimizează</b>
         </button>
         <i></i>
         <button type="button" data-hln-go="report">
-          <span>04</span><b>Raport</b>
+          <span>03</span><b>Raport</b>
         </button>
       </nav>
 
       <div class="hln-topbar-meta">
         {% if embed_mode %}<small class="hln-partner">{{ partner.brand_name }}</small>{% endif %}
-        <div class="hln-status" id="hlnStatus" aria-live="polite">Se calculează casa...</div>
       </div>
     </header>
 
-    {% include "home_lab_energy_strip.html" %}
+    <div class="hln-persistent-stack" data-hln-persistent-stack>
+      {% include "home_lab_energy_strip.html" %}
+      <section class="hln-live-summary" aria-label="Rezumat energetic curent" data-energy-class="">
+        <div class="hln-live-metrics">
+          <article class="hln-live-class-card">
+            <span class="hln-energy-label-arrow" aria-hidden="true"></span>
+            <span class="hln-live-value">
+              <small>Clasă energetică</small>
+              <strong id="hlnPersistentClass">—</strong>
+              <em id="hlnPersistentClassContext">Casa curentă</em>
+            </span>
+          </article>
+          <article class="hln-live-cost-card">
+            <span class="hln-live-icon"><svg><use href="#hln-i-money"></use></svg></span>
+            <span class="hln-live-value">
+              <small>Cost anual estimat</small>
+              <strong id="hlnPersistentCost">—</strong>
+              <em class="hln-live-delta" id="hlnPersistentCostDelta">Baseline Casa mea</em>
+            </span>
+          </article>
+          <article class="hln-live-energy-card">
+            <span class="hln-live-icon"><svg><use href="#hln-i-bolt"></use></svg></span>
+            <span class="hln-live-value">
+              <small>Energie anuală</small>
+              <strong id="hlnPersistentEnergy">—</strong>
+              <em class="hln-live-delta" id="hlnPersistentEnergyDelta">Baseline Casa mea</em>
+            </span>
+          </article>
+        </div>
+        <div class="hln-live-calc-status">
+          <small>STATUS CALCUL</small>
+          <div class="hln-status" id="hlnStatus" aria-live="polite">Se calculează casa...</div>
+        </div>
+      </section>
+    </div>
+    <div class="hln-persistent-spacer" aria-hidden="true"></div>
 
     <section class="hln-screen is-active" data-hln-screen="home">
       <div class="hln-screen-heading">
-        <div>
+        <div class="hln-screen-intro-copy">
           <span>CASA MEA</span>
           <h1>Casa este interfața.</h1>
           <p>Atinge punctele sau echipamentele direct pe casă. Modificările se calculează imediat, iar detaliile pot fi rafinate oricând.</p>
@@ -159,10 +191,10 @@
 
     <section class="hln-screen" data-hln-screen="site">
       <div class="hln-screen-heading">
-        <div>
+        <div class="hln-screen-intro-copy">
           <span>ÎMBUNĂTĂȚIRI</span>
           <h1>Ce vrei să schimbi?</h1>
-          <p>Alege direct de pe casă sau din lista de intervenții. Casa mea rămâne neschimbată.</p>
+          <p><span class="hln-copy-desktop">Alege direct de pe casă sau din lista de intervenții. Casa mea rămâne neschimbată.</span><span class="hln-copy-mobile">Alege ce vrei să îmbunătățești.</span></p>
         </div>
         <button type="button" class="hln-home-return" data-hln-go="home">
           <svg><use href="#hln-i-home"></use></svg><span>Casa mea</span>
@@ -286,34 +318,48 @@
 
         <div class="hln-economic-heading">
           <span>OPTIMIZARE ECONOMICĂ</span>
-          <strong>Alege ce constrângere contează pentru tine.</strong>
-          <small>Toate variantele folosesc același motor energetic și același catalog CAPEX. Se schimbă doar obiectivul economic.</small>
+          <strong>Alege o singură regulă. Motorul caută combinația tehnică.</strong>
+          <small>Parametrii tehnici sunt optimizați continuu înainte de orice discretizare comercială. Nu combinăm mai multe constrângeri într-o singură rulare.</small>
         </div>
 
         <div class="hln-smart-configs hln-economic-configs">
           <article class="hln-economic-card">
-            <button type="button" data-hln-smart-config="roi">
-              <span>BEST ROI</span>
-              <strong>Randament maxim</strong>
-              <small>Maximizează economia anuală raportată la fiecare leu investit.</small>
+            <button type="button" data-hln-smart-config="economic-auto">
+              <span>AUTOMAT</span>
+              <strong>Optimizează pentru mine</strong>
+              <small>Compară beneficiul economic pe mai multe orizonturi și alege o soluție robustă, fără să-ți ceară un termen arbitrar.</small>
             </button>
           </article>
+
           <article class="hln-economic-card">
-            <button type="button" data-hln-smart-config="roi-budget">
-              <span>BEST ROI · BUGET</span>
-              <strong>Cea mai mare economie în bugetul tău</strong>
-              <small>Construiește un pachet fără să depășească suma disponibilă.</small>
+            <button type="button" data-hln-smart-config="economic-budget">
+              <span>BUGET DE INVESTIȚIE</span>
+              <strong>Folosește cel mai bine suma disponibilă</strong>
+              <small>Maximizează economia anuală fără să depășească bugetul ales.</small>
             </button>
             <label class="hln-economic-input">
               <span>Buget maxim</span>
               <div><input id="hlnRoiBudget" type="number" min="1000" max="500000" step="1000" value="30000"><b>lei</b></div>
             </label>
           </article>
+
           <article class="hln-economic-card">
-            <button type="button" data-hln-smart-config="roi-payback">
-              <span>BEST ROI · TIMP</span>
-              <strong>Cea mai mare economie în timpul ales</strong>
-              <small>Păstrează numai soluțiile care își recuperează investiția suficient de repede.</small>
+            <button type="button" data-hln-smart-config="economic-bill">
+              <span>BUGET ANUAL FACTURI</span>
+              <strong>Coboară factura până la ținta ta</strong>
+              <small>Caută investiția minimă care poate atinge plafonul anual ales.</small>
+            </button>
+            <label class="hln-economic-input">
+              <span>Factură maximă</span>
+              <div><input id="hlnAnnualBillTarget" type="number" min="0" max="100000" step="250" value="5000"><b>lei/an</b></div>
+            </label>
+          </article>
+
+          <article class="hln-economic-card">
+            <button type="button" data-hln-smart-config="economic-payback">
+              <span>RECUPERARE INVESTIȚIE</span>
+              <strong>Recuperează investiția în maximum X ani</strong>
+              <small>Dintre soluțiile eligibile, păstrează pe cea cu economia anuală cea mai mare; nu minimizează artificial payback-ul.</small>
             </button>
             <label class="hln-economic-input">
               <span>Amortizare maximă</span>
@@ -330,6 +376,28 @@
         </details>
 
         <div class="hln-optimization-note" id="hlnOptimizationNote" hidden></div>
+
+        <section class="hln-optimizer-console" id="hlnOptimizerConsole" hidden aria-label="Execuția live a optimizerului">
+          <header>
+            <div>
+              <span class="hln-optimizer-console-led" aria-hidden="true"></span>
+              <strong>LaCurent Optimizer</strong>
+              <small>execuție live</small>
+            </div>
+            <div class="hln-optimizer-console-meta">
+              <span id="hlnOptimizerConsoleProgress">0 / 0</span>
+              <b id="hlnOptimizerConsoleState">IDLE</b>
+            </div>
+          </header>
+          <div class="hln-optimizer-console-progress" aria-hidden="true">
+            <i id="hlnOptimizerConsoleProgressBar"></i>
+          </div>
+          <div class="hln-optimizer-console-output" id="hlnOptimizerConsoleOutput" role="log" aria-live="polite" aria-relevant="additions"></div>
+          <footer>
+            <span id="hlnOptimizerConsoleFooter">Aștept pornirea optimizerului.</span>
+            <button type="button" id="hlnOptimizerConsoleToggle" aria-expanded="true">Restrânge</button>
+          </footer>
+        </section>
 
         <div class="hln-reference-spec" id="hlnReferenceSpec" hidden>
           <div><span>ANVELOPĂ</span><strong id="hlnReferenceEnvelope">—</strong></div>
@@ -733,7 +801,7 @@
           <p>Raport tehnic estimativ LaCurent Light. Nu înlocuiește un CPE sau audit energetic emis de un specialist autorizat.</p>
         </div>
         <div class="hln-report-actions">
-          <button type="button" class="hln-secondary" data-hln-go="scenario">Editează scenariul</button>
+          <button type="button" class="hln-secondary" data-hln-go="site">Editează optimizarea</button>
           <button type="button" class="hln-primary" data-hln-print-report>Print / PDF</button>
         </div>
       </div>
@@ -778,6 +846,18 @@
             <div><small>Prima măsură din pachet</small><strong id="hlnReportDecisionPriority">—</strong></div>
           </div>
           <p id="hlnReportDecisionNote">—</p>
+        </section>
+
+        <section class="hln-report-card hln-report-commercial">
+          <header><span>SOLUȚIA DE IMPLEMENTAT</span><strong>Discretizarea comercială</strong></header>
+          <div id="hlnReportCommercialSolution"></div>
+        </section>
+
+        <section class="hln-report-card hln-report-raw">
+          <header><span>OPTIM MATEMATIC</span><strong>Valorile brute înainte de discretizare</strong></header>
+          <div id="hlnReportRawSolution"></div>
+          <p id="hlnReportSearchTrace">—</p>
+          <div id="hlnReportFailedCandidates"></div>
         </section>
 
         <section class="hln-report-card hln-report-comparison">
@@ -834,9 +914,31 @@
             <span id="hlnReportHeatingPerformance">—</span>
           </div>
           <div class="hln-report-system-grid">
+            <div><small>Necesar putere la proiectare</small><strong id="hlnReportHeatingRequiredPower">—</strong></div>
+            <div><small>Putere echipament selectat</small><strong id="hlnReportHeatingSelectedPower">—</strong></div>
+            <div><small>Rezervă de putere</small><strong id="hlnReportHeatingPowerReserve">—</strong></div>
             <div><small>Lanț</small><strong id="hlnReportHeatingChain">—</strong></div>
             <div><small>Statut calcul</small><strong id="hlnReportHeatingSource">—</strong></div>
+            <div><small>Combustibil anual</small><strong id="hlnReportFuelUse">—</strong></div>
           </div>
+        </section>
+
+        <section class="hln-report-card hln-report-heat-pump-profile" id="hlnReportHeatPumpProfileCard" hidden>
+          <header><span>POMPĂ DE CĂLDURĂ</span><strong>COP lunar vs necesar termic</strong></header>
+          <div class="hln-hp-profile-summary">
+            <div><small>SCOP folosit în calcul</small><strong id="hlnReportHpEngineScop">—</strong></div>
+            <div><small>SCOP declarat produs</small><strong id="hlnReportHpDeclaredScop">—</strong></div>
+            <div><small>SCOP din COP lunar</small><strong id="hlnReportHpModeledScop">—</strong></div>
+            <div><small>COP de referință la +7°C</small><strong id="hlnReportHpReferenceCop">—</strong></div>
+          </div>
+          <div class="hln-hp-profile-legend"><span><i class="is-load"></i> necesar util kWh</span><span><i class="is-cop"></i> COP</span></div>
+          <div id="hlnReportHpCopChart" class="hln-hp-cop-chart"></div>
+          <p id="hlnReportHpCopNote">—</p>
+        </section>
+
+        <section class="hln-report-card hln-report-heating-search">
+          <header><span>SISTEME DE ÎNCĂLZIRE ANALIZATE</span><strong>Ce a intrat și ce a fost exclus</strong></header>
+          <div id="hlnReportHeatingBranches"></div>
         </section>
 
         <section class="hln-report-card hln-report-strategy">
@@ -1105,11 +1207,10 @@
     </aside>
 
     <section class="hln-dock" data-hln-dock="home" aria-live="polite">
-      <div class="hln-dock-metrics">
-        <article><span class="hln-dock-icon"><svg><use href="#hln-i-gauge"></use></svg></span><span><small>Clasă</small><strong id="hlnDockClass">—</strong></span></article>
-        <article><span class="hln-dock-icon"><svg><use href="#hln-i-money"></use></svg></span><span><small>Cost anual</small><strong id="hlnDockCost">—</strong></span></article>
-        <article><span class="hln-dock-icon"><svg><use href="#hln-i-bolt"></use></svg></span><span><small>Energie</small><strong id="hlnDockEnergy">—</strong></span></article>
-      </div>
+      <button type="button" class="hln-dock-back" id="hlnDockBack" hidden>
+        <svg aria-hidden="true"><use href="#hln-i-arrow-left"></use></svg>
+        <span>Înapoi</span>
+      </button>
       <div class="hln-dock-benefits hln-dock-compare" hidden>
         <article class="is-home">
           <span><small>Casa mea</small><strong><b id="hlnDockHomeClass">—</b><em id="hlnDockHomeCost">—</em></strong></span>
@@ -1122,7 +1223,7 @@
         </article>
       </div>
       <button type="button" class="hln-dock-cta" id="hlnDockCta">
-        <span>Salvează Casa mea și vezi îmbunătățirile</span>
+        <span data-mobile-label="Îmbunătățiri">Salvează Casa mea și vezi îmbunătățirile</span>
         <svg><use href="#hln-i-arrow-right"></use></svg>
       </button>
     </section>
@@ -1216,6 +1317,10 @@
     </form>
   </main>
 
+  {% include "_legal_footer.html" %}
+  {% include "_privacy_controls.html" %}
+
+  <script src="/static/privacy-consent.js?v=privacy1"></script>
   <script type="importmap">
     {
       "imports": {
@@ -1224,8 +1329,8 @@
       }
     }
   </script>
-  <script type="module" src="/static/home-lab-3d.js?v=3d49"></script>
-  <script src="/static/home-lab-next.js?v=next51"></script>
+  <script type="module" src="/static/home-lab-3d.js?v=3d55"></script>
+  <script src="/static/home-lab-next.js?v=next72-heating-power"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>

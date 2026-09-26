@@ -10,6 +10,8 @@
   const calcUrl = root.dataset.calculateUrl;
   const storageKey = `lacurent-home-lab-next-v1:${root.dataset.partnerId || "official"}`;
   const acquisitionSource = new URLSearchParams(window.location.search).get("source") || "";
+  const localAutosaveAllowed = () => window.LaCurentPrivacy?.allowsLocalAutosave?.() === true;
+  const analyticsAllowed = () => window.LaCurentPrivacy?.allowsAnalytics?.() === true;
   const SOLAR_THERMAL_NOMINAL_KW_PER_M2 = 0.70;
 
   function trackEvent(name, detail = {}) {
@@ -20,9 +22,10 @@
       partner:root.dataset.partnerId || "official",
       ...detail,
     };
+    if (!analyticsAllowed()) return;
     window.dispatchEvent(new CustomEvent("hln:analytics", {detail:payload}));
-    // Vendor-neutral integration point. We do not create or load a tracker here;
-    // an analytics provider may consume the same events later after consent.
+    // Vendor-neutral integration point. No analytics event leaves this product
+    // surface until the user has explicitly allowed analytics.
     if (Array.isArray(window.dataLayer)) window.dataLayer.push(payload);
   }
 
@@ -215,6 +218,7 @@
   let quickEditOriginal = null;
   let quickEditTarget = "scenario";
   let screen = "home";
+  const introCollapsedScreens = new Set();
   let localities = [];
   let localityMap = new Map();
   let locationMapData = null;
@@ -227,10 +231,20 @@
   let optimizerRunToken = 0;
   let optimizerEvaluationCount = 0;
   let optimizerLastRemoteRequestAt = 0;
+  let optimizerRestartCooldownUntil = 0;
+  let optimizerRequestGapMs = 250;
+  let optimizerConsoleStartedAt = 0;
+  let optimizerConsolePlanned = 0;
+  let optimizerConsoleCompleted = 0;
+  let optimizerConsoleLines = [];
+  const OPTIMIZER_CONSOLE_MAX_LINES = 180;
   const OPTIMIZER_MAX_ENGINE_EVALUATIONS = 16;
-  const OPTIMIZER_MIN_REQUEST_GAP_MS = 160;
+  const OPTIMIZER_MIN_REQUEST_GAP_MS = 250;
+  const OPTIMIZER_RESTART_COOLDOWN_MS = 3000;
   const LIVE_REQUEST_TIMEOUT_MS = 8000;
-  const OPTIMIZER_REQUEST_TIMEOUT_MS = 12000;
+  const OPTIMIZER_REQUEST_TIMEOUT_MS = 30000;
+  const OPTIMIZER_V2_TIMEOUT_MS = 45000;
+  const OPTIMIZER_BACKEND_V3 = true;
   const optimizerCandidateCache = new Map();
   const OPTIMIZER_CANDIDATE_CACHE_MAX = 192;
   let homeResultState = homeResult ? "stale" : "empty";
@@ -331,27 +345,29 @@
     return state;
   }
 
-  try {
-    const saved = JSON.parse(localStorage.getItem(storageKey) || "null");
-    if (saved?.homeState) {
-      homeState = migrateStoredHeatingState(saved.homeState, defaultState);
-      scenarioState = migrateStoredHeatingState(saved.scenarioState || {}, homeState);
-      homeResult = saved.homeResult || null;
-      scenarioResult = saved.scenarioResult || null;
-      measures = Array.isArray(saved.measures) ? saved.measures : [];
-      baselineSaved = Boolean(saved.baselineSaved);
-      referenceMode = Boolean(saved.referenceMode);
-      scenarioOverrides = saved.scenarioOverrides && typeof saved.scenarioOverrides === "object" ? {...saved.scenarioOverrides} : {};
-      optimizationMeta = saved.optimizationMeta && typeof saved.optimizationMeta === "object" ? {...saved.optimizationMeta} : null;
-      projectMode = ["existing_standard", "existing_major", "new_nzeb"].includes(saved.projectMode)
-        ? saved.projectMode
-        : "existing_standard";
-      homeResultState = homeResult ? "fresh" : "empty";
-      scenarioResultState = scenarioResult ? "fresh" : "empty";
-      // Rewrite the persisted state once so the migration is permanent.
-      persist();
-    }
-  } catch (_) {}
+  if (localAutosaveAllowed()) {
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey) || "null");
+      if (saved?.homeState) {
+        homeState = migrateStoredHeatingState(saved.homeState, defaultState);
+        scenarioState = migrateStoredHeatingState(saved.scenarioState || {}, homeState);
+        homeResult = saved.homeResult || null;
+        scenarioResult = saved.scenarioResult || null;
+        measures = Array.isArray(saved.measures) ? saved.measures : [];
+        baselineSaved = Boolean(saved.baselineSaved);
+        referenceMode = Boolean(saved.referenceMode);
+        scenarioOverrides = saved.scenarioOverrides && typeof saved.scenarioOverrides === "object" ? {...saved.scenarioOverrides} : {};
+        optimizationMeta = saved.optimizationMeta && typeof saved.optimizationMeta === "object" ? {...saved.optimizationMeta} : null;
+        projectMode = ["existing_standard", "existing_major", "new_nzeb"].includes(saved.projectMode)
+          ? saved.projectMode
+          : "existing_standard";
+        homeResultState = homeResult ? "fresh" : "empty";
+        scenarioResultState = scenarioResult ? "fresh" : "empty";
+        // Rewrite the persisted state once so the migration is permanent.
+        persist();
+      }
+    } catch (_) {}
+  }
 
   function fmt(value, digits = 0) {
     const number = Number(value);
@@ -1380,6 +1396,10 @@
     if (optimizerAbortController) {
       optimizerAbortController.abort();
       optimizerAbortController = null;
+      optimizerRestartCooldownUntil = Math.max(
+        optimizerRestartCooldownUntil,
+        Date.now() + OPTIMIZER_RESTART_COOLDOWN_MS
+      );
     }
   }
 
@@ -1408,12 +1428,23 @@
     const target = screen === "home" ? "home" : "scenario";
     const state = resultStateFor(target);
     const live = $("#hlnLiveConfigurator");
+    const summary = $(".hln-live-summary");
     if (live) live.classList.toggle("is-calculating", target === "scenario" && state !== "fresh");
+    if (summary) {
+      summary.classList.toggle("is-fresh", state === "fresh");
+      summary.classList.toggle("is-pending", state === "pending" || state === "stale");
+      summary.classList.toggle("is-error", state === "error");
+    }
 
+    const persistentSelectors = [
+      "#hlnPersistentClass",
+      "#hlnPersistentCost",
+      "#hlnPersistentEnergy",
+      "#hlnPersistentCostDelta",
+      "#hlnPersistentEnergyDelta",
+    ];
     const allCalculatedSelectors = [
-      "#hlnDockClass",
-      "#hlnDockCost",
-      "#hlnDockEnergy",
+      ...persistentSelectors,
       "#hlnLiveCost",
       "#hlnLiveClass",
       "#hlnDockScenarioClass",
@@ -1438,22 +1469,20 @@
       return;
     }
 
-    const pending = pendingTextFor(target);
+    // Keep the last valid HUD values visible while a new calculation is in
+    // flight. Freshness is communicated by the adjacent status chip and the
+    // HUD pending/error state, so the user's reference values never disappear.
+    persistentSelectors.forEach(selector => $(selector)?.classList.add("hln-calculating-value"));
+
     if (target === "home") {
-      ["#hlnDockClass", "#hlnDockCost", "#hlnDockEnergy"].forEach(selector => {
-        const node = $(selector);
-        if (!node) return;
-        node.textContent = pending;
-        node.classList.remove("is-good", "is-bad");
-        node.classList.add("hln-calculating-value");
-      });
       const cta = $("#hlnDockCta");
       if (cta && screen === "home") cta.disabled = state !== "error";
       return;
     }
 
+    const pending = pendingTextFor(target);
     const valueSelectors = allCalculatedSelectors.filter(selector =>
-      !["#hlnDockClass", "#hlnDockCost", "#hlnDockEnergy"].includes(selector)
+      !persistentSelectors.includes(selector)
     );
     valueSelectors.forEach(selector => {
       const node = $(selector);
@@ -1497,7 +1526,13 @@
     }, timeoutMs);
 
     try {
-      return await fetch(url, {...options, signal:controller.signal});
+      const response = await fetch(url, {...options, signal:controller.signal});
+      // Keep the deadline and parent cancellation active through body delivery.
+      const contentType = response.headers.get("content-type") || "";
+      let payload = null;
+      if (contentType.includes("application/json")) payload = await response.json();
+      else await response.text();
+      return {response, payload};
     } catch (error) {
       if (timedOut && !parentSignal?.aborted) {
         const timeoutError = new Error("Calculul a durat prea mult. Reîncearcă.");
@@ -1509,6 +1544,117 @@
       window.clearTimeout(timer);
       if (parentSignal) parentSignal.removeEventListener("abort", relayAbort);
     }
+  }
+
+  const OPTIMIZER_TRANSIENT_RETRY_STATUSES = new Set([429, 500, 502, 503, 504]);
+  const OPTIMIZER_TRANSIENT_RETRY_DELAYS_MS = [1000, 2500, 5000, 8000];
+
+  async function waitForOptimizerRequestSlot(parentSignal = null) {
+    if (parentSignal?.aborted) {
+      const abortError = new Error("Optimizer oprit");
+      abortError.name = "AbortError";
+      throw abortError;
+    }
+    const earliestStart = Math.max(
+      optimizerLastRemoteRequestAt + Math.max(OPTIMIZER_MIN_REQUEST_GAP_MS, optimizerRequestGapMs),
+      optimizerRestartCooldownUntil
+    );
+    const waitMs = Math.max(0, earliestStart - Date.now());
+    if (waitMs > 0) {
+      await new Promise((resolve, reject) => {
+        const timer = window.setTimeout(() => {
+          if (parentSignal) parentSignal.removeEventListener("abort", onAbort);
+          resolve();
+        }, waitMs);
+        const onAbort = () => {
+          window.clearTimeout(timer);
+          if (parentSignal) parentSignal.removeEventListener("abort", onAbort);
+          const abortError = new Error("Optimizer oprit");
+          abortError.name = "AbortError";
+          reject(abortError);
+        };
+        if (parentSignal) parentSignal.addEventListener("abort", onAbort, {once:true});
+      });
+    }
+    if (parentSignal?.aborted) {
+      const abortError = new Error("Optimizer oprit");
+      abortError.name = "AbortError";
+      throw abortError;
+    }
+    optimizerLastRemoteRequestAt = Date.now();
+  }
+
+  async function fetchOptimizerWithRetry(
+    url,
+    options = {},
+    parentSignal = null,
+    timeoutMs = OPTIMIZER_REQUEST_TIMEOUT_MS,
+    maxAttempts = 5,
+    useGlobalPacing = true,
+    hooks = null
+  ) {
+    let lastResult = null;
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      if (parentSignal?.aborted) {
+        const abortError = new Error("Optimizer oprit");
+        abortError.name = "AbortError";
+        throw abortError;
+      }
+
+      if (typeof hooks?.onAttempt === "function") {
+        hooks.onAttempt({attempt, maxAttempts});
+      }
+
+      let retryReason = null;
+      try {
+        if (useGlobalPacing) await waitForOptimizerRequestSlot(parentSignal);
+        let result;
+        try {
+          result = await fetchWithTimeout(url, options, parentSignal, timeoutMs);
+        } finally {
+          if (useGlobalPacing) {
+            // Plan/finalize remain serialized. Candidate requests use a bounded
+            // parallel pool, one candidate per Worker request.
+            optimizerLastRemoteRequestAt = Date.now();
+          }
+        }
+        lastResult = result;
+        const status = Number(result?.response?.status || 0);
+        const retryableStatus = OPTIMIZER_TRANSIENT_RETRY_STATUSES.has(status);
+        if (!retryableStatus || attempt >= maxAttempts) {
+          return {...result, attemptCount:attempt};
+        }
+        retryReason = {type:"http", status};
+      } catch (error) {
+        if (error?.name === "AbortError" && parentSignal?.aborted) throw error;
+        const retryableError = error?.name === "TimeoutError" || error?.name === "TypeError";
+        if (!retryableError || attempt >= maxAttempts) {
+          try { error.attemptCount = attempt; } catch (_) {}
+          throw error;
+        }
+        lastError = error;
+        retryReason = {type:"transport", name:error?.name || "network"};
+      }
+
+      const delay = OPTIMIZER_TRANSIENT_RETRY_DELAYS_MS[
+        Math.min(attempt - 1, OPTIMIZER_TRANSIENT_RETRY_DELAYS_MS.length - 1)
+      ];
+      if (typeof hooks?.onRetry === "function") {
+        hooks.onRetry({
+          attempt,
+          nextAttempt:attempt + 1,
+          maxAttempts,
+          delayMs:delay,
+          reason:retryReason,
+        });
+      }
+      await new Promise(resolve => window.setTimeout(resolve, delay));
+    }
+
+    if (lastError) throw lastError;
+    return {...lastResult, attemptCount:maxAttempts};
   }
 
   async function calculateState(state, target) {
@@ -1525,19 +1671,12 @@
     renderAll();
 
     const request = async () => {
-      const response = await fetchWithTimeout(
+      const {response, payload} = await fetchWithTimeout(
         calcUrl,
         {method:"POST", body},
         controller.signal,
         LIVE_REQUEST_TIMEOUT_MS
       );
-      const contentType = response.headers.get("content-type") || "";
-      let payload = null;
-      if (contentType.includes("application/json")) {
-        payload = await response.json();
-      } else {
-        await response.text();
-      }
 
       // Live interaction must never amplify an overloaded Worker with an
       // automatic retry. The next user action or explicit CTA retry is enough.
@@ -1607,27 +1746,21 @@
       throw new Error(`Bugetul de calcul al optimizerului a fost atins (${OPTIMIZER_MAX_ENGINE_EVALUATIONS} evaluări). Ajustează datele sau costurile și încearcă din nou.`);
     }
 
-    const elapsedSincePreviousRequest = Date.now() - optimizerLastRemoteRequestAt;
-    const remainingGap = Math.max(0, OPTIMIZER_MIN_REQUEST_GAP_MS - elapsedSincePreviousRequest);
-    if (remainingGap > 0) {
-      await new Promise(resolve => window.setTimeout(resolve, remainingGap));
-    }
-    if (optimizerAbortController?.signal.aborted) {
-      const abortError = new Error("Optimizer oprit");
-      abortError.name = "AbortError";
-      throw abortError;
-    }
-    optimizerLastRemoteRequestAt = Date.now();
+    await waitForOptimizerRequestSlot(optimizerAbortController?.signal || null);
     optimizerEvaluationCount += 1;
 
-    const response = await fetchWithTimeout(
-      calcUrl,
-      {method:"POST", body},
-      optimizerAbortController?.signal || null,
-      OPTIMIZER_REQUEST_TIMEOUT_MS
-    );
-    const contentType = response.headers.get("content-type") || "";
-    const payload = contentType.includes("application/json") ? await response.json() : null;
+    let response;
+    let payload;
+    try {
+      ({response, payload} = await fetchWithTimeout(
+        calcUrl,
+        {method:"POST", body},
+        optimizerAbortController?.signal || null,
+        OPTIMIZER_REQUEST_TIMEOUT_MS
+      ));
+    } finally {
+      optimizerLastRemoteRequestAt = Date.now();
+    }
     if (!response.ok || !payload || payload.error) {
       throw new Error(payload?.error || `Calcul candidat indisponibil (HTTP ${response.status || "?"}).`);
     }
@@ -2215,6 +2348,119 @@
     node.classList.toggle("is-warn", kind === "warn");
   }
 
+  function optimizerConsoleElapsed() {
+    if (!optimizerConsoleStartedAt) return "00:00.0";
+    const elapsedMs = Math.max(0, Date.now() - optimizerConsoleStartedAt);
+    const minutes = Math.floor(elapsedMs / 60000);
+    const seconds = Math.floor((elapsedMs % 60000) / 1000);
+    const tenths = Math.floor((elapsedMs % 1000) / 100);
+    return `${String(minutes).padStart(2,"0")}:${String(seconds).padStart(2,"0")}.${tenths}`;
+  }
+
+  function optimizerConsoleCandidateParameters(raw = {}) {
+    const number = (value, digits = 3) => {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed.toFixed(digits) : "n/a";
+    };
+    const windows = Number(raw.window_replacement_fraction);
+    const heatRecovery = Number(raw.ventilation_heat_recovery_efficiency_target);
+    return [
+      `wallR+${number(raw.wall_added_r_m2k_w)}`,
+      `roofR+${number(raw.roof_added_r_m2k_w)}`,
+      `floorR+${number(raw.floor_added_r_m2k_w)}`,
+      `windows=${Number.isFinite(windows) ? (windows * 100).toFixed(1) : "n/a"}%`,
+      `Uw=${number(raw.window_target_u_w_m2k,2)}`,
+      `HRV=${Number.isFinite(heatRecovery) ? (heatRecovery * 100).toFixed(1) : "n/a"}%`,
+      `PV+${number(raw.pv_added_kwp)}kWp`,
+      `solar+${number(raw.solar_thermal_added_m2)}m²`,
+    ].join(" | ");
+  }
+
+  function renderOptimizerConsole() {
+    const panel = $("#hlnOptimizerConsole");
+    const output = $("#hlnOptimizerConsoleOutput");
+    const progress = $("#hlnOptimizerConsoleProgress");
+    const progressBar = $("#hlnOptimizerConsoleProgressBar");
+    if (!panel || !output || !progress || !progressBar) return;
+
+    panel.hidden = !optimizerConsoleStartedAt;
+    const planned = Math.max(0, Number(optimizerConsolePlanned || 0));
+    const completed = Math.max(0, Number(optimizerConsoleCompleted || 0));
+    progress.textContent = planned ? `${completed} / ${planned}` : "0 / 0";
+    progressBar.style.width = planned
+      ? `${Math.min(100, 100 * completed / planned).toFixed(1)}%`
+      : "0%";
+
+    output.innerHTML = optimizerConsoleLines.map(line => (
+      `<div class="hln-optimizer-console-line is-${escapeHtml(line.kind || "info")}">` +
+      `<time>${escapeHtml(line.elapsed || "00:00.0")}</time>` +
+      `<b>${escapeHtml(line.tag || "INFO")}</b>` +
+      `<span>${escapeHtml(line.message || "")}</span>` +
+      `</div>`
+    )).join("");
+    output.scrollTop = output.scrollHeight;
+  }
+
+  function resetOptimizerConsole(label = "optimizer") {
+    optimizerConsoleStartedAt = Date.now();
+    optimizerConsolePlanned = 0;
+    optimizerConsoleCompleted = 0;
+    optimizerConsoleLines = [];
+    const panel = $("#hlnOptimizerConsole");
+    const state = $("#hlnOptimizerConsoleState");
+    const footer = $("#hlnOptimizerConsoleFooter");
+    if (panel) {
+      panel.hidden = false;
+      panel.classList.remove("is-error","is-done","is-collapsed");
+    }
+    const toggle = $("#hlnOptimizerConsoleToggle");
+    if (toggle) {
+      toggle.textContent = "Restrânge";
+      toggle.setAttribute("aria-expanded","true");
+    }
+    if (state) state.textContent = "RUNNING";
+    if (footer) footer.textContent = `Pornit · ${label}`;
+    appendOptimizerConsole("info","START",`PS LaCurent:\\optimizer> ${label}`);
+    window.requestAnimationFrame(() => {
+      panel?.scrollIntoView({behavior:"smooth", block:"center"});
+    });
+  }
+
+  function appendOptimizerConsole(kind, tag, message) {
+    if (!optimizerConsoleStartedAt) optimizerConsoleStartedAt = Date.now();
+    optimizerConsoleLines.push({
+      kind:kind || "info",
+      tag:tag || "INFO",
+      message:String(message || ""),
+      elapsed:optimizerConsoleElapsed(),
+    });
+    if (optimizerConsoleLines.length > OPTIMIZER_CONSOLE_MAX_LINES) {
+      optimizerConsoleLines = optimizerConsoleLines.slice(-OPTIMIZER_CONSOLE_MAX_LINES);
+    }
+    renderOptimizerConsole();
+  }
+
+  function setOptimizerConsoleProgress(completed, planned, footerText = "") {
+    optimizerConsoleCompleted = Math.max(0, Number(completed || 0));
+    optimizerConsolePlanned = Math.max(0, Number(planned || 0));
+    const footer = $("#hlnOptimizerConsoleFooter");
+    if (footer && footerText) footer.textContent = footerText;
+    renderOptimizerConsole();
+  }
+
+  function finishOptimizerConsole(kind = "done", message = "") {
+    const panel = $("#hlnOptimizerConsole");
+    const state = $("#hlnOptimizerConsoleState");
+    const footer = $("#hlnOptimizerConsoleFooter");
+    if (panel) {
+      panel.classList.toggle("is-error", kind === "error");
+      panel.classList.toggle("is-done", kind !== "error");
+    }
+    if (state) state.textContent = kind === "error" ? "FAULT" : "DONE";
+    if (footer && message) footer.textContent = message;
+    renderOptimizerConsole();
+  }
+
   function beginOptimizerRun() {
     clearTimeout(calculateTimer);
     calculateTimer = 0;
@@ -2225,7 +2471,6 @@
     calculateToken += 1;
     cancelOptimizerRun();
     optimizerEvaluationCount = 0;
-    optimizerLastRemoteRequestAt = 0;
     optimizerAbortController = new AbortController();
     scenarioResultState = "pending";
     renderAll();
@@ -2378,7 +2623,7 @@
   }
 
   function isFinancialOptimizationMeta(meta = optimizationMeta) {
-    return String(meta?.mode || "").startsWith("roi");
+    return meta?.kind === "parametric_economic" || String(meta?.mode || "").startsWith("roi");
   }
 
   function economicOptimizerSettings(mode) {
@@ -2418,6 +2663,1202 @@
       maxPaybackYears:null,
       working:"Calculez Best ROI…",
     };
+  }
+
+  function parametricOptimizerUiSettings(action) {
+    if (action === "economic-budget") {
+      const value = Number($("#hlnRoiBudget")?.value);
+      if (!Number.isFinite(value) || value < 1000) throw new Error("Introdu un buget de cel puțin 1.000 lei.");
+      return {
+        backendMode:"investment_budget",
+        investmentBudgetLei:value,
+        label:`Buget maxim ${fmt(value)} lei`,
+        working:"Caut cea mai bună combinație în bugetul ales…",
+      };
+    }
+    if (action === "economic-bill") {
+      const value = Number($("#hlnAnnualBillTarget")?.value);
+      if (!Number.isFinite(value) || value < 0) throw new Error("Introdu o factură anuală țintă validă.");
+      return {
+        backendMode:"annual_bill_target",
+        annualBillTargetLei:value,
+        label:`Factură anuală ≤ ${fmt(value)} lei`,
+        working:"Caut investiția minimă care atinge factura țintă…",
+      };
+    }
+    if (action === "economic-payback") {
+      const value = Number($("#hlnRoiPaybackYears")?.value);
+      if (!Number.isFinite(value) || value < 1 || value > 30) throw new Error("Alege o recuperare între 1 și 30 de ani.");
+      return {
+        backendMode:"max_payback_years",
+        maxPaybackYears:value,
+        label:`Recuperare ≤ ${fmt(value,1)} ani`,
+        working:"Caut cea mai mare economie dintre soluțiile care se recuperează la timp…",
+      };
+    }
+    return {
+      backendMode:"auto_economic",
+      label:"Optimizează pentru mine",
+      working:"Compar soluțiile economice pe mai multe orizonturi…",
+    };
+  }
+
+  function optimizerMeasuresFromRaw(raw = {}) {
+    const rows = [];
+    if (Number(raw.wall_added_r_m2k_w) > 1e-9) rows.push("wall");
+    if (Number(raw.roof_added_r_m2k_w) > 1e-9) rows.push("roof");
+    if (Number(raw.floor_added_r_m2k_w) > 1e-9) rows.push("floor");
+    if (Number(raw.window_replacement_fraction) > 1e-9) rows.push("windows");
+    if (Number(raw.pv_added_kwp) > 1e-9) rows.push("pv");
+    if (Number(raw.solar_thermal_added_m2) > 1e-9) rows.push("solar_thermal");
+    return rows;
+  }
+
+  function applyParametricOptimizerState(meta) {
+    const raw = meta?.rawSolution || {};
+    scenarioState = migrateStoredHeatingState({...homeState}, defaultState);
+    scenarioOverrides = {};
+    referenceMode = false;
+
+    if (Number(raw.wall_added_r_m2k_w) > 0) {
+      scenarioState.wallIns = Number(homeState.wallIns || 0)
+        + Number(raw.wall_added_r_m2k_w) * insulationLambda(homeState.wallInsulationMaterial) * 100;
+    }
+    if (Number(raw.roof_added_r_m2k_w) > 0) {
+      scenarioState.roofIns = Number(homeState.roofIns || 0)
+        + Number(raw.roof_added_r_m2k_w) * insulationLambda(homeState.roofInsulationMaterial) * 100;
+    }
+    if (Number(raw.floor_added_r_m2k_w) > 0) {
+      scenarioState.floorIns = Number(homeState.floorIns || 0)
+        + Number(raw.floor_added_r_m2k_w) * insulationLambda(homeState.floorInsulationMaterial) * 100;
+    }
+    if (Number(raw.pv_added_kwp) > 0) {
+      scenarioState.pvEnabled = true;
+      scenarioState.pvKwp = (homeState.pvEnabled ? Number(homeState.pvKwp || 0) : 0)
+        + Number(raw.pv_added_kwp);
+    }
+    if (Number(raw.solar_thermal_added_m2) > 0) {
+      scenarioState.solarThermalEnabled = true;
+      scenarioState.solarThermalArea = (
+        homeState.solarThermalEnabled ? Number(homeState.solarThermalArea || 0) : 0
+      ) + Number(raw.solar_thermal_added_m2);
+    }
+
+    const resulting = meta?.resultingConfiguration;
+    const envelope = Array.isArray(resulting?.envelope) ? resulting.envelope : [];
+    const uFor = type => Number(envelope.find(item => item?.type === type)?.u_value_w_m2k);
+    const wallU = uFor("exterior_wall");
+    const roofU = uFor("roof");
+    const floorU = uFor("floor");
+    const windowU = uFor("window");
+    if (Number.isFinite(wallU)) scenarioOverrides.wallU = wallU;
+    if (Number.isFinite(roofU)) scenarioOverrides.roofU = roofU;
+    if (Number.isFinite(floorU)) scenarioOverrides.floorU = floorU;
+    if (Number.isFinite(windowU)) scenarioOverrides.windowU = windowU;
+
+    const heating = resulting?.heating || {};
+    const heatingDetails = heating?.details || {};
+    const generator = String(heatingDetails.generator_type || "");
+    const heatingMap = {
+      condensing_gas_boiler:"condensing_gas_boiler",
+      gas_boiler:"gas_boiler",
+      heat_pump_air_water:"heat_pump",
+      heat_pump_ground_water:"heat_pump",
+      heat_pump_air_air:"heat_pump",
+      electric_boiler:"electric_boiler",
+      electric_direct:"electric_resistance",
+      pellet_boiler:"pellet_boiler",
+      wood_boiler:"wood_boiler",
+      wood_stove:"wood_stove",
+      district_heat:"district_heat",
+    };
+    const mappedHeating = heatingMap[generator]
+      || (heating.system_type === "heat_pump" ? "heat_pump" : null)
+      || (heating.system_type === "condensing_gas_boiler" ? "condensing_gas_boiler" : null)
+      || (heating.system_type === "gas_boiler" ? "gas_boiler" : null)
+      || (heating.system_type === "district_heat" ? "district_heat" : null)
+      || (heating.system_type === "electric_resistance" ? "electric_resistance" : null);
+    if (mappedHeating) scenarioState.heating = mappedHeating;
+    if (generator.startsWith("heat_pump_")) scenarioState.heatPumpSource = generator;
+    if (heatingDetails.emitter_type) scenarioState.heatingEmitter = heatingDetails.emitter_type;
+    if (heatingDetails.distribution_type) scenarioState.heatingDistribution = heatingDetails.distribution_type;
+    if (heatingDetails.storage_type) scenarioState.heatingStorage = heatingDetails.storage_type;
+    if (heatingDetails.control_type) scenarioState.heatingControl = heatingDetails.control_type;
+
+    measures = optimizerMeasuresFromRaw(raw);
+    if (meta?.selectedHeating && !measures.includes("heating")) measures.push("heating");
+  }
+
+  async function configureParametricEconomicOptimizer(action) {
+    if (!baselineSaved || !homeResult) return;
+    const settings = parametricOptimizerUiSettings(action);
+    const runToken = beginOptimizerRun();
+    resetOptimizerConsole(settings.label);
+    appendOptimizerConsole("info","PLAN","Construiesc ramurile și spațiul de căutare.");
+    const buttons = $$("[data-hln-smart-config]");
+    buttons.forEach(button => button.disabled = true);
+    setOptimizerBusy(true);
+    setStatus(settings.working);
+    setOptimizationNote(
+      `<strong>${escapeHtml(settings.label)}</strong><span>Optimizer V3: căutare multidimensională sharded, verificare canonică și produse în work-unit-uri separate.</span>`
+    );
+
+    const optimizerBody = () => {
+      populateTechnicalForm(homeState, {});
+      const body = new FormData(form);
+      body.set("_optimization_mode", settings.backendMode);
+      if (settings.investmentBudgetLei != null) body.set("_investment_budget_lei", String(settings.investmentBudgetLei));
+      if (settings.annualBillTargetLei != null) body.set("_annual_bill_target_lei", String(settings.annualBillTargetLei));
+      if (settings.maxPaybackYears != null) body.set("_max_payback_years", String(settings.maxPaybackYears));
+      return body;
+    };
+
+    try {
+      let transientRetries = 0;
+
+      if (OPTIMIZER_BACKEND_V3) {
+        appendOptimizerConsole("info","V3","UI orchestrator: plan → căutare sharded → verificări canonice → produse → raport.");
+        appendOptimizerConsole("info","MATH","Planul V3 nu rulează fizică: generează axe deterministe + Halton pe 7 dimensiuni; toate evaluările sunt mutate în batch-uri Worker CPU-safe.");
+
+        const planCallV3 = await fetchOptimizerWithRetry(
+          "/api/optimization/home-lab/v3/plan",
+          {method:"POST", body:optimizerBody()},
+          optimizerAbortController?.signal || null,
+          OPTIMIZER_REQUEST_TIMEOUT_MS,
+          3
+        );
+        transientRetries += Math.max(0, Number(planCallV3.attemptCount || 1) - 1);
+        if (runToken !== optimizerRunToken) return;
+        if (!planCallV3.response.ok || !planCallV3.payload || planCallV3.payload.error) {
+          throw new Error(planCallV3.payload?.error || ("Planul V3 indisponibil (HTTP " + (planCallV3.response.status || "?") + ")."));
+        }
+
+        const planV3 = planCallV3.payload;
+        const allBranchesV3 = Array.isArray(planV3.branches) ? planV3.branches : [];
+        const runnableIdsV3 = Array.isArray(planV3.runBranchIds) ? planV3.runBranchIds : [];
+        const technicalIdsV3 = Array.isArray(planV3.technicalPreviewBranchIds) ? planV3.technicalPreviewBranchIds : [];
+        const searchPointsV3 = Array.isArray(planV3.searchPoints) ? planV3.searchPoints : [];
+        const batchSizeV3 = Math.max(1, Math.min(8, Number(planV3.branchBatchSize || 8)));
+        if (!runnableIdsV3.length || !searchPointsV3.length) {
+          throw new Error("Optimizerul V3 nu a construit un spațiu economic valid.");
+        }
+
+        const branchByIdV3 = new Map(allBranchesV3.map(item => [String(item.branch_id || ""), item]));
+        const formObjectV3 = Object.fromEntries(
+          Array.from(optimizerBody().entries()).map(([key, value]) => [key, typeof value === "string" ? value : String(value)])
+        );
+        const runIdV3 = String(planV3.runId || ("v3-" + Date.now()));
+        const branchTasksV3 = [];
+        for (const branchIdRawV3 of runnableIdsV3) {
+          const branchIdV3 = String(branchIdRawV3);
+          for (let offsetV3 = 0; offsetV3 < searchPointsV3.length; offsetV3 += batchSizeV3) {
+            branchTasksV3.push({
+              branchId:branchIdV3,
+              batch:searchPointsV3.slice(offsetV3, offsetV3 + batchSizeV3),
+              batchIndex:Math.floor(offsetV3 / batchSizeV3) + 1,
+              batchCount:Math.ceil(searchPointsV3.length / batchSizeV3),
+            });
+          }
+        }
+
+        let completedRequestsV3 = 1;
+        let plannedRequestsV3 = 2 + branchTasksV3.length;
+        let backendElapsedMsV3 = Number(planV3.calculationTimeMs || 0);
+        let branchFastEvaluationsV3 = 0;
+        const candidateRowsV3 = [];
+        const branchStatsV3 = new Map();
+        setOptimizerConsoleProgress(
+          completedRequestsV3,
+          plannedRequestsV3,
+          "PLAN · " + searchPointsV3.length + " puncte · " + branchTasksV3.length + " batch-uri"
+        );
+        appendOptimizerConsole(
+          "ok","PLAN",
+          Number(planV3.deterministicAxisPoints || planV3.baseShortlistSize || 0) + " axe deterministe + " +
+          Number(planV3.lowDiscrepancyPoints || 0) + " low-discrepancy → " +
+          searchPointsV3.length + " puncte de căutare · 0 evaluări în plan · batch " + batchSizeV3 + "."
+        );
+
+        for (const technicalIdV3 of technicalIdsV3) {
+          const branchV3 = branchByIdV3.get(String(technicalIdV3));
+          appendOptimizerConsole("info","TECH",(branchV3?.label || technicalIdV3) + " · alternativă tehnică fără cost comercial complet; nu intră în winner.");
+        }
+
+        const runPoolV3 = async (tasks, worker, concurrency = 2) => {
+          let cursor = 0;
+          const count = Math.max(1, Math.min(Number(concurrency || 1), tasks.length || 1));
+          const runners = Array.from({length:count}, async () => {
+            while (true) {
+              if (runToken !== optimizerRunToken) return;
+              const taskIndex = cursor;
+              cursor += 1;
+              if (taskIndex >= tasks.length) return;
+              await worker(tasks[taskIndex], taskIndex);
+            }
+          });
+          await Promise.all(runners);
+        };
+
+        await runPoolV3(branchTasksV3, async (taskV3, taskIndexV3) => {
+          if (runToken !== optimizerRunToken) return;
+          const branchV3 = branchByIdV3.get(taskV3.branchId);
+          appendOptimizerConsole(
+            "info","SEARCH",
+            (taskIndexV3 + 1) + "/" + branchTasksV3.length + " · " +
+            (branchV3?.label || taskV3.branchId) + " · batch " +
+            taskV3.batchIndex + "/" + taskV3.batchCount + " · " + taskV3.batch.length + " stări"
+          );
+          const branchCallV3 = await fetchOptimizerWithRetry(
+            "/api/optimization/home-lab/v3/branch",
+            {
+              method:"POST",
+              headers:{"Content-Type":"application/json"},
+              body:JSON.stringify({
+                form:formObjectV3,
+                runId:runIdV3,
+                branchId:taskV3.branchId,
+                batch:taskV3.batch,
+                baselineAnnualBillLei:Number(homeResult?.annual_cost_lei || 0),
+              }),
+            },
+            optimizerAbortController?.signal || null,
+            OPTIMIZER_REQUEST_TIMEOUT_MS,
+            3,
+            false
+          );
+          transientRetries += Math.max(0, Number(branchCallV3.attemptCount || 1) - 1);
+          if (runToken !== optimizerRunToken) return;
+          if (!branchCallV3.response.ok || !branchCallV3.payload || branchCallV3.payload.error) {
+            throw new Error(branchCallV3.payload?.error || ((branchV3?.label || taskV3.branchId) + ": HTTP " + (branchCallV3.response.status || "?")));
+          }
+          const payloadV3 = branchCallV3.payload;
+          const candidatesV3 = Array.isArray(payloadV3.candidates) ? payloadV3.candidates : [];
+          for (const candidateV3 of candidatesV3) {
+            candidateRowsV3.push({branchId:taskV3.branchId, candidate:candidateV3});
+          }
+          const statsV3 = branchStatsV3.get(taskV3.branchId) || {
+            branchId:taskV3.branchId,
+            evaluatedCandidates:0,
+            acceptedCandidates:0,
+            feasibleCandidates:0,
+            calculationTimeMs:0,
+          };
+          statsV3.evaluatedCandidates += Number(payloadV3.fastEvaluations || 0);
+          statsV3.acceptedCandidates += candidatesV3.length;
+          statsV3.feasibleCandidates += Number(payloadV3.branch?.feasible_candidates || 0);
+          statsV3.calculationTimeMs += Number(payloadV3.calculationTimeMs || 0);
+          branchStatsV3.set(taskV3.branchId, statsV3);
+          branchFastEvaluationsV3 += Number(payloadV3.fastEvaluations || 0);
+          backendElapsedMsV3 += Number(payloadV3.calculationTimeMs || 0);
+          completedRequestsV3 += 1;
+          setOptimizerConsoleProgress(
+            completedRequestsV3,
+            plannedRequestsV3,
+            candidateRowsV3.length + " candidați fast"
+          );
+        }, 2);
+
+        if (!candidateRowsV3.length) {
+          throw new Error("Optimizerul V3 nu a produs niciun candidat economic.");
+        }
+
+        appendOptimizerConsole("info","RANK","Construiesc frontiera globală și bugetul adaptiv de verificare.");
+        const verifyPlanCallV3 = await fetchOptimizerWithRetry(
+          "/api/optimization/home-lab/v3/verification-plan",
+          {
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({form:formObjectV3, candidateRows:candidateRowsV3}),
+          },
+          optimizerAbortController?.signal || null,
+          OPTIMIZER_REQUEST_TIMEOUT_MS,
+          3
+        );
+        transientRetries += Math.max(0, Number(verifyPlanCallV3.attemptCount || 1) - 1);
+        if (runToken !== optimizerRunToken) return;
+        if (!verifyPlanCallV3.response.ok || !verifyPlanCallV3.payload || verifyPlanCallV3.payload.error) {
+          throw new Error(verifyPlanCallV3.payload?.error || "Planul de verificare V3 este indisponibil.");
+        }
+        completedRequestsV3 += 1;
+        const verifyPlanV3 = verifyPlanCallV3.payload;
+        const verifyTargetsV3 = Array.isArray(verifyPlanV3.targets) ? verifyPlanV3.targets : [];
+        if (!verifyTargetsV3.length) {
+          throw new Error("Optimizerul V3 nu a selectat finaliști pentru verificarea canonică.");
+        }
+        plannedRequestsV3 += verifyTargetsV3.length * 2 + 1;
+        setOptimizerConsoleProgress(
+          completedRequestsV3,
+          plannedRequestsV3,
+          "Pareto " + Number(verifyPlanV3.frontierCount || 0) + " · verific " + verifyTargetsV3.length
+        );
+        appendOptimizerConsole(
+          "ok","RANK",
+          Number(verifyPlanV3.sourceCandidateCount || candidateRowsV3.length) + " candidați → frontieră " +
+          Number(verifyPlanV3.frontierCount || 0) + " → " + verifyTargetsV3.length + " verificări canonice."
+        );
+
+        const verifiedRowsV3 = [];
+        await runPoolV3(verifyTargetsV3, async (targetV3, indexV3) => {
+          appendOptimizerConsole("info","VERIFY",(indexV3 + 1) + "/" + verifyTargetsV3.length + " · " + String(targetV3.branchId || "") + " · un singur calculate() complet");
+          const verifyCallV3 = await fetchOptimizerWithRetry(
+            "/api/optimization/home-lab/v3/verify",
+            {
+              method:"POST",
+              headers:{"Content-Type":"application/json"},
+              body:JSON.stringify({
+                form:formObjectV3,
+                branchId:targetV3.branchId,
+                candidate:targetV3.candidate,
+              }),
+            },
+            optimizerAbortController?.signal || null,
+            OPTIMIZER_V2_TIMEOUT_MS,
+            3,
+            false
+          );
+          transientRetries += Math.max(0, Number(verifyCallV3.attemptCount || 1) - 1);
+          if (!verifyCallV3.response.ok || !verifyCallV3.payload || verifyCallV3.payload.error) {
+            throw new Error(verifyCallV3.payload?.error || ("Verificarea V3 " + (indexV3 + 1) + " a eșuat."));
+          }
+          verifiedRowsV3.push(verifyCallV3.payload);
+          backendElapsedMsV3 += Number(verifyCallV3.payload.calculationTimeMs || 0);
+          completedRequestsV3 += 1;
+          setOptimizerConsoleProgress(completedRequestsV3, plannedRequestsV3, verifiedRowsV3.length + "/" + verifyTargetsV3.length + " verificați");
+        }, 2);
+
+        const commercialRowsV3 = [];
+        await runPoolV3(verifiedRowsV3, async (verifiedV3, indexV3) => {
+          appendOptimizerConsole("info","PRODUCT",(indexV3 + 1) + "/" + verifiedRowsV3.length + " · sizing + SKU + curbe producător, izolat per finalist");
+          const productCallV3 = await fetchOptimizerWithRetry(
+            "/api/optimization/home-lab/v3/product",
+            {
+              method:"POST",
+              headers:{"Content-Type":"application/json"},
+              body:JSON.stringify({
+                form:formObjectV3,
+                branchId:verifiedV3.branchId,
+                candidate:verifiedV3.candidate,
+                sourceCandidateId:verifiedV3.candidate?.candidate_id,
+              }),
+            },
+            optimizerAbortController?.signal || null,
+            OPTIMIZER_V2_TIMEOUT_MS,
+            3,
+            false
+          );
+          transientRetries += Math.max(0, Number(productCallV3.attemptCount || 1) - 1);
+          if (!productCallV3.response.ok || !productCallV3.payload || productCallV3.payload.error) {
+            throw new Error(productCallV3.payload?.error || ("Maparea comercială V3 " + (indexV3 + 1) + " a eșuat."));
+          }
+          commercialRowsV3.push(productCallV3.payload);
+          backendElapsedMsV3 += Number(productCallV3.payload.calculationTimeMs || 0);
+          completedRequestsV3 += 1;
+          const productLabelV3 = productCallV3.payload.matchedProduct?.label || "fără SKU nou";
+          setOptimizerConsoleProgress(completedRequestsV3, plannedRequestsV3, commercialRowsV3.length + "/" + verifiedRowsV3.length + " produse");
+          appendOptimizerConsole("ok","PRODUCT",productLabelV3 + " · finalist " + (indexV3 + 1) + " mapat");
+        }, 2);
+
+        appendOptimizerConsole("info","REPORT","Selectez dintre rezultatele deja verificate; requestul final nu mai rulează 3+3 finaliști.");
+        const finalCallV3 = await fetchOptimizerWithRetry(
+          "/api/optimization/home-lab/v3/finalize",
+          {
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({
+              form:formObjectV3,
+              runId:runIdV3,
+              commercialRows:commercialRowsV3,
+              verifiedRows:verifiedRowsV3,
+              branchStats:Array.from(branchStatsV3.values()),
+              representativeEvaluations:Number(planV3.representativeEvaluations || 0),
+              branchFastEvaluations:branchFastEvaluationsV3,
+              priorCalculationTimeMs:backendElapsedMsV3,
+              sourceCandidateCount:Number(verifyPlanV3.sourceCandidateCount || candidateRowsV3.length),
+              searchPointCount:searchPointsV3.length,
+              branchBatchSize:batchSizeV3,
+              verificationFrontierCount:Number(verifyPlanV3.frontierCount || 0),
+            }),
+          },
+          optimizerAbortController?.signal || null,
+          OPTIMIZER_V2_TIMEOUT_MS,
+          3
+        );
+        transientRetries += Math.max(0, Number(finalCallV3.attemptCount || 1) - 1);
+        if (runToken !== optimizerRunToken) return;
+        if (!finalCallV3.response.ok || !finalCallV3.payload || finalCallV3.payload.error) {
+          throw new Error(finalCallV3.payload?.error || ("Raportul V3 indisponibil (HTTP " + (finalCallV3.response.status || "?") + ")."));
+        }
+
+        completedRequestsV3 += 1;
+        const payloadV3 = finalCallV3.payload;
+        const metaV3 = payloadV3.optimization || {};
+        const fastCountV3 = Number(metaV3.parametricEvaluations || 0);
+        const fullCountV3 = Number(metaV3.fullEngineVerifications || verifiedRowsV3.length);
+        setOptimizerConsoleProgress(completedRequestsV3, plannedRequestsV3, "DONE · " + fastCountV3 + " fast · " + fullCountV3 + " full");
+
+        scenarioResult = payloadV3.scenario;
+        currentResult = scenarioResult;
+        scenarioResultState = "fresh";
+        optimizationMeta = {
+          ...metaV3,
+          projectMode,
+          projectModeLabel:projectModeLabel(),
+          transientRetries,
+          failedMicroBatches:[],
+          partialSearch:false,
+        };
+        applyParametricOptimizerState(optimizationMeta);
+        persist();
+        renderAll();
+        emitVisualState("optimizer");
+        setStatus("Optimizare V3 calculată", "ok");
+
+        const commercialNoteV3 = optimizationMeta.commercialReady
+          ? "Soluția este implementabilă în forma raportată."
+          : "Raportul separă optimul fizic de componentele comerciale încă incomplete.";
+        const heatingChoiceV3 = optimizationMeta.selectedHeating?.label || "păstrează sistemul actual";
+        const elapsedV3 = Number(optimizationMeta.calculationTimeMs);
+        const elapsedTextV3 = Number.isFinite(elapsedV3) ? " · " + fmt(elapsedV3 / 1000, 1) + " s backend cumulat" : "";
+        setOptimizationNote(
+          "<strong>" + escapeHtml(optimizationMeta.label || settings.label) + " · V3 sharded</strong>" +
+          "<span>CAPEX " + fmt(optimizationMeta.capexLei) + " lei · economie anuală " + fmt(optimizationMeta.annualSavingLei) + " lei/an · " +
+          (optimizationMeta.paybackYears == null ? "fără amortizare pozitivă" : "amortizare " + fmt(optimizationMeta.paybackYears,1) + " ani") + " · " + escapeHtml(heatingChoiceV3) + ".</span>" +
+          "<small>" + fastCountV3 + " evaluări fast · " + fullCountV3 + " verificări canonice · " +
+          searchPointsV3.length + " puncte/ramură · batch " + batchSizeV3 + elapsedTextV3 + ". " + escapeHtml(commercialNoteV3) + "</small>",
+          Number(optimizationMeta.annualSavingLei) > 0 ? "good" : "warn"
+        );
+        appendOptimizerConsole("ok","DONE","V3 finalizat · " + completedRequestsV3 + " requesturi · " + transientRetries + " retry-uri tranzitorii.");
+        finishOptimizerConsole("done","V3 · " + fastCountV3 + " fast · " + fullCountV3 + " full · fără 3+3 în finalize");
+        showScreen("report");
+        return;
+      }
+      const planCall = await fetchOptimizerWithRetry(
+        "/api/optimization/home-lab/plan",
+        {method:"POST", body:optimizerBody()},
+        optimizerAbortController?.signal || null,
+        OPTIMIZER_REQUEST_TIMEOUT_MS
+      );
+      transientRetries += Math.max(0, Number(planCall.attemptCount || 1) - 1);
+      if (runToken !== optimizerRunToken) return;
+      if (!planCall.response.ok || !planCall.payload || planCall.payload.error) {
+        throw new Error(planCall.payload?.error || `Planificarea optimizerului este indisponibilă (HTTP ${planCall.response.status || "?"}).`);
+      }
+
+      const plan = planCall.payload;
+      optimizerRequestGapMs = Math.max(
+        OPTIMIZER_MIN_REQUEST_GAP_MS,
+        Number(plan.requestGapMs || OPTIMIZER_MIN_REQUEST_GAP_MS)
+      );
+      const allBranches = Array.isArray(plan.branches) ? plan.branches : [];
+      const runnableIds = Array.isArray(plan.runBranchIds) ? plan.runBranchIds : [];
+      const technicalPreviewIds = Array.isArray(plan.technicalPreviewBranchIds)
+        ? plan.technicalPreviewBranchIds
+        : [];
+      if (!runnableIds.length) {
+        throw new Error("Nu există nicio ramură tehnică eligibilă pentru optimizare.");
+      }
+      const branchById = new Map(allBranches.map(item => [String(item.branch_id || ""), item]));
+      const branchResults = allBranches
+        .filter(item => !item.eligible || item.economic_eligible === false)
+        .map(item => ({
+          branch:item,
+          selection:{selected:null},
+          candidates:[],
+          candidateCount:0,
+          parametricEvaluations:0,
+          calculationTimeMs:0,
+          warnings:[],
+        }));
+
+      let completedEvaluations = 0;
+      const failedMicroBatches = [];
+      const phases = Array.isArray(plan.searchPhases) && plan.searchPhases.length
+        ? plan.searchPhases
+        : ["axis", "halton", "refine"];
+      const evaluationsPerPhase = Number(plan.evaluationsPerPhase || 12);
+      const evaluationsPerBranch = Number(plan.evaluationsPerBranch || (phases.length * evaluationsPerPhase));
+      const configuredBranchParallelism = Math.max(
+        1,
+        Math.min(3, Number(plan.maxConcurrentBranchRequests || 3))
+      );
+      const initialBranchParallelism = Math.max(
+        1,
+        Math.min(
+          configuredBranchParallelism,
+          Number(plan.initialConcurrentBranchRequests || Math.min(2, configuredBranchParallelism))
+        )
+      );
+      const cleanWavesBeforeRampUp = Math.max(1, Number(plan.cleanWavesBeforeRampUp || 2));
+      const branchMaxAttempts = Math.max(1, Math.min(3, Number(plan.branchMaxAttempts || 3)));
+      const branchStartStaggerMs = Math.max(0, Number(plan.branchStartStaggerMs || 140));
+      let adaptiveBranchParallelism = initialBranchParallelism;
+      let cleanWaveStreak = 0;
+      let processedCandidates = 0;
+      const plannedPhaseCandidates = Array.isArray(plan.phaseOffsets) && plan.phaseOffsets.length
+        ? plan.phaseOffsets.length
+        : evaluationsPerPhase;
+      let plannedCandidates = runnableIds.length * phases.length * plannedPhaseCandidates;
+      setOptimizerConsoleProgress(
+        processedCandidates,
+        plannedCandidates,
+        `0 procesați · ${completedEvaluations} calculați · concurență ${adaptiveBranchParallelism}/${configuredBranchParallelism}`
+      );
+      appendOptimizerConsole(
+        "info",
+        "PLAN",
+        `${runnableIds.length} ramuri economice × ${phases.length} faze × ${plannedPhaseCandidates} candidați = ${plannedCandidates} puncte planificate; + ${technicalPreviewIds.length} alternative tehnice evaluate o singură dată pe finalistul raw.`
+      );
+      appendOptimizerConsole(
+        "info",
+        "POOL",
+        `Pornesc cu ${adaptiveBranchParallelism} requesturi simultan; maxim ${configuredBranchParallelism}; ${branchMaxAttempts} încercări/candidat.`
+      );
+      const phaseLabel = {
+        axis:"probe axe",
+        halton:"explorare Halton",
+        refine:"refinement local",
+      };
+
+      for (let index = 0; index < runnableIds.length; index += 1) {
+        if (runToken !== optimizerRunToken) return;
+        const branchId = String(runnableIds[index]);
+        const branch = branchById.get(branchId) || {};
+        const branchLabel = branch.label || branchId;
+        const priorCandidateSummaries = [];
+        appendOptimizerConsole(
+          "info",
+          "BRANCH",
+          `[${index + 1}/${runnableIds.length}] ${branchLabel} (${branchId})`
+        );
+
+        const phaseOffsets = Array.isArray(plan.phaseOffsets) && plan.phaseOffsets.length
+          ? plan.phaseOffsets.map(value => Number(value || 0))
+          : Array.from({length:evaluationsPerPhase}, (_, offset) => offset);
+        const microBatchSize = Number(plan.microBatchSize || 1);
+
+        for (let phaseIndex = 0; phaseIndex < phases.length; phaseIndex += 1) {
+          if (runToken !== optimizerRunToken) return;
+          const phase = String(phases[phaseIndex]);
+          const readablePhase = phaseLabel[phase] || phase;
+          appendOptimizerConsole(
+            "info",
+            "PHASE",
+            `[${phaseIndex + 1}/${phases.length}] ${readablePhase} · ${phaseOffsets.length} candidați · concurență curentă ${adaptiveBranchParallelism}`
+          );
+          const fixedRefinementSeed = phase === "refine"
+            ? [...priorCandidateSummaries]
+            : [];
+
+          if (phase === "refine" && !fixedRefinementSeed.length) {
+            const warning = `Ramura „${branchLabel}” nu are candidați validați pentru refinement; faza locală a fost omisă.`;
+            plannedCandidates = Math.max(processedCandidates, plannedCandidates - phaseOffsets.length);
+            appendOptimizerConsole(
+              "retry",
+              "SKIP",
+              `[${index + 1}/${runnableIds.length}] ${branchLabel} · refinement omis: nu există seed valid.`
+            );
+            setOptimizerConsoleProgress(
+              processedCandidates,
+              plannedCandidates,
+              `${processedCandidates} procesați · ${completedEvaluations} calculați · ${failedMicroBatches.length + 1} faulturi`
+            );
+            failedMicroBatches.push({
+              candidateId:null,
+              candidateParameters:null,
+              branchId,
+              branchLabel,
+              phase,
+              batchIndex:null,
+              phaseOffset:null,
+              status:null,
+              attempts:0,
+              reason:"missing_refinement_seed",
+            });
+            branchResults.push({
+              branch,
+              selection:{selected:null},
+              candidates:[],
+              candidateCount:0,
+              parametricEvaluations:0,
+              calculationTimeMs:0,
+              warnings:[warning],
+            });
+            continue;
+          }
+
+          // Resolve the raw candidates before the heavy Worker calls. If a
+          // request is killed by the platform, this descriptor survives in the
+          // browser and makes the failed point exactly reproducible.
+          const phaseCandidateByOffset = new Map();
+          try {
+            const traceBody = optimizerBody();
+            const traceForm = Object.fromEntries(traceBody.entries());
+            const traceCall = await fetchOptimizerWithRetry(
+              "/api/optimization/home-lab/phase-candidates",
+              {
+                method:"POST",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({
+                  form:traceForm,
+                  branchId,
+                  searchPhase:phase,
+                  phaseOffsets,
+                  priorCandidates:phase === "refine" ? fixedRefinementSeed : [],
+                }),
+              },
+              optimizerAbortController?.signal || null,
+              OPTIMIZER_REQUEST_TIMEOUT_MS,
+              2
+            );
+            if (traceCall.response.ok && traceCall.payload && !traceCall.payload.error) {
+              for (const descriptor of (traceCall.payload.candidates || [])) {
+                phaseCandidateByOffset.set(Number(descriptor.phase_offset), descriptor);
+              }
+              appendOptimizerConsole(
+                "info",
+                "TRACE",
+                `${branchLabel} · ${readablePhase}: ${phaseCandidateByOffset.size}/${phaseOffsets.length} descriptori pregătiți înainte de calcul.`
+              );
+            }
+          } catch (error) {
+            if (error?.name === "AbortError" || runToken !== optimizerRunToken) throw error;
+            appendOptimizerConsole(
+              "retry",
+              "TRACE",
+              `${branchLabel} · ${readablePhase}: descriptorii nu au putut fi preluați; continui cu branch/phase/offset determinist.`
+            );
+            // Trace preview must never prevent optimization. The fallback key
+            // branch/phase/offset remains deterministic and rerunnable.
+          }
+
+          const phaseSummariesByBatch = new Map();
+          const phaseFailedBatchIndexes = new Set();
+          let completedInPhase = 0;
+          let phaseFinalFailures = 0;
+          let phaseRecoveredRetries = 0;
+
+          const recordPhaseFailure = failure => {
+            phaseFailedBatchIndexes.add(failure.batchIndex);
+            const existingIndex = failedMicroBatches.findIndex(item => (
+              item.branchId === failure.branchId
+              && item.phase === failure.phase
+              && item.batchIndex === failure.batchIndex
+            ));
+            if (existingIndex >= 0) {
+              const existing = failedMicroBatches[existingIndex];
+              failedMicroBatches[existingIndex] = {
+                ...existing,
+                ...failure,
+                attempts:Number(existing.attempts || 0) + Number(failure.attempts || 0),
+              };
+              return;
+            }
+            failedMicroBatches.push(failure);
+          };
+
+          const clearPhaseFailure = batchIndex => {
+            phaseFailedBatchIndexes.delete(batchIndex);
+            for (let i = failedMicroBatches.length - 1; i >= 0; i -= 1) {
+              const item = failedMicroBatches[i];
+              if (
+                item.branchId === branchId
+                && item.phase === phase
+                && item.batchIndex === batchIndex
+              ) {
+                failedMicroBatches.splice(i, 1);
+              }
+            }
+          };
+
+          const updateParallelPhaseProgress = waveText => {
+            setStatus(
+              `Ramura ${index + 1}/${runnableIds.length} · faza ${phaseIndex + 1}/${phases.length} · ${readablePhase} · ${completedInPhase}/${phaseOffsets.length}`
+            );
+            setOptimizationNote(
+              `<strong>${escapeHtml(settings.label)}</strong>
+               <span>Ramura ${index + 1}/${runnableIds.length}: ${escapeHtml(branchLabel)} · faza ${phaseIndex + 1}/${phases.length}: ${escapeHtml(readablePhase)}.</span>
+               <small>Candidați procesați ${completedInPhase}/${phaseOffsets.length} în fază · ${processedCandidates}/${plannedCandidates} total · concurență ${adaptiveBranchParallelism}/${configuredBranchParallelism}${waveText ? " · " + escapeHtml(waveText) : ""}.</small>`
+            );
+            setOptimizerConsoleProgress(
+              processedCandidates,
+              plannedCandidates,
+              `${processedCandidates}/${plannedCandidates} procesați · ${completedEvaluations} calculați · ${failedMicroBatches.length} faulturi · concurență ${adaptiveBranchParallelism}/${configuredBranchParallelism}`
+            );
+          };
+
+          const runOnePhaseCandidate = async (batchIndex, {recovery = false} = {}) => {
+            if (runToken !== optimizerRunToken) {
+              const abortError = new Error("Optimizer oprit");
+              abortError.name = "AbortError";
+              throw abortError;
+            }
+
+            const phaseOffset = phaseOffsets[batchIndex];
+            const candidateTrace = phaseCandidateByOffset.get(Number(phaseOffset)) || null;
+            const candidateId = candidateTrace?.candidate_id || `TRACE-${branchId}-${phase}-${phaseOffset}`;
+            const candidateParameters = candidateTrace?.parameters || null;
+            const candidateStartedAt = performance.now();
+            const body = optimizerBody();
+            const formPayload = Object.fromEntries(body.entries());
+            let branchCall = null;
+
+            appendOptimizerConsole(
+              "run",
+              recovery ? "RECOVER" : "RUN",
+              `B ${index + 1}/${runnableIds.length} · P ${phaseIndex + 1}/${phases.length} · C ${batchIndex + 1}/${phaseOffsets.length} · ${candidateId}`
+            );
+            appendOptimizerConsole(
+              "param",
+              "PARAM",
+              candidateParameters
+                ? optimizerConsoleCandidateParameters(candidateParameters)
+                : `branch=${branchId} | phase=${phase} | offset=${phaseOffset}`
+            );
+
+            try {
+              branchCall = await fetchOptimizerWithRetry(
+                "/api/optimization/home-lab/branch",
+                {
+                  method:"POST",
+                  headers:{"Content-Type":"application/json"},
+                  body:JSON.stringify({
+                    form:formPayload,
+                    branchId,
+                    searchPhase:phase,
+                    phaseOffset,
+                    priorCandidates:phase === "refine" ? fixedRefinementSeed : [],
+                  }),
+                },
+                optimizerAbortController?.signal || null,
+                OPTIMIZER_REQUEST_TIMEOUT_MS,
+                branchMaxAttempts,
+                false,
+                {
+                  onAttempt: ({attempt, maxAttempts}) => {
+                    appendOptimizerConsole(
+                      "run",
+                      "TRY",
+                      `${candidateId} · încercarea ${attempt}/${maxAttempts}${recovery ? " · recovery serial" : ""}`
+                    );
+                  },
+                  onRetry: ({nextAttempt, maxAttempts, delayMs, reason}) => {
+                    const reasonText = reason?.type === "http"
+                      ? `HTTP ${reason.status}`
+                      : (reason?.name || "network");
+                    appendOptimizerConsole(
+                      "retry",
+                      "RETRY",
+                      `${candidateId} · ${reasonText} · încercarea ${nextAttempt}/${maxAttempts} în ${Math.round(delayMs)} ms`
+                    );
+                  },
+                }
+              );
+            } catch (error) {
+              if (error?.name === "AbortError" || runToken !== optimizerRunToken) throw error;
+              const transientTransport = error?.name === "TimeoutError" || error?.name === "TypeError";
+              if (!transientTransport) throw error;
+              phaseFinalFailures += 1;
+              const attempts = Number(error?.attemptCount || branchMaxAttempts);
+              const elapsedMs = performance.now() - candidateStartedAt;
+              appendOptimizerConsole(
+                "fail",
+                "FAIL",
+                `${candidateId} · ${error?.name || "network"} după ${attempts} încercări · ${Math.round(elapsedMs)} ms · păstrat pentru reexecuție`
+              );
+              const warning = `Ramura „${branchLabel}” / ${readablePhase} / candidat ${candidateId} a fost păstrat pentru reexecuție după ${error?.name || "network"}.`;
+              recordPhaseFailure({
+                candidateId:candidateTrace?.candidate_id || null,
+                candidateParameters,
+                branchId,
+                branchLabel,
+                phase,
+                batchIndex,
+                phaseOffset,
+                status:null,
+                attempts,
+                reason:error?.name || "transport_error",
+              });
+              branchResults.push({
+                branch,
+                selection:{selected:null},
+                candidates:[],
+                candidateCount:0,
+                parametricEvaluations:0,
+                calculationTimeMs:0,
+                warnings:[warning],
+              });
+              return false;
+            }
+
+            const recoveredRetries = Math.max(0, Number(branchCall.attemptCount || 1) - 1);
+            transientRetries += recoveredRetries;
+            phaseRecoveredRetries += recoveredRetries;
+
+            if (runToken !== optimizerRunToken) {
+              const abortError = new Error("Optimizer oprit");
+              abortError.name = "AbortError";
+              throw abortError;
+            }
+
+            if (!branchCall.response.ok || !branchCall.payload || branchCall.payload.error) {
+              const status = Number(branchCall.response?.status || 0);
+              if (OPTIMIZER_TRANSIENT_RETRY_STATUSES.has(status)) {
+                phaseFinalFailures += 1;
+                const attempts = Number(branchCall.attemptCount || 1);
+                const elapsedMs = performance.now() - candidateStartedAt;
+                appendOptimizerConsole(
+                  "fail",
+                  "FAIL",
+                  `${candidateId} · HTTP ${status || "?"} după ${attempts} încercări · ${Math.round(elapsedMs)} ms · păstrat pentru reexecuție`
+                );
+                const warning = `Ramura „${branchLabel}” / ${readablePhase} / candidat ${candidateId} a fost păstrat pentru reexecuție după HTTP ${status || "tranzitoriu"} repetat.`;
+                recordPhaseFailure({
+                  candidateId:candidateTrace?.candidate_id || null,
+                  candidateParameters,
+                  branchId,
+                  branchLabel,
+                  phase,
+                  batchIndex,
+                  phaseOffset,
+                  status,
+                  attempts,
+                  reason:"transient_http",
+                });
+                branchResults.push({
+                  branch,
+                  selection:{selected:null},
+                  candidates:[],
+                  candidateCount:0,
+                  parametricEvaluations:0,
+                  calculationTimeMs:0,
+                  warnings:[warning],
+                });
+                return false;
+              }
+              throw new Error(
+                branchCall.payload?.error
+                || `Ramura „${branchLabel}” / ${readablePhase} / candidat ${candidateId} nu a putut fi calculată (HTTP ${status || "?"}).`
+              );
+            }
+
+            branchResults.push(branchCall.payload);
+            const batchSummaries = Array.isArray(branchCall.payload.candidateSummaries)
+              ? branchCall.payload.candidateSummaries
+              : [];
+            phaseSummariesByBatch.set(batchIndex, batchSummaries);
+            const evaluatedNow = Number(branchCall.payload.parametricEvaluations || 0);
+            completedEvaluations += evaluatedNow;
+
+            const summary = batchSummaries[0] || null;
+            const calculationStages = Array.isArray(branchCall.payload.calculationStages)
+              ? branchCall.payload.calculationStages
+              : [];
+            for (const stage of calculationStages) {
+              appendOptimizerConsole(
+                "info",
+                String(stage?.stage || "CALC").slice(0,18),
+                stage?.detail || ""
+              );
+            }
+            const elapsedMs = performance.now() - candidateStartedAt;
+            const resultText = summary
+              ? `CAPEX ${fmt(Number(summary.capex_lei || 0))} lei | factură ${fmt(Number(summary.annual_bill_lei || 0))} lei/an | economie ${fmt(Number(summary.annual_saving_lei || 0))} lei/an`
+              : (evaluatedNow > 0 ? "calculat, dar eliminat de constrângerile tehnice/economice" : "fără candidat tehnic păstrat");
+            if (recovery && phaseFailedBatchIndexes.has(batchIndex)) {
+              clearPhaseFailure(batchIndex);
+              appendOptimizerConsole(
+                "ok",
+                "RECOVERED",
+                `${candidateId} · reintrat în competiție după reexecuție serială.`
+              );
+            }
+            appendOptimizerConsole(
+              "ok",
+              "OK",
+              `${candidateId} · ${Math.round(elapsedMs)} ms · ${resultText}`
+            );
+            return true;
+          };
+
+          let waveCursor = 0;
+          while (waveCursor < phaseOffsets.length) {
+            if (runToken !== optimizerRunToken) return;
+            const waveParallelism = Math.max(
+              1,
+              Math.min(adaptiveBranchParallelism, phaseOffsets.length - waveCursor)
+            );
+            const waveIndexes = Array.from(
+              {length:waveParallelism},
+              (_, position) => waveCursor + position
+            );
+            const firstCandidate = waveIndexes[0] + 1;
+            const lastCandidate = waveIndexes[waveIndexes.length - 1] + 1;
+            const failuresBeforeWave = phaseFinalFailures;
+            const retriesBeforeWave = phaseRecoveredRetries;
+
+            appendOptimizerConsole(
+              "info",
+              "WAVE",
+              `${branchLabel} · ${readablePhase} · candidați ${firstCandidate}–${lastCandidate}/${phaseOffsets.length} · concurență ${waveParallelism}`
+            );
+            updateParallelPhaseProgress(
+              `rulează candidații ${firstCandidate}–${lastCandidate}/${phaseOffsets.length}`
+            );
+
+            await Promise.all(waveIndexes.map(async (batchIndex, wavePosition) => {
+              if (wavePosition > 0 && branchStartStaggerMs > 0) {
+                await new Promise(resolve => window.setTimeout(
+                  resolve,
+                  wavePosition * branchStartStaggerMs
+                ));
+              }
+              try {
+                await runOnePhaseCandidate(batchIndex);
+              } finally {
+                completedInPhase += 1;
+                processedCandidates += 1;
+                updateParallelPhaseProgress(
+                  `ultimul val ${firstCandidate}–${lastCandidate}/${phaseOffsets.length}`
+                );
+              }
+            }));
+
+            const waveFailures = phaseFinalFailures - failuresBeforeWave;
+            const waveRetries = phaseRecoveredRetries - retriesBeforeWave;
+            const previousParallelism = adaptiveBranchParallelism;
+
+            if (waveFailures > 0) {
+              adaptiveBranchParallelism = 1;
+              cleanWaveStreak = 0;
+              appendOptimizerConsole(
+                "retry",
+                "THROTTLE",
+                `Fault în val: concurență ${previousParallelism} → 1 imediat pentru următorul val; cooldown 1,2 s.`
+              );
+              await new Promise(resolve => window.setTimeout(resolve, 1200));
+            } else if (waveRetries > 0) {
+              adaptiveBranchParallelism = Math.max(1, adaptiveBranchParallelism - 1);
+              cleanWaveStreak = 0;
+              if (adaptiveBranchParallelism !== previousParallelism) {
+                appendOptimizerConsole(
+                  "retry",
+                  "THROTTLE",
+                  `Retry detectat: concurență ${previousParallelism} → ${adaptiveBranchParallelism} pentru următorul val; cooldown 0,5 s.`
+                );
+              }
+              await new Promise(resolve => window.setTimeout(resolve, 500));
+            } else {
+              cleanWaveStreak += 1;
+              if (
+                cleanWaveStreak >= cleanWavesBeforeRampUp
+                && adaptiveBranchParallelism < configuredBranchParallelism
+              ) {
+                adaptiveBranchParallelism += 1;
+                cleanWaveStreak = 0;
+                appendOptimizerConsole(
+                  "info",
+                  "RAMP",
+                  `Două valuri curate: concurență ${previousParallelism} → ${adaptiveBranchParallelism}.`
+                );
+              }
+            }
+
+            waveCursor += waveIndexes.length;
+          }
+
+          if (phaseFailedBatchIndexes.size) {
+            adaptiveBranchParallelism = 1;
+            cleanWaveStreak = 0;
+            const recoveryIndexes = [...phaseFailedBatchIndexes].sort((a,b) => a - b);
+            appendOptimizerConsole(
+              "retry",
+              "RECOVERY",
+              `${recoveryIndexes.length} candidat${recoveryIndexes.length === 1 ? "" : "i"} cu fault: reexecuție serială înainte de a continua.`
+            );
+            await new Promise(resolve => window.setTimeout(resolve, 1500));
+            for (let recoveryIndex = 0; recoveryIndex < recoveryIndexes.length; recoveryIndex += 1) {
+              const batchIndex = recoveryIndexes[recoveryIndex];
+              appendOptimizerConsole(
+                "retry",
+                "RECOVERY",
+                `[${recoveryIndex + 1}/${recoveryIndexes.length}] C ${batchIndex + 1}/${phaseOffsets.length} · concurență 1`
+              );
+              await runOnePhaseCandidate(batchIndex, {recovery:true});
+              if (phaseFailedBatchIndexes.has(batchIndex)) {
+                appendOptimizerConsole(
+                  "fail",
+                  "PENDING",
+                  `C ${batchIndex + 1}/${phaseOffsets.length} rămâne în lista de reexecuție după recovery.`
+                );
+              }
+              await new Promise(resolve => window.setTimeout(resolve, 500));
+            }
+          }
+
+          // Preserve deterministic candidate ordering for refinement seed
+          // selection even though requests finish out of order.
+          const phaseSummariesCollected = [];
+          for (let batchIndex = 0; batchIndex < phaseOffsets.length; batchIndex += 1) {
+            phaseSummariesCollected.push(...(phaseSummariesByBatch.get(batchIndex) || []));
+          }
+          priorCandidateSummaries.push(...phaseSummariesCollected);
+        }
+      }
+
+      setStatus("Compar rezultatele ramurilor…");
+      appendOptimizerConsole(
+        "info",
+        "RAW",
+        `Căutarea tehnică s-a încheiat: compar ${completedEvaluations} rezultate fără selecție SKU în bucla parametrică.`
+      );
+      appendOptimizerConsole(
+        "info",
+        "FINAL",
+        `Compar ${completedEvaluations} rezultate calculate din ${processedCandidates} candidați procesați.`
+      );
+      setOptimizerConsoleProgress(
+        processedCandidates,
+        plannedCandidates,
+        `Finalizez selecția · ${completedEvaluations} calculați · ${failedMicroBatches.length} candidați de reexecutat`
+      );
+      const partialSearchText = failedMicroBatches.length
+        ? ` · ${failedMicroBatches.length} candidați păstrați pentru reexecuție după faulturi tranzitorii`
+        : "";
+      setOptimizationNote(
+        `<strong>${escapeHtml(settings.label)}</strong><span>Aplic criteriul economic final peste toți candidații validați.</span><small>${completedEvaluations} recalculări parametrice finalizate${escapeHtml(partialSearchText)}.</small>`
+      );
+
+      appendOptimizerConsole(
+        "info",
+        "PRODUCT",
+        "Selectez finaliștii Pareto și abia acum încerc maparea pe produse reale + recalcularea finalistului."
+      );
+      const finalizeBody = optimizerBody();
+      const finalizeForm = Object.fromEntries(finalizeBody.entries());
+      const finalCall = await fetchOptimizerWithRetry(
+        "/api/optimization/home-lab/finalize",
+        {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({
+            form:finalizeForm,
+            branchResults,
+          }),
+        },
+        optimizerAbortController?.signal || null,
+        OPTIMIZER_REQUEST_TIMEOUT_MS
+      );
+      transientRetries += Math.max(0, Number(finalCall.attemptCount || 1) - 1);
+      if (runToken !== optimizerRunToken) return;
+      const response = finalCall.response;
+      const payload = finalCall.payload;
+      if (!response.ok || !payload || payload.error) {
+        throw new Error(payload?.error || `Optimizer indisponibil (HTTP ${response.status || "?"}).`);
+      }
+
+      const technicalAlternatives = Array.isArray(
+        payload.optimization?.technicalHeatingAlternatives
+      ) ? payload.optimization.technicalHeatingAlternatives : [];
+      for (const alternative of technicalAlternatives) {
+        appendOptimizerConsole(
+          "info",
+          "TECH",
+          `${alternative.label || alternative.branchId} · finalist raw neschimbat · factură ${fmt(Number(alternative.annualBillLei || 0))} lei/an · energie ${fmt(Number(alternative.finalEnergyKwh || 0))} kWh/an · cost comercial încă necunoscut`
+        );
+      }
+
+      const matchedHeating = payload.optimization?.selectedHeating;
+      if (matchedHeating?.optionId) {
+        appendOptimizerConsole(
+          "ok",
+          "PRODUCT",
+          `${matchedHeating.label} · necesar ${fmt(Number(matchedHeating.requiredPowerKw || 0),2)} kW → produs ${fmt(Number(matchedHeating.ratedPowerKw || 0),2)} kW`
+        );
+      } else {
+        appendOptimizerConsole(
+          "info",
+          "PRODUCT",
+          "Finalistul nu a necesitat sau nu a avut încă o mapare comercială completă."
+        );
+      }
+
+      scenarioResult = payload.scenario;
+      currentResult = scenarioResult;
+      scenarioResultState = "fresh";
+      optimizationMeta = {
+        ...payload.optimization,
+        projectMode,
+        projectModeLabel:projectModeLabel(),
+        transientRetries,
+        failedMicroBatches,
+        partialSearch:failedMicroBatches.length > 0,
+      };
+      applyParametricOptimizerState(optimizationMeta);
+      persist();
+      renderAll();
+      emitVisualState("optimizer");
+      setStatus("Optimizare economică calculată", "ok");
+
+      const commercialNote = optimizationMeta.commercialReady
+        ? "Soluția este deja implementabilă în forma raportată."
+        : "Raportul separă optimul brut de discretizarea comercială încă indisponibilă.";
+      const heatingChoice = optimizationMeta.selectedHeating?.label || "păstrează sistemul actual";
+      const elapsed = Number(optimizationMeta.calculationTimeMs);
+      const elapsedText = Number.isFinite(elapsed)
+        ? ` · ${fmt(elapsed / 1000, 1)} s calcul cumulat backend`
+        : "";
+      const searchDepth = optimizationMeta.parametricEvaluations
+        ? `${optimizationMeta.parametricEvaluations} recalculări parametrice · ${optimizationMeta.heatingBranchEvaluations || 0} în ramuri alternative de încălzire${elapsedText}`
+        : `${optimizationMeta.evaluatedCandidates || 0} configurații evaluate${elapsedText}`;
+      const retryText = Number(optimizationMeta.transientRetries || 0) > 0
+        ? ` · ${optimizationMeta.transientRetries} retry-uri infrastructură recuperate`
+        : "";
+      const partialText = Number(optimizationMeta.failedMicroBatches?.length || 0) > 0
+        ? ` · ${optimizationMeta.failedMicroBatches.length} puncte de căutare omise după faulturi tranzitorii`
+        : "";
+      const paretoText = optimizationMeta.paretoScope === "branch_finalists"
+        ? `${optimizationMeta.paretoSolutions || 0} ramuri finaliste nedominante`
+        : `${optimizationMeta.paretoSolutions || 0} pe frontiera Pareto`;
+      setOptimizationNote(
+        `<strong>${escapeHtml(optimizationMeta.label || settings.label)}</strong>
+         <span>CAPEX ${fmt(optimizationMeta.capexLei)} lei · economie anuală ${fmt(optimizationMeta.annualSavingLei)} lei/an · ${optimizationMeta.paybackYears == null ? "fără amortizare pozitivă" : "amortizare " + fmt(optimizationMeta.paybackYears,1) + " ani"} · ${escapeHtml(heatingChoice)}.</span>
+         <small>${escapeHtml(searchDepth + retryText + partialText)} · ${optimizationMeta.feasibleCandidates || 0} eligibile · ${escapeHtml(paretoText)}. ${escapeHtml(commercialNote)}</small>`,
+        optimizationMeta.partialSearch ? "warn" : (Number(optimizationMeta.annualSavingLei) > 0 ? "good" : "warn")
+      );
+      appendOptimizerConsole(
+        optimizationMeta.partialSearch ? "retry" : "ok",
+        optimizationMeta.partialSearch ? "DONE*" : "DONE",
+        optimizationMeta.partialSearch
+          ? `Rezultat final cu ${failedMicroBatches.length} candidați păstrați pentru reexecuție.`
+          : "Toți candidații planificați au fost procesați fără fault final."
+      );
+      finishOptimizerConsole(
+        "done",
+        optimizationMeta.partialSearch
+          ? `Finalizat parțial · ${failedMicroBatches.length} candidați de reexecutat`
+          : `Finalizat · ${completedEvaluations} recalculări`
+      );
+      showScreen("report");
+    } catch (error) {
+      if (error?.name === "AbortError" || runToken !== optimizerRunToken) return;
+      appendOptimizerConsole(
+        "fail",
+        "FATAL",
+        error?.message || "Eroare necunoscută în optimizer."
+      );
+      finishOptimizerConsole("error", error?.message || "Optimizer oprit de o eroare.");
+      scenarioResultState = scenarioResult ? "stale" : "empty";
+      setOptimizationNote(
+        `<strong>Optimizarea nu a putut fi finalizată.</strong><span>${escapeHtml(error?.message || "Eroare necunoscută")}</span>`,
+        "warn"
+      );
+      setStatus(error?.message || "Optimizare indisponibilă", "error");
+      renderAll();
+    } finally {
+      buttons.forEach(button => button.disabled = false);
+      setOptimizerBusy(false);
+      if (runToken === optimizerRunToken) optimizerAbortController = null;
+    }
   }
 
   function bestEconomicVariantPerFamily(rows, settings) {
@@ -3148,21 +4589,77 @@
 
   function renderDock() {
     const dock = $(".hln-dock");
-    if (dock) dock.hidden = screen === "report";
-    if (screen === "report") return;
-    const metrics = $(".hln-dock-metrics");
+    const result = screen === "home"
+      ? (baselineSaved ? homeResult : currentResult || homeResult)
+      : scenarioResult || currentResult || homeResult;
+    const comparisonMode = Boolean(
+      baselineSaved &&
+      screen !== "home" &&
+      homeResult &&
+      scenarioResult
+    );
+    const summary = $(".hln-live-summary");
+    const energyClass = String(result?.energy_class || "").toUpperCase();
+
+    $("#hlnPersistentClass").textContent = energyClass || "—";
+    $("#hlnPersistentCost").textContent =
+      result?.annual_cost_lei == null ? "—" : `${fmt(result.annual_cost_lei)} lei/an`;
+    $("#hlnPersistentEnergy").textContent =
+      result?.final_energy_kwh == null ? "—" : `${fmt(result.final_energy_kwh)} kWh/an`;
+    if (summary) summary.dataset.energyClass = energyClass;
+
+    const classContext = $("#hlnPersistentClassContext");
+    const costDeltaNode = $("#hlnPersistentCostDelta");
+    const energyDeltaNode = $("#hlnPersistentEnergyDelta");
+    [costDeltaNode, energyDeltaNode].forEach(node => {
+      node?.classList.remove("is-good", "is-bad");
+    });
+
+    if (comparisonMode) {
+      const costDelta = directChangeText(
+        scenarioResult.annual_cost_lei,
+        homeResult.annual_cost_lei,
+        {unit:" lei/an", digits:0}
+      );
+      const energyDelta = directChangeText(
+        scenarioResult.final_energy_kwh,
+        homeResult.final_energy_kwh,
+        {unit:"%", digits:0, percent:true}
+      );
+      if (costDeltaNode) {
+        costDeltaNode.textContent = `vs Casa mea · ${costDelta.text}`;
+        applyDeltaState(costDeltaNode, costDelta);
+      }
+      if (energyDeltaNode) {
+        energyDeltaNode.textContent = `vs Casa mea · ${energyDelta.text}`;
+        applyDeltaState(energyDeltaNode, energyDelta);
+      }
+      if (classContext) {
+        const baseClass = String(homeResult.energy_class || "—").toUpperCase();
+        classContext.textContent = baseClass === energyClass
+          ? `Scenariu · aceeași clasă ${energyClass || "—"}`
+          : `Casa mea ${baseClass} → ${energyClass || "—"}`;
+      }
+    } else {
+      if (costDeltaNode) costDeltaNode.textContent = "Baseline Casa mea";
+      if (energyDeltaNode) energyDeltaNode.textContent = "Baseline Casa mea";
+      if (classContext) classContext.textContent = baselineSaved ? "Casa mea salvată" : "Casa curentă";
+    }
+
+    window.requestAnimationFrame(syncPersistentStackHeight);
+
+    if (dock) dock.hidden = false;
+
     const benefits = $(".hln-dock-benefits");
+    const back = $("#hlnDockBack");
+    const backLabel = back?.querySelector("span") || back;
     const cta = $("#hlnDockCta");
     const ctaLabel = cta?.querySelector("span") || cta;
-    const result = screen === "home" ? (baselineSaved ? homeResult : currentResult || homeResult) : scenarioResult || currentResult || homeResult;
-
-    $("#hlnDockClass").textContent = result?.energy_class || "—";
-    $("#hlnDockCost").textContent = result?.annual_cost_lei == null ? "—" : `${fmt(result.annual_cost_lei)} lei`;
-    $("#hlnDockEnergy").textContent = result?.final_energy_kwh == null ? "—" : `${fmt(result.final_energy_kwh)} kWh`;
-
     const scenarioMode = baselineSaved && ["site", "intervention", "scenario"].includes(screen);
-    metrics.hidden = scenarioMode;
     benefits.hidden = !scenarioMode;
+    if (back) back.hidden = screen === "home";
+    if (backLabel) backLabel.textContent = screen === "report" ? "Înapoi la optimizare" : "Înapoi";
+    dock?.classList.toggle("has-comparison", scenarioMode);
 
     if (scenarioMode && homeResult && scenarioResult) {
       $("#hlnDockHomeClass").textContent = homeResult.energy_class || "—";
@@ -3201,17 +4698,25 @@
     if (screen === "home") {
       cta.hidden = false;
       ctaLabel.textContent = baselineSaved ? "Vezi îmbunătățirile" : "Salvează Casa mea și vezi îmbunătățirile";
+      ctaLabel.dataset.mobileLabel = "Îmbunătățiri";
     } else if (screen === "site") {
       cta.hidden = measures.length === 0;
-      ctaLabel.textContent = "Vezi Scenariul meu";
+      ctaLabel.textContent = "Generează raportul";
+      ctaLabel.dataset.mobileLabel = "Raport";
     } else if (screen === "intervention") {
       cta.hidden = false;
       ctaLabel.textContent = "Păstrează intervenția";
+      ctaLabel.dataset.mobileLabel = "Păstrează";
     } else if (screen === "scenario") {
       cta.hidden = false;
       ctaLabel.textContent = "Generează raportul";
+      ctaLabel.dataset.mobileLabel = "Raport";
+    } else if (screen === "report") {
+      cta.hidden = true;
+      ctaLabel.dataset.mobileLabel = "";
     } else {
       cta.hidden = true;
+      ctaLabel.dataset.mobileLabel = "";
     }
   }
 
@@ -3717,8 +5222,245 @@
       </div>`;
   }
 
+  function rawOptimizationRows(raw = {}) {
+    const rows = [];
+    const push = (label, value) => rows.push(`<article><strong>${escapeHtml(label)}</strong><small>${escapeHtml(value)}</small></article>`);
+    if (Number(raw.wall_added_r_m2k_w) > 1e-9) push("Pereți", `R suplimentar ${fmt(raw.wall_added_r_m2k_w,3)} m²K/W`);
+    if (Number(raw.roof_added_r_m2k_w) > 1e-9) push("Acoperiș / pod", `R suplimentar ${fmt(raw.roof_added_r_m2k_w,3)} m²K/W`);
+    if (Number(raw.floor_added_r_m2k_w) > 1e-9) push("Pardoseală", `R suplimentar ${fmt(raw.floor_added_r_m2k_w,3)} m²K/W`);
+    if (Number(raw.window_replacement_fraction) > 1e-9) {
+      push(
+        "Ferestre",
+        `${fmt(100 * Number(raw.window_replacement_fraction),1)}% din suprafață · Uw țintă ${fmt(raw.window_target_u_w_m2k,3)} W/m²K`
+      );
+    }
+    if (Number(raw.ventilation_heat_recovery_efficiency_target) > 1e-9) {
+      push(
+        "Ventilație",
+        `recuperare căldură țintă ${fmt(100 * Number(raw.ventilation_heat_recovery_efficiency_target),1)}%`
+      );
+    }
+    if (Number(raw.pv_added_kwp) > 1e-9) push("Fotovoltaice", `+${fmt(raw.pv_added_kwp,3)} kWp`);
+    if (Number(raw.solar_thermal_added_m2) > 1e-9) push("Solar termic", `+${fmt(raw.solar_thermal_added_m2,3)} m² colector`);
+    return rows;
+  }
+
+  function renderHeatingBranchTraceability() {
+    const node = $("#hlnReportHeatingBranches");
+    if (!node) return;
+    const branches = Array.isArray(optimizationMeta?.heatingBranches)
+      ? optimizationMeta.heatingBranches
+      : [];
+    if (optimizationMeta?.kind !== "parametric_economic" || !branches.length) {
+      node.innerHTML = '<p class="hln-report-empty">Acest scenariu nu a rulat o comparație mixtă a sistemelor de încălzire.</p>';
+      return;
+    }
+
+    const selectedId = optimizationMeta.selectedHeating?.technologyId || "keep-current-heating";
+    const technicalAlternatives = new Map(
+      (Array.isArray(optimizationMeta?.technicalHeatingAlternatives)
+        ? optimizationMeta.technicalHeatingAlternatives
+        : []
+      ).map(item => [String(item.branchId || ""), item])
+    );
+    node.innerHTML = `<div class="hln-strategy-list">${branches.map((branch,index) => {
+      const eligible = Boolean(branch.eligible);
+      const economicEligible = branch.economic_eligible !== false;
+      const selected = economicEligible
+        && String(branch.branch_id || "") === String(selectedId);
+      const evaluated = Number(branch.evaluated_candidates || 0);
+      const accepted = Number(branch.accepted_candidates || 0);
+      const rejectedCapacity = Number(branch.rejected_for_capacity || 0);
+      const technicalPreview = technicalAlternatives.get(String(branch.branch_id || "")) || null;
+      const allRejectedForCapacity = eligible
+        && economicEligible
+        && evaluated > 0
+        && accepted === 0
+        && rejectedCapacity > 0;
+
+      const status = selected
+        ? "SELECTAT"
+        : !eligible
+          ? "EXCLUS ÎNAINTE DE CALCUL"
+          : !economicEligible
+            ? "EVALUAT TEHNIC · COST COMERCIAL LIPSĂ"
+            : allRejectedForCapacity
+              ? "ELIMINAT · NECESAR PESTE PLAJA CATALOGULUI"
+              : "EVALUAT · NESELECTAT";
+
+      const detail = selected
+        ? `${evaluated} recalculări parametrice · ${accepted} candidați tehnici valizi · produsul real este atașat doar după selecția finalistului`
+        : !eligible
+          ? (branch.note || "Infrastructură sau compatibilitate neconfirmată.")
+          : !economicEligible
+            ? (
+                technicalPreview
+                  ? `preview tehnic pe finalistul raw · factură ${fmt(Number(technicalPreview.annualBillLei || 0))} lei/an · energie ${fmt(Number(technicalPreview.finalEnergyKwh || 0))} kWh/an · EP ${fmt(Number(technicalPreview.primarySpecificKwhM2 || 0),1)} kWh/m²·an · clasa ${escapeHtml(technicalPreview.energyClass || "—")}`
+                  : `ramură tehnică disponibilă, dar preview-ul nu a putut fi calculat în această rulare`
+              )
+            : allRejectedForCapacity
+              ? `${evaluated} recalculări · necesarul termic recalculat a depășit domeniul acoperit de datele comerciale disponibile`
+              : `${evaluated} recalculări parametrice · ${accepted} candidați tehnici valizi · ramura a intrat în comparația economică, dar nu a fost selectată`;
+
+      let commercialLine = "";
+      if (!economicEligible) {
+        commercialLine = "CAPEX comercial: în așteptare · fără valoare inventată";
+      } else if (branch.branch_id === "keep-current-heating") {
+        commercialLine = "CAPEX încălzire: 0 lei · sistem existent";
+      } else {
+        const range = branch.min_product_power_kw != null && branch.max_product_power_kw != null
+          ? ` · observații catalog ${fmt(branch.min_product_power_kw,1)}–${fmt(branch.max_product_power_kw,1)} kW`
+          : "";
+        commercialLine =
+          `Curbă CAPEX parametrică în kW${range} · produs/SKU doar la finaliști`;
+      }
+
+      return `
+        <article class="${selected ? "is-selected" : ""}">
+          <b>${index + 1}</b>
+          <div>
+            <strong>${escapeHtml(branch.label || branch.branch_id || "Sistem")}</strong>
+            <small>${escapeHtml(status)} · ${escapeHtml(detail)}</small>
+            <small>${escapeHtml(commercialLine)}</small>
+          </div>
+        </article>
+      `;
+    }).join("")}</div>`;
+  }
+
+  function optimizerFailedCandidateParameterText(raw = {}) {
+    const parts = [];
+    const push = (label, value, suffix = "") => {
+      const number = Number(value);
+      if (Number.isFinite(number) && Math.abs(number) > 1e-9) {
+        parts.push(`${label} ${fmt(number,3)}${suffix}`);
+      }
+    };
+    push("pereți R+", raw.wall_added_r_m2k_w, " m²K/W");
+    push("pod R+", raw.roof_added_r_m2k_w, " m²K/W");
+    push("pardoseală R+", raw.floor_added_r_m2k_w, " m²K/W");
+    const windows = Number(raw.window_replacement_fraction);
+    if (Number.isFinite(windows) && windows > 1e-9) {
+      parts.push(`ferestre ${fmt(windows * 100,1)}% · Uw ${fmt(raw.window_target_u_w_m2k,2)} W/m²K`);
+    }
+    const heatRecovery = Number(raw.ventilation_heat_recovery_efficiency_target);
+    if (Number.isFinite(heatRecovery) && heatRecovery > 1e-9) {
+      parts.push(`ventilație HRV ${fmt(heatRecovery * 100,1)}%`);
+    }
+    push("PV +", raw.pv_added_kwp, " kWp");
+    push("solar termic +", raw.solar_thermal_added_m2, " m²");
+    return parts.length ? parts.join(" · ") : "fără intervenții parametrice";
+  }
+
+  function renderOptimizerFailedCandidates() {
+    const node = $("#hlnReportFailedCandidates");
+    if (!node) return;
+    const failed = Array.isArray(optimizationMeta?.failedMicroBatches)
+      ? optimizationMeta.failedMicroBatches
+      : [];
+    if (optimizationMeta?.kind !== "parametric_economic" || !failed.length) {
+      node.innerHTML = '<p class="hln-report-empty">Niciun candidat nu a fost pierdut din cauza unui fault tranzitoriu.</p>';
+      return;
+    }
+    node.innerHTML = `
+      <div class="hln-report-status-warn">
+        <strong>${failed.length} candidat${failed.length === 1 ? "" : "i"} nu au putut fi evaluați complet.</strong>
+        <span>Acești candidați rămân în trasabilitate și trebuie reexecutați; nu sunt considerați automat neeligibili.</span>
+      </div>
+      <div class="hln-strategy-list">
+        ${failed.map((item,index) => {
+          const candidateId = item.candidateId || `TRACE-${item.branchId || "branch"}-${item.phase || "phase"}-${item.phaseOffset ?? "na"}`;
+          const status = item.status ? `HTTP ${item.status}` : (item.reason || "fault tranzitoriu");
+          const attempts = Number(item.attempts || 0);
+          const params = item.candidateParameters
+            ? optimizerFailedCandidateParameterText(item.candidateParameters)
+            : "parametrii nu au putut fi preluați înainte de fault";
+          return `
+            <article>
+              <b>${index + 1}</b>
+              <div>
+                <strong>${escapeHtml(candidateId)} · ${escapeHtml(item.branchLabel || item.branchId || "ramură")}</strong>
+                <small>${escapeHtml(item.phase || "fază")} · offset ${escapeHtml(String(item.phaseOffset ?? "—"))} · ${escapeHtml(status)}${attempts ? ` · ${attempts} încercări` : ""}</small>
+                <small>${escapeHtml(params)}</small>
+              </div>
+            </article>
+          `;
+        }).join("")}
+      </div>
+    `;
+  }
+
+  function renderOptimizerTraceability() {
+    const commercial = $("#hlnReportCommercialSolution");
+    const rawNode = $("#hlnReportRawSolution");
+    const trace = $("#hlnReportSearchTrace");
+    if (!commercial || !rawNode || !trace) return;
+
+    if (optimizationMeta?.kind !== "parametric_economic") {
+      commercial.innerHTML = '<p class="hln-report-empty">Scenariul nu provine din optimizerul parametric.</p>';
+      rawNode.innerHTML = '<p class="hln-report-empty">Nu există un optim matematic separat pentru acest scenariu.</p>';
+      trace.textContent = "Scenariu configurat manual sau prin fluxul regulator existent.";
+      return;
+    }
+
+    const commercialSolution = optimizationMeta.commercialSolution;
+    const commercialItems = Array.isArray(commercialSolution?.items)
+      ? commercialSolution.items
+      : [];
+    if (commercialItems.length) {
+      commercial.innerHTML = `
+        <div class="hln-strategy-list">
+          ${commercialItems.map((item,index) => `
+            <article>
+              <b>${index + 1}</b>
+              <div>
+                <strong>${escapeHtml(item.label || item.family || "Produs")}</strong>
+                <small>${escapeHtml(item.detail || "")}</small>
+              </div>
+            </article>
+          `).join("")}
+        </div>
+        ${optimizationMeta.commercialReady ? "" : `
+          <div class="hln-report-status-warn">
+            <strong>Discretizare comercială parțială.</strong>
+            <span>${escapeHtml(optimizationMeta.commercialMessage || "Unele familii rămân parametrice.")}</span>
+          </div>
+        `}
+      `;
+    } else if (optimizationMeta.commercialReady) {
+      commercial.innerHTML = '<div class="hln-report-status-good"><strong>Soluție implementabilă fără discretizare suplimentară.</strong></div>';
+    } else {
+      commercial.innerHTML = `
+        <div class="hln-report-status-warn">
+          <strong>Discretizarea comercială nu este încă disponibilă pentru această rulare.</strong>
+          <span>${escapeHtml(optimizationMeta.commercialMessage || "Lipsește catalogul complet de produse.")}</span>
+        </div>`;
+    }
+
+    const rawRows = rawOptimizationRows(optimizationMeta.rawSolution || {});
+    rawNode.innerHTML = rawRows.length
+      ? `<div class="hln-raw-optimizer-grid">${rawRows.join("")}</div>`
+      : '<p class="hln-report-empty">Optimizerul a păstrat casa fără intervenții.</p>';
+    const heatingTrace = optimizationMeta.parametricEvaluations
+      ? `${optimizationMeta.parametricEvaluations} recalculări parametrice, dintre care ${optimizationMeta.heatingBranchEvaluations || 0} în ramuri alternative de încălzire · `
+      : "";
+    const failedTrace = Number(optimizationMeta.failedMicroBatches?.length || 0) > 0
+      ? `${optimizationMeta.failedMicroBatches.length} candidați cu fault păstrați pentru reexecuție · `
+      : "";
+    trace.textContent =
+      heatingTrace +
+      failedTrace +
+      `${optimizationMeta.evaluatedCandidates || 0} candidați tehnici păstrați · ` +
+      `${optimizationMeta.feasibleCandidates || 0} eligibili pentru regula aleasă · ` +
+      `${optimizationMeta.paretoSolutions || 0} soluții nedominante. ` +
+      `${optimizationMeta.rationale || ""}`;
+  }
+
   function renderReport() {
     if (!homeResult || !scenarioResult) return;
+    renderOptimizerTraceability();
+    renderOptimizerFailedCandidates();
+    renderHeatingBranchTraceability();
 
     $("#hlnReportHomeClass").textContent = homeResult.energy_class || "—";
     $("#hlnReportScenarioClass").textContent = scenarioResult.energy_class || "—";
@@ -3747,9 +5489,15 @@
       : "—";
     const firstSelected = Array.isArray(optimizationMeta?.selected) ? optimizationMeta.selected[0] : null;
     $("#hlnReportDecisionPriority").textContent = firstSelected?.label || (measures.length ? measureTitle(measures[0]) : "Scenariu manual");
-    $("#hlnReportDecisionNote").textContent = financialScenario
-      ? "Amortizarea este simplă: CAPEX estimat împărțit la economia anuală modelată. Nu include finanțare, mentenanță, înlocuiri, inflație sau actualizarea banilor în timp."
-      : "Pentru un scenariu configurat manual, Home Lab compară energia și costul anual; CAPEX-ul și amortizarea nu sunt inventate dacă nu au fost calculate de optimizarea financiară.";
+    $("#hlnReportDecisionNote").textContent = optimizationMeta?.kind === "parametric_economic"
+      ? (
+          optimizationMeta.commercialReady
+            ? "Valorile economice sunt recalculate după soluția implementabilă raportată. Amortizarea afișată este simplă."
+            : "CAPEX-ul și amortizarea aparțin optimului parametric de planificare. Nu sunt prezentate ca ofertă comercială până când produsele reale nu sunt discretizate și recalculate."
+        )
+      : financialScenario
+        ? "Amortizarea este simplă: CAPEX estimat împărțit la economia anuală modelată. Nu include finanțare, mentenanță, înlocuiri, inflație sau actualizarea banilor în timp."
+        : "Pentru un scenariu configurat manual, Home Lab compară energia și costul anual; CAPEX-ul și amortizarea nu sunt inventate dacă nu au fost calculate de optimizarea financiară.";
 
     $("#hlnReportBars").innerHTML = [
       reportComparisonRow("Cost anual", homeResult.annual_cost_lei, scenarioResult.annual_cost_lei, "lei/an"),
@@ -3950,6 +5698,162 @@
     $("#hlnReportHeatingSource").textContent =
       `LaCurent Light · ${heating.confidence || "—"} confidence · ${String(heating.performance_source || "model intern").replaceAll("_"," ")}`;
 
+    const designHeatLoadKw = Number(scenarioResult.design_heat_load_kw);
+    const winterDesignC = Number(scenarioResult.winter_design_temperature_c);
+    const selectedHeatingMeta = optimizationMeta?.selectedHeating || null;
+    const ratedPowerKw = Number(selectedHeatingMeta?.ratedPowerKw);
+    const oversizeKw = Number(selectedHeatingMeta?.oversizeKw);
+    const oversizePercent = Number(selectedHeatingMeta?.oversizePercent);
+
+    const requiredPowerNode = $("#hlnReportHeatingRequiredPower");
+    if (requiredPowerNode) {
+      requiredPowerNode.textContent = Number.isFinite(designHeatLoadKw)
+        ? `${fmt(designHeatLoadKw,2)} kW${Number.isFinite(winterDesignC) ? " la " + fmt(winterDesignC,0) + " °C exterior" : ""}`
+        : "—";
+      requiredPowerNode.title = Number.isFinite(designHeatLoadKw)
+        ? "Puterea termică pe care sistemul trebuie să o poată livra la temperatura exterioară de calcul, conform modelului Light Engine."
+        : "";
+    }
+
+    const selectedPowerNode = $("#hlnReportHeatingSelectedPower");
+    if (selectedPowerNode) {
+      selectedPowerNode.textContent = Number.isFinite(ratedPowerKw)
+        ? `${fmt(ratedPowerKw,2)} kW nominal`
+        : Number.isFinite(designHeatLoadKw)
+          ? `minim ${fmt(designHeatLoadKw,2)} kW`
+          : "—";
+      selectedPowerNode.title = Number.isFinite(ratedPowerKw)
+        ? "Puterea nominală din catalog a produsului comercial selectat."
+        : "Nu există încă un SKU comercial selectat; se afișează necesarul minim calculat.";
+    }
+
+    const reserveNode = $("#hlnReportHeatingPowerReserve");
+    if (reserveNode) {
+      if (
+        Number.isFinite(ratedPowerKw)
+        && Number.isFinite(designHeatLoadKw)
+        && designHeatLoadKw > 0
+      ) {
+        const reserveKw = Number.isFinite(oversizeKw)
+          ? oversizeKw
+          : Math.max(ratedPowerKw - designHeatLoadKw, 0);
+        const reservePct = Number.isFinite(oversizePercent)
+          ? oversizePercent
+          : 100 * reserveKw / designHeatLoadKw;
+        reserveNode.textContent = `+${fmt(reserveKw,2)} kW · +${fmt(reservePct,0)}%`;
+      } else {
+        reserveNode.textContent = "—";
+      }
+    }
+
+    const annualFuel = scenarioResult.annual_fuel_use || null;
+    const fuelNode = $("#hlnReportFuelUse");
+    if (fuelNode) {
+      if (annualFuel?.fuel === "firewood") {
+        fuelNode.textContent = `${fmt(Number(annualFuel.quantity || 0),2)} m³/an lemn`;
+        fuelNode.title = `Energie finală biomasă ${fmt(Number(annualFuel.final_energy_kwh || 0))} kWh/an`;
+      } else if (annualFuel?.fuel === "pellets") {
+        fuelNode.textContent = `${fmt(Number(annualFuel.quantity || 0),0)} kg/an peleți`;
+        fuelNode.title = `Energie finală biomasă ${fmt(Number(annualFuel.final_energy_kwh || 0))} kWh/an`;
+      } else {
+        fuelNode.textContent = "Nu se aplică";
+        fuelNode.removeAttribute("title");
+      }
+    }
+
+    const hpCard = $("#hlnReportHeatPumpProfileCard");
+    const hpProfile = optimizationMeta?.heatPumpPerformanceProfile || null;
+    const isHeatPump = String(heating.generator_type || "").startsWith("heat_pump_")
+      || scenarioState.heating === "heat_pump";
+    if (hpCard) hpCard.hidden = !isHeatPump;
+    if (isHeatPump && hpCard) {
+      const engineKind = String(hpProfile?.engine_performance_kind || heating.generator_performance_kind || "scop").toUpperCase();
+      const engineValue = Number(hpProfile?.engine_performance_value ?? heating.generator_performance);
+      $("#hlnReportHpEngineScop").textContent = Number.isFinite(engineValue)
+        ? `${engineKind} ${fmt(engineValue,2)}`
+        : "—";
+
+      const declaredScop = Number(hpProfile?.declared_scop);
+      $("#hlnReportHpDeclaredScop").textContent = Number.isFinite(declaredScop)
+        ? `SCOP ${fmt(declaredScop,2)}`
+        : "—";
+
+      const modeledScop = Number(hpProfile?.modeled_scop_from_monthly_cop);
+      $("#hlnReportHpModeledScop").textContent = Number.isFinite(modeledScop)
+        ? `SCOP ${fmt(modeledScop,2)}`
+        : "n/a — fără curbă COP suficientă";
+
+      const refCop = Number(hpProfile?.reference_cop_at_7c);
+      $("#hlnReportHpReferenceCop").textContent = Number.isFinite(refCop)
+        ? `COP ${fmt(refCop,2)}`
+        : "—";
+
+      const hpRows = Array.isArray(hpProfile?.monthly) ? hpProfile.monthly : [];
+      const copRows = hpRows.filter(row => Number.isFinite(Number(row.cop)));
+      const hpChart = $("#hlnReportHpCopChart");
+      if (hpChart) {
+        if (hpProfile?.profile_kind === "cop_curve" && copRows.length >= 2) {
+          const maxLoad = Math.max(...hpRows.map(row => Number(row.useful_heating_kwh || 0)), 1);
+          const copValues = copRows.map(row => Number(row.cop));
+          const minCop = Math.min(...copValues);
+          const maxCop = Math.max(...copValues);
+          const copSpan = Math.max(maxCop - minCop, 0.5);
+          const width = 1200;
+          const height = 210;
+          const top = 16;
+          const bottom = 34;
+          const xStep = width / Math.max(hpRows.length, 1);
+          const points = hpRows.map((row, index) => {
+            const cop = Number(row.cop);
+            if (!Number.isFinite(cop)) return null;
+            const x = xStep * index + xStep / 2;
+            const y = top + (maxCop - cop) / copSpan * (height - top - bottom);
+            return `${x.toFixed(1)},${y.toFixed(1)}`;
+          }).filter(Boolean).join(" ");
+          const dots = hpRows.map((row, index) => {
+            const cop = Number(row.cop);
+            if (!Number.isFinite(cop)) return "";
+            const x = xStep * index + xStep / 2;
+            const y = top + (maxCop - cop) / copSpan * (height - top - bottom);
+            return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="6"><title>${escapeHtml(row.month)} · COP ${fmt(cop,2)}</title></circle>`;
+          }).join("");
+          hpChart.innerHTML = `
+            <div class="hln-hp-cop-plot">
+              <div class="hln-hp-load-bars">
+                ${hpRows.map(row => {
+                  const load = Number(row.useful_heating_kwh || 0);
+                  return `<i style="height:${Math.max(load ? 3 : 0, 100*load/maxLoad)}%" title="${escapeHtml(row.month)} · ${fmt(load)} kWh utili"></i>`;
+                }).join("")}
+              </div>
+              <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-label="Curba COP lunară">
+                <polyline points="${points}"></polyline>
+                ${dots}
+              </svg>
+            </div>
+            <div class="hln-hp-month-grid">
+              ${hpRows.map(row => {
+                const cop = Number(row.cop);
+                const load = Number(row.useful_heating_kwh || 0);
+                const temp = Number(row.outdoor_temperature_c);
+                const flow = Number(row.flow_temperature_c);
+                return `<div>
+                  <small>${escapeHtml(String(row.month || "").slice(0,3))}</small>
+                  <strong>${Number.isFinite(cop) ? "COP " + fmt(cop,2) : "COP n/a"}</strong>
+                  <span>${fmt(load)} kWh</span>
+                  <em>${Number.isFinite(temp) ? fmt(temp,1) + "°C ext." : ""}${Number.isFinite(flow) ? " · tur " + fmt(flow,0) + "°C" : ""}</em>
+                </div>`;
+              }).join("")}
+            </div>`;
+        } else {
+          hpChart.innerHTML = `<div class="hln-hp-scop-only"><strong>SCOP sezonier, fără curbă COP inventată</strong><span>${escapeHtml(hpProfile?.product_label || "Produsul selectat")} nu are suficiente puncte COP source-backed pentru interpolare lunară.</span></div>`;
+        }
+      }
+
+      const standards = Array.isArray(hpProfile?.test_standards) ? hpProfile.test_standards.join(" · ") : "";
+      const profileNote = hpProfile?.note || "SCOP este coeficient sezonier; COP este valoarea într-un punct de funcționare. Pentru acest scenariu nu este atașată o curbă comercială de produs.";
+      $("#hlnReportHpCopNote").textContent = `${profileNote}${standards ? " Standarde/date: " + standards + "." : ""}`;
+    }
+
     $("#hlnReportLocation").textContent = scenarioResult.locality || homeState.locality || "—";
     $("#hlnReportClimate").textContent =
       `Zona ${scenarioResult.climate_zone || "—"} · ${scenarioResult.climate_station || "stație climatică"}`;
@@ -3972,7 +5876,23 @@
 
     const strategy = $("#hlnReportStrategy");
     if (strategy) {
-      if (isFinancialOptimizationMeta() && Array.isArray(optimizationMeta?.selected)) {
+      if (optimizationMeta?.kind === "parametric_economic") {
+        const selected = Array.isArray(optimizationMeta.selected) ? optimizationMeta.selected : [];
+        const payback = optimizationMeta.paybackYears == null
+          ? "n/a"
+          : `${fmt(optimizationMeta.paybackYears,1)} ani`;
+        strategy.innerHTML = `
+          <div class="hln-strategy-lead">
+            <strong>${escapeHtml(optimizationMeta.label || "Optimizare economică")} · amortizare ${payback}</strong>
+            <span>CAPEX parametric ${fmt(optimizationMeta.capexLei)} lei · economie anuală ${fmt(optimizationMeta.annualSavingLei)} lei/an · încălzire: ${escapeHtml(optimizationMeta.selectedHeating?.label || "sistemul actual")}${optimizationMeta.selectedHeating?.requiredPowerKw != null ? ` · necesar ${fmt(optimizationMeta.selectedHeating.requiredPowerKw,2)} kW${optimizationMeta.selectedHeating?.ratedPowerKw != null ? " → produs " + fmt(optimizationMeta.selectedHeating.ratedPowerKw,2) + " kW" : ""}` : ""}. Regula utilizatorului: ${escapeHtml(optimizationMeta.economicMode || "auto_economic")}.</span>
+          </div>
+          ${selected.length ? `<div class="hln-strategy-list">${selected.map((item,index) => `
+            <article><b>${index + 1}</b><div><strong>${escapeHtml(item.label || item.family)}</strong><small>parametru brut ${fmt(item.parameterValue,3)} ${escapeHtml(item.parameterUnit || "")} · CAPEX planificat ${fmt(item.capexLei)} lei</small></div></article>
+          `).join("")}</div>` : ""}
+          <p>${escapeHtml(optimizationMeta.rationale || "")}</p>
+          <p>${escapeHtml(optimizationMeta.commercialMessage || "")}</p>
+        `;
+      } else if (isFinancialOptimizationMeta() && Array.isArray(optimizationMeta?.selected)) {
         const selected = optimizationMeta.selected;
         const ranked = Array.isArray(optimizationMeta.rankedOpportunities)
           ? optimizationMeta.rankedOpportunities
@@ -4038,13 +5958,40 @@
   }
 
   function renderProgress() {
-    const stage = screen === "home" ? "home" : screen === "site" || screen === "intervention" ? "site" : screen === "report" ? "report" : "scenario";
+    const stage = screen === "home" ? "home" : screen === "report" ? "report" : "site";
     $$("[data-hln-go]").forEach(button => {
       button.classList.toggle("is-active", button.dataset.hlnGo === stage);
     });
   }
 
+  function syncAdaptiveIntroState() {
+    root.querySelectorAll('[data-hln-screen="home"], [data-hln-screen="site"]').forEach(node => {
+      node.classList.toggle("is-intro-collapsed", introCollapsedScreens.has(node.dataset.hlnScreen));
+    });
+  }
+
+  function collapseAdaptiveIntroFor(target) {
+    if (!(target instanceof Element)) return;
+    const interaction = target.closest(
+      ".hln-house-board, .hln-live-configurator, [data-hln-editor-open], [data-hln-measure]"
+    );
+    if (!interaction) return;
+    const screenNode = interaction.closest('[data-hln-screen="home"], [data-hln-screen="site"]');
+    const name = screenNode?.dataset.hlnScreen;
+    if (!name || introCollapsedScreens.has(name)) return;
+    introCollapsedScreens.add(name);
+    syncAdaptiveIntroState();
+    window.requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
+  }
+
+  function resetAdaptiveIntros() {
+    introCollapsedScreens.clear();
+    syncAdaptiveIntroState();
+  }
+
   function renderAll() {
+    root.dataset.hlnActiveScreen = screen;
+    syncAdaptiveIntroState();
     renderHome();
     renderProgress();
     renderDock();
@@ -4073,6 +6020,7 @@
   }
 
   function persist() {
+    if (!localAutosaveAllowed()) return false;
     try {
       localStorage.setItem(storageKey, JSON.stringify({
         baselineSaved,
@@ -4086,7 +6034,10 @@
         optimizationMeta,
         projectMode
       }));
-    } catch (_) {}
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   async function saveHomeAndOpenSite() {
@@ -4128,11 +6079,24 @@
     if (name === "location") renderHomeLocationMap();
   }
 
+  function syncPersistentStackHeight() {
+    const stack = $("[data-hln-persistent-stack]");
+    if (!stack) return;
+    const height = Math.ceil(stack.getBoundingClientRect().height);
+    if (height > 0) document.documentElement.style.setProperty("--hln-persistent-stack-height", `${height}px`);
+  }
+
   function openEditor(name, options = {}) {
     const editor = $("#hlnEditor");
     const technical = Boolean(options.technical);
     editor.dataset.hlnEditorMode = technical ? "technical" : "context";
     editor.classList.toggle("is-technical-mode", technical);
+    document.body.classList.toggle("hln-technical-open", technical);
+    if (technical) {
+      root.querySelector(".hln-energy-prices[open]")?.removeAttribute("open");
+      syncPersistentStackHeight();
+      window.requestAnimationFrame(syncPersistentStackHeight);
+    }
     const nav = $("[data-hln-technical-nav]");
     if (nav) nav.hidden = !technical;
     const modeLabel = $("#hlnEditorModeLabel");
@@ -4149,6 +6113,7 @@
     const editor = $("#hlnEditor");
     editor.hidden = true;
     editor.classList.remove("is-technical-mode");
+    document.body.classList.remove("hln-technical-open");
     delete editor.dataset.hlnEditorMode;
     const nav = $("[data-hln-technical-nav]");
     if (nav) nav.hidden = true;
@@ -4370,7 +6335,7 @@
     activeMeasure = null;
     interventionOriginal = null;
     persist();
-    showScreen("scenario");
+    showScreen("site");
   }
 
   function resetMeasure(type) {
@@ -4786,7 +6751,32 @@
     target.hidden = !hits.length;
   }
 
-  $$("[data-hln-editor-open]").forEach(button => button.addEventListener("click", () => {
+  window.addEventListener("resize", syncPersistentStackHeight);
+  window.addEventListener("orientationchange", () => {
+    window.setTimeout(syncPersistentStackHeight, 120);
+  });
+  window.addEventListener("pageshow", event => {
+    if (event.persisted) resetAdaptiveIntros();
+  });
+  window.requestAnimationFrame(syncPersistentStackHeight);
+
+  $("#hlnOptimizerConsoleToggle")?.addEventListener("click", () => {
+    const panel = $("#hlnOptimizerConsole");
+    const toggle = $("#hlnOptimizerConsoleToggle");
+    if (!panel || !toggle) return;
+    const collapsed = panel.classList.toggle("is-collapsed");
+    toggle.textContent = collapsed ? "Extinde" : "Restrânge";
+    toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+  });
+
+  root.addEventListener("pointerdown", event => {
+    collapseAdaptiveIntroFor(event.target);
+  }, {passive:true});
+  root.addEventListener("keydown", event => {
+    if (event.key === "Enter" || event.key === " ") collapseAdaptiveIntroFor(event.target);
+  });
+
+  root.querySelectorAll("[data-hln-editor-open]").forEach(button => button.addEventListener("click", () => {
     openEditor(button.dataset.hlnEditorOpen, {
       technical: button.hasAttribute("data-hln-technical-entry"),
     });
@@ -4944,10 +6934,11 @@
   $$("[data-hln-smart-config]").forEach(button => {
     button.addEventListener("click", async () => {
       await runOptimizerAction(async () => {
-        if (button.dataset.hlnSmartConfig === "nzeb") await configureNzeb();
-        if (button.dataset.hlnSmartConfig === "roi") await configureBestRoi("roi");
-        if (button.dataset.hlnSmartConfig === "roi-budget") await configureBestRoi("roi-budget");
-        if (button.dataset.hlnSmartConfig === "roi-payback") await configureBestRoi("roi-payback");
+        const action = button.dataset.hlnSmartConfig;
+        if (action === "nzeb") await configureNzeb();
+        if (["economic-auto","economic-budget","economic-bill","economic-payback"].includes(action)) {
+          await configureParametricEconomicOptimizer(action);
+        }
       });
     });
   });
@@ -4990,10 +6981,7 @@
     if (go) {
       const target = go.dataset.hlnGo;
       if (target === "home") {
-        screen = "home";
-        root.querySelectorAll("[data-hln-screen]").forEach(node => node.classList.toggle("is-active", node.dataset.hlnScreen === "home"));
-        renderAll();
-        emitVisualState();
+        showScreen("home");
         return;
       }
       if (target === "site" && baselineSaved) showScreen("site");
@@ -5023,17 +7011,17 @@
       return;
     }
 
-    if (equipment === "heatPump" || equipment === "ac") {
+    if (equipment === "heatPump" || equipment === "ac" || equipment === "solidHeat") {
       if (screen === "home") {
         openEditor("systems");
         window.setTimeout(() => {
-          const field = equipment === "heatPump" ? $("#hlnHomeHeating") : $("#hlnHomeCooling");
+          const field = equipment === "ac" ? $("#hlnHomeCooling") : $("#hlnHomeHeating");
           field?.scrollIntoView({behavior:"smooth", block:"center"});
           field?.focus({preventScroll:true});
         }, 100);
         return;
       }
-      openMeasure(equipment === "heatPump" ? "heating" : "ventilation");
+      openMeasure(equipment === "ac" ? "ventilation" : "heating");
     }
   });
 
@@ -5052,6 +7040,24 @@
   $("[data-hln-quick-edit-details]").addEventListener("click", openQuickMeasureDetails);
   $("[data-hln-quick-edit-commit]").addEventListener("click", commitQuickMeasureEditor);
 
+  $("#hlnDockBack").addEventListener("click", () => {
+    if (screen === "site") {
+      showScreen("home");
+      return;
+    }
+    if (screen === "intervention") {
+      cancelIntervention();
+      return;
+    }
+    if (screen === "scenario") {
+      showScreen("site");
+      return;
+    }
+    if (screen === "report") {
+      showScreen("site");
+    }
+  });
+
   $("#hlnDockCta").addEventListener("click", async () => {
     if (screen === "home") {
       const button = $("#hlnDockCta");
@@ -5065,7 +7071,10 @@
       return;
     }
     if (screen === "site") {
-      if (measures.length) showScreen("scenario");
+      if (measures.length && scenarioResult && scenarioResultState === "fresh") {
+        persist();
+        showScreen("report");
+      }
       return;
     }
     if (screen === "intervention") {

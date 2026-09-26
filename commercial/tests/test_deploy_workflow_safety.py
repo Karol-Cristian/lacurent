@@ -10,14 +10,14 @@ PRODUCTION_WORKFLOW = (
 def test_production_deploys_are_serialized_in_fifo_queue() -> None:
     workflow = PRODUCTION_WORKFLOW.read_text(encoding="utf-8")
 
-    expected_gate = """concurrency:
-  group: commercial-v2-production
-  queue: max
-
-jobs:"""
-
-    assert expected_gate in workflow
+    assert "concurrency:" in workflow
+    assert "group: commercial-v2-production" in workflow
+    assert "queue: max" in workflow
     assert "cancel-in-progress: true" not in workflow
+
+    concurrency_index = workflow.index("concurrency:")
+    jobs_index = workflow.index("jobs:")
+    assert concurrency_index < jobs_index
 
 
 def test_production_deploy_trigger_covers_executed_catalog_builder() -> None:

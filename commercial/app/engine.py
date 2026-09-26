@@ -315,12 +315,32 @@ def transmission_heat_transfer(building: BuildingInput) -> tuple[float, list[Con
     return components.htr_w_k, envelope, bridges
 
 
-def ventilation_heat_transfer(building: BuildingInput) -> float:
-    """MC001 Hve helper: Hve = 0.34 * qv_m3h * (1 - eta_hr). Units: W/K."""
+def ventilation_heat_transfer_components(building: BuildingInput) -> dict[str, float]:
+    """Return controlled-ventilation and uncontrolled-infiltration heat-transfer coefficients.
 
-    airflow_m3h = building.ventilation.air_changes_per_hour * building.heated_volume_m3
-    recovery_factor = 1 - building.ventilation.heat_recovery_efficiency
-    return _round(0.34 * airflow_m3h * recovery_factor)
+    Heat recovery is credited only to the intentional ventilation stream.
+    Infiltration bypasses heat recovery by definition in this Light Engine model.
+    """
+
+    volume = float(building.heated_volume_m3)
+    ventilation_airflow_m3h = float(building.ventilation.air_changes_per_hour) * volume
+    infiltration_airflow_m3h = (
+        float(building.ventilation.infiltration_air_changes_per_hour) * volume
+    )
+    recovery_factor = 1 - float(building.ventilation.heat_recovery_efficiency)
+    ventilation_w_k = 0.34 * ventilation_airflow_m3h * recovery_factor
+    infiltration_w_k = 0.34 * infiltration_airflow_m3h
+    return {
+        "ventilation_w_k": _round(ventilation_w_k),
+        "infiltration_w_k": _round(infiltration_w_k),
+        "total_w_k": _round(ventilation_w_k + infiltration_w_k),
+    }
+
+
+def ventilation_heat_transfer(building: BuildingInput) -> float:
+    """Total Hve used by the energy balance, including explicit infiltration."""
+
+    return ventilation_heat_transfer_components(building)["total_w_k"]
 
 
 def _monthly_utilization_parameter(building: BuildingInput, total_h_w_k: float, mode: str) -> float:
@@ -556,6 +576,72 @@ def _annual_outdoor_temperature_c(climate: dict) -> float:
     if total_days <= 0:
         raise ValueError("Climate profile must contain a positive annual duration.")
     return sum(float(month["temperature_c"]) * float(month["days"]) for month in months) / total_days
+
+
+def design_heat_load_breakdown(
+    building: BuildingInput,
+    transmission: TransmissionComponentsResult,
+    h_ve_w_k: float,
+    climate: dict | None = None,
+) -> dict[str, float | None]:
+    """Design space-heating load at the locality winter design temperature.
+
+    Exterior transmission (Hd/Hu/Ha), ventilation and infiltration use the
+    normative winter design temperature. Ground coupling (Hg) follows the same
+    annual-ground-temperature approximation used by the current Light Engine,
+    so the floor is not exposed to the outdoor design-air temperature.
+    Internal/solar gains are intentionally not credited for generator sizing.
+    """
+
+    climate = climate or resolve_climate(building.locality)
+    design_outdoor = climate.get("winter_design_temperature_c")
+    if design_outdoor is None:
+        return {
+            "total_kw": None,
+            "design_outdoor_temperature_c": None,
+            "indoor_temperature_c": float(building.indoor_design_temperature_c),
+            "delta_t_outdoor_k": None,
+            "ground_reference_temperature_c": None,
+            "delta_t_ground_k": None,
+            "exterior_transmission_kw": None,
+            "ground_transmission_kw": None,
+            "ventilation_kw": None,
+            "infiltration_kw": None,
+            "ventilation_infiltration_kw": None,
+        }
+
+    indoor = float(building.indoor_design_temperature_c)
+    design_outdoor = float(design_outdoor)
+    annual_outdoor = float(_annual_outdoor_temperature_c(climate))
+    delta_t_outdoor = max(indoor - design_outdoor, 0.0)
+    delta_t_ground = max(indoor - annual_outdoor, 0.0)
+
+    exterior_h_w_k = (
+        float(transmission.hd_w_k)
+        + float(transmission.hu_w_k)
+        + float(transmission.ha_w_k)
+    )
+    exterior_kw = exterior_h_w_k * delta_t_outdoor / 1000.0
+    ground_kw = float(transmission.hg_w_k) * delta_t_ground / 1000.0
+    airflow = ventilation_heat_transfer_components(building)
+    ventilation_kw = float(airflow["ventilation_w_k"]) * delta_t_outdoor / 1000.0
+    infiltration_kw = float(airflow["infiltration_w_k"]) * delta_t_outdoor / 1000.0
+    airflow_total_kw = float(h_ve_w_k) * delta_t_outdoor / 1000.0
+    total_kw = exterior_kw + ground_kw + airflow_total_kw
+
+    return {
+        "total_kw": _round(total_kw, 4),
+        "design_outdoor_temperature_c": design_outdoor,
+        "indoor_temperature_c": indoor,
+        "delta_t_outdoor_k": _round(delta_t_outdoor, 3),
+        "ground_reference_temperature_c": _round(annual_outdoor, 3),
+        "delta_t_ground_k": _round(delta_t_ground, 3),
+        "exterior_transmission_kw": _round(exterior_kw, 4),
+        "ground_transmission_kw": _round(ground_kw, 4),
+        "ventilation_kw": _round(ventilation_kw, 4),
+        "infiltration_kw": _round(infiltration_kw, 4),
+        "ventilation_infiltration_kw": _round(airflow_total_kw, 4),
+    }
 
 
 def monthly_energy_balance(

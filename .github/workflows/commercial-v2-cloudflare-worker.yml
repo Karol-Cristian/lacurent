@@ -18,6 +18,10 @@ concurrency:
   group: commercial-v2-production
   queue: max
 
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   worker-runtime:
     runs-on: ubuntu-latest
@@ -29,6 +33,48 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Require merged PR origin for production pushes
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          repo = os.environ["GITHUB_REPOSITORY"]
+          sha = os.environ["GITHUB_SHA"]
+          target = os.environ["GITHUB_REF_NAME"]
+          token = os.environ["GH_TOKEN"]
+          request = urllib.request.Request(
+              f"https://api.github.com/repos/{repo}/commits/{sha}/pulls",
+              headers={
+                  "Authorization": f"Bearer {token}",
+                  "Accept": "application/vnd.github+json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+              },
+          )
+          with urllib.request.urlopen(request, timeout=30) as response:
+              pull_requests = json.loads(response.read().decode("utf-8"))
+
+          valid = [
+              pr for pr in pull_requests
+              if pr.get("merged_at")
+              and pr.get("base", {}).get("ref") == target
+              and pr.get("merge_commit_sha") == sha
+          ]
+          if not valid:
+              raise SystemExit(
+                  "Production push is not the merge commit of a merged PR targeting "
+                  f"{target}. Direct-push deployments are blocked."
+              )
+
+          print("Production push originated from merged PR(s):", ", ".join(
+              f"#{pr['number']}" for pr in valid
+          ))
+          PY
 
       - name: Validate production deployment credentials
         run: |
@@ -56,11 +102,13 @@ jobs:
         run: |
           git diff --check
           node --check commercial/static/app.js
-          node --check commercial/static/elivio.js
           node --check commercial/static/home-lab-next.js
           node --check commercial/static/home-lab-3d.js
-          node --test commercial/tests/intake.test.cjs
           python -m compileall -q commercial
+          python -m py_compile scripts/build-heating-catalog-d1-import.py
+          python scripts/build-heating-catalog-d1-import.py \
+            commercial/data/heating-technology-planning.seed.json \
+            /tmp/heating-catalog-import.sql
           python -m pytest commercial/tests -q
 
       - name: Install uv
@@ -172,9 +220,8 @@ jobs:
                   return text
 
           checks = {
-              "/": 'data-page="testing-home"',
-              "/software-testing": 'data-page="software-testing"',
-              "/instalatii": "data-home-lab-next",
+              "/": "data-lacurent-landing",
+              "/instalatii": "data-editorial-lab",
               "/instalatii/calculator/legacy": "romaniaLocationMap",
               "/embed": "LaCurent Embed",
               "/embed-host-demo": "SITE DEMO PARTENER",
@@ -186,37 +233,37 @@ jobs:
               "/static/home-lab/wood-fireplace.svg": "<svg",
               "/static/home-lab/district-heating.svg": "<svg",
               "/static/embed-loader.js": "lacurent:embed-viewport",
-              "/software-testing/resources": "Useful verification knowledge",
               "/static/company.css": ".company-shell",
-              "/static/testing_intake.css": ".intake-details",
-              "/static/software_testing_v2.css": ".clean-hero",
-              "/static/painpoints.css": ".measured-result",
               "/static/favicon.svg": "<svg",
               "/health": '"status":"ok"',
               "/api/market-cost-basis": '"costs"',
+              "/api/heating-products": '"options"',
               "/demo": "Cluj Demonstration House",
               "/static/app.css": ".app-shell",
               "/static/app.js": "initLocationSelector",
-              "/instalatii/calculator": "data-home-lab-next",
-              "/home-lab/facts": "Podul trebuie izolat întotdeauna primul? Nu.",
+              "/instalatii/calculator": "data-editorial-lab",
+              "/home-lab/facts": "SIMULĂRI PUBLICE",
+              "/produse": "data-product-catalog",
               "/robots.txt": "Sitemap: https://lacurent.com/sitemap.xml",
               "/sitemap.xml": "https://lacurent.com/home-lab/facts",
               "/static/simulation-facts.css": ".facts-grid",
-              "/home-lab-next": "data-home-lab-next",
+              "/home-lab-next": "data-editorial-lab",
+              "/home-lab-classic": "data-home-lab-next",
               "/static/home-lab-next.js": "function openMeasure",
               "/static/home-lab-next.css": ".hln-before-after",
               "/static/home-lab-product.js": "data-hlp-demo-shell",
               "/static/home-lab-product.css": ".hlp-house-stage",
-              "/elivio-consilio": "data-chat-launcher",
-              "/elivio-consilio/confidentialitate": "Confidențialitate și AI",
-              "/static/elivio.css": ".ec-hero",
-              "/static/elivio.js": "data-elivio-chat",
           }
 
           for path, expected in checks.items():
               body = get(path)
               if expected not in body.replace(" ", "") and expected not in body:
                   raise AssertionError(f"{path} did not contain {expected!r}")
+
+          retired_fact = "Podul trebuie izolat întotdeauna primul? Nu."
+          facts_html = get("/home-lab/facts")
+          if retired_fact in facts_html:
+              raise AssertionError("Retired invalid Home Lab fact is still published.")
 
           for path in (
               "/home-lab-assets/house-fireplace.webp?v=2",
@@ -279,15 +326,7 @@ jobs:
               raise AssertionError("Embed runtime did not request/reflect mobile focus mode.")
 
           home_html = get("/")
-          sales_html = get("/software-testing")
-          assert 'href="/software-testing#quick-check"' in home_html
-          assert 'data-page="software-testing"' not in home_html
-          assert 'data-page="testing-home"' not in sales_html
-          energy_html = get("/instalatii")
-          assert "data-home-lab-next" in energy_html
-          assert "Casa este interfața." in energy_html
-          for marker in ('id="quick-check"', 'id="brief-preview"', 'id="copy-brief"', 'id="open-email"', 'href="#quick-check"'):
-              assert marker in sales_html, f"Missing sales-flow marker: {marker}"
+          assert "data-lacurent-landing" in home_html
 
           location_payload = json.loads(get("/api/location-data"))
           localities = location_payload.get("localities", [])
@@ -317,7 +356,7 @@ jobs:
           if float(lab_payload.get("design_heat_load_kw", 0)) <= 0:
               raise AssertionError("Embedded house lab did not return design heat load.")
 
-          next_html = get("/home-lab-next")
+          next_html = get("/home-lab-classic")
           for marker in (
               'data-hln-screen="home"',
               'data-hln-screen="site"',
@@ -342,6 +381,81 @@ jobs:
           partner_next_payload = json.loads(post("/embed/demo-store/next/calculate", lab_form))
           if float(partner_next_payload.get("design_heat_load_kw", 0)) <= 0:
               raise AssertionError("Partner Home Lab Next API did not return design heat load.")
+
+          optimizer_form = dict(lab_form)
+          optimizer_form["_optimization_mode"] = "auto_economic"
+          optimizer_plan = json.loads(post(
+              "/api/optimization/home-lab/v2/plan",
+              optimizer_form,
+          ))
+          if optimizer_plan.get("optimizerVersion") != "v2-worker-safe":
+              raise AssertionError("Worker-safe V2 plan returned the wrong optimizer version.")
+          shortlist = optimizer_plan.get("shortlist") or []
+          run_branch_ids = optimizer_plan.get("runBranchIds") or []
+          if not shortlist or not run_branch_ids:
+              raise AssertionError("Worker-safe V2 plan did not expose shortlist/branches.")
+          if int(optimizer_plan.get("representativeEvaluations") or 0) > 29:
+              raise AssertionError("Worker-safe V2 representative search exceeded its CPU bound.")
+
+          optimizer_branch_results = []
+          for branch_id in run_branch_ids:
+              branch_payload = json.loads(post_json(
+                  "/api/optimization/home-lab/v2/branch",
+                  {
+                      "form": optimizer_form,
+                      "branchId": branch_id,
+                      "shortlist": shortlist,
+                  },
+              ))
+              if branch_payload.get("optimizerVersion") != "v2-worker-safe":
+                  raise AssertionError(f"V2 branch {branch_id} returned the wrong version.")
+              if int(branch_payload.get("fastEvaluations") or 0) > len(shortlist):
+                  raise AssertionError(f"V2 branch {branch_id} exceeded shortlist evaluation bound.")
+              optimizer_branch_results.append(branch_payload)
+
+          optimizer_final = json.loads(post_json(
+              "/api/optimization/home-lab/v2/finalize",
+              {
+                  "form": optimizer_form,
+                  "branchResults": optimizer_branch_results,
+                  "representativeEvaluations": optimizer_plan.get("representativeEvaluations", 0),
+                  "representativePoolSize": optimizer_plan.get("representativePoolSize", 0),
+                  "shortlistSize": len(shortlist),
+                  "priorCalculationTimeMs": optimizer_plan.get("calculationTimeMs", 0),
+              },
+          ))
+          optimizer_meta = optimizer_final.get("optimization") or {}
+          if optimizer_meta.get("optimizerVersion") != "v2-worker-safe":
+              raise AssertionError("Worker-safe V2 finalize returned the wrong optimizer version.")
+          if int(optimizer_meta.get("fullEngineVerifications") or 0) > 3:
+              raise AssertionError("Worker-safe V2 exceeded canonical verification bound.")
+          if optimizer_meta.get("economicStatus") not in {
+              "positive_saving",
+              "positive_saving_zero_capex",
+              "no_positive_intervention",
+              "non_positive_saving",
+              "incomplete_economic_result",
+          }:
+              raise AssertionError(
+                  f"Worker-safe V2 returned invalid economicStatus: {optimizer_meta.get('economicStatus')!r}"
+              )
+          if optimizer_meta.get("paybackStatus") not in {
+              "finite",
+              "immediate",
+              "not_applicable_no_investment",
+              "never_at_current_prices",
+              "unavailable",
+          }:
+              raise AssertionError(
+                  f"Worker-safe V2 returned invalid paybackStatus: {optimizer_meta.get('paybackStatus')!r}"
+              )
+          horizons = optimizer_meta.get("simpleNetBenefitLeiByHorizon") or {}
+          if set(horizons) != {"5", "10", "15", "20", "25"}:
+              raise AssertionError(
+                  f"Worker-safe V2 economic horizons incomplete: {sorted(horizons)}"
+              )
+          if float((optimizer_final.get("scenario") or {}).get("final_energy_kwh", 0)) <= 0:
+              raise AssertionError("Worker-safe V2 did not return a valid final scenario.")
 
           scenario_payload = json.loads(post_json(
               "/api/scenarios/wall-insulation",
@@ -435,8 +549,8 @@ jobs:
         working-directory: .wrangler/commercial-v2-worker
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "Cloudflare domain preparation skipped: CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are not both configured."
-            exit 0
+            echo "::error::Cloudflare domain preparation requires CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID."
+            exit 1
           fi
           python - <<'PY'
           import json
@@ -556,8 +670,8 @@ jobs:
         working-directory: .wrangler/commercial-v2-worker
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "Cloudflare staging deploy skipped: CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are not both configured."
-            exit 0
+            echo "::error::Cloudflare deploy requires CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID."
+            exit 1
           fi
           mkdir -p .bin
           printf '#!/usr/bin/env bash\nexec npx wrangler "$@"\n' > .bin/wrangler
@@ -569,8 +683,8 @@ jobs:
         working-directory: .wrangler/commercial-v2-worker
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "Cloudflare production verification skipped: deployment credentials are not both configured."
-            exit 0
+            echo "::error::Production verification requires CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID."
+            exit 1
           fi
           python - <<'PY'
           import json
@@ -622,20 +736,19 @@ jobs:
           else:
               raise AssertionError("Production /health did not become healthy.")
 
-          homepage_marker = 'data-page="testing-home"'
+          homepage_marker = "data-lacurent-landing"
           for attempt in range(1, 21):
               status, _, body = open_url(apex + f"/?deploy={attempt}")
               if status == 200 and homepage_marker in body:
                   print("/", status)
                   break
-              print(f"waiting for testing homepage, attempt {attempt}: HTTP {status}")
+              print(f"waiting for commercial homepage, attempt {attempt}: HTTP {status}")
               time.sleep(5)
           else:
-              raise AssertionError(f"/ did not contain {homepage_marker!r}")
+              raise AssertionError(f"/ did not expose commercial landing marker {homepage_marker!r}")
 
           checks = {
-              "/software-testing": 'data-page="software-testing"',
-              "/instalatii": "data-home-lab-next",
+              "/instalatii": "data-editorial-lab",
               "/instalatii/calculator/legacy": "romaniaLocationMap",
               "/embed": "LaCurent Embed",
               "/embed-host-demo": "SITE DEMO PARTENER",
@@ -648,24 +761,17 @@ jobs:
               "/static/home-lab/district-heating.svg": "<svg",
               "/static/embed-loader.js": "lacurent:embed-viewport",
               "/static/scenario-cockpit.js": "calculateUrl=partnerId?",
-              "/software-testing/resources": "Useful verification knowledge",
               "/static/company.css": ".company-shell",
-              "/static/testing_intake.css": ".intake-details",
-              "/static/software_testing_v2.css": ".clean-hero",
-              "/static/painpoints.css": ".measured-result",
               "/static/favicon.svg": "<svg",
               "/health": '"status":"ok"',
               "/demo": "Cluj Demonstration House",
-              "/home-lab/facts": "Podul trebuie izolat întotdeauna primul? Nu.",
+              "/home-lab/facts": "SIMULĂRI PUBLICE",
+              "/produse": "data-product-catalog",
               "/robots.txt": "Sitemap: https://lacurent.com/sitemap.xml",
               "/sitemap.xml": "https://lacurent.com/home-lab/facts",
               "/static/simulation-facts.css": ".facts-grid",
               "/static/app.css": ".app-shell",
               "/static/app.js": "initLocationSelector",
-              "/elivio-consilio": "data-chat-launcher",
-              "/elivio-consilio/confidentialitate": "Confidențialitate și AI",
-              "/static/elivio.css": ".ec-hero",
-              "/static/elivio.js": "data-elivio-chat",
           }
           for path, expected in checks.items():
               status, _, body = open_url(apex + path)
@@ -675,105 +781,11 @@ jobs:
                   raise AssertionError(f"{path} did not contain {expected!r}")
               print(path, status)
 
-          chat_request = json.dumps({
-              "messages": [
-                  {
-                      "role": "user",
-                      "content": "Bună. Caut orientare pentru o decizie personală dificilă.",
-                  }
-              ]
-          }).encode("utf-8")
-          status, _, chat_body = open_url(
-              apex + "/elivio-consilio/api/chat",
-              data=chat_request,
-              headers={"Content-Type": "application/json"},
-              timeout=60,
-          )
+          status, _, facts_html = open_url(apex + "/home-lab/facts")
           if status != 200:
-              raise AssertionError(f"/elivio-consilio/api/chat returned HTTP {status}")
-          chat_payload = json.loads(chat_body)
-          if not str(chat_payload.get("reply") or "").strip():
-              raise AssertionError("Production Elivio AI chat did not return a reply.")
-          if chat_payload.get("mode") != "ai":
-              raise AssertionError(
-                  f"Production Elivio AI chat did not use Workers AI: {chat_payload.get('mode')!r}"
-              )
-          print("/elivio-consilio/api/chat", status, chat_payload.get("mode"))
-
-          booking_request = json.dumps({
-              "messages": [
-                  {
-                      "role": "user",
-                      "content": "Vreau să mă programez.",
-                  }
-              ]
-          }).encode("utf-8")
-          status, _, booking_body = open_url(
-              apex + "/elivio-consilio/api/chat",
-              data=booking_request,
-              headers={"Content-Type": "application/json"},
-              timeout=30,
-          )
-          if status != 200:
-              raise AssertionError(f"Elivio booking shortcut returned HTTP {status}")
-          booking_payload = json.loads(booking_body)
-          if booking_payload.get("mode") != "booking":
-              raise AssertionError("Elivio booking intent did not skip the intake flow.")
-          if booking_payload.get("action", {}).get("target") != "#contact":
-              raise AssertionError("Elivio booking intent did not expose the contact CTA.")
-          print("/elivio-consilio/api/chat booking", status, booking_payload.get("mode"))
-
-          out_of_scope_request = json.dumps({
-              "messages": [
-                  {
-                      "role": "user",
-                      "content": "Îmi poți spune cum e mai ieftin să te încălzești? Cu gaz sau lemne?",
-                  }
-              ]
-          }).encode("utf-8")
-          status, _, out_of_scope_body = open_url(
-              apex + "/elivio-consilio/api/chat",
-              data=out_of_scope_request,
-              headers={"Content-Type": "application/json"},
-              timeout=30,
-          )
-          if status != 200:
-              raise AssertionError(f"Elivio scope guard returned HTTP {status}")
-          out_of_scope_payload = json.loads(out_of_scope_body)
-          if out_of_scope_payload.get("mode") != "out_of_scope":
-              raise AssertionError(
-                  "Elivio answered a clearly unrelated heating question instead of applying the scope guard."
-              )
-          print("/elivio-consilio/api/chat scope guard", status, out_of_scope_payload.get("mode"))
-
-          summary_request = json.dumps({
-              "messages": [
-                  {
-                      "role": "user",
-                      "content": "Am o decizie dificilă în familie.",
-                  },
-                  {
-                      "role": "assistant",
-                      "content": "Ce ai vrea să clarifici?",
-                  },
-                  {
-                      "role": "user",
-                      "content": "Aș vrea să fiu mai sigur asupra următorului pas.",
-                  },
-              ]
-          }).encode("utf-8")
-          status, _, summary_body = open_url(
-              apex + "/elivio-consilio/api/chat-summary",
-              data=summary_request,
-              headers={"Content-Type": "application/json"},
-              timeout=60,
-          )
-          if status != 200:
-              raise AssertionError(f"Elivio chat summary returned HTTP {status}")
-          summary_payload = json.loads(summary_body)
-          if not str(summary_payload.get("summary") or "").strip():
-              raise AssertionError("Elivio chat summary did not return contact context.")
-          print("/elivio-consilio/api/chat-summary", status, summary_payload.get("mode"))
+              raise AssertionError(f"/home-lab/facts returned HTTP {status}")
+          if "Podul trebuie izolat întotdeauna primul? Nu." in facts_html:
+              raise AssertionError("Retired invalid Home Lab fact is still published on production domain.")
 
           for path in (
               "/home-lab-assets/house-fireplace.webp?v=2",
@@ -845,17 +857,7 @@ jobs:
 
           home_status, _, home_html = open_url(apex + "/")
           assert home_status == 200
-          sales_status, _, sales_html = open_url(apex + "/software-testing")
-          assert sales_status == 200
-          assert 'href="/software-testing#quick-check"' in home_html
-          assert 'data-page="software-testing"' not in home_html
-          assert 'data-page="testing-home"' not in sales_html
-          energy_status, _, energy_html = open_url(apex + "/instalatii")
-          assert energy_status == 200
-          assert "data-home-lab-next" in energy_html
-          assert "Casa este interfața." in energy_html
-          for marker in ('id="quick-check"', 'id="brief-preview"', 'id="copy-brief"', 'id="open-email"', 'href="#quick-check"'):
-              assert marker in sales_html, f"Missing sales-flow marker: {marker}"
+          assert "data-lacurent-landing" in home_html
 
           status, _, location_body = open_url(apex + "/api/location-data")
           if status != 200:
@@ -890,6 +892,75 @@ jobs:
               market_cost_payload.get("source"),
               market_cost_payload.get("catalog_version"),
               len(market_costs),
+          )
+
+          status, _, heating_catalog_body = open_url(apex + "/api/heating-products")
+          if status != 200:
+              raise AssertionError(f"/api/heating-products returned HTTP {status}")
+          heating_catalog = json.loads(heating_catalog_body)
+          if heating_catalog.get("source") != "d1":
+              raise AssertionError(
+                  "Production heating product catalog did not come from D1: "
+                  f"{heating_catalog.get('source')!r}"
+              )
+          products = heating_catalog.get("options") or []
+          if len(products) < 40:
+              raise AssertionError(
+                  f"Production D1 heating catalog must contain at least the 40-product verified baseline, got {len(products)}"
+              )
+          category_counts = {}
+          for product in products:
+              technology_id = str(product.get("technology_id") or "")
+              category_counts[technology_id] = category_counts.get(technology_id, 0) + 1
+              if not str(product.get("external_id") or "").strip():
+                  raise AssertionError(
+                      f"Heating product {product.get('id')!r} lost its canonical external_id."
+                  )
+          minimum_category_counts = {
+              "heat-pump-air-water": 8,
+              "heat-pump-air-air": 9,
+              "condensing-gas": 8,
+              "electric-boiler": 8,
+              "pellet-boiler": 7,
+          }
+          missing = {
+              key: minimum
+              for key, minimum in minimum_category_counts.items()
+              if category_counts.get(key, 0) < minimum
+          }
+          if missing:
+              raise AssertionError(
+                  f"Production D1 heating category baseline regressed: {category_counts}; missing minimums {missing}"
+              )
+          performance_points = heating_catalog.get("heat_pump_performance_points") or []
+          if len(performance_points) < 50:
+              raise AssertionError(
+                  "Production D1 heat-pump performance catalog is incomplete: "
+                  f"{len(performance_points)} operating points"
+              )
+          if not all(float(point.get("cop") or 0) > 1 for point in performance_points):
+              raise AssertionError("Production D1 heat-pump catalog contains an invalid COP.")
+          labels = " ".join(str(product.get("label") or "") for product in products)
+          for expected_model in (
+              "Mitsubishi Electric Ecodan PUZ-SWM80VAA",
+              "Daikin Altherma 3 M EBLA08E3V3",
+              "LG THERMA V",
+              "NIBE S2125-8",
+              "Ariston Nimbus",
+              "Daikin Perfera FTXM35A / RXM35A9",
+              "Daikin Perfera FTXM42A / RXM42A",
+          ):
+              if expected_model not in labels:
+                  raise AssertionError(
+                      f"Production D1 heating catalog lost model {expected_model!r}."
+                  )
+          print(
+              "/api/heating-products",
+              status,
+              heating_catalog.get("source"),
+              heating_catalog.get("catalog_version"),
+              len(products),
+              len(performance_points),
           )
 
           form = default_form_values()
@@ -937,25 +1008,27 @@ jobs:
               raise AssertionError("Production house lab did not return design heat load.")
 
           status, _, calculator_alias = open_url(apex + "/instalatii/calculator")
-          if status != 200 or "data-home-lab-next" not in calculator_alias:
-              raise AssertionError("Production calculator alias did not resolve directly to Home Lab.")
+          if status != 200 or "data-editorial-lab" not in calculator_alias:
+              raise AssertionError("Production calculator alias did not resolve to the Editorial Home Lab.")
 
           status, _, next_html = open_url(apex + "/home-lab-next")
           if status != 200:
               raise AssertionError(f"/home-lab-next returned HTTP {status}")
           for marker in (
-              'data-hln-screen="home"',
-              'data-hln-screen="site"',
-              'data-hln-screen="intervention"',
-              'data-hln-screen="scenario"',
-              "Salvează Casa mea și vezi îmbunătățirile",
-              "Păstrează intervenția",
-              'class="hln-house-board"',
-              'class="hln-impact-panel"',
-              'id="hln-i-wall"',
+              "data-editorial-lab",
+              'data-page="house"',
+              'data-page="envelope"',
+              'data-page="systems"',
+              'data-page="renewables"',
+              'data-page="goal"',
+              "Analiza este gata.",
           ):
               if marker not in next_html:
-                  raise AssertionError(f"Production Home Lab Next missing {marker!r}")
+                  raise AssertionError(f"Production Editorial Home Lab missing {marker!r}")
+
+          status, _, classic_html = open_url(apex + "/home-lab-classic")
+          if status != 200 or 'data-home-lab-next' not in classic_html:
+              raise AssertionError("Classic Home Lab rollback route is unavailable.")
 
           status, _, partner_next_html = open_url(apex + "/embed/demo-store/next")
           if status != 200 or 'data-partner-id="demo-store"' not in partner_next_html:

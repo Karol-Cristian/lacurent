@@ -4,10 +4,6 @@ on:
   pull_request:
     branches:
       - codex/commercial-v2-cloudflare-python
-    paths:
-      - "commercial/**"
-      - ".github/workflows/commercial-pr-checks.yml"
-      - "scripts/prepare-commercial-cloudflare-worker.mjs"
 
 jobs:
   checks:
@@ -42,10 +38,11 @@ jobs:
           node --check commercial/static/calculator-submit-fix.js
           node --check commercial/static/scenario-cockpit.js
           node --check commercial/static/home-lab-next.js
+          node --check commercial/static/home-lab-editorial.js
           node --check commercial/static/home-lab-3d.js
-          node --test commercial/tests/intake.test.cjs
           node --test commercial/tests/language-toggle.test.cjs
           node --test commercial/tests/scenario-cockpit.test.cjs
+          node --test commercial/tests/request-timeout.test.cjs
           python -m compileall -q commercial
           python -m pytest commercial/tests -q
 

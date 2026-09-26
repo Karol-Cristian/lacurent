@@ -1,0 +1,566 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <script src="/static/no-zoom.js?v=2" defer></script>
+  <title>Home Lab Editorial — experiment | LaCurent</title>
+  <meta name="robots" content="noindex,nofollow">
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
+  <link rel="stylesheet" href="/static/home-lab-editorial.css?v=14">
+  <link rel="stylesheet" href="/static/privacy-consent.css?v=privacy1">
+</head>
+<body>
+  <header class="ed-header">
+    <a class="ed-brand" href="/home-lab-editorial" aria-label="LaCurent Home Lab">
+      <span class="ed-mark">LC</span>
+      <span>Home Lab <small>experiment</small></span>
+    </a>
+    <nav class="ed-progress" aria-label="Progres configurare">
+      <div class="ed-progress-history" id="edProgressHistory">
+        <button type="button" data-progress-step="house" disabled><b>1</b><span>Casa</span></button>
+        <button type="button" data-progress-step="envelope" disabled><b>2</b><span>Anvelopa</span></button>
+        <button type="button" data-progress-step="systems" disabled><b>3</b><span>Instalații</span></button>
+        <button type="button" data-progress-step="renewables" disabled><b>4</b><span>Regenerabile</span></button>
+        <button type="button" data-progress-step="goal" disabled><b>5</b><span>Obiectiv</span></button>
+        <button type="button" data-progress-step="report" disabled><b>6</b><span>Rezultat</span></button>
+      </div>
+      <div class="ed-progress-current" aria-live="polite">
+        <span id="edStepNumber">—</span><i></i><span id="edStepName">Start</span>
+      </div>
+    </nav>
+  </header>
+
+  <aside class="ed-baseline-bar" aria-live="polite" aria-label="Rezumat energetic curent">
+    <div class="ed-baseline-inner">
+      <div class="ed-baseline-item">
+        <span>Clasă energetică</span>
+        <strong id="edBaselineClass">—</strong>
+      </div>
+      <i aria-hidden="true"></i>
+      <div class="ed-baseline-item">
+        <span>Cost anual estimat</span>
+        <strong id="edBaselineCost">—</strong>
+      </div>
+      <small id="edBaselineStatus">Se actualizează după primele date.</small>
+    </div>
+  </aside>
+
+  <main class="ed-shell" data-editorial-lab>
+    <form id="edForm" autocomplete="off">
+      <input type="hidden" name="project_name" value="Home Lab Editorial">
+      <input type="hidden" name="locality_id" id="localityId" value="{{ values.locality_id }}">
+      <input type="hidden" name="building_type" value="residential_individual">
+      <input type="hidden" name="building_length_m" id="techLength">
+      <input type="hidden" name="building_width_m" id="techWidth">
+      <input type="hidden" name="house_window_area_m2" id="techHouseWindows">
+      <input type="hidden" name="house_door_area_m2" value="2.2">
+      <input type="hidden" name="door_area_m2" value="2.2">
+      <input type="hidden" name="ground_exposed_perimeter_m" id="techGroundPerimeter">
+      <input type="hidden" name="ground_wall_thickness_m" id="techGroundWallThickness">
+      <input type="hidden" name="ground_conductivity_w_mk" id="techGroundConductivity" value="">
+      <input type="hidden" name="thermal_bridge_length_m" id="techBridgeLength">
+      <input type="hidden" name="thermal_bridge_psi_w_mk" id="techBridgePsi" value="0.08">
+      <input type="hidden" name="expert_geometry_override" value="on">
+      <input type="hidden" name="expert_envelope_override" value="on">
+      <input type="hidden" name="wall_u_value" id="techWallU">
+      <input type="hidden" name="roof_u_value" id="techRoofU">
+      <input type="hidden" name="floor_u_value" id="techFloorU">
+      <input type="hidden" name="window_u_value" id="techWindowU">
+      <input type="hidden" name="door_u_value" value="1.8">
+      <input type="hidden" name="roof_boundary_type" id="techRoofBoundary">
+      <input type="hidden" name="roof_boundary_correction_factor" value="">
+      <input type="hidden" name="floor_boundary_type" id="techFloorBoundary">
+      <input type="hidden" name="floor_boundary_correction_factor" value="">
+      <input type="hidden" name="roof_unheated_exterior_envelope_w_k" value="">
+      <input type="hidden" name="roof_unheated_exterior_ventilation_coefficient" value="">
+      <input type="hidden" name="roof_unheated_conditioned_zone_heat_transfer_w_k" value="">
+      <input type="hidden" name="floor_unheated_exterior_envelope_w_k" value="">
+      <input type="hidden" name="floor_unheated_exterior_ventilation_coefficient" value="">
+      <input type="hidden" name="floor_unheated_conditioned_zone_heat_transfer_w_k" value="">
+      <input type="hidden" name="expert_ventilation_override" value="on">
+      <input type="hidden" name="air_changes_per_hour" id="techAch">
+      <input type="hidden" name="infiltration_air_changes_per_hour" id="techInfiltrationAch" value="0">
+      <input type="hidden" name="heat_recovery_efficiency" id="techHeatRecovery">
+      <input type="hidden" name="expert_heating_override" id="techHeatingExpert" value="">
+      <input type="hidden" name="heating_system_type" id="techHeatingSystemType" value="">
+      <input type="hidden" name="heating_carrier" id="techHeatingCarrier" value="">
+      <input type="hidden" name="heating_efficiency" id="techHeatingEfficiency" value="">
+      <input type="hidden" name="heating_scop" id="techHeatingScop" value="">
+      <input type="hidden" name="heating_cost_profile" id="techHeatingCostProfile" value="">
+      <input type="hidden" name="heating_chain_enabled" value="on">
+      <input type="hidden" name="heating_generator_type" id="techHeatingGenerator">
+      <input type="hidden" name="heating_emitter_type" id="techHeatingEmitter">
+      <input type="hidden" name="heating_distribution_type" id="techHeatingDistribution">
+      <input type="hidden" name="heating_storage_type" id="techHeatingStorage">
+      <input type="hidden" name="heating_control_type" id="techHeatingControl">
+      <input type="hidden" name="heating_design_flow_temperature_c" id="techHeatingFlow" value="">
+      <input type="hidden" name="heating_design_return_temperature_c" id="techHeatingReturn" value="">
+      <input type="hidden" name="heating_auxiliary_electricity_kwh_year" id="techHeatingAux" value="">
+      <input type="hidden" name="cooling_enabled" id="techCoolingEnabled">
+      <input type="hidden" name="cooling_seer" id="techCoolingSeer">
+      <input type="hidden" name="cooling_setpoint_c" id="techCoolingSetpoint" value="26">
+      <input type="hidden" name="dhw_enabled" value="on">
+      <input type="hidden" name="dhw_litres_per_person_day_at_60c" id="techDhwLitres" value="50">
+      <input type="hidden" name="dhw_efficiency" id="techDhwEfficiency" value="">
+      <input type="hidden" name="dhw_cop" id="techDhwCop" value="">
+      <input type="hidden" name="dhw_carrier" id="techDhwCarrier" value="">
+      <input type="hidden" name="expert_dhw_override" id="techDhwExpert" value="">
+      <input type="hidden" name="solar_mode" value="normative_hsol">
+      <input type="hidden" name="solar_orientation" id="techSolarOrientation">
+      <input type="hidden" name="solar_glazing_type_id" id="techSolarGlazing">
+      <input type="hidden" name="solar_glazing_gn" id="techSolarGn" value="">
+      <input type="hidden" name="solar_shading_device_id" value="">
+      <input type="hidden" name="solar_shading_mounting_side" value="">
+      <input type="hidden" name="solar_frame_fraction" value="0.20">
+      <input type="hidden" name="solar_obstacle_shading_factor" value="1.0">
+      <input type="hidden" name="solar_sky_view_factor" value="0.5">
+      <input type="hidden" name="solar_exterior_surface_resistance_m2k_w" value="0.04">
+      <input type="hidden" name="solar_longwave_radiation_coefficient_w_m2k" value="5.0">
+      <input type="hidden" name="solar_sky_temperature_difference_k" value="11.0">
+      <input type="hidden" name="pv_performance_ratio" id="techPvPerformanceRatio" value="0.82">
+      <input type="hidden" name="solar_thermal_system_efficiency" id="techSolarThermalEfficiency" value="0.45">
+
+      <section class="ed-page is-active" data-page="intro" data-label="Start">
+        <div class="ed-copy">
+          <p class="ed-eyebrow">Analiză energetică a locuinței</p>
+          <h1>Spune-ne cum este casa.<br>Calculul vine după.</h1>
+          <p class="ed-lead">Aceleași date tehnice ca în Home Lab, dar fără dashboard-uri și fără rezultate intermediare. Informațiile sunt folosite în calcul și explicate abia în raport.</p>
+          <button class="ed-primary" type="button" data-next>Începe analiza <span>→</span></button>
+        </div>
+      </section>
+
+      <section class="ed-page" data-page="house" data-label="Casa">
+        <div class="ed-form-page">
+          <p class="ed-eyebrow">01 · Casa</p>
+          <h2>Casa, așa cum este acum.</h2>
+          <p class="ed-hint">Locația stabilește clima. Geometria este dedusă din suprafață, niveluri și înălțime, exact ca în Home Lab-ul actual.</p>
+
+          <div class="ed-location-picker">
+            <label class="ed-field ed-wide">
+              <span>Localitate</span>
+              <input name="locality" id="localityInput" type="search" autocomplete="off" value="{{ values.locality }}" placeholder="ex. Cluj-Napoca" required>
+            </label>
+            <div id="edLocalitySuggestions" class="ed-locality-suggestions" hidden></div>
+            <div class="ed-location-meta" id="edLocationMeta">Profil climatic automat după localitatea selectată.</div>
+            <div id="edLocationMap" class="ed-location-map" role="group" aria-label="Hartă climatică pentru alegerea localității">
+              <p>Se încarcă harta…</p>
+            </div>
+            <div id="edMapSuggestions" class="ed-map-suggestions" hidden></div>
+          </div>
+
+          <div class="ed-grid ed-top-gap">
+            <label class="ed-field"><span>Suprafață încălzită</span><div><input type="text" inputmode="decimal" data-decimal-input name="heated_floor_area_m2" id="heatedArea" value="120" data-min="40" data-max="300" required><em>m²</em></div></label>
+            <label class="ed-field"><span>Niveluri încălzite</span><div><input type="number" name="heated_levels" id="heatedLevels" value="2" min="1" max="3" step="1" required></div></label>
+            <label class="ed-field"><span>Înălțime interioară</span><div><input type="text" inputmode="decimal" data-decimal-input name="average_height_m" id="averageHeight" value="2,7" data-min="2.2" data-max="3.5" required><em>m</em></div></label>
+            <label class="ed-field"><span>Temperatură iarna</span><div><input type="text" inputmode="decimal" data-decimal-input name="indoor_design_temperature_c" value="21" data-min="18" data-max="24" required><em>°C</em></div></label>
+            <label class="ed-field"><span>Anul construcției</span><div><input type="number" name="construction_year" value="2005" min="1800" max="2100" step="1" required></div></label>
+            <label class="ed-field"><span>Persoane în locuință</span><div><input type="number" name="dhw_occupants" value="4" min="1" max="8" step="1" required></div></label>
+          </div>
+
+          <details class="ed-details" id="geometryDetails">
+            <summary><span>Geometrie calculată</span><small>Poți suprascrie valorile dacă le cunoști.</small></summary>
+            <div class="ed-details-body">
+              <div class="ed-derived" id="geometrySummary">
+                <span>Amprentă <b id="derivedFootprint">—</b></span>
+                <span>Perimetru <b id="derivedPerimeter">—</b></span>
+                <span>Pereți bruți <b id="derivedGrossWalls">—</b></span>
+                <span>Ferestre + uși <b id="derivedOpenings">—</b></span>
+              </div>
+              <div class="ed-grid">
+                <label class="ed-field"><span>Pereți exteriori opaci</span><div><input type="text" inputmode="decimal" data-decimal-input name="wall_area_m2" id="wallArea" data-geom-auto data-min="1" data-max="1000"><em>m²</em></div></label>
+                <label class="ed-field"><span>Planșeu superior / acoperiș</span><div><input type="text" inputmode="decimal" data-decimal-input name="roof_area_m2" id="roofArea" data-geom-auto data-min="1" data-max="1000"><em>m²</em></div></label>
+                <label class="ed-field"><span>Pardoseală / planșeu inferior</span><div><input type="text" inputmode="decimal" data-decimal-input name="floor_area_m2" id="floorArea" data-geom-auto data-min="1" data-max="1000"><em>m²</em></div></label>
+                <label class="ed-field"><span>Volum încălzit</span><div><input type="text" inputmode="decimal" data-decimal-input name="heated_volume_m3" id="heatedVolume" data-geom-auto data-min="1" data-max="5000"><em>m³</em></div></label>
+              </div>
+              <button type="button" class="ed-link ed-reset-geometry" id="resetGeometry">Reia geometria calculată</button>
+            </div>
+          </details>
+
+          <div class="ed-actions"><button type="button" class="ed-back" data-back>Înapoi</button><button type="button" class="ed-primary" data-next>Continuă <span>→</span></button></div>
+        </div>
+      </section>
+
+      <section class="ed-page" data-page="envelope" data-label="Anvelopa">
+        <div class="ed-form-page">
+          <p class="ed-eyebrow">02 · Anvelopa</p>
+          <h2>Din ce este făcută?</h2>
+          <p class="ed-hint">Materialele și grosimile sunt transformate în rezistențe termice. Nu mai folosim profilul simplificat „slab / mediu / bun”.</p>
+
+          <div class="ed-subsection ed-domain-card ed-tone-blue">
+            <h3>Pereți</h3>
+            <div class="ed-grid">
+              <label class="ed-field"><span>Structură perete</span>
+                <select id="wallStructure">
+                  <option value="unknown">Nu știu</option>
+                  <option value="solid_brick">Cărămidă plină</option>
+                  <option value="efficient_brick">Cărămidă eficientă / cu goluri</option>
+                  <option value="bca">BCA / AAC</option>
+                  <option value="concrete">Beton armat</option>
+                  <option value="wood">Lemn</option>
+                  <option value="stone">Piatră</option>
+                </select>
+              </label>
+              <label class="ed-field"><span>Grosime structură</span><div><input id="wallStructureThickness" type="text" inputmode="decimal" data-decimal-input data-min="5" data-max="80" value="30"><em>cm</em></div></label>
+              <label class="ed-field"><span>Material izolație</span>
+                <select id="wallInsulationMaterial">
+                  <option value="generic_040">Nu știu — λ 0,040</option>
+                  <option value="eps">Polistiren EPS</option>
+                  <option value="xps">Polistiren XPS</option>
+                  <option value="mineral_wool">Vată minerală</option>
+                  <option value="cellulose">Celuloză</option>
+                  <option value="wood_fiber">Fibră lemnoasă</option>
+                </select>
+              </label>
+              <label class="ed-field"><span>Izolație pereți</span><div><input id="wallIns" type="text" inputmode="decimal" data-decimal-input data-min="0" data-max="40" value="5"><em>cm</em></div></label>
+            </div>
+            <details class="ed-details ed-advanced-details">
+              <summary><span>Valori avansate / calculate</span><small>Calculat automat · editarea devine override</small></summary>
+              <div class="ed-details-body">
+                <div class="ed-grid ed-advanced-grid">
+                  <label class="ed-field"><span>U perete</span><div><input id="advWallU" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0.05" data-max="5" value="" placeholder="ex. 0,32"><em>W/m²K</em></div></label>
+                  <label class="ed-field"><span>Ψ punți termice</span><div><input id="advBridgePsi" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0" data-max="2" value="" placeholder="ex. 0,08"><em>W/mK</em></div></label>
+                </div>
+              </div>
+            </details>
+          </div>
+
+          <div class="ed-subsection ed-domain-card ed-tone-sand">
+            <h3>Acoperiș / pod</h3>
+            <label class="ed-field ed-wide"><span>Deasupra ultimului nivel încălzit</span>
+              <select id="topBoundary">
+                <option value="unknown">Nu știu</option>
+                <option value="cold_attic">Pod rece / neîncălzit</option>
+                <option value="heated_attic">Mansardă încălzită</option>
+                <option value="flat_roof">Terasă / acoperiș plat</option>
+              </select>
+            </label>
+            <div class="ed-grid ed-top-gap">
+              <label class="ed-field"><span>Material izolație</span>
+                <select id="roofInsulationMaterial">
+                  <option value="generic_040">Nu știu — λ 0,040</option>
+                  <option value="eps">Polistiren EPS</option>
+                  <option value="xps">Polistiren XPS</option>
+                  <option value="mineral_wool">Vată minerală</option>
+                  <option value="cellulose">Celuloză</option>
+                  <option value="wood_fiber">Fibră lemnoasă</option>
+                </select>
+              </label>
+              <label class="ed-field"><span>Izolație pod / acoperiș</span><div><input id="roofIns" type="text" inputmode="decimal" data-decimal-input data-min="0" data-max="50" value="10"><em>cm</em></div></label>
+            </div>
+            <details class="ed-details ed-advanced-details">
+              <summary><span>Valori avansate / calculate</span><small>Calculat automat · editarea devine override</small></summary>
+              <div class="ed-details-body">
+                <div class="ed-grid ed-advanced-grid">
+                  <label class="ed-field"><span>U acoperiș / planșeu</span><div><input id="advRoofU" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0.05" data-max="5" value="" placeholder="ex. 0,20"><em>W/m²K</em></div></label>
+                </div>
+              </div>
+            </details>
+          </div>
+
+          <div class="ed-subsection ed-domain-card ed-tone-sage">
+            <h3>Pardoseală</h3>
+            <label class="ed-field ed-wide"><span>Sub pardoseala nivelului încălzit</span>
+              <select id="floorBoundary">
+                <option value="ground">Placă / pardoseală pe sol</option>
+                <option value="unheated_basement">Subsol / beci neîncălzit</option>
+                <option value="outside_air">Exterior / spațiu deschis</option>
+                <option value="heated_space">Spațiu încălzit</option>
+              </select>
+            </label>
+            <div class="ed-grid ed-top-gap">
+              <label class="ed-field"><span>Material izolație</span>
+                <select id="floorInsulationMaterial">
+                  <option value="generic_040">Nu știu — λ 0,040</option>
+                  <option value="eps">Polistiren EPS</option>
+                  <option value="xps">Polistiren XPS</option>
+                  <option value="mineral_wool">Vată minerală</option>
+                  <option value="cellulose">Celuloză</option>
+                  <option value="wood_fiber">Fibră lemnoasă</option>
+                </select>
+              </label>
+              <label class="ed-field"><span>Izolație pardoseală</span><div><input id="floorIns" type="text" inputmode="decimal" data-decimal-input data-min="0" data-max="30" value="5"><em>cm</em></div></label>
+            </div>
+            <details class="ed-details ed-advanced-details">
+              <summary><span>Valori avansate / calculate</span><small>Calculat automat unde există date · editabil</small></summary>
+              <div class="ed-details-body">
+                <div class="ed-grid ed-advanced-grid">
+                  <label class="ed-field"><span>U pardoseală / planșeu</span><div><input id="advFloorU" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0.05" data-max="5" value="" placeholder="ex. 0,30"><em>W/m²K</em></div></label>
+                  <label class="ed-field"><span>Conductivitate sol λ</span><div><input id="advGroundConductivity" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0.1" data-max="5" value="" placeholder="ex. 2,0"><em>W/mK</em></div></label>
+                </div>
+              </div>
+            </details>
+          </div>
+
+          <div class="ed-subsection ed-domain-card ed-tone-lilac">
+            <h3>Ferestre și orientare</h3>
+            <div class="ed-grid">
+              <label class="ed-field"><span>Suprafață ferestre</span><div><input type="text" inputmode="decimal" data-decimal-input name="window_area_m2" id="windowArea" data-min="2" data-max="60" value="18"><em>m²</em></div></label>
+              <label class="ed-field"><span>Tip vitraj</span>
+                <select id="glazing">
+                  <option value="single_clear_glazing">Geam simplu</option>
+                  <option value="double_clear_glazing">Geam dublu clar</option>
+                  <option value="double_low_e_face_3">Geam dublu Low-E</option>
+                  <option value="triple_low_e_faces_2_and_5" selected>Tripan Low-E</option>
+                </select>
+              </label>
+              <label class="ed-field"><span>Orientare principală</span>
+                <select id="orientation">
+                  <option value="south">Sud</option><option value="south_west">Sud-vest</option><option value="west">Vest</option><option value="north_west">Nord-vest</option>
+                  <option value="north">Nord</option><option value="north_east">Nord-est</option><option value="east">Est</option><option value="south_east">Sud-est</option>
+                </select>
+              </label>
+            </div>
+            <details class="ed-details ed-advanced-details">
+              <summary><span>Valori avansate / calculate</span><small>Calculat din vitraj · poți introduce valoarea măsurată</small></summary>
+              <div class="ed-details-body">
+                <div class="ed-grid ed-advanced-grid">
+                  <label class="ed-field"><span>Uw fereastră</span><div><input id="advWindowU" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0.3" data-max="8" value="" placeholder="ex. 0,90"><em>W/m²K</em></div></label>
+                  <label class="ed-field"><span>Factor solar g</span><div><input id="advSolarGn" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0.01" data-max="1" value="" placeholder="ex. 0,50"><em>—</em></div></label>
+                </div>
+              </div>
+            </details>
+          </div>
+
+          <div class="ed-actions"><button type="button" class="ed-back" data-back>Înapoi</button><button type="button" class="ed-primary" data-next>Continuă <span>→</span></button></div>
+        </div>
+      </section>
+
+      <section class="ed-page" data-page="systems" data-label="Instalații">
+        <div class="ed-form-page">
+          <p class="ed-eyebrow">03 · Instalații</p>
+          <h2>Cum funcționează casa acum?</h2>
+          <p class="ed-hint">Generatorul, emisia, distribuția și reglajul sunt aceleași inputuri folosite de Home Lab-ul actual.</p>
+
+          <div class="ed-domain-card ed-tone-blue">
+            <h3>Încălzire</h3>
+            <label class="ed-field ed-wide"><span>Generator de încălzire</span>
+            <select name="heating_choice" id="heatingChoice">
+              <option value="condensing_gas_boiler">Centrală gaz în condensare</option>
+              <option value="gas_boiler">Centrală gaz convențională</option>
+              <option value="heat_pump">Pompă de căldură</option>
+              <option value="district_heat">Termoficare</option>
+              <option value="wood_stove">Șemineu / sobă pe lemne</option>
+              <option value="electric_resistance">Încălzire electrică directă</option>
+              <option value="electric_boiler">Centrală electrică</option>
+              <option value="wood_boiler">Centrală pe lemne</option>
+              <option value="pellet_boiler">Centrală pe peleți</option>
+            </select>
+          </label>
+
+          <div class="ed-grid ed-top-gap" id="heatingChain">
+            <label class="ed-field" id="heatPumpSourceField"><span>Tip pompă de căldură</span>
+              <select id="heatPumpSource"><option value="heat_pump_air_water">Aer-apă</option><option value="heat_pump_ground_water">Sol-apă</option><option value="heat_pump_air_air">Aer-aer</option></select>
+            </label>
+            <label class="ed-field" data-heating-chain-field><span>Emisie în încăperi</span>
+              <select id="heatingEmitter"><option value="radiators_high_temp">Calorifere clasice</option><option value="radiators_low_temp">Calorifere joasă temperatură</option><option value="underfloor">Încălzire în pardoseală</option><option value="fan_coils">Ventiloconvectoare</option><option value="air">Aer</option><option value="local">Sursă locală</option></select>
+            </label>
+            <label class="ed-field" data-heating-chain-field><span>Distribuție</span>
+              <select id="heatingDistribution"><option value="hydronic_insulated">Conducte izolate</option><option value="hydronic_uninsulated">Conducte neizolate</option><option value="underfloor">Distribuție pardoseală</option><option value="air">Distribuție prin aer</option><option value="local">Fără rețea</option></select>
+            </label>
+            <label class="ed-field" data-heating-chain-field><span>Stocare termică</span>
+              <select id="heatingStorage"><option value="none">Fără puffer</option><option value="buffer_small">Puffer / buffer mic</option><option value="buffer_large">Puffer / acumulare mare</option></select>
+            </label>
+            <label class="ed-field" data-heating-chain-field><span>Reglaj</span>
+              <select id="heatingControl"><option value="manual">Manual</option><option value="room_thermostat">Termostat de ambient</option><option value="thermostatic_valves">Robineți termostatici</option><option value="zoned">Control pe zone</option><option value="weather_compensated">Compensare climatică</option></select>
+            </label>
+          </div>
+            <details class="ed-details ed-advanced-details">
+              <summary><span>Valori avansate / calculate</span><small>Presetul folosit de motor · poți introduce valoarea măsurată</small></summary>
+              <div class="ed-details-body">
+                <div class="ed-grid ed-advanced-grid">
+                  <label class="ed-field"><span>Randament sezonier η</span><div><input id="advHeatingEfficiency" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="1" data-max="100" value="" placeholder="ex. 94"><em>%</em></div></label>
+                  <label class="ed-field"><span>SCOP măsurat / declarat</span><div><input id="advHeatingScop" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="1.01" data-max="10" value="" placeholder="ex. 3,8"><em>—</em></div></label>
+                  <label class="ed-field"><span>Temperatură tur de calcul</span><div><input id="advHeatingFlow" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="20" data-max="90" value="" placeholder="ex. 45"><em>°C</em></div></label>
+                  <label class="ed-field"><span>Temperatură retur de calcul</span><div><input id="advHeatingReturn" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="15" data-max="85" value="" placeholder="ex. 35"><em>°C</em></div></label>
+                  <label class="ed-field"><span>Consum electric auxiliar</span><div><input id="advHeatingAux" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0" data-max="5000" value="" placeholder="ex. 120"><em>kWh/an</em></div></label>
+                </div>
+              </div>
+            </details>
+          </div>
+
+          <div class="ed-subsection ed-domain-card ed-tone-aqua">
+            <h3>Apă, aer și răcire</h3>
+            <div class="ed-grid">
+              <label class="ed-field"><span>Apă caldă menajeră</span>
+                <select name="dhw_system_type" id="dhwSystem">
+                  <option value="same_as_heating">Același sistem ca încălzirea</option>
+                  <option value="electric_boiler">Boiler electric</option>
+                  <option value="gas_boiler">Centrală pe gaz</option>
+                  <option value="heat_pump_water_heater">Pompă de căldură pentru ACM</option>
+                  <option value="district_heat">Termoficare</option>
+                </select>
+              </label>
+              <label class="ed-field"><span>Ventilație</span>
+                <select id="ventilation"><option value="natural">Naturală</option><option value="mechanical">Mecanică</option><option value="hrv">Cu recuperare de căldură</option></select>
+              </label>
+              <label class="ed-field"><span>Răcire</span>
+                <select id="cooling"><option value="none">Fără răcire</option><option value="split">Aer condiționat</option><option value="heat_pump">Pompă reversibilă</option></select>
+              </label>
+            </div>
+            <details class="ed-details ed-advanced-details">
+              <summary><span>Valori avansate / calculate</span><small>Presetul folosit de motor · poți introduce valoarea măsurată</small></summary>
+              <div class="ed-details-body">
+                <div class="ed-grid ed-advanced-grid">
+                  <label class="ed-field"><span>Ventilație n</span><div><input id="advAch" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0" data-max="5" value="" placeholder="ex. 0,50"><em>1/h</em></div></label>
+                  <label class="ed-field"><span>Infiltrații suplimentare n</span><div><input id="advInfiltrationAch" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0" data-max="5" value="" placeholder="ex. 0,15"><em>1/h</em></div></label>
+                  <label class="ed-field"><span>Recuperare căldură</span><div><input id="advHeatRecovery" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0" data-max="99" value="" placeholder="ex. 75"><em>%</em></div></label>
+                  <label class="ed-field"><span>SEER răcire</span><div><input id="advCoolingSeer" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="1" data-max="15" value="" placeholder="ex. 4,2"><em>—</em></div></label>
+                  <label class="ed-field"><span>Setpoint răcire</span><div><input id="advCoolingSetpoint" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="18" data-max="30" value="" placeholder="ex. 26"><em>°C</em></div></label>
+                  <label class="ed-field"><span>Randament ACM η</span><div><input id="advDhwEfficiency" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="1" data-max="100" value="" placeholder="ex. 86"><em>%</em></div></label>
+                  <label class="ed-field"><span>COP ACM</span><div><input id="advDhwCop" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="1.01" data-max="10" value="" placeholder="ex. 2,4"><em>—</em></div></label>
+                  <label class="ed-field"><span>Consum ACM la 60°C</span><div><input id="advDhwLitres" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="5" data-max="150" value="" placeholder="ex. 50"><em>l/pers·zi</em></div></label>
+                </div>
+              </div>
+            </details>
+          </div>
+
+          <div class="ed-actions"><button type="button" class="ed-back" data-back>Înapoi</button><button type="button" class="ed-primary" data-next>Continuă <span>→</span></button></div>
+        </div>
+      </section>
+
+      <section class="ed-page" data-page="renewables" data-label="Regenerabile">
+        <div class="ed-form-page">
+          <p class="ed-eyebrow">04 · Regenerabile</p>
+          <h2>Ce produce deja casa?</h2>
+          <p class="ed-hint">Dacă nu există regenerabile, lași opțiunile oprite. Optimizerul poate propune ulterior instalații noi.</p>
+
+          <div class="ed-domain-card ed-tone-blue">
+          <div class="ed-switch-row">
+            <div><b>Panouri fotovoltaice existente</b><span>Producție electrică locală.</span></div>
+            <label class="ed-switch"><input type="checkbox" name="pv_enabled" id="pvEnabled"><i></i></label>
+          </div>
+          <div class="ed-grid ed-top-gap" id="pvFields">
+            <label class="ed-field"><span>Putere PV</span><div><input type="number" name="pv_installed_power_kwp" value="5" min="0.5" max="50" step="0.5"><em>kWp</em></div></label>
+            <label class="ed-field"><span>Orientare PV</span>
+              <select name="pv_orientation"><option value="south">Sud</option><option value="south_west">Sud-vest</option><option value="west">Vest</option><option value="north_west">Nord-vest</option><option value="north">Nord</option><option value="north_east">Nord-est</option><option value="east">Est</option><option value="south_east">Sud-est</option></select>
+            </label>
+            <label class="ed-field"><span>Înclinare PV</span><div><input type="number" name="pv_tilt_degrees" value="30" min="0" max="90" step="5"><em>°</em></div></label>
+          </div>
+            <details class="ed-details ed-advanced-details">
+              <summary><span>Valori avansate / calculate</span><small>Valoarea implicită a motorului · editabilă</small></summary>
+              <div class="ed-details-body">
+                <div class="ed-grid ed-advanced-grid">
+                  <label class="ed-field"><span>Performance ratio PR</span><div><input id="advPvPerformanceRatio" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="1" data-max="100" value="" placeholder="ex. 82"><em>%</em></div></label>
+                </div>
+              </div>
+            </details>
+          </div>
+
+          <div class="ed-domain-card ed-tone-sand ed-top-gap">
+          <div class="ed-switch-row">
+            <div><b>Panouri solare termice existente</b><span>Producție termică pentru apă caldă.</span></div>
+            <label class="ed-switch"><input type="checkbox" name="solar_thermal_enabled" id="solarThermalEnabled"><i></i></label>
+          </div>
+          <div class="ed-grid ed-top-gap" id="solarThermalFields">
+            <label class="ed-field"><span>Suprafață solar termic</span><div><input type="number" name="solar_thermal_collector_area_m2" value="4" min="1" max="30" step="0.5"><em>m²</em></div></label>
+            <label class="ed-field"><span>Orientare solar termic</span>
+              <select name="solar_thermal_orientation"><option value="south">Sud</option><option value="south_west">Sud-vest</option><option value="west">Vest</option><option value="north_west">Nord-vest</option><option value="north">Nord</option><option value="north_east">Nord-est</option><option value="east">Est</option><option value="south_east">Sud-est</option></select>
+            </label>
+            <label class="ed-field"><span>Înclinare solar termic</span><div><input type="number" name="solar_thermal_tilt_degrees" value="45" min="0" max="90" step="5"><em>°</em></div></label>
+          </div>
+            <details class="ed-details ed-advanced-details">
+              <summary><span>Valori avansate / calculate</span><small>Valoarea implicită a motorului · editabilă</small></summary>
+              <div class="ed-details-body">
+                <div class="ed-grid ed-advanced-grid">
+                  <label class="ed-field"><span>Randament sistem solar termic</span><div><input id="advSolarThermalEfficiency" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="1" data-max="100" value="" placeholder="ex. 45"><em>%</em></div></label>
+                </div>
+              </div>
+            </details>
+          </div>
+
+          <div class="ed-actions"><button type="button" class="ed-back" data-back>Înapoi</button><button type="button" class="ed-primary" data-next>Continuă <span>→</span></button></div>
+        </div>
+      </section>
+
+      <section class="ed-page" data-page="goal" data-label="Obiectiv">
+        <div class="ed-form-page">
+          <p class="ed-eyebrow">05 · Obiectiv</p>
+          <h2>Ce vrei să optimizeze?</h2>
+          <p class="ed-hint">Casa de bază este acum definită cu aceeași granularitate ca în Home Lab. Alegi doar regula economică.</p>
+
+          <div class="ed-choice-list" data-choice-group="_optimization_mode">
+            <button type="button" class="is-selected" data-value="auto_economic"><b>Cea mai bună soluție economică</b><span>Compară automat orizonturile economice disponibile.</span></button>
+            <button type="button" data-value="investment_budget"><b>Buget maxim</b><span>Caută cea mai bună soluție în limita investiției.</span></button>
+            <button type="button" data-value="annual_bill_target"><b>Factură anuală țintă</b><span>Caută configurația necesară pentru factura dorită.</span></button>
+            <button type="button" data-value="max_payback_years"><b>Recuperare maximă</b><span>Limitează perioada de recuperare a investiției.</span></button>
+          </div>
+          <input type="hidden" name="_optimization_mode" value="auto_economic">
+
+          <div class="ed-conditional" id="goalValueWrap" hidden>
+            <label class="ed-field ed-wide">
+              <span id="goalValueLabel">Valoare</span>
+              <div><input id="goalValue" type="number" min="0" step="100"><em id="goalValueUnit">lei</em></div>
+            </label>
+          </div>
+
+          <div class="ed-actions"><button type="button" class="ed-back" data-back>Înapoi</button><button type="button" class="ed-primary" id="runAnalysis">Rulează analiza <span>→</span></button></div>
+        </div>
+      </section>
+    </form>
+
+    <section class="ed-page" data-page="run" data-label="Calcul">
+      <div class="ed-run-card">
+        <div class="ed-spinner" aria-hidden="true"></div>
+        <p class="ed-eyebrow">Optimizer LaCurent</p>
+        <h2>Calcul în desfășurare</h2>
+        <p class="ed-hint">Fereastra rămâne aici până când toate etapele s-au încheiat.</p>
+        <div class="ed-run-steps" id="runSteps">
+          <div data-run-stage="baseline"><i></i><span>Model termic inițial</span><b>în așteptare</b></div>
+          <div data-run-stage="plan"><i></i><span>Plan parametric</span><b>în așteptare</b></div>
+          <div data-run-stage="branches"><i></i><span>Sisteme de încălzire</span><b>în așteptare</b></div>
+          <div data-run-stage="finalize"><i></i><span>Verificare și selecție</span><b>în așteptare</b></div>
+        </div>
+        <div class="ed-terminal" id="runLog" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="ed-page" data-page="done" data-label="Gata">
+      <div class="ed-copy ed-done">
+        <div class="ed-done-mark">✓</div>
+        <p class="ed-eyebrow">Calcul finalizat</p>
+        <h1>Analiza este gata.</h1>
+        <p class="ed-lead" id="doneMeta">Configurațiile au fost evaluate și rezultatul a fost verificat.</p>
+        <button class="ed-primary" id="openReport" type="button">Vezi raportul <span>→</span></button>
+        <button class="ed-link" id="showLog" type="button">Vezi jurnalul calculului</button>
+      </div>
+    </section>
+
+    <section class="ed-page ed-report-page" data-page="report" data-label="Raport">
+      <article class="ed-report" id="report">
+        <header>
+          <p class="ed-eyebrow">Raport LaCurent</p>
+          <h1>Analiza casei tale</h1>
+          <p id="reportIntro">Rezultatele apar aici după calcul.</p>
+        </header>
+        <div id="reportBody"></div>
+        <footer class="ed-report-footer">
+          <button type="button" class="ed-back" id="reportBack">← Înapoi la rezultat</button>
+          <p>Metodologia, ipotezele și sursele sunt afișate în raport, nu în timpul configurării.</p>
+        </footer>
+      </article>
+    </section>
+
+    <section class="ed-page" data-page="error" data-label="Eroare">
+      <div class="ed-copy ed-done">
+        <div class="ed-error-mark">!</div>
+        <p class="ed-eyebrow">Calcul întrerupt</p>
+        <h1>Nu am putut termina analiza.</h1>
+        <p class="ed-lead" id="errorText">A apărut o eroare.</p>
+        <button class="ed-primary" type="button" id="tryAgain">Reîncearcă</button>
+        <button class="ed-link" type="button" id="errorLog">Vezi jurnalul calculului</button>
+      </div>
+    </section>
+
+    <dialog class="ed-log-dialog" id="logDialog">
+      <div><b>Jurnal calcul</b><button type="button" id="closeLog" aria-label="Închide">×</button></div>
+      <pre id="logDialogBody"></pre>
+    </dialog>
+  </main>
+
+  {% include "_legal_footer.html" %}
+  {% include "_privacy_controls.html" %}
+  <script src="/static/privacy-consent.js?v=privacy1"></script>
+  <script src="/static/home-lab-editorial.js?v=21"></script>
+</body>
+</html>

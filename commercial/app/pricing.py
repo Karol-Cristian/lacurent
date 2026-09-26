@@ -212,17 +212,60 @@ def _service_cost_rows(result: Any, county: str | None) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for service in ("heating", "cooling", "dhw"):
         final_kwh = float(result.final_energy_by_service.get(service, 0) or 0)
+        auxiliary_electricity_kwh = (
+            float(result.heating_system.auxiliary_electricity_kwh)
+            if service == "heating"
+            else 0.0
+        )
+        main_carrier_final_kwh = (
+            float(result.heating.final_kwh)
+            if service == "heating"
+            else final_kwh
+        )
         carrier, profile = carriers[service]
         reference, note, carrier_label = _reference_for(carrier, county, profile)
         unit_price = float(reference["unit_price_lei_per_kwh"]) if reference else None
-        annual_cost = final_kwh * unit_price if unit_price is not None else None
+        auxiliary_reference = (
+            _electricity_reference(county)
+            if auxiliary_electricity_kwh > 0
+            else None
+        )
+        auxiliary_unit_price = (
+            float(auxiliary_reference["unit_price_lei_per_kwh"])
+            if auxiliary_reference
+            else None
+        )
+        main_cost = (
+            main_carrier_final_kwh * unit_price
+            if unit_price is not None
+            else None
+        )
+        auxiliary_cost = (
+            auxiliary_electricity_kwh * auxiliary_unit_price
+            if auxiliary_unit_price is not None
+            else 0.0
+        )
+        annual_cost = (
+            main_cost + auxiliary_cost
+            if main_cost is not None
+            else None
+        )
+        effective_unit_price = (
+            annual_cost / final_kwh
+            if annual_cost is not None and final_kwh > 0
+            else unit_price
+        )
         row = {
             "service": service,
             "label": SERVICE_LABELS[service],
             "carrier": carrier,
             "carrier_label": carrier_label,
             "final_kwh": final_kwh,
+            "main_carrier_final_kwh": main_carrier_final_kwh,
+            "auxiliary_electricity_kwh": auxiliary_electricity_kwh,
             "unit_price_lei_per_kwh": unit_price,
+            "auxiliary_electricity_unit_price_lei_per_kwh": auxiliary_unit_price,
+            "effective_unit_price_lei_per_kwh": effective_unit_price,
             "annual_cost_lei": annual_cost,
             "allocated_delivery_cost_lei": 0.0,
             "priced": reference is not None,
@@ -236,17 +279,17 @@ def _service_cost_rows(result: Any, county: str | None) -> list[dict[str, Any]]:
     groups: dict[str, list[dict[str, Any]]] = {}
     for row in rows:
         group = row.get("delivery_cost_group")
-        if group and row["final_kwh"] > 0:
+        if group and row["main_carrier_final_kwh"] > 0:
             groups.setdefault(str(group), []).append(row)
 
     for group_rows in groups.values():
-        total_kwh = sum(float(row["final_kwh"]) for row in group_rows)
+        total_kwh = sum(float(row["main_carrier_final_kwh"]) for row in group_rows)
         if total_kwh <= 0:
             continue
         delivery = _delivery_cost(group_rows[0], total_kwh)
         delivery_cost = float(delivery["delivery_cost_lei"])
         for row in group_rows:
-            allocation = delivery_cost * float(row["final_kwh"]) / total_kwh
+            allocation = delivery_cost * float(row["main_carrier_final_kwh"]) / total_kwh
             row["allocated_delivery_cost_lei"] = allocation
             row["delivery_batches"] = int(delivery["delivery_batches"])
             row["delivery_cost_lei"] = delivery_cost
@@ -300,7 +343,7 @@ def _monthly_cost_rows(
         priced_total = 0.0
         complete = True
         for service, final_kwh in service_final.items():
-            unit_price = service_map[service]["unit_price_lei_per_kwh"]
+            unit_price = service_map[service]["effective_unit_price_lei_per_kwh"]
             if unit_price is None and final_kwh > 0.0001:
                 service_costs[service] = None
                 complete = False
