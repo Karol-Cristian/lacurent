@@ -2300,6 +2300,16 @@ def _home_lab_optimizer_success_payload(
                     if line.product_id is not None
                     else None
                 ),
+                "availableDesignCapacityKw": (
+                    float(line.design_available_capacity_kw)
+                    if line.design_available_capacity_kw is not None
+                    else (
+                        float(line.parameter_value)
+                        if line.product_id is not None
+                        else None
+                    )
+                ),
+                "capacityBasis": line.capacity_basis,
                 "oversizeKw": (
                     None
                     if (
@@ -2307,7 +2317,11 @@ def _home_lab_optimizer_success_payload(
                         or selected.design_heat_load_kw is None
                     )
                     else max(
-                        float(line.parameter_value)
+                        float(
+                            line.design_available_capacity_kw
+                            if line.design_available_capacity_kw is not None
+                            else line.parameter_value
+                        )
                         - float(selected.design_heat_load_kw),
                         0.0,
                     )
@@ -2320,7 +2334,11 @@ def _home_lab_optimizer_success_payload(
                         or float(selected.design_heat_load_kw) <= 1e-9
                     )
                     else 100.0 * max(
-                        float(line.parameter_value)
+                        float(
+                            line.design_available_capacity_kw
+                            if line.design_available_capacity_kw is not None
+                            else line.parameter_value
+                        )
                         - float(selected.design_heat_load_kw),
                         0.0,
                     ) / float(selected.design_heat_load_kw)
