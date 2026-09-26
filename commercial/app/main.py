@@ -2737,6 +2737,12 @@ async def home_lab_optimization_v3_branch_api(request: Request) -> JSONResponse:
         form = dict(raw.get("form") or {})
         branch_id = str(raw.get("branchId", "") or "").strip()
         run_id = str(raw.get("runId") or "").strip()
+        baseline_bill_raw = raw.get("baselineAnnualBillLei")
+        baseline_annual_bill_lei = (
+            None
+            if baseline_bill_raw in (None, "")
+            else float(baseline_bill_raw)
+        )
         batch_raw = raw.get("batch") or []
         if not branch_id:
             raise ValueError("Lipsește ramura de încălzire V3.")
@@ -2754,7 +2760,7 @@ async def home_lab_optimization_v3_branch_api(request: Request) -> JSONResponse:
             if isinstance(item, dict)
         ]
         cost_catalog = await _optimizer_cost_catalog(request)
-        heating_catalog = await _optimizer_heating_catalog(request)
+        heating_catalog = await _optimizer_heating_catalog_summary(request)
         started = time.perf_counter()
         result = evaluate_worker_safe_branch_v2(
             optimization_request,
@@ -2763,6 +2769,7 @@ async def home_lab_optimization_v3_branch_api(request: Request) -> JSONResponse:
             bounds=OptimizationSearchBoundsV1(),
             catalog=cost_catalog,
             heating_catalog=heating_catalog,
+            baseline_annual_bill_lei=baseline_annual_bill_lei,
         )
         elapsed_ms = round((time.perf_counter() - started) * 1000.0, 1)
         return JSONResponse(
