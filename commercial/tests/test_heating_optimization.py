@@ -350,9 +350,14 @@ def test_air_water_heat_pump_is_not_claimed_sufficient_below_published_capacity_
         original_building=baseline,
     )
 
-    assert product is None
-    assert commercial.candidate_id == raw_branch_candidate.candidate_id
-    assert any("nu se extrapolează" in item for item in warnings)
+    assert product is not None
+    exact_line = next(
+        item for item in commercial.cost_breakdown
+        if item.family == "heating"
+    )
+    assert exact_line.product_id == product.id
+    assert "unverified" in str(exact_line.capacity_basis)
+    assert any("not source-verified" in item for item in warnings)
 
 
 def test_air_air_and_ground_source_are_real_technical_branches() -> None:

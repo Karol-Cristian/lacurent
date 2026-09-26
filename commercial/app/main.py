@@ -2288,6 +2288,17 @@ def _home_lab_optimizer_success_payload(
         )
     )
     active_rows = _optimizer_measure_rows(selected)
+
+    def _capacity_verified(line: Any) -> bool:
+        basis = str(line.capacity_basis or "")
+        return bool(
+            line.product_id is not None
+            and not any(
+                marker in basis
+                for marker in ("unverified", "unavailable", "missing")
+            )
+        )
+
     selected_heating = next(
         (
             {
@@ -2302,6 +2313,14 @@ def _home_lab_optimizer_success_payload(
                 ),
                 "availableDesignCapacityKw": (
                     float(line.design_available_capacity_kw)
+                    if (
+                        _capacity_verified(line)
+                        and line.design_available_capacity_kw is not None
+                    )
+                    else None
+                ),
+                "provisionalCapacityKw": (
+                    float(line.design_available_capacity_kw)
                     if line.design_available_capacity_kw is not None
                     else (
                         float(line.parameter_value)
@@ -2310,10 +2329,12 @@ def _home_lab_optimizer_success_payload(
                     )
                 ),
                 "capacityBasis": line.capacity_basis,
+                "capacityVerified": _capacity_verified(line),
                 "oversizeKw": (
                     None
                     if (
                         line.product_id is None
+                        or not _capacity_verified(line)
                         or selected.design_heat_load_kw is None
                     )
                     else max(
@@ -2330,6 +2351,7 @@ def _home_lab_optimizer_success_payload(
                     None
                     if (
                         line.product_id is None
+                        or not _capacity_verified(line)
                         or selected.design_heat_load_kw is None
                         or float(selected.design_heat_load_kw) <= 1e-9
                     )
