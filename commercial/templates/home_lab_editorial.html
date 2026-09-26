@@ -7,7 +7,7 @@
   <title>Home Lab Editorial — experiment | LaCurent</title>
   <meta name="robots" content="noindex,nofollow">
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="/static/home-lab-editorial.css?v=12">
+  <link rel="stylesheet" href="/static/home-lab-editorial.css?v=13">
   <link rel="stylesheet" href="/static/privacy-consent.css?v=privacy1">
 </head>
 <body>
@@ -58,9 +58,9 @@
       <input type="hidden" name="door_area_m2" value="2.2">
       <input type="hidden" name="ground_exposed_perimeter_m" id="techGroundPerimeter">
       <input type="hidden" name="ground_wall_thickness_m" id="techGroundWallThickness">
-      <input type="hidden" name="ground_conductivity_w_mk" value="">
+      <input type="hidden" name="ground_conductivity_w_mk" id="techGroundConductivity" value="">
       <input type="hidden" name="thermal_bridge_length_m" id="techBridgeLength">
-      <input type="hidden" name="thermal_bridge_psi_w_mk" value="0.08">
+      <input type="hidden" name="thermal_bridge_psi_w_mk" id="techBridgePsi" value="0.08">
       <input type="hidden" name="expert_geometry_override" value="on">
       <input type="hidden" name="expert_envelope_override" value="on">
       <input type="hidden" name="wall_u_value" id="techWallU">
@@ -81,29 +81,34 @@
       <input type="hidden" name="expert_ventilation_override" value="on">
       <input type="hidden" name="air_changes_per_hour" id="techAch">
       <input type="hidden" name="heat_recovery_efficiency" id="techHeatRecovery">
-      <input type="hidden" name="expert_heating_override" value="">
+      <input type="hidden" name="expert_heating_override" id="techHeatingExpert" value="">
+      <input type="hidden" name="heating_system_type" id="techHeatingSystemType" value="">
+      <input type="hidden" name="heating_carrier" id="techHeatingCarrier" value="">
+      <input type="hidden" name="heating_efficiency" id="techHeatingEfficiency" value="">
+      <input type="hidden" name="heating_scop" id="techHeatingScop" value="">
+      <input type="hidden" name="heating_cost_profile" id="techHeatingCostProfile" value="">
       <input type="hidden" name="heating_chain_enabled" value="on">
       <input type="hidden" name="heating_generator_type" id="techHeatingGenerator">
       <input type="hidden" name="heating_emitter_type" id="techHeatingEmitter">
       <input type="hidden" name="heating_distribution_type" id="techHeatingDistribution">
       <input type="hidden" name="heating_storage_type" id="techHeatingStorage">
       <input type="hidden" name="heating_control_type" id="techHeatingControl">
-      <input type="hidden" name="heating_design_flow_temperature_c" value="">
-      <input type="hidden" name="heating_design_return_temperature_c" value="">
-      <input type="hidden" name="heating_auxiliary_electricity_kwh_year" value="">
+      <input type="hidden" name="heating_design_flow_temperature_c" id="techHeatingFlow" value="">
+      <input type="hidden" name="heating_design_return_temperature_c" id="techHeatingReturn" value="">
+      <input type="hidden" name="heating_auxiliary_electricity_kwh_year" id="techHeatingAux" value="">
       <input type="hidden" name="cooling_enabled" id="techCoolingEnabled">
       <input type="hidden" name="cooling_seer" id="techCoolingSeer">
-      <input type="hidden" name="cooling_setpoint_c" value="26">
+      <input type="hidden" name="cooling_setpoint_c" id="techCoolingSetpoint" value="26">
       <input type="hidden" name="dhw_enabled" value="on">
-      <input type="hidden" name="dhw_litres_per_person_day_at_60c" value="50">
-      <input type="hidden" name="dhw_efficiency" value="">
-      <input type="hidden" name="dhw_cop" value="">
-      <input type="hidden" name="dhw_carrier" value="">
-      <input type="hidden" name="expert_dhw_override" value="">
+      <input type="hidden" name="dhw_litres_per_person_day_at_60c" id="techDhwLitres" value="50">
+      <input type="hidden" name="dhw_efficiency" id="techDhwEfficiency" value="">
+      <input type="hidden" name="dhw_cop" id="techDhwCop" value="">
+      <input type="hidden" name="dhw_carrier" id="techDhwCarrier" value="">
+      <input type="hidden" name="expert_dhw_override" id="techDhwExpert" value="">
       <input type="hidden" name="solar_mode" value="normative_hsol">
       <input type="hidden" name="solar_orientation" id="techSolarOrientation">
       <input type="hidden" name="solar_glazing_type_id" id="techSolarGlazing">
-      <input type="hidden" name="solar_glazing_gn" value="">
+      <input type="hidden" name="solar_glazing_gn" id="techSolarGn" value="">
       <input type="hidden" name="solar_shading_device_id" value="">
       <input type="hidden" name="solar_shading_mounting_side" value="">
       <input type="hidden" name="solar_frame_fraction" value="0.20">
@@ -112,8 +117,8 @@
       <input type="hidden" name="solar_exterior_surface_resistance_m2k_w" value="0.04">
       <input type="hidden" name="solar_longwave_radiation_coefficient_w_m2k" value="5.0">
       <input type="hidden" name="solar_sky_temperature_difference_k" value="11.0">
-      <input type="hidden" name="pv_performance_ratio" value="0.82">
-      <input type="hidden" name="solar_thermal_system_efficiency" value="0.45">
+      <input type="hidden" name="pv_performance_ratio" id="techPvPerformanceRatio" value="0.82">
+      <input type="hidden" name="solar_thermal_system_efficiency" id="techSolarThermalEfficiency" value="0.45">
 
       <section class="ed-page is-active" data-page="intro" data-label="Start">
         <div class="ed-copy">
@@ -208,6 +213,15 @@
               </label>
               <label class="ed-field"><span>Izolație pereți</span><div><input id="wallIns" type="text" inputmode="decimal" data-decimal-input data-min="0" data-max="40" value="5"><em>cm</em></div></label>
             </div>
+            <details class="ed-details ed-advanced-details">
+              <summary><span>Valori avansate / măsurate</span><small>Opțional · suprascriu estimarea din materiale</small></summary>
+              <div class="ed-details-body">
+                <div class="ed-grid ed-advanced-grid">
+                  <label class="ed-field"><span>U perete măsurat</span><div><input id="advWallU" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0.05" data-max="5" value="" placeholder="ex. 0,32"><em>W/m²K</em></div></label>
+                  <label class="ed-field"><span>Ψ punți termice</span><div><input id="advBridgePsi" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0" data-max="2" value="" placeholder="ex. 0,08"><em>W/mK</em></div></label>
+                </div>
+              </div>
+            </details>
           </div>
 
           <div class="ed-subsection ed-domain-card ed-tone-sand">
@@ -233,6 +247,14 @@
               </label>
               <label class="ed-field"><span>Izolație pod / acoperiș</span><div><input id="roofIns" type="text" inputmode="decimal" data-decimal-input data-min="0" data-max="50" value="10"><em>cm</em></div></label>
             </div>
+            <details class="ed-details ed-advanced-details">
+              <summary><span>Valori avansate / măsurate</span><small>Opțional · U măsurat are prioritate</small></summary>
+              <div class="ed-details-body">
+                <div class="ed-grid ed-advanced-grid">
+                  <label class="ed-field"><span>U acoperiș / planșeu</span><div><input id="advRoofU" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0.05" data-max="5" value="" placeholder="ex. 0,20"><em>W/m²K</em></div></label>
+                </div>
+              </div>
+            </details>
           </div>
 
           <div class="ed-subsection ed-domain-card ed-tone-sage">
@@ -258,6 +280,15 @@
               </label>
               <label class="ed-field"><span>Izolație pardoseală</span><div><input id="floorIns" type="text" inputmode="decimal" data-decimal-input data-min="0" data-max="30" value="5"><em>cm</em></div></label>
             </div>
+            <details class="ed-details ed-advanced-details">
+              <summary><span>Valori avansate / măsurate</span><small>Opțional · parametri de calcul ai planșeului</small></summary>
+              <div class="ed-details-body">
+                <div class="ed-grid ed-advanced-grid">
+                  <label class="ed-field"><span>U pardoseală / planșeu</span><div><input id="advFloorU" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0.05" data-max="5" value="" placeholder="ex. 0,30"><em>W/m²K</em></div></label>
+                  <label class="ed-field"><span>Conductivitate sol λ</span><div><input id="advGroundConductivity" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0.1" data-max="5" value="" placeholder="ex. 2,0"><em>W/mK</em></div></label>
+                </div>
+              </div>
+            </details>
           </div>
 
           <div class="ed-subsection ed-domain-card ed-tone-lilac">
@@ -279,6 +310,15 @@
                 </select>
               </label>
             </div>
+            <details class="ed-details ed-advanced-details">
+              <summary><span>Valori avansate / măsurate</span><small>Opțional · din fișa tehnică sau măsurători</small></summary>
+              <div class="ed-details-body">
+                <div class="ed-grid ed-advanced-grid">
+                  <label class="ed-field"><span>Uw fereastră</span><div><input id="advWindowU" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0.3" data-max="8" value="" placeholder="ex. 0,90"><em>W/m²K</em></div></label>
+                  <label class="ed-field"><span>Factor solar g</span><div><input id="advSolarGn" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0.01" data-max="1" value="" placeholder="ex. 0,50"><em>—</em></div></label>
+                </div>
+              </div>
+            </details>
           </div>
 
           <div class="ed-actions"><button type="button" class="ed-back" data-back>Înapoi</button><button type="button" class="ed-primary" data-next>Continuă <span>→</span></button></div>
@@ -324,6 +364,18 @@
               <select id="heatingControl"><option value="manual">Manual</option><option value="room_thermostat">Termostat de ambient</option><option value="thermostatic_valves">Robineți termostatici</option><option value="zoned">Control pe zone</option><option value="weather_compensated">Compensare climatică</option></select>
             </label>
           </div>
+            <details class="ed-details ed-advanced-details">
+              <summary><span>Valori avansate / măsurate</span><small>Opțional · valori din punere în funcțiune / fișa echipamentului</small></summary>
+              <div class="ed-details-body">
+                <div class="ed-grid ed-advanced-grid">
+                  <label class="ed-field"><span>Randament sezonier η</span><div><input id="advHeatingEfficiency" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="1" data-max="100" value="" placeholder="ex. 94"><em>%</em></div></label>
+                  <label class="ed-field"><span>SCOP măsurat / declarat</span><div><input id="advHeatingScop" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="1.01" data-max="10" value="" placeholder="ex. 3,8"><em>—</em></div></label>
+                  <label class="ed-field"><span>Temperatură tur de calcul</span><div><input id="advHeatingFlow" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="20" data-max="90" value="" placeholder="ex. 45"><em>°C</em></div></label>
+                  <label class="ed-field"><span>Temperatură retur de calcul</span><div><input id="advHeatingReturn" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="15" data-max="85" value="" placeholder="ex. 35"><em>°C</em></div></label>
+                  <label class="ed-field"><span>Consum electric auxiliar</span><div><input id="advHeatingAux" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0" data-max="5000" value="" placeholder="ex. 120"><em>kWh/an</em></div></label>
+                </div>
+              </div>
+            </details>
           </div>
 
           <div class="ed-subsection ed-domain-card ed-tone-aqua">
@@ -345,6 +397,20 @@
                 <select id="cooling"><option value="none">Fără răcire</option><option value="split">Aer condiționat</option><option value="heat_pump">Pompă reversibilă</option></select>
               </label>
             </div>
+            <details class="ed-details ed-advanced-details">
+              <summary><span>Valori avansate / măsurate</span><small>Opțional · valori de exploatare sau proiectare</small></summary>
+              <div class="ed-details-body">
+                <div class="ed-grid ed-advanced-grid">
+                  <label class="ed-field"><span>Schimburi de aer n</span><div><input id="advAch" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0" data-max="5" value="" placeholder="ex. 0,50"><em>1/h</em></div></label>
+                  <label class="ed-field"><span>Recuperare căldură</span><div><input id="advHeatRecovery" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0" data-max="99" value="" placeholder="ex. 75"><em>%</em></div></label>
+                  <label class="ed-field"><span>SEER răcire</span><div><input id="advCoolingSeer" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="1" data-max="15" value="" placeholder="ex. 4,2"><em>—</em></div></label>
+                  <label class="ed-field"><span>Setpoint răcire</span><div><input id="advCoolingSetpoint" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="18" data-max="30" value="" placeholder="ex. 26"><em>°C</em></div></label>
+                  <label class="ed-field"><span>Randament ACM η</span><div><input id="advDhwEfficiency" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="1" data-max="100" value="" placeholder="ex. 86"><em>%</em></div></label>
+                  <label class="ed-field"><span>COP ACM</span><div><input id="advDhwCop" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="1.01" data-max="10" value="" placeholder="ex. 2,4"><em>—</em></div></label>
+                  <label class="ed-field"><span>Consum ACM la 60°C</span><div><input id="advDhwLitres" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="5" data-max="150" value="" placeholder="ex. 50"><em>l/pers·zi</em></div></label>
+                </div>
+              </div>
+            </details>
           </div>
 
           <div class="ed-actions"><button type="button" class="ed-back" data-back>Înapoi</button><button type="button" class="ed-primary" data-next>Continuă <span>→</span></button></div>
@@ -369,6 +435,14 @@
             </label>
             <label class="ed-field"><span>Înclinare PV</span><div><input type="number" name="pv_tilt_degrees" value="30" min="0" max="90" step="5"><em>°</em></div></label>
           </div>
+            <details class="ed-details ed-advanced-details">
+              <summary><span>Valori avansate / măsurate</span><small>Opțional · performanță reală a sistemului</small></summary>
+              <div class="ed-details-body">
+                <div class="ed-grid ed-advanced-grid">
+                  <label class="ed-field"><span>Performance ratio PR</span><div><input id="advPvPerformanceRatio" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="1" data-max="100" value="" placeholder="ex. 82"><em>%</em></div></label>
+                </div>
+              </div>
+            </details>
           </div>
 
           <div class="ed-domain-card ed-tone-sand ed-top-gap">
@@ -383,6 +457,14 @@
             </label>
             <label class="ed-field"><span>Înclinare solar termic</span><div><input type="number" name="solar_thermal_tilt_degrees" value="45" min="0" max="90" step="5"><em>°</em></div></label>
           </div>
+            <details class="ed-details ed-advanced-details">
+              <summary><span>Valori avansate / măsurate</span><small>Opțional · randament global al instalației</small></summary>
+              <div class="ed-details-body">
+                <div class="ed-grid ed-advanced-grid">
+                  <label class="ed-field"><span>Randament sistem solar termic</span><div><input id="advSolarThermalEfficiency" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="1" data-max="100" value="" placeholder="ex. 45"><em>%</em></div></label>
+                </div>
+              </div>
+            </details>
           </div>
 
           <div class="ed-actions"><button type="button" class="ed-back" data-back>Înapoi</button><button type="button" class="ed-primary" data-next>Continuă <span>→</span></button></div>
@@ -477,6 +559,6 @@
   {% include "_legal_footer.html" %}
   {% include "_privacy_controls.html" %}
   <script src="/static/privacy-consent.js?v=privacy1"></script>
-  <script src="/static/home-lab-editorial.js?v=10"></script>
+  <script src="/static/home-lab-editorial.js?v=11"></script>
 </body>
 </html>

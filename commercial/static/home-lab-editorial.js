@@ -264,6 +264,13 @@
     return Number.isFinite(parsed) ? parsed : fallback;
   }
 
+  function optionalAdvancedNumber(id) {
+    const field = document.getElementById(id);
+    if (!field || String(field.value ?? "").trim() === "") return null;
+    const value = parseDecimal(field.value);
+    return Number.isFinite(value) ? value : null;
+  }
+
   function decimalForForm(value) {
     const parsed = parseDecimal(value);
     return Number.isFinite(parsed) ? String(parsed) : String(value ?? "").trim();
@@ -334,6 +341,10 @@
     const fields = [...page.querySelectorAll("input:not([type=hidden]),select")].filter(el => !el.disabled && !el.closest("[hidden]"));
     for (const field of fields) {
       if (field.matches("[data-decimal-input]")) {
+        if (field.matches("[data-optional-advanced]") && String(field.value ?? "").trim() === "") {
+          field.setCustomValidity("");
+          continue;
+        }
         const value = parseDecimal(field.value);
         const min = parseDecimal(field.dataset.min);
         const max = parseDecimal(field.dataset.max);
@@ -343,7 +354,23 @@
         else if (Number.isFinite(max) && value > max) field.setCustomValidity("Valoarea este prea mare.");
       }
       if (!field.checkValidity()) {
+        const details = field.closest("details");
+        if (details) details.open = true;
         field.reportValidity();
+        return false;
+      }
+    }
+
+    if (name === "systems") {
+      const flow = optionalAdvancedNumber("advHeatingFlow");
+      const ret = optionalAdvancedNumber("advHeatingReturn");
+      const returnField = document.getElementById("advHeatingReturn");
+      if (returnField) returnField.setCustomValidity("");
+      if (flow !== null && ret !== null && ret >= flow) {
+        const details = returnField?.closest("details");
+        if (details) details.open = true;
+        returnField?.setCustomValidity("Temperatura de retur trebuie să fie mai mică decât temperatura de tur.");
+        returnField?.reportValidity();
         return false;
       }
     }
@@ -498,6 +525,29 @@
     $("#solarThermalFields").classList.toggle("is-disabled", !$("#solarThermalEnabled").checked);
   }
 
+  function heatingExpertProfile() {
+    const choice = $("#heatingChoice").value;
+    return {
+      condensing_gas_boiler:{systemType:"condensing_gas_boiler",carrier:"natural_gas",costProfile:"natural_gas"},
+      gas_boiler:{systemType:"gas_boiler",carrier:"natural_gas",costProfile:"natural_gas"},
+      heat_pump:{systemType:"heat_pump",carrier:"electricity",costProfile:"electricity"},
+      district_heat:{systemType:"district_heat",carrier:"district_heat",costProfile:"district_heat"},
+      electric_resistance:{systemType:"electric_resistance",carrier:"electricity",costProfile:"electricity"},
+      electric_boiler:{systemType:"custom",carrier:"electricity",costProfile:"electricity"},
+      wood_stove:{systemType:"custom",carrier:"biomass",costProfile:"firewood"},
+      wood_boiler:{systemType:"custom",carrier:"biomass",costProfile:"firewood"},
+      pellet_boiler:{systemType:"custom",carrier:"biomass",costProfile:"pellets"},
+    }[choice] || {systemType:"custom",carrier:"other",costProfile:"other"};
+  }
+
+  function dhwCarrierFromUi() {
+    const dhw = $("#dhwSystem").value;
+    if (dhw === "electric_boiler" || dhw === "heat_pump_water_heater") return "electricity";
+    if (dhw === "gas_boiler") return "natural_gas";
+    if (dhw === "district_heat") return "district_heat";
+    return heatingExpertProfile().carrier;
+  }
+
   function syncTechnicalForm() {
     const g = updateGeometryDisplay(false);
     setValue("techLength", g.length.toFixed(3));
@@ -523,31 +573,41 @@
       double_low_e_face_3:1.6,
       triple_low_e_faces_2_and_5:0.9,
     };
-    setValue("techWallU", insulationU(
+    const derivedWallU = insulationU(
       wallBaseU(),
       $("#wallIns").value,
       insulationLambda($("#wallInsulationMaterial").value)
-    ).toFixed(4));
-    setValue("techRoofU", insulationU(
+    );
+    const derivedRoofU = insulationU(
       Number(TOP_BOUNDARY_BASE_U[topBoundary]) || TOP_BOUNDARY_BASE_U.unknown,
       $("#roofIns").value,
       insulationLambda($("#roofInsulationMaterial").value)
-    ).toFixed(4));
-    setValue("techFloorU", insulationU(
+    );
+    const derivedFloorU = insulationU(
       0.90,
       $("#floorIns").value,
       insulationLambda($("#floorInsulationMaterial").value)
-    ).toFixed(4));
-    setValue("techWindowU", glazingU[$("#glazing").value] || 1.6);
+    );
+
+    setValue("techWallU", (optionalAdvancedNumber("advWallU") ?? derivedWallU).toFixed(4));
+    setValue("techRoofU", (optionalAdvancedNumber("advRoofU") ?? derivedRoofU).toFixed(4));
+    setValue("techFloorU", (optionalAdvancedNumber("advFloorU") ?? derivedFloorU).toFixed(4));
+    setValue("techWindowU", optionalAdvancedNumber("advWindowU") ?? (glazingU[$("#glazing").value] || 1.6));
+    setValue("techBridgePsi", optionalAdvancedNumber("advBridgePsi") ?? 0.08);
+    setValue("techGroundConductivity", optionalAdvancedNumber("advGroundConductivity") ?? "");
+    setValue("techSolarGn", optionalAdvancedNumber("advSolarGn") ?? "");
 
     const ventilation = $("#ventilation").value;
+    let ach = 0.5;
+    let recovery = 0;
     if (ventilation === "hrv") {
-      setValue("techAch", 0.5); setValue("techHeatRecovery", 0.75);
+      ach = 0.5; recovery = 0.75;
     } else if (ventilation === "mechanical") {
-      setValue("techAch", 0.65); setValue("techHeatRecovery", 0);
-    } else {
-      setValue("techAch", 0.5); setValue("techHeatRecovery", 0);
+      ach = 0.65; recovery = 0;
     }
+    setValue("techAch", optionalAdvancedNumber("advAch") ?? ach);
+    const advancedRecovery = optionalAdvancedNumber("advHeatRecovery");
+    setValue("techHeatRecovery", advancedRecovery === null ? recovery : advancedRecovery / 100);
 
     normalizeHeatingUi();
     setValue("techHeatingGenerator", heatingGeneratorType());
@@ -555,10 +615,42 @@
     setValue("techHeatingDistribution", $("#heatingDistribution").value);
     setValue("techHeatingStorage", $("#heatingStorage").value);
     setValue("techHeatingControl", $("#heatingControl").value);
+    setValue("techHeatingFlow", optionalAdvancedNumber("advHeatingFlow") ?? "");
+    setValue("techHeatingReturn", optionalAdvancedNumber("advHeatingReturn") ?? "");
+    setValue("techHeatingAux", optionalAdvancedNumber("advHeatingAux") ?? "");
+
+    const heatingProfile = heatingExpertProfile();
+    const advancedEfficiency = optionalAdvancedNumber("advHeatingEfficiency");
+    const advancedScop = optionalAdvancedNumber("advHeatingScop");
+    const useHeatingExpert = $("#heatingChoice").value === "heat_pump"
+      ? advancedScop !== null
+      : advancedEfficiency !== null;
+    setValue("techHeatingExpert", useHeatingExpert ? "on" : "");
+    setValue("techHeatingSystemType", useHeatingExpert ? heatingProfile.systemType : "");
+    setValue("techHeatingCarrier", useHeatingExpert ? heatingProfile.carrier : "");
+    setValue("techHeatingCostProfile", useHeatingExpert ? heatingProfile.costProfile : "");
+    setValue("techHeatingEfficiency", useHeatingExpert && $("#heatingChoice").value !== "heat_pump" ? advancedEfficiency / 100 : "");
+    setValue("techHeatingScop", useHeatingExpert && $("#heatingChoice").value === "heat_pump" ? advancedScop : "");
 
     const cooling = $("#cooling").value;
     setValue("techCoolingEnabled", cooling === "none" ? "" : "on");
-    setValue("techCoolingSeer", cooling === "split" ? 4.2 : 4.0);
+    setValue("techCoolingSeer", optionalAdvancedNumber("advCoolingSeer") ?? (cooling === "split" ? 4.2 : 4.0));
+    setValue("techCoolingSetpoint", optionalAdvancedNumber("advCoolingSetpoint") ?? 26);
+
+    const advancedDhwEfficiency = optionalAdvancedNumber("advDhwEfficiency");
+    const advancedDhwCop = optionalAdvancedNumber("advDhwCop");
+    const useDhwExpert = advancedDhwEfficiency !== null || advancedDhwCop !== null;
+    setValue("techDhwExpert", useDhwExpert ? "on" : "");
+    setValue("techDhwEfficiency", useDhwExpert && advancedDhwCop === null ? advancedDhwEfficiency / 100 : "");
+    setValue("techDhwCop", useDhwExpert && advancedDhwCop !== null ? advancedDhwCop : "");
+    setValue("techDhwCarrier", useDhwExpert ? dhwCarrierFromUi() : "");
+    setValue("techDhwLitres", optionalAdvancedNumber("advDhwLitres") ?? 50);
+
+    const advancedPvPr = optionalAdvancedNumber("advPvPerformanceRatio");
+    setValue("techPvPerformanceRatio", advancedPvPr === null ? 0.82 : advancedPvPr / 100);
+    const advancedSolarThermal = optionalAdvancedNumber("advSolarThermalEfficiency");
+    setValue("techSolarThermalEfficiency", advancedSolarThermal === null ? 0.45 : advancedSolarThermal / 100);
+
     setValue("techSolarGlazing", $("#glazing").value);
     setValue("techSolarOrientation", $("#orientation").value);
   }
