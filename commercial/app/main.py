@@ -2899,11 +2899,12 @@ async def home_lab_optimization_v2_finalize_api(request: Request) -> JSONRespons
             pareto_scope="worker_safe_v2_verified_finalists",
             raw_selected=raw_selected,
             technical_heating_alternatives=[],
+            heating_catalog=heating_catalog,
         )
         payload["optimization"].update(
             {
                 "optimizerVersion": "v2-worker-safe",
-                "searchMethod": "physics_informed_marginal_curve_worker_safe_v2",
+                "searchMethod": "physics_informed_marginal_pairwise_worker_safe_v2",
                 "executionMode": "worker_safe_staged_v2",
                 "fastEvaluations": int(total_fast),
                 "representativeEvaluations": int(
@@ -3089,6 +3090,7 @@ async def home_lab_optimization_v2_api(request: Request) -> JSONResponse:
             pareto_scope="v2_verified_finalists_then_commercial",
             raw_selected=raw_selected,
             technical_heating_alternatives=technical_heating_alternatives,
+            heating_catalog=heating_catalog,
         )
         payload["optimization"].update(
             {
