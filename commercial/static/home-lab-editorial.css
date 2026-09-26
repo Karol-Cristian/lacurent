@@ -537,3 +537,171 @@ button{cursor:pointer}
   .ed-map-caption{font-size:8px;padding:0 8px}
   .ed-map-caption span:last-child{display:none}
 }
+
+
+/* Editorial v5: pale thermal climate map + progressive map navigation */
+.ed-map-stage{
+  position:relative;
+  overflow:hidden;
+}
+.ed-location-map-svg{
+  touch-action:none;
+  cursor:grab;
+  user-select:none;
+  -webkit-user-select:none;
+}
+.ed-location-map-svg.is-panning{cursor:grabbing}
+.ed-map-zone{
+  opacity:.94;
+  stroke:rgba(255,255,255,.92);
+  stroke-width:1.05;
+}
+.ed-map-zone.zone-I{fill:#f3bf91}
+.ed-map-zone.zone-II{fill:#f2d3a6}
+.ed-map-zone.zone-III{fill:#dde2c4}
+.ed-map-zone.zone-IV{fill:#c8dfdf}
+.ed-map-zone.zone-V{fill:#b8cee5}
+.ed-map-zone.is-selected{
+  stroke:#72879d;
+  stroke-width:1.7;
+  filter:saturate(1.08) brightness(.985);
+}
+.ed-map-boundary{
+  stroke:#727d89;
+  stroke-width:1.2;
+}
+.ed-map-locality circle{
+  fill:#596675;
+  opacity:.9;
+}
+.ed-map-locality.tier-3 circle,
+.ed-map-locality.tier-4 circle{opacity:.78}
+.ed-map-locality.is-selected circle{
+  fill:var(--accent);
+  opacity:1;
+}
+.ed-map-locality text{
+  fill:#39434f;
+  stroke:rgba(255,255,255,.94);
+  paint-order:stroke;
+  font-weight:680;
+}
+.ed-map-controls{
+  position:absolute;
+  z-index:4;
+  top:9px;
+  right:9px;
+  display:grid;
+  grid-template-columns:30px 42px 30px;
+  align-items:stretch;
+  overflow:hidden;
+  border:1px solid rgba(93,106,121,.18);
+  border-radius:10px;
+  background:rgba(255,255,255,.88);
+  box-shadow:0 5px 16px rgba(23,31,43,.08);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+}
+.ed-map-controls button{
+  min-width:0;
+  height:30px;
+  border:0;
+  border-right:1px solid rgba(93,106,121,.14);
+  background:transparent;
+  color:#42505d;
+  font:650 15px/1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  cursor:pointer;
+}
+.ed-map-controls button:last-child{border-right:0}
+.ed-map-controls button:hover{background:rgba(65,79,95,.06)}
+.ed-map-controls .ed-map-zoom-value{
+  font-size:9px;
+  font-variant-numeric:tabular-nums;
+  color:#66717d;
+}
+.ed-map-nav-hint{
+  position:absolute;
+  z-index:3;
+  left:9px;
+  bottom:8px;
+  padding:4px 7px;
+  border:1px solid rgba(93,106,121,.12);
+  border-radius:7px;
+  background:rgba(255,255,255,.82);
+  color:#6a7480;
+  font-size:8px;
+  line-height:1.15;
+  pointer-events:none;
+  backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
+}
+.ed-map-caption{
+  min-height:40px;
+  padding:5px 10px;
+  justify-content:center;
+}
+.ed-map-legend{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-wrap:wrap;
+  gap:7px 12px;
+}
+.ed-map-legend-item{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  white-space:nowrap;
+  color:#59636f;
+  font-size:8.5px;
+  line-height:1;
+}
+.ed-map-legend-item i{
+  width:10px;
+  height:10px;
+  flex:0 0 10px;
+  border-radius:3px;
+  border:1px solid rgba(78,91,106,.12);
+}
+.ed-map-legend-item.zone-I i{background:#f3bf91}
+.ed-map-legend-item.zone-II i{background:#f2d3a6}
+.ed-map-legend-item.zone-III i{background:#dde2c4}
+.ed-map-legend-item.zone-IV i{background:#c8dfdf}
+.ed-map-legend-item.zone-V i{background:#b8cee5}
+.ed-map-legend-item b{
+  font-size:8.5px;
+  color:#39434f;
+}
+.ed-map-legend-item em{
+  font-style:normal;
+  font-variant-numeric:tabular-nums;
+  color:#69737e;
+}
+
+@media(max-width:720px){
+  .ed-map-controls{
+    top:7px;
+    right:7px;
+    grid-template-columns:28px 38px 28px;
+  }
+  .ed-map-controls button{height:28px}
+  .ed-map-nav-hint{
+    left:7px;
+    bottom:6px;
+    font-size:7px;
+  }
+  .ed-map-caption{
+    min-height:43px;
+    padding:5px 6px;
+  }
+  .ed-map-legend{gap:5px 8px}
+  .ed-map-legend-item,
+  .ed-map-legend-item b{font-size:7.5px}
+  .ed-map-legend-item i{
+    width:8px;
+    height:8px;
+    flex-basis:8px;
+    border-radius:2px;
+  }
+}
