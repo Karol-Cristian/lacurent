@@ -73,7 +73,9 @@ from .heating_optimization import (
 )
 from .heating_catalog_store import (
     cached_heating_catalog_from_d1,
+    cached_heating_catalog_summary_from_d1,
     seed_heating_catalog_payload,
+    seed_heating_catalog_summary_payload,
 )
 from .pricing import energy_prices, estimate_energy_cost, home_lab_price_overview
 from .cost_curves import (
@@ -1806,6 +1808,17 @@ async def _optimizer_heating_catalog(request: Request) -> dict[str, Any]:
     return seed_heating_catalog_payload()
 
 
+async def _optimizer_heating_catalog_summary(request: Request) -> dict[str, Any]:
+    """Return product/branch metadata without loading the 1000-node dense grid."""
+    env = request.scope.get("env")
+    db = getattr(env, "DB", None) if env is not None else None
+    if db is not None:
+        payload = await cached_heating_catalog_summary_from_d1(db)
+        if payload is not None:
+            return payload
+    return seed_heating_catalog_summary_payload()
+
+
 @app.get("/api/heating-products")
 async def heating_products_api(request: Request) -> JSONResponse:
     payload = await _optimizer_heating_catalog(request)
@@ -2647,7 +2660,7 @@ async def home_lab_optimization_v3_plan_api(request: Request) -> JSONResponse:
     form = dict(await request.form())
     try:
         mode, _, optimization_request = _home_lab_optimization_request_from_form(form)
-        heating_catalog = await _optimizer_heating_catalog(request)
+        heating_catalog = await _optimizer_heating_catalog_summary(request)
         run_id = str(form.get("_optimizer_run_id") or "").strip()
         started = time.perf_counter()
         plan = build_worker_safe_plan_v3(
