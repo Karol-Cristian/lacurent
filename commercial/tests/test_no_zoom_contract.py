@@ -15,7 +15,7 @@ def test_every_full_html_template_disables_page_zoom() -> None:
         assert 'name="viewport"' in text, template.name
         assert "maximum-scale=1" in text, template.name
         assert "user-scalable=no" in text, template.name
-        assert "/static/no-zoom.js?v=1" in text, template.name
+        assert "/static/no-zoom.js?v=" in text, template.name
 
     assert full_documents, "Expected at least one full HTML template."
 
