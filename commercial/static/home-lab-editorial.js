@@ -1119,8 +1119,9 @@
   form.addEventListener("input", () => scheduleEditorialDraftSave());
   form.addEventListener("change", () => scheduleEditorialDraftSave());
   window.addEventListener("lacurent:privacy-change", event => {
-    if (event.detail?.localAutosave === true) scheduleEditorialDraftSave(0);
+    if (event.detail?.localAutosave === true) persistEditorialDraft();
   });
+  window.addEventListener("pagehide", () => persistEditorialDraft());
 
   ["#heatedArea","#heatedLevels","#averageHeight","#windowArea"].forEach(selector => {
     $(selector).addEventListener("input", () => { updateGeometryDisplay(false); });
