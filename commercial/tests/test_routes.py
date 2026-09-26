@@ -160,8 +160,8 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'data-page="run"' in page.text
     assert 'data-page="report"' in page.text
     assert 'data-page="renewables"' in page.text
-    assert "/static/home-lab-editorial.css?v=12" in page.text
-    assert "/static/home-lab-editorial.js?v=10" in page.text
+    assert "/static/home-lab-editorial.css?v=13" in page.text
+    assert "/static/home-lab-editorial.js?v=11" in page.text
     assert "/static/home-lab-3d.js" not in page.text
     assert 'id="edBaselineClass"' in page.text
     assert 'id="edBaselineCost"' in page.text
@@ -170,6 +170,8 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'id="edLocationMap"' in page.text
     assert 'inputmode="decimal" data-decimal-input name="heated_floor_area_m2"' in page.text
     assert 'inputmode="decimal" data-decimal-input name="wall_area_m2"' in page.text
+    for advanced_id in ("advWallU", "advRoofU", "advFloorU", "advWindowU", "advHeatingScop", "advAch", "advPvPerformanceRatio", "advSolarThermalEfficiency"):
+        assert f'id="{advanced_id}"' in page.text
 
     # Editorial changes presentation only. It must keep the technical input
     # granularity of Home Lab instead of collapsing the building to broad
