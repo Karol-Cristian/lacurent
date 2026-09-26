@@ -418,12 +418,16 @@
     const spanX = Math.max((bounds.maxLon - bounds.minLon) * lonScale, 0.01);
     const spanY = Math.max(bounds.maxLat - bounds.minLat, 0.01);
     const scale = Math.min((width - 2 * pad) / spanX, (height - 2 * pad) / spanY);
+    const projectedWidth = spanX * scale;
+    const projectedHeight = spanY * scale;
+    const offsetX = (width - projectedWidth) / 2;
+    const offsetY = (height - projectedHeight) / 2;
     return {
       width,height,
       project(lon,lat) {
         return [
-          pad + (lon - bounds.minLon) * lonScale * scale,
-          pad + (bounds.maxLat - lat) * scale,
+          offsetX + (lon - bounds.minLon) * lonScale * scale,
+          offsetY + (bounds.maxLat - lat) * scale,
         ];
       },
     };
@@ -443,6 +447,24 @@
         return `${index ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`;
       }).join(" ") + " Z");
     }));
+    return parts.join(" ");
+  }
+
+  function mapGeometryOuterOutlinePath(geometry, projection) {
+    const polygons = geometry?.type === "Polygon"
+      ? [geometry.coordinates || []]
+      : geometry?.type === "MultiPolygon"
+        ? geometry.coordinates || []
+        : [];
+    const parts = [];
+    polygons.forEach(polygon => {
+      const ring = polygon?.[0] || [];
+      if (!ring.length) return;
+      parts.push(ring.map((point,index) => {
+        const [x,y] = projection.project(point[0],point[1]);
+        return `${index ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`;
+      }).join(" ") + " Z");
+    });
     return parts.join(" ");
   }
 
@@ -501,9 +523,8 @@
   }
 
   function localityTierLimitForZoom() {
-    if (mapView.zoom < 1.45) return 1;
-    if (mapView.zoom < 2.35) return 2;
-    if (mapView.zoom < 3.65) return 3;
+    if (mapView.zoom < 1.6) return 2;
+    if (mapView.zoom < 3.2) return 3;
     return 4;
   }
 
@@ -533,9 +554,9 @@
 
     const mobile = window.innerWidth <= 720;
     const maxMarkers = mobile
-      ? (mapView.zoom < 1.45 ? 28 : mapView.zoom < 2.35 ? 55 : mapView.zoom < 3.65 ? 105 : 180)
-      : (mapView.zoom < 1.45 ? 48 : mapView.zoom < 2.35 ? 95 : mapView.zoom < 3.65 ? 180 : 300);
-    const cellSize = (mobile ? 54 : 48) / mapView.zoom;
+      ? (mapView.zoom < 1.6 ? 40 : mapView.zoom < 3.2 ? 110 : 220)
+      : (mapView.zoom < 1.6 ? 70 : mapView.zoom < 3.2 ? 190 : 360);
+    const cellSize = (mobile ? 22 : 18) / mapView.zoom;
     const occupied = new Set();
     const accepted = [];
 
@@ -547,17 +568,7 @@
       const selectedEntry = String(entry.item.id) === selectedKey;
       const cx = Math.floor((entry.x - box.x) / cellSize);
       const cy = Math.floor((entry.y - box.y) / cellSize);
-      let blocked = false;
-      if (!selectedEntry) {
-        for (let dx=-1; dx<=1 && !blocked; dx += 1) {
-          for (let dy=-1; dy<=1; dy += 1) {
-            if (occupied.has(cellKey(cx + dx, cy + dy))) {
-              blocked = true;
-              break;
-            }
-          }
-        }
-      }
+      const blocked = !selectedEntry && occupied.has(cellKey(cx,cy));
       if (blocked) continue;
       occupied.add(cellKey(cx,cy));
       accepted.push({...entry, showLabel:selectedEntry || entry.tier < maxTier || mapView.zoom >= 4.4});
@@ -641,7 +652,8 @@
     const selected = localityMap.get(String($("#localityId").value));
     const selectedId = selected?.id;
     const selectedZone = String(selected?.climateZone || "");
-    const zonePaths = (locationData.climateZones?.features || []).map(feature => {
+    const climateFeatures = locationData.climateZones?.features || [];
+    const zonePaths = climateFeatures.map(feature => {
       const zone = String(feature.properties?.zone || "");
       const temp = Number(feature.properties?.design_temperature_c);
       const title = Number.isFinite(temp) ? `Zona ${zone} · ${String(temp).replace("-", "−")}°C` : `Zona ${zone}`;
@@ -650,6 +662,12 @@
     const boundary = (locationData.romaniaBoundary?.features || []).map(feature =>
       `<path class="ed-map-boundary" d="${mapGeometryPath(feature.geometry,locationProjection)}"></path>`
     ).join("");
+    const selectedOutline = selectedZone
+      ? climateFeatures
+          .filter(feature => String(feature.properties?.zone || "") === selectedZone)
+          .map(feature => `<path class="ed-map-zone-outline" data-selected-zone="${escapeHtml(selectedZone)}" d="${mapGeometryOuterOutlinePath(feature.geometry,locationProjection)}"></path>`)
+          .join("")
+      : "";
     const markers = visibleMapLocalities(selectedId).map(marker => {
       const selectedMarker = String(marker.item.id) === String(selectedId);
       const inverseZoom = 1 / mapView.zoom;
@@ -676,6 +694,7 @@
         <svg class="ed-location-map-svg" viewBox="${box.x.toFixed(2)} ${box.y.toFixed(2)} ${box.width.toFixed(2)} ${box.height.toFixed(2)}" preserveAspectRatio="xMidYMid meet" aria-label="Harta climatică a României" tabindex="0">
           <g class="ed-map-zones">${zonePaths}</g>
           <g class="ed-map-boundaries">${boundary}</g>
+          <g class="ed-map-selected-zone">${selectedOutline}</g>
           <g class="ed-map-localities">${markers}</g>
         </svg>
         <div class="ed-map-controls" aria-label="Zoom hartă">
