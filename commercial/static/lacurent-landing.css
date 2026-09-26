@@ -189,3 +189,21 @@ main{overflow:hidden}
   .lc-budget-metrics{grid-template-columns:1fr 1fr}.lc-budget-metrics strong{font-size:1.45rem}
   .lc-model-equation{gap:6px;font-size:7px}
 }
+
+/* Optimization positioning */
+.lc-model-flow article:nth-child(3){
+  border-color:#9fbfae;
+  background:linear-gradient(135deg,#e8f1ec 0%,#f7faf8 100%);
+  box-shadow:0 10px 30px rgba(31,90,67,.08)
+}
+.lc-model-flow article:nth-child(3)>b{
+  background:#d4e7dc;
+  color:var(--green)
+}
+.lc-model-flow article:nth-child(3) strong{
+  color:var(--green-deep)
+}
+.lc-model-flow article:nth-child(4){
+  border-style:dashed;
+  border-color:#bfc9c3
+}
