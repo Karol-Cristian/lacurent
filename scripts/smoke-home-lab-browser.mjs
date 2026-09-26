@@ -64,6 +64,40 @@ async function expectVisible(selector) {
 }
 
 try {
+  await page.goto(baseUrl + "/home-lab-next", {waitUntil:"networkidle", timeout:30000});
+  await expectVisible("#edLocationMap svg.ed-location-map-svg");
+  await expectVisible(".ed-map-legend");
+
+  const editorialPrivacyFirstUse = page.locator("[data-lacurent-first-use-consent]");
+  if (await editorialPrivacyFirstUse.isVisible()) {
+    await editorialPrivacyFirstUse.locator("[data-lacurent-deny-local]").click();
+    await editorialPrivacyFirstUse.waitFor({state:"hidden", timeout:5000});
+  }
+
+  const legendItems = await page.locator(".ed-map-legend-item").allInnerTexts();
+  const expectedLegend = ["I−12°C","II−15°C","III−18°C","IV−21°C","V−24°C"];
+  const normalizedLegend = legendItems.map(text => text.replace(/\s+/g,""));
+  for (const expected of expectedLegend) {
+    if (!normalizedLegend.includes(expected)) {
+      throw new Error("Editorial climate legend is incomplete: " + JSON.stringify(normalizedLegend));
+    }
+  }
+
+  const editorialMap = page.locator("#edLocationMap svg.ed-location-map-svg");
+  const initialViewBox = await editorialMap.getAttribute("viewBox");
+  await page.locator('#edLocationMap [data-map-zoom="in"]').click();
+  await page.waitForTimeout(80);
+  await page.locator('#edLocationMap [data-map-zoom="in"]').click();
+  await page.waitForTimeout(80);
+  const zoomedViewBox = await editorialMap.getAttribute("viewBox");
+  if (!initialViewBox || !zoomedViewBox || initialViewBox === zoomedViewBox) {
+    throw new Error("Editorial climate map zoom did not change the SVG viewBox");
+  }
+  const progressiveLocalities = await page.locator("#edLocationMap .ed-map-locality.tier-2, #edLocationMap .ed-map-locality.tier-3").count();
+  if (progressiveLocalities < 1) {
+    throw new Error("Editorial climate map did not reveal additional locality tiers after zoom");
+  }
+
   await page.goto(baseUrl + "/home-lab-classic", {waitUntil:"networkidle", timeout:30000});
   await expectVisible("[data-home-lab-next]");
   await expectVisible('[data-hln-screen="home"].is-active');
