@@ -2,6 +2,19 @@
   "use strict";
 
   const preventDefault = (event) => event.preventDefault();
+  const VIEWPORT_CONTENT = "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover";
+
+  function normalizeViewportScale() {
+    const viewport = document.querySelector('meta[name="viewport"]');
+    if (!viewport) return;
+    viewport.setAttribute("content", VIEWPORT_CONTENT);
+  }
+
+  normalizeViewportScale();
+  window.addEventListener("pageshow", normalizeViewportScale);
+  window.addEventListener("orientationchange", () => {
+    window.setTimeout(normalizeViewportScale, 0);
+  });
 
   document.addEventListener("gesturestart", preventDefault, { passive: false });
   document.addEventListener("gesturechange", preventDefault, { passive: false });
