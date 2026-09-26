@@ -49,6 +49,7 @@ from .optimization import (
     cached_baseline_evaluation,
     evaluate_parametric_candidate,
     parametric_capex,
+    parametric_phase_candidate_descriptors,
     pareto_frontier,
     select_optimization_candidate,
 )
@@ -625,7 +626,53 @@ def _verification_candidates(
 
 
 V2_WORKER_SHORTLIST_LIMIT = 8
+V2_WORKER_SEARCH_MEASURE_LIMIT = 32
 V2_WORKER_VERIFICATION_LIMIT = 3
+
+
+def worker_search_measures_v2(
+    shortlist: list[ParametricMeasuresV1],
+    bounds: OptimizationSearchBoundsV1,
+    *,
+    limit: int = V2_WORKER_SEARCH_MEASURE_LIMIT,
+) -> list[ParametricMeasuresV1]:
+    """Build the deep Worker-safe search set without doing more work in one request.
+
+    The physics-informed shortlist is retained first. Deterministic Halton
+    coverage then fills the remaining slots across all seven normalized
+    intervention dimensions. The browser shards this set into bounded branch
+    requests, so total search depth increases without increasing per-request
+    CPU pressure.
+    """
+
+    rows: list[ParametricMeasuresV1] = []
+    seen: set[tuple[float, ...]] = set()
+
+    def add(measures: ParametricMeasuresV1) -> None:
+        signature = _measure_signature(measures)
+        if signature in seen or len(rows) >= max(int(limit), 0):
+            return
+        seen.add(signature)
+        rows.append(measures)
+
+    for item in shortlist:
+        add(item)
+
+    descriptor_offsets = list(range(max(int(limit) * 4, 64)))
+    for descriptor in parametric_phase_candidate_descriptors(
+        bounds,
+        search_phase="halton",
+        phase_offsets=descriptor_offsets,
+        halton_start_index=1,
+    ):
+        raw = descriptor.get("parameters")
+        if not isinstance(raw, dict):
+            continue
+        add(ParametricMeasuresV1(**raw))
+        if len(rows) >= max(int(limit), 0):
+            break
+
+    return rows
 
 
 class WorkerSafePlanV2(BaseModel):
