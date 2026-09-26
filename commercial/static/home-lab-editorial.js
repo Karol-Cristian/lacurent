@@ -1695,8 +1695,12 @@
       stage("plan","active","rulează");
       log("Generez shortlist-ul parametric și ramurile tehnice eligibile.");
       lastPlan = await postForm("/api/optimization/home-lab/v2/plan", baseFormData(), "Plan V2");
-      stage("plan","done", `${lastPlan.shortlistSize || 0} configurații`);
-      log(`Shortlist: ${lastPlan.shortlistSize || 0} configurații din ${lastPlan.representativePoolSize || 0} puncte reprezentative.`);
+      stage("plan","done", `${lastPlan.searchMeasureCount || lastPlan.shortlistSize || 0} configurații`);
+      log(
+        `Plan fizic: ${lastPlan.shortlistSize || 0} finaliști physics-informed din ` +
+        `${lastPlan.representativePoolSize || 0} puncte reprezentative; căutarea aprofundată ` +
+        `extinde acoperirea la ${lastPlan.searchMeasureCount || lastPlan.shortlistSize || 0} configurații.`
+      );
       const catalogStats = lastPlan.catalogStats || {};
       log(
         `Catalog: ${catalogStats.commercialProducts || 0} SKU-uri comerciale + ` +
@@ -1707,23 +1711,45 @@
       const branchIds = lastPlan.runBranchIds || [];
       if (!branchIds.length) throw new Error("Optimizerul nu a returnat nicio ramură economică eligibilă.");
 
-      stage("branches","active",`0 / ${branchIds.length}`);
+      const searchMeasures = (lastPlan.searchMeasures || lastPlan.shortlist || []);
+      const branchChunkSize = Math.max(1, Number(lastPlan.branchChunkSize || 8));
+      const chunks = [];
+      for (let offset = 0; offset < searchMeasures.length; offset += branchChunkSize) {
+        chunks.push(searchMeasures.slice(offset, offset + branchChunkSize));
+      }
+      if (!chunks.length) throw new Error("Optimizerul nu a returnat configurații pentru căutarea aprofundată.");
+
+      const totalBranchShards = branchIds.length * chunks.length;
+      let completedBranchShards = 0;
+      stage("branches","active",`0 / ${totalBranchShards}`);
+      log(
+        `Căutare aprofundată: ${searchMeasures.length} configurații × ${branchIds.length} ramuri, ` +
+        `în ${totalBranchShards} shard-uri CPU-safe.`
+      );
+
       const formPayload = formObject();
       for (let i = 0; i < branchIds.length; i++) {
         const branchId = branchIds[i];
         const branchMeta = (lastPlan.branches || []).find(x => (x.branch_id || x.branchId) === branchId);
         const label = branchMeta?.label || branchId;
-        log(`${i + 1}/${branchIds.length} · ${label}: evaluare parametrică.`);
-        const result = await postJson("/api/optimization/home-lab/v2/branch", {
-          form:formPayload,
-          branchId,
-          shortlist:lastPlan.shortlist
-        }, `Ramura ${label}`);
-        branchResults.push(result);
-        stage("branches","active",`${i + 1} / ${branchIds.length}`);
-        log(`   ${result.candidateCount || 0} candidați · ${result.fastEvaluations || 0} evaluări.`);
+        for (let shardIndex = 0; shardIndex < chunks.length; shardIndex++) {
+          const chunk = chunks[shardIndex];
+          log(
+            `${i + 1}/${branchIds.length} · ${label} · shard ${shardIndex + 1}/${chunks.length}: ` +
+            `${chunk.length} configurații.`
+          );
+          const result = await postJson("/api/optimization/home-lab/v2/branch", {
+            form:formPayload,
+            branchId,
+            shortlist:chunk
+          }, `Ramura ${label}, shard ${shardIndex + 1}/${chunks.length}`);
+          branchResults.push(result);
+          completedBranchShards += 1;
+          stage("branches","active",`${completedBranchShards} / ${totalBranchShards}`);
+          log(`   ${result.candidateCount || 0} candidați · ${result.fastEvaluations || 0} evaluări.`);
+        }
       }
-      stage("branches","done",`${branchIds.length} / ${branchIds.length}`);
+      stage("branches","done",`${completedBranchShards} / ${totalBranchShards}`);
 
       stage("finalize","active","verifică");
       log("Verific finaliștii cu motorul complet și aplic discretizarea comercială disponibilă.");
