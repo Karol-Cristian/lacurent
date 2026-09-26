@@ -1739,7 +1739,7 @@
       log(`Shortlist: ${lastPlan.shortlistSize || 0} configurații din ${lastPlan.representativePoolSize || 0} puncte reprezentative.`);
       log(`Metodă V2: ${lastPlan.searchMethod || "necunoscută"}.`);
       const catalogStats = lastPlan.heatingCatalogStats || {};
-      log(`Catalog încălzire: ${catalogStats.products ?? "?"} produse · ${catalogStats.performance_points ?? "?"} puncte COP/capacitate · sursă ${lastPlan.heatingCatalogSource || "?"}.`);
+      log(`Catalog încălzire: ${catalogStats.products ?? "?"} SKU-uri comerciale · ${catalogStats.parametric_nodes ?? "?"} noduri parametrice · ${catalogStats.performance_points ?? "?"} puncte COP/capacitate · sursă ${lastPlan.heatingCatalogSource || "?"}.`);
 
       const branchIds = lastPlan.runBranchIds || [];
       if (!branchIds.length) throw new Error("Optimizerul nu a returnat nicio ramură economică eligibilă.");
