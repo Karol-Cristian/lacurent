@@ -211,9 +211,15 @@ function interpolateCurve(points, target, xName, yName, activation = 0, extrapol
   const y1 = num(high[yName]);
   let variable = y1;
   if (Math.abs(x1 - x0) > 1e-12) {
-    let slope = (y1 - y0) / (x1 - x0);
-    if (extrapolate && target > x1 && slope < 0) slope = 0;
-    variable = y0 + (target - x0) * slope;
+    const slope = (y1 - y0) / (x1 - x0);
+    if (extrapolate && target > x1 && slope < 0) {
+      // Match Python _planning_heating_capex(): a negative terminal
+      // market slope is flattened at the last observed CAPEX, not at
+      // the penultimate point.
+      variable = y1;
+    } else {
+      variable = y0 + (target - x0) * slope;
+    }
   }
   return (extrapolate ? 0 : activation) + Math.max(variable, 0);
 }
