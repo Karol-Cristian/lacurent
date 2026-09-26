@@ -58,6 +58,7 @@ from .pricing import estimate_energy_cost
 V2_AXIS_LEVELS = (0.5, 1.0)
 V2_LADDER_STEP = 0.25
 V2_LADDER_STEPS = 7
+V2_WORKER_COMBINED_LADDER_STEPS = 8
 V2_SHORTLIST_LIMIT = 10
 V2_FULL_VERIFICATION_LIMIT = 6
 
@@ -717,7 +718,7 @@ def _marginal_curve_ladder(
     current = zero
     ladder = [zero]
 
-    for _ in range(14):
+    for _ in range(V2_WORKER_COMBINED_LADDER_STEPS):
         eligible: list[
             tuple[tuple[float, float, float], int, int]
         ] = []
