@@ -316,81 +316,26 @@ def test_home_lab_local_persistence_and_analytics_are_consent_gated() -> None:
     assert "if (!autosaveAllowed()) return false;" in autosave_js.text
 
 
-def test_company_home_is_a_focused_testing_entry_page() -> None:
-    response = client.get("/")
-    assert response.status_code == 200
-    assert "Bring one problematic test flow. Leave with working automation." in response.text
-    assert 'data-page="testing-home"' in response.text
-    assert 'data-page="software-testing"' not in response.text
-    assert 'href="/software-testing#quick-check"' in response.text
-    assert 'href="/software-testing"' in response.text
-    assert "CANoe / CAPL" in response.text
-    assert "karol@lacurent.com" in response.text
-    assert "Three concrete work areas." not in response.text
-    assert "Instalații & Energie" not in response.text
-    assert 'href="/instalatii"' not in response.text
-    assert "/static/favicon.svg" in response.text
+def test_company_home_redirects_to_home_lab() -> None:
+    response = client.get("/", follow_redirects=False)
+    assert response.status_code == 308
+    assert response.headers["location"] == "/home-lab-next"
 
 
-def test_software_testing_landing_page_is_sales_ready() -> None:
-    response = client.get("/software-testing")
-    assert response.status_code == 200
-    assert "Working test files. Evidence you can reproduce." in response.text
-    assert "What the intervention delivers" in response.text
-    assert "Modified test scripts and configuration" in response.text
-    assert "One defined bottleneck. A concrete engineering output." in response.text
-    assert "Regression & qualification automation" in response.text
-    assert "UDS, diagnostics & fault handling" in response.text
-    assert "HIL / SIL / PIL throughput" in response.text
-    assert "Repeatable execution with expected-versus-actual evidence." in response.text
-    assert "A reproduced baseline and documented root-cause findings." in response.text
-    assert "Several days → about 2 hours" in response.text
-    assert "past engineering result, not a blanket performance guarantee" in response.text
-    assert "Quick bottleneck check" in response.text
-    assert "We cannot test enough" in response.text
-    assert "HIL is the bottleneck" in response.text
-    assert "Qualification is always catching up" in response.text
-    assert "CI stops before the bench" in response.text
-    assert "Prepare the brief" in response.text
-    assert 'data-page="software-testing"' in response.text
-    assert 'id="brief-preview" hidden' in response.text
-    assert "Copy brief" in response.text
-    assert "Open email app" in response.text
-    assert "What it is costing us:" in response.text
-    assert "Embedded verification bottleneck — quick brief" in response.text
-    assert "dSPACE / AutomationDesk" in response.text
-    assert "ETAS / INCA / LABCAR" in response.text
-    assert "CANoe" in response.text
-    assert "CAPL" in response.text
-    assert "ASPICE" in response.text
-    assert "SWE.6" not in response.text
-    assert "SYS.4" not in response.text
-    assert "Functional safety · ISO 26262" in response.text
-    assert "ASIL B" not in response.text
-    assert "Aerospace-oriented" in response.text
-    assert "/software-testing/resources" in response.text
-    assert "A debounce bug that looked like a test problem" in response.text
-    assert "karol@lacurent.com" in response.text
-    assert "/static/favicon.svg" in response.text
-    assert "/static/painpoints.css" in response.text
-    assert "€1,000" not in response.text
-    assert "10 business days" not in response.text
-    assert "Test Automation Rescue Sprint" not in response.text
+def test_separated_sites_are_not_served_by_lacurent() -> None:
+    retired_paths = (
+        "/software-testing",
+        "/software-testing/resources",
+        "/software-testing/resources/timing-is-a-requirement",
+        "/elivio-consilio",
+        "/elivio-consilio/confidentialitate",
+        "/lemnaru-karol-cristian",
+        "/lemnaru-karol-cristian/afaceri-tehnologie-bani",
+    )
+    for path in retired_paths:
+        response = client.get(path)
+        assert response.status_code == 404, path
 
-
-def test_software_resources_are_public_and_anonymized() -> None:
-    response = client.get("/software-testing/resources")
-    assert response.status_code == 200
-    assert "Useful verification knowledge" in response.text
-    assert "From one-off fault injection to repeatable UDS regression" in response.text
-    assert "Research library" in response.text
-    assert "Project details are intentionally anonymized" in response.text
-
-    article = client.get("/software-testing/resources/timing-is-a-requirement")
-    assert article.status_code == 200
-    assert "A debounce bug that looked like a test problem" in article.text
-    assert "Publication rule" in article.text
-    assert "employer/customer identities" in article.text
 
 
 def test_favicon_route_and_asset_are_available() -> None:
@@ -482,12 +427,12 @@ def test_health_endpoint_is_lightweight() -> None:
 
 def test_www_host_redirects_to_canonical_apex() -> None:
     response = client.get(
-        "/software-testing?source=www",
+        "/home-lab-next?source=www",
         headers={"host": "www.lacurent.com"},
         follow_redirects=False,
     )
     assert response.status_code == 308
-    assert response.headers["location"] == "https://lacurent.com/software-testing?source=www"
+    assert response.headers["location"] == "https://lacurent.com/home-lab-next?source=www"
 
 
 def test_form_calculation_renders_romanian_results_and_costs() -> None:
