@@ -625,7 +625,8 @@
     mapView.centerX = mapDrag.startCenterX - dx * (mapDrag.startBox.width / rect.width);
     mapView.centerY = mapDrag.startCenterY - dy * (mapDrag.startBox.height / rect.height);
     clampMapView();
-    scheduleMapRender();
+    const box = currentMapViewBox();
+    svg.setAttribute("viewBox", `${box.x.toFixed(2)} ${box.y.toFixed(2)} ${box.width.toFixed(2)} ${box.height.toFixed(2)}`);
   }
 
   function renderLocationMap() {
@@ -815,7 +816,10 @@
     const moved = mapDrag.moved;
     mapDrag = null;
     $("#edLocationMap")?.querySelector("svg.ed-location-map-svg")?.classList.remove("is-panning");
-    if (moved) mapSuppressClickUntil = performance.now() + 220;
+    if (moved) {
+      mapSuppressClickUntil = performance.now() + 220;
+      scheduleMapRender();
+    }
   }
   $("#edLocationMap").addEventListener("pointerup", finishMapDrag);
   $("#edLocationMap").addEventListener("pointercancel", finishMapDrag);
