@@ -3,6 +3,11 @@ from __future__ import annotations
 import pytest
 
 from commercial.app.engine import calculate, demo_building
+from commercial.app.heating_catalog_store import (
+    HEATING_PARAMETRIC_NODE_TOTAL,
+    build_parametric_heating_nodes,
+    seed_heating_catalog_payload,
+)
 from commercial.app.heating_optimization import (
     _estimated_heat_pump_scop,
     _rebase_candidate,
@@ -42,6 +47,29 @@ def _catalog() -> dict:
             "solar_thermal": {"cost_lei": 2650, "unit": "lei_per_m2"},
         },
     }
+
+
+def test_dense_parametric_heating_grid_has_1000_non_sku_nodes() -> None:
+    seed = heating_planning_catalog()
+    nodes = build_parametric_heating_nodes(list(seed.get("options") or []))
+
+    assert len(nodes) == HEATING_PARAMETRIC_NODE_TOTAL == 1000
+    assert all(":parametric:" in item["id"] for item in nodes)
+    assert all(item["planning_capex_lei"] >= 0 for item in nodes)
+    assert all(
+        item["interpolation_kind"] == "linear_between_source_backed_market_anchors"
+        for item in nodes
+    )
+    assert len({item["source_signature"] for item in nodes}) == 1
+
+
+def test_heating_technologies_use_dense_grid_without_creating_fake_products() -> None:
+    catalog = seed_heating_catalog_payload()
+    technologies = heating_technologies(catalog)
+
+    assert sum(len(item.parametric_nodes) for item in technologies) == 1000
+    assert sum(len(item.products) for item in technologies) == len(catalog["options"])
+    assert len(catalog["options"]) < len(catalog["parametric_heating_nodes"])
 
 
 def test_heating_catalog_groups_products_into_technology_branches() -> None:
