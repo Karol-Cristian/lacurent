@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <script src="/static/no-zoom.js?v=2" defer></script>
+  <meta name="description" content="Catalogul public LaCurent cu produse comerciale folosite de TEO Engine pentru maparea soluțiilor tehnice pe echipamente reale.">
+  <meta name="robots" content="index,follow">
+  <title>Catalog produse — LaCurent</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
+  <link rel="stylesheet" href="/static/lacurent-landing.css?v=2">
+  <link rel="stylesheet" href="/static/product-catalog.css?v=1">
+  <script src="/static/product-catalog.js?v=1" defer></script>
+</head>
+<body data-product-catalog>
+  <header class="lc-topbar">
+    <a class="lc-brand" href="/" aria-label="LaCurent">
+      <span class="lc-brand-mark">LC</span>
+      <span class="lc-brand-copy"><strong>LaCurent</strong><small>Building Optimization</small></span>
+    </a>
+    <nav class="lc-nav" aria-label="Navigare principală">
+      <a href="/">Acasă</a>
+      <a href="/home-lab-next">Optimizer</a>
+      <a href="/produse" aria-current="page">Produse</a>
+    </nav>
+    <a class="lc-top-cta" href="/home-lab-next">Pornește optimizarea <span>→</span></a>
+  </header>
+
+  <main class="pc-main">
+    <section class="pc-hero">
+      <div>
+        <p class="lc-section-kicker">CATALOG COMERCIAL</p>
+        <h1>Produsele pe care<br><em>TEO le poate alege.</em></h1>
+        <p>
+          Nu vrem ca optimizerul să se oprească la o soluție teoretică. Catalogul public
+          leagă configurațiile calculate de echipamente comerciale reale, cu putere,
+          preț de referință și sursa datelor.
+        </p>
+      </div>
+      <aside class="pc-live-card">
+        <span>CATALOG ACTIV</span>
+        <strong>{{ catalog_product_count }}</strong>
+        <b>produse comerciale</b>
+        <small>Actualizat: {{ catalog_observed_on or "—" }}</small>
+        <i>Numărul exclude nodurile parametrice interne folosite de optimizer.</i>
+      </aside>
+    </section>
+
+    <section class="pc-mission">
+      <div>
+        <p class="lc-section-kicker">DIRECȚIA CATALOGULUI</p>
+        <h2>De la câteva produse de referință la acoperirea pieței.</h2>
+      </div>
+      <div>
+        <p>
+          Construim catalogul astfel încât TEO Engine să poată compara tot mai multe
+          opțiuni comerciale disponibile pe piață, nu doar câteva produse selectate manual.
+        </p>
+        <p>
+          <strong>Obiectivul nostru este acoperirea cât mai completă a produselor relevante
+          pentru soluțiile energetice ale unei clădiri</strong> — încălzire, răcire,
+          regenerabile, anvelopă și componentele necesare unei soluții executabile.
+        </p>
+      </div>
+    </section>
+
+    <section class="pc-browser" aria-label="Catalog produse">
+      <header class="pc-browser-head">
+        <div>
+          <p class="lc-section-kicker">PRODUSE LIVE</p>
+          <h2>Explorează catalogul</h2>
+        </div>
+        <div class="pc-search-wrap">
+          <label for="productSearch">Caută produs</label>
+          <input id="productSearch" type="search" placeholder="Ex. Ariston, 8 kW, pompă de căldură…" autocomplete="off">
+        </div>
+      </header>
+
+      <div class="pc-filters" role="group" aria-label="Filtre categorie">
+        <button type="button" class="is-active" data-product-filter="all">Toate <span>{{ catalog_product_count }}</span></button>
+        {% for category in product_categories %}
+        <button type="button" data-product-filter="{{ category.id }}">{{ category.label }} <span>{{ category.count }}</span></button>
+        {% endfor %}
+      </div>
+
+      <div class="pc-results-bar">
+        <span><strong data-product-visible-count>{{ catalog_product_count }}</strong> produse afișate</span>
+        <small>Prețurile sunt valori de referință observate la sursele indicate; nu sunt fluxuri live de stoc sau preț.</small>
+      </div>
+
+      <div class="pc-grid" data-product-grid>
+        {% for product in products %}
+        <article class="pc-product"
+                 data-product-card
+                 data-category="{{ product.technology_id }}"
+                 data-search="{{ product.label|lower }} {{ product.technology_label|lower }} {{ product.rated_power_kw }}">
+          <div class="pc-product-top">
+            <span>{{ product.technology_label }}</span>
+            <b>{{ product.rated_power_kw|fmt("kW", 1) }}</b>
+          </div>
+          <h3>{{ product.label }}</h3>
+          <div class="pc-product-specs">
+            {% if product.scop %}
+            <div><small>SCOP</small><strong>{{ product.scop|fmt("", 2) }}</strong></div>
+            {% elif product.efficiency %}
+            <div><small>Randament</small><strong>{{ (product.efficiency * 100)|fmt("%", 1) }}</strong></div>
+            {% endif %}
+            <div><small>Echipament</small><strong>{{ product.equipment_price_lei|fmt("lei", 0) }}</strong></div>
+            <div><small>Montaj estimat</small><strong>{{ product.installation_allowance_lei|fmt("lei", 0) }}</strong></div>
+          </div>
+          <div class="pc-product-price">
+            <span>CAPEX folosit de TEO</span>
+            <strong>{{ (product.equipment_price_lei + product.installation_allowance_lei)|fmt("lei", 0) }}</strong>
+          </div>
+          <div class="pc-product-actions">
+            <a href="/home-lab-next">Folosește optimizerul →</a>
+            {% if product.source_url %}
+            <a href="{{ product.source_url }}" target="_blank" rel="noopener noreferrer">Sursa produsului ↗</a>
+            {% endif %}
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+
+      <div class="pc-empty" data-product-empty hidden>
+        Nu există produse care să corespundă filtrului curent.
+      </div>
+    </section>
+
+    <section class="pc-explain">
+      <div>
+        <p class="lc-section-kicker">DE CE EXISTĂ CATALOGUL</p>
+        <h2>TEO nu optimizează într-un vid.</h2>
+      </div>
+      <div class="pc-explain-steps">
+        <article><b>01</b><strong>RBPE</strong><span>calculează necesarul fizic al clădirii.</span></article>
+        <article><b>02</b><strong>TEO</strong><span>caută configurația tehnico-economică.</span></article>
+        <article><b>03</b><strong>Catalog</strong><span>mapează soluția pe produse comerciale reale.</span></article>
+        <article><b>04</b><strong>Inginer</strong><span>verifică soluția înainte de ofertare și implementare.</span></article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="lc-footer">
+    <a class="lc-brand lc-brand-footer" href="/">
+      <span class="lc-brand-mark">LC</span>
+      <span class="lc-brand-copy"><strong>LaCurent</strong><small>Nu promitem. Calculăm.</small></span>
+    </a>
+    <div>
+      <a href="/">Acasă</a>
+      <a href="/home-lab-next">Optimizer</a>
+      <a href="/produse">Produse</a>
+      <a href="/privacy">Confidențialitate</a>
+      <a href="/terms">Termeni</a>
+      <a href="mailto:karol@lacurent.com">Contact</a>
+    </div>
+    <small>© 2026 LaCurent</small>
+  </footer>
+</body>
+</html>
