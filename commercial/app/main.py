@@ -3099,7 +3099,7 @@ async def home_lab_optimization_v3_finalize_api(request: Request) -> JSONRespons
         payload["optimization"].update(
             {
                 "optimizerVersion": "v3-sharded",
-                "searchMethod": "physics_informed_halton_sharded_v3",
+                "searchMethod": "deterministic_axis_halton_sharded_v3",
                 "executionMode": "ui_orchestrated_sharded_v3",
                 "representativeEvaluations": representative_evaluations,
                 "branchFastEvaluations": branch_fast_evaluations,
