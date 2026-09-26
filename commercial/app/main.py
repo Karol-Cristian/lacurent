@@ -81,6 +81,7 @@ from .heating_catalog_store import (
     seed_heating_catalog_summary_payload,
 )
 from .pricing import energy_prices, estimate_energy_cost, home_lab_price_overview
+from .teo_v4 import build_teo_v4_kernel
 from .cost_curves import (
     WallCostCurveRequestV1,
     WallProductDiscretizationRequestV1,
@@ -2691,6 +2692,83 @@ def _home_lab_optimizer_success_payload(
     }
 
 
+
+
+@app.post("/api/optimization/home-lab/v4/plan")
+async def home_lab_optimization_v4_plan_api(request: Request) -> JSONResponse:
+    """Build a deep browser-executed TEO plan and one bounded physics kernel."""
+
+    form = dict(await request.form())
+    try:
+        mode, building, optimization_request = _home_lab_optimization_request_from_form(form)
+        run_id = str(form.get("_optimizer_run_id") or "").strip()
+        heating_summary = await _optimizer_heating_catalog_summary(request)
+        cost_catalog = await _optimizer_cost_catalog(request)
+
+        started = time.perf_counter()
+        plan = build_worker_safe_plan_v3(
+            optimization_request,
+            bounds=OptimizationSearchBoundsV1(),
+            heating_catalog=heating_summary,
+            halton_samples=2048,
+            branch_batch_size=V3_BRANCH_BATCH_SIZE,
+        )
+        economic_ids = [
+            item.branch_id
+            for item in plan.branches
+            if item.eligible and item.economic_eligible
+        ]
+        if not economic_ids:
+            raise ValueError("TEO V4 nu are nicio ramură economică eligibilă.")
+
+        # One canonical pass seeds the immutable browser kernel. Search itself
+        # performs zero Python candidate evaluations.
+        baseline_result = calculate(building, include_reference=False)
+        branch_catalogs: dict[str, dict[str, Any]] = {}
+        for branch_id in economic_ids:
+            branch_catalogs[branch_id] = await _optimizer_heating_branch_catalog(
+                request,
+                branch_id,
+            )
+        kernel = build_teo_v4_kernel(
+            building,
+            baseline_result,
+            cost_catalog=cost_catalog,
+            branch_catalogs=branch_catalogs,
+        )
+        elapsed_ms = round((time.perf_counter() - started) * 1000.0, 1)
+
+        return JSONResponse(
+            {
+                "optimizerVersion": "teo-v4-browser",
+                "runId": run_id,
+                "economicMode": mode.value,
+                "label": _home_lab_optimizer_label(mode, form),
+                "searchMethod": "teo_v4_browser_worker_mc001_kernel",
+                "searchPoints": [model_to_dict(item) for item in plan.search_points],
+                "branches": [model_to_dict(item) for item in plan.branches],
+                "runBranchIds": economic_ids,
+                "searchPointCount": len(plan.search_points),
+                "deterministicAxisPoints": int(plan.deterministic_axis_points),
+                "lowDiscrepancyPoints": int(plan.low_discrepancy_points),
+                "kernel": kernel,
+                "serverCandidateEvaluations": 0,
+                "baselineCanonicalPasses": 1,
+                "calculationTimeMs": elapsed_ms,
+                "executionMode": "browser_web_worker_v4",
+                "heatingCatalogSource": heating_summary.get("source"),
+                "heatingCatalogStats": heating_summary.get("catalog_stats") or {},
+            }
+        )
+    except Exception as exc:
+        return JSONResponse(
+            {
+                "error": user_error(exc),
+                "optimizerVersion": "teo-v4-browser",
+                "stage": "plan",
+            },
+            status_code=422,
+        )
 
 
 @app.post("/api/optimization/home-lab/v3/plan")
