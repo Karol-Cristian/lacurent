@@ -170,7 +170,11 @@ async def friendly_http_error(request: Request, exc: StarletteHTTPException) -> 
 
 @app.exception_handler(Exception)
 async def friendly_unhandled_error(request: Request, exc: Exception) -> Response:
-    print(f"[LaCurent] unhandled request exception: {type(exc).__name__}")
+    print(
+        "[LaCurent] unhandled request exception "
+        f"path={request.url.path} type={type(exc).__name__} "
+        f"detail={str(exc)[:300]}"
+    )
     if _browser_navigation(request):
         return HTMLResponse(
             render_error_html(500),
@@ -2417,14 +2421,45 @@ def _home_lab_optimizer_success_payload(
                 )
 
     feasible_total = sum(int(item.feasible_candidates) for item in branches)
+    capex_lei = float(selected.capex_lei)
+    annual_saving_lei = float(selected.annual_saving_lei)
+    annual_bill_lei = float(selected.annual_bill_lei)
+    baseline_bill_lei = float(selected.baseline_annual_bill_lei)
+    economic_horizons = [5, 10, 15, 20, 25]
+    simple_net_benefit = {
+        str(years): round(annual_saving_lei * years - capex_lei, 2)
+        for years in economic_horizons
+    }
+    if capex_lei <= 1e-9 and annual_saving_lei <= 1e-9:
+        economic_status = "no_positive_intervention"
+        payback_status = "not_applicable_no_investment"
+    elif capex_lei <= 1e-9 and annual_saving_lei > 1e-9:
+        economic_status = "positive_saving_zero_capex"
+        payback_status = "immediate"
+    elif annual_saving_lei > 1e-9 and selected.payback_years is not None:
+        economic_status = "positive_saving"
+        payback_status = "finite"
+    elif annual_saving_lei <= 0:
+        economic_status = "non_positive_saving"
+        payback_status = "never_at_current_prices"
+    else:
+        economic_status = "incomplete_economic_result"
+        payback_status = "unavailable"
+
     optimization_payload = {
         "kind": "parametric_economic",
         "mode": "parametric_economic",
         "economicMode": mode.value,
         "label": _home_lab_optimizer_label(mode, form),
         "rationale": selection.rationale,
-        "capexLei": float(selected.capex_lei),
-        "annualSavingLei": float(selected.annual_saving_lei),
+        "capexLei": capex_lei,
+        "baselineAnnualBillLei": baseline_bill_lei,
+        "annualBillLei": annual_bill_lei,
+        "annualSavingLei": annual_saving_lei,
+        "economicStatus": economic_status,
+        "paybackStatus": payback_status,
+        "simpleNetBenefitLeiByHorizon": simple_net_benefit,
+        "economicHorizonsYears": economic_horizons,
         "roiPercentPerYear": (
             None
             if selected.roi_percent_per_year is None
@@ -2532,6 +2567,7 @@ async def home_lab_optimization_v2_plan_api(request: Request) -> JSONResponse:
         mode, _, optimization_request = _home_lab_optimization_request_from_form(form)
         cost_catalog = await _optimizer_cost_catalog(request)
         heating_catalog = await _optimizer_heating_catalog(request)
+        run_id = str(form.get("_optimizer_run_id") or "").strip()
         started = time.perf_counter()
         plan = build_worker_safe_plan_v2(
             optimization_request,
@@ -2553,6 +2589,7 @@ async def home_lab_optimization_v2_plan_api(request: Request) -> JSONResponse:
         return JSONResponse(
             {
                 "optimizerVersion": "v2-worker-safe",
+                "runId": run_id,
                 "economicMode": mode.value,
                 "label": _home_lab_optimizer_label(mode, form),
                 "searchMethod": plan.search_method,
@@ -2575,6 +2612,12 @@ async def home_lab_optimization_v2_plan_api(request: Request) -> JSONResponse:
                 "shortlistSize": len(plan.shortlist),
                 "calculationTimeMs": elapsed_ms,
                 "executionMode": "worker_safe_staged_v2",
+                "heatingCatalogSource": heating_catalog.get("source"),
+                "heatingCatalogStats": heating_catalog.get("catalog_stats") or {
+                    "products": len(heating_catalog.get("options") or []),
+                    "performance_points": len(heating_catalog.get("heat_pump_performance_points") or []),
+                    "seasonal_points": len(heating_catalog.get("heat_pump_seasonal_performance") or []),
+                },
             }
         )
     except Exception as exc:
@@ -2596,6 +2639,7 @@ async def home_lab_optimization_v2_branch_api(request: Request) -> JSONResponse:
         raw = await request.json()
         form = dict(raw.get("form") or {})
         branch_id = str(raw.get("branchId", "") or "").strip()
+        run_id = str(raw.get("runId") or "").strip()
         shortlist_raw = raw.get("shortlist") or []
         if not branch_id:
             raise ValueError("Lipsește ramura de încălzire V2.")
@@ -2623,6 +2667,7 @@ async def home_lab_optimization_v2_branch_api(request: Request) -> JSONResponse:
         return JSONResponse(
             {
                 "optimizerVersion": "v2-worker-safe",
+                "runId": run_id,
                 "branch": model_to_dict(result.branch),
                 "candidates": [
                     model_to_dict(item)
@@ -2632,6 +2677,12 @@ async def home_lab_optimization_v2_branch_api(request: Request) -> JSONResponse:
                 "fastEvaluations": int(result.fast_evaluations),
                 "calculationTimeMs": elapsed_ms,
                 "searchMethod": result.search_method,
+                "heatingCatalogSource": heating_catalog.get("source"),
+                "heatingCatalogStats": heating_catalog.get("catalog_stats") or {
+                    "products": len(heating_catalog.get("options") or []),
+                    "performance_points": len(heating_catalog.get("heat_pump_performance_points") or []),
+                    "seasonal_points": len(heating_catalog.get("heat_pump_seasonal_performance") or []),
+                },
             }
         )
     except Exception as exc:
@@ -2652,6 +2703,7 @@ async def home_lab_optimization_v2_finalize_api(request: Request) -> JSONRespons
     try:
         raw = await request.json()
         form = dict(raw.get("form") or {})
+        run_id = str(raw.get("runId") or "").strip()
         branch_results = raw.get("branchResults") or []
         representative_evaluations = int(
             raw.get("representativeEvaluations") or 0
@@ -2828,6 +2880,13 @@ async def home_lab_optimization_v2_finalize_api(request: Request) -> JSONRespons
                 "shortlistSize": int(shortlist_size),
                 "commercialRechecks": len(ordered_rechecks),
                 "commercialMatches": int(commercial_recheck_count),
+                "runId": run_id,
+                "heatingCatalogSource": heating_catalog.get("source"),
+                "heatingCatalogStats": heating_catalog.get("catalog_stats") or {
+                    "products": len(heating_catalog.get("options") or []),
+                    "performance_points": len(heating_catalog.get("heat_pump_performance_points") or []),
+                    "seasonal_points": len(heating_catalog.get("heat_pump_seasonal_performance") or []),
+                },
             }
         )
         return JSONResponse(payload)
