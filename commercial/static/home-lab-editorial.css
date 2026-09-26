@@ -841,3 +841,77 @@ button{cursor:pointer}
     font-size:16px;
   }
 }
+
+
+/* Editorial v9: hard mobile viewport containment */
+html,
+body{
+  width:100%;
+  max-width:100%;
+  overflow-x:hidden;
+  -webkit-text-size-adjust:100%;
+  text-size-adjust:100%;
+}
+.ed-header,
+.ed-baseline-bar,
+.ed-shell,
+.ed-page{
+  width:100%;
+  max-width:100vw;
+}
+.ed-header>*,
+.ed-progress,
+.ed-progress-history,
+.ed-baseline-inner,
+.ed-copy,
+.ed-form-page,
+.ed-run-card,
+.ed-report,
+.ed-grid,
+.ed-field,
+.ed-field>div,
+.ed-switch-row,
+.ed-switch-row>div{
+  min-width:0;
+}
+@supports (overflow:clip){
+  html,
+  body{
+    overflow-x:clip;
+  }
+}
+@media(max-width:720px){
+  .ed-header{
+    overflow:hidden;
+  }
+  .ed-brand{
+    flex:0 0 auto;
+  }
+  .ed-progress{
+    flex:1 1 auto;
+    max-width:calc(100vw - 62px);
+    justify-content:flex-end;
+    overflow:hidden;
+  }
+  .ed-progress-history{
+    flex:1 1 auto;
+    max-width:100%;
+    justify-content:flex-end;
+    overflow:hidden;
+  }
+  .ed-progress-history button{
+    flex:0 0 auto;
+  }
+  .ed-baseline-inner{
+    max-width:100%;
+    overflow:hidden;
+  }
+  .ed-page,
+  .ed-copy,
+  .ed-form-page,
+  .ed-run-card,
+  .ed-report{
+    width:100%;
+    max-width:100%;
+  }
+}
