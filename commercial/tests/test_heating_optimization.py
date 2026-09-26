@@ -16,6 +16,7 @@ from commercial.app.heating_optimization import (
     commercialize_heating_finalist,
     heating_branch_plan,
     heating_planning_options,
+    heating_planning_catalog,
     heating_technologies,
     heat_pump_monthly_performance_profile,
     run_heating_branch_optimization,
