@@ -472,6 +472,11 @@ def test_compact_refinement_seed_matches_full_candidate_selection() -> None:
 
 
 def test_optimizer_baseline_cache_reuses_identical_building(monkeypatch: pytest.MonkeyPatch) -> None:
+    assert (
+        optimization_module._cached_baseline_evaluation_serialized
+        .cache_parameters()["maxsize"]
+        == 2
+    )
     optimization_module._cached_baseline_evaluation_serialized.cache_clear()
     calls = {"count": 0}
     real_calculate = optimization_module.calculate
