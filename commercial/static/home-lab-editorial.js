@@ -1571,20 +1571,52 @@
 
   async function readJson(response) {
     const data = await response.json().catch(() => ({}));
-    if (!response.ok || data.error) throw new Error(data.error || `HTTP ${response.status}`);
+    if (!response.ok || data.error) {
+      const error = new Error(data.error || `HTTP ${response.status}`);
+      error.status = Number(response.status || 0);
+      error.stage = data.stage || null;
+      throw error;
+    }
     return data;
   }
 
-  async function postForm(url, data) {
-    return readJson(await fetch(url, {method:"POST", body:data, headers:{"Accept":"application/json"}}));
+  function isTransientHttpError(error) {
+    const status = Number(error?.status || 0);
+    return status === 500 || status === 502 || status === 503 || status === 504 || error instanceof TypeError;
   }
 
-  async function postJson(url, data) {
-    return readJson(await fetch(url, {
-      method:"POST",
-      body:JSON.stringify(data),
-      headers:{"Content-Type":"application/json","Accept":"application/json"}
-    }));
+  async function withTransientRetry(operation, label, maxAttempts = 3) {
+    let lastError = null;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error;
+        if (!isTransientHttpError(error) || attempt >= maxAttempts) throw error;
+        const pauseMs = attempt === 1 ? 350 : 900;
+        log(`${label}: eroare tranzitorie ${error?.status || "rețea"}; reîncerc ${attempt + 1}/${maxAttempts}.`);
+        await new Promise(resolve => window.setTimeout(resolve, pauseMs));
+      }
+    }
+    throw lastError;
+  }
+
+  async function postForm(url, data, label = url) {
+    return withTransientRetry(
+      () => readJson(fetch(url, {method:"POST", body:data, headers:{"Accept":"application/json"}})),
+      label
+    );
+  }
+
+  async function postJson(url, data, label = url) {
+    return withTransientRetry(
+      () => readJson(fetch(url, {
+        method:"POST",
+        body:JSON.stringify(data),
+        headers:{"Content-Type":"application/json","Accept":"application/json"}
+      })),
+      label
+    );
   }
 
   function paintBaselineSummary(result, statusText = "Estimare pentru configurația curentă.") {
@@ -1655,16 +1687,22 @@
     try {
       stage("baseline","active","rulează");
       log("Construiesc modelul termic al casei actuale din setul complet de inputuri Home Lab.");
-      baselineResult = await postForm("/api/home-lab-next/calculate", baseFormData());
+      baselineResult = await postForm("/api/home-lab-next/calculate", baseFormData(), "Baseline");
       paintBaselineSummary(baselineResult, "Baseline folosit în optimizare.");
       stage("baseline","done","gata");
       log(`Baseline gata: ${fmt(baselineResult.final_energy_kwh)} kWh/an · necesar ${fmt(baselineResult.design_heat_load_kw,1)} kW.`);
 
       stage("plan","active","rulează");
       log("Generez shortlist-ul parametric și ramurile tehnice eligibile.");
-      lastPlan = await postForm("/api/optimization/home-lab/v2/plan", baseFormData());
+      lastPlan = await postForm("/api/optimization/home-lab/v2/plan", baseFormData(), "Plan V2");
       stage("plan","done", `${lastPlan.shortlistSize || 0} configurații`);
       log(`Shortlist: ${lastPlan.shortlistSize || 0} configurații din ${lastPlan.representativePoolSize || 0} puncte reprezentative.`);
+      const catalogStats = lastPlan.catalogStats || {};
+      log(
+        `Catalog: ${catalogStats.commercialProducts || 0} SKU-uri comerciale + ` +
+        `${catalogStats.parametricHeatingNodes || 0} noduri parametrice · ` +
+        `${catalogStats.heatPumpPerformancePoints || 0} puncte COP/capacitate · sursă ${catalogStats.source || "necunoscută"}.`
+      );
 
       const branchIds = lastPlan.runBranchIds || [];
       if (!branchIds.length) throw new Error("Optimizerul nu a returnat nicio ramură economică eligibilă.");
@@ -1680,7 +1718,7 @@
           form:formPayload,
           branchId,
           shortlist:lastPlan.shortlist
-        });
+        }, `Ramura ${label}`);
         branchResults.push(result);
         stage("branches","active",`${i + 1} / ${branchIds.length}`);
         log(`   ${result.candidateCount || 0} candidați · ${result.fastEvaluations || 0} evaluări.`);
@@ -1696,7 +1734,7 @@
         representativePoolSize:lastPlan.representativePoolSize || 0,
         shortlistSize:lastPlan.shortlistSize || 0,
         priorCalculationTimeMs:Number(lastPlan.calculationTimeMs || 0)
-      });
+      }, "Finalizare V2");
       stage("finalize","done","gata");
       const opt = optimizationResult.optimization || {};
       log(`Finalizat: ${opt.evaluatedCandidates || 0} candidați economici · ${opt.fullEngineVerifications || 0} verificări complete.`);
@@ -1762,9 +1800,32 @@
         <div class="ed-metrics">
           ${metric("Economii estimate", opt.annualSavingLei == null ? "—" : money(opt.annualSavingLei) + "/an")}
           ${metric("Cost după intervenții", money(finalBill))}
-          ${metric("Recuperare", opt.paybackYears == null ? "—" : fmt(opt.paybackYears,1) + " ani")}
+          ${metric(
+            "Recuperare",
+            opt.paybackYears != null
+              ? fmt(opt.paybackYears,1) + " ani"
+              : opt.economicStatus === "no_positive_saving"
+                ? "Nu se amortizează"
+                : opt.economicStatus === "positive_saving_no_capex"
+                  ? "Fără CAPEX"
+                  : opt.economicStatus === "no_action"
+                    ? "Nicio investiție"
+                    : "Nedeterminată"
+          )}
           ${metric("Putere finală necesară · spații", commercial.designHeatLoadKw == null ? "—" : fmt(commercial.designHeatLoadKw,1) + " kW")}
         </div>
+        ${opt.netBenefitLeiByHorizon ? `
+          <h3>Rezultat economic cumulat</h3>
+          <div class="ed-metrics">
+            ${["5","10","15","20","25"].map(years => metric(
+              years + " ani",
+              opt.netBenefitLeiByHorizon[years] == null
+                ? "—"
+                : money(opt.netBenefitLeiByHorizon[years])
+            )).join("")}
+          </div>
+          <p class="ed-hint">Valoare simplă cumulată = economii anuale × orizont − investiție. Nu include încă finanțare, mentenanță, înlocuiri sau inflație energetică.</p>
+        ` : ""}
         <h3>Intervențiile selectate</h3>
         ${measures.length ? measures.map(row => `
           <div class="ed-measure">
