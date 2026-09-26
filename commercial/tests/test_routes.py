@@ -320,6 +320,7 @@ def test_company_home_is_commercial_landing() -> None:
     response = client.get("/")
     assert response.status_code == 200
     assert "data-lacurent-landing" in response.text
+    assert 'class="lc-snap-root"' in response.text
     assert "Nu promitem." in response.text
     assert "Calculăm." in response.text
     assert "clădire nouă sau existentă" in response.text
