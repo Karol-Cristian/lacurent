@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 from functools import lru_cache
 from pathlib import Path
 import time
@@ -2258,6 +2259,54 @@ def _home_lab_optimization_request_from_form(
     return mode, building, OptimizationRequestV1(**request_kwargs)
 
 
+def _assert_candidate_economics(candidate: CandidateEvaluationV1) -> None:
+    values = {
+        "baseline_annual_bill_lei": candidate.baseline_annual_bill_lei,
+        "annual_bill_lei": candidate.annual_bill_lei,
+        "annual_saving_lei": candidate.annual_saving_lei,
+        "capex_lei": candidate.capex_lei,
+    }
+    for name, value in values.items():
+        if not math.isfinite(float(value)):
+            raise ValueError(f"Economics invariant failed: {name} is not finite.")
+
+    expected_saving = (
+        float(candidate.baseline_annual_bill_lei)
+        - float(candidate.annual_bill_lei)
+    )
+    if abs(expected_saving - float(candidate.annual_saving_lei)) > 0.05:
+        raise ValueError(
+            "Economics invariant failed: annual saving does not match baseline minus final bill."
+        )
+
+    capex = float(candidate.capex_lei)
+    saving = float(candidate.annual_saving_lei)
+    if capex > 1e-9 and saving > 1e-9:
+        expected_payback = capex / saving
+        if candidate.payback_years is None:
+            raise ValueError(
+                "Economics invariant failed: positive saving and CAPEX require a payback value."
+            )
+        if not math.isfinite(float(candidate.payback_years)):
+            raise ValueError("Economics invariant failed: payback is not finite.")
+        if abs(float(candidate.payback_years) - expected_payback) > max(0.02, expected_payback * 0.002):
+            raise ValueError(
+                "Economics invariant failed: payback does not match CAPEX / annual saving."
+            )
+
+
+def _economic_status(candidate: CandidateEvaluationV1) -> str:
+    capex = float(candidate.capex_lei)
+    saving = float(candidate.annual_saving_lei)
+    if capex <= 1e-9 and abs(saving) <= 0.01:
+        return "no_action"
+    if capex <= 1e-9 and saving > 0.01:
+        return "positive_saving_no_capex"
+    if saving <= 0.01:
+        return "no_positive_saving"
+    return "positive_payback"
+
+
 def _home_lab_optimizer_success_payload(
     *,
     mode: OptimizationMode,
@@ -2278,6 +2327,7 @@ def _home_lab_optimizer_success_payload(
         raise ValueError("Nu există nicio soluție fezabilă pentru regula economică aleasă.")
 
     raw_selected = raw_selected or selected
+    _assert_candidate_economics(selected)
     final_result = calculate(selected.resulting_configuration, include_reference=False)
     raw_measures = model_to_dict(raw_selected.parameters)
     commercial_ready = (
@@ -2417,6 +2467,16 @@ def _home_lab_optimizer_success_payload(
                 )
 
     feasible_total = sum(int(item.feasible_candidates) for item in branches)
+    economic_status = _economic_status(selected)
+    lifecycle_horizons = [5, 10, 15, 20, 25]
+    net_benefit_by_horizon = {
+        str(years): round(
+            float(selected.annual_saving_lei) * years - float(selected.capex_lei),
+            2,
+        )
+        for years in lifecycle_horizons
+    }
+
     optimization_payload = {
         "kind": "parametric_economic",
         "mode": "parametric_economic",
@@ -2425,6 +2485,9 @@ def _home_lab_optimizer_success_payload(
         "rationale": selection.rationale,
         "capexLei": float(selected.capex_lei),
         "annualSavingLei": float(selected.annual_saving_lei),
+        "economicStatus": economic_status,
+        "economicsComplete": True,
+        "netBenefitLeiByHorizon": net_benefit_by_horizon,
         "roiPercentPerYear": (
             None
             if selected.roi_percent_per_year is None
@@ -2574,6 +2637,13 @@ async def home_lab_optimization_v2_plan_api(request: Request) -> JSONResponse:
                 ),
                 "shortlistSize": len(plan.shortlist),
                 "calculationTimeMs": elapsed_ms,
+                "catalogStats": {
+                    "source": heating_catalog.get("source"),
+                    "commercialProducts": len(heating_catalog.get("options") or []),
+                    "parametricHeatingNodes": len(heating_catalog.get("parametric_heating_nodes") or []),
+                    "heatPumpPerformancePoints": len(heating_catalog.get("heat_pump_performance_points") or []),
+                    "seasonalPerformancePoints": len(heating_catalog.get("heat_pump_seasonal_performance") or []),
+                },
                 "executionMode": "worker_safe_staged_v2",
             }
         )
