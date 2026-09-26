@@ -145,38 +145,30 @@ async def _create_heating_catalog_tables(db: Any) -> None:
 
 
 async def _ensure_heating_catalog_d1(db: Any) -> None:
-    """Synchronize the versioned repo seed into D1 through the Worker binding.
+    """Ensure schema exists and bootstrap the repo fixture only into an empty D1.
 
-    The repo seed remains the deterministic CI fixture and disaster-recovery
-    mirror. In production D1 is the runtime source consumed by optimizer/shop.
+    D1 is the persistent runtime catalog. Once it contains active products,
+    request handling must be read-only: a large catalog must never be rewritten
+    or deactivated from an optimizer request. The repo seed remains a CI fixture
+    and disaster-recovery bootstrap for a genuinely empty database.
     """
+
+    await _create_heating_catalog_tables(db)
+
+    count_result = await db.prepare(
+        "SELECT COUNT(*) AS products_count FROM heating_products WHERE active = 1"
+    ).run()
+    count_rows = _d1_rows(count_result)
+    active_count = int((count_rows[0] if count_rows else {}).get("products_count") or 0)
+    if active_count > 0:
+        return
+
     seed = heating_planning_catalog()
     products = list(seed.get("options") or [])
     points = list(seed.get("heat_pump_performance_points") or [])
     seasonal = list(seed.get("heat_pump_seasonal_performance") or [])
     expected_version = str(seed.get("catalog_version") or "")
     observed_on = str(seed.get("observed_on") or "")
-
-    await _create_heating_catalog_tables(db)
-
-    status_result = await db.prepare(
-        """
-        SELECT
-          (SELECT COUNT(*) FROM heating_products WHERE active = 1) AS products_count,
-          (SELECT COUNT(*) FROM heat_pump_performance_points WHERE catalog_version = ?) AS points_count,
-          (SELECT COUNT(*) FROM heat_pump_seasonal_performance WHERE catalog_version = ?) AS seasonal_count,
-          COALESCE((SELECT MAX(catalog_version) FROM heating_products WHERE active = 1), '') AS catalog_version
-        """
-    ).bind(expected_version, expected_version).run()
-    status_rows = _d1_rows(status_result)
-    status = status_rows[0] if status_rows else {}
-    if (
-        int(status.get("products_count") or 0) == len(products)
-        and int(status.get("points_count") or 0) == len(points)
-        and int(status.get("seasonal_count") or 0) == len(seasonal)
-        and str(status.get("catalog_version") or "") == expected_version
-    ):
-        return
 
     for item in products:
         await db.prepare(HEATING_PRODUCT_UPSERT_SQL).bind(
@@ -207,13 +199,6 @@ async def _ensure_heating_catalog_d1(db: Any) -> None:
             observed_on,
         ).run()
 
-    # Products removed from a later seed remain auditable but stop participating
-    # in optimization/shop queries.
-    await db.prepare(
-        "UPDATE heating_products SET active = 0 "
-        "WHERE active = 1 AND catalog_version <> ?"
-    ).bind(expected_version).run()
-
     for point in points:
         await db.prepare(HEAT_PUMP_POINT_UPSERT_SQL).bind(
             point["product_id"],
@@ -229,9 +214,6 @@ async def _ensure_heating_catalog_d1(db: Any) -> None:
             point.get("note") or "",
             expected_version,
         ).run()
-    await db.prepare(
-        "DELETE FROM heat_pump_performance_points WHERE catalog_version <> ?"
-    ).bind(expected_version).run()
 
     for item in seasonal:
         await db.prepare(HEAT_PUMP_SEASONAL_UPSERT_SQL).bind(
@@ -245,10 +227,6 @@ async def _ensure_heating_catalog_d1(db: Any) -> None:
             item.get("test_standard"),
             expected_version,
         ).run()
-    await db.prepare(
-        "DELETE FROM heat_pump_seasonal_performance WHERE catalog_version <> ?"
-    ).bind(expected_version).run()
-
 
 def _catalog_payload_from_rows(
     product_rows: list[dict[str, Any]],
@@ -294,21 +272,31 @@ def _catalog_payload_from_rows(
             for row in rows
         ]
 
+    catalog_versions = sorted(versions)
     return {
         "schema_version": seed.get("schema_version"),
-        "catalog_version": max(versions) if versions else seed.get("catalog_version"),
+        "catalog_version": (
+            catalog_versions[0]
+            if len(catalog_versions) == 1
+            else "d1-live-multi-version"
+        ),
+        "catalog_versions": catalog_versions,
         "observed_on": max(dates) if dates else seed.get("observed_on"),
         "sizing_policy": seed.get("sizing_policy") or {},
         "options": options,
         "heat_pump_performance_points": clean_rows(point_rows),
         "heat_pump_seasonal_performance": clean_rows(seasonal_rows),
+        "catalog_stats": {
+            "products": len(options),
+            "performance_points": len(point_rows),
+            "seasonal_points": len(seasonal_rows),
+        },
+        "catalog_mode": "persistent_d1",
         "source": source,
     }
 
 
 async def _read_heating_catalog_d1(db: Any) -> dict[str, Any]:
-    seed = heating_planning_catalog()
-    version = str(seed.get("catalog_version") or "")
     products_result = await db.prepare(
         """
         SELECT id, external_id, technology_id, technology_label, label,
@@ -320,29 +308,33 @@ async def _read_heating_catalog_d1(db: Any) -> dict[str, Any]:
                requires_existing_biomass_infrastructure, capacity_basis, note,
                catalog_version, observed_on
         FROM heating_products
-        WHERE active = 1 AND catalog_version = ?
+        WHERE active = 1
         ORDER BY technology_id, rated_power_kw, equipment_price_lei, id
         """
-    ).bind(version).run()
+    ).run()
     points_result = await db.prepare(
         """
-        SELECT product_id, outdoor_temperature_c, flow_temperature_c,
-               return_temperature_c, delta_t_k, heating_capacity_kw, cop,
-               test_standard, source_kind, source_url, note
-        FROM heat_pump_performance_points
-        WHERE catalog_version = ?
-        ORDER BY product_id, outdoor_temperature_c, flow_temperature_c
+        SELECT pp.product_id, pp.outdoor_temperature_c, pp.flow_temperature_c,
+               pp.return_temperature_c, pp.delta_t_k, pp.heating_capacity_kw, pp.cop,
+               pp.test_standard, pp.source_kind, pp.source_url, pp.note,
+               pp.catalog_version
+        FROM heat_pump_performance_points AS pp
+        INNER JOIN heating_products AS p ON p.id = pp.product_id
+        WHERE p.active = 1
+        ORDER BY pp.product_id, pp.outdoor_temperature_c, pp.flow_temperature_c
         """
-    ).bind(version).run()
+    ).run()
     seasonal_result = await db.prepare(
         """
-        SELECT product_id, climate, application_temperature_c, scop,
-               design_load_kw, source_kind, source_url, test_standard
-        FROM heat_pump_seasonal_performance
-        WHERE catalog_version = ?
-        ORDER BY product_id, climate, application_temperature_c
+        SELECT sp.product_id, sp.climate, sp.application_temperature_c, sp.scop,
+               sp.design_load_kw, sp.source_kind, sp.source_url, sp.test_standard,
+               sp.catalog_version
+        FROM heat_pump_seasonal_performance AS sp
+        INNER JOIN heating_products AS p ON p.id = sp.product_id
+        WHERE p.active = 1
+        ORDER BY sp.product_id, sp.climate, sp.application_temperature_c
         """
-    ).bind(version).run()
+    ).run()
     return _catalog_payload_from_rows(
         _d1_rows(products_result),
         _d1_rows(points_result),
