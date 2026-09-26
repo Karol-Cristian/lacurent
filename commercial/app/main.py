@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 from functools import lru_cache
 from pathlib import Path
 import time
@@ -2262,6 +2263,44 @@ def _home_lab_optimization_request_from_form(
     return mode, building, OptimizationRequestV1(**request_kwargs)
 
 
+def _assert_optimizer_economics_complete(candidate: CandidateEvaluationV1) -> None:
+    values = {
+        "baseline_annual_bill_lei": candidate.baseline_annual_bill_lei,
+        "annual_bill_lei": candidate.annual_bill_lei,
+        "annual_saving_lei": candidate.annual_saving_lei,
+        "capex_lei": candidate.capex_lei,
+    }
+    for name, value in values.items():
+        if not math.isfinite(float(value)):
+            raise ValueError(f"Rezultat economic invalid: {name} nu este finit.")
+
+    expected_saving = (
+        float(candidate.baseline_annual_bill_lei)
+        - float(candidate.annual_bill_lei)
+    )
+    if abs(expected_saving - float(candidate.annual_saving_lei)) > 0.05:
+        raise ValueError(
+            "Rezultat economic inconsistent: economia anuală nu este baseline minus factura finală."
+        )
+
+    capex = float(candidate.capex_lei)
+    saving = float(candidate.annual_saving_lei)
+    if capex > 1e-9 and saving > 1e-9:
+        expected_payback = capex / saving
+        if candidate.payback_years is None:
+            raise ValueError(
+                "Rezultat economic incomplet: există CAPEX și economie pozitivă, dar recuperarea lipsește."
+            )
+        payback = float(candidate.payback_years)
+        if not math.isfinite(payback):
+            raise ValueError("Rezultat economic invalid: recuperarea nu este finită.")
+        tolerance = max(0.02, expected_payback * 0.002)
+        if abs(payback - expected_payback) > tolerance:
+            raise ValueError(
+                "Rezultat economic inconsistent: recuperarea nu corespunde CAPEX / economie anuală."
+            )
+
+
 def _home_lab_optimizer_success_payload(
     *,
     mode: OptimizationMode,
@@ -2276,12 +2315,14 @@ def _home_lab_optimizer_success_payload(
     pareto_scope: str = "all_candidates",
     raw_selected: CandidateEvaluationV1 | None = None,
     technical_heating_alternatives: list[dict[str, Any]] | None = None,
+    heating_catalog: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     selected = selection.selected
     if selected is None or selected.resulting_configuration is None:
         raise ValueError("Nu există nicio soluție fezabilă pentru regula economică aleasă.")
 
     raw_selected = raw_selected or selected
+    _assert_optimizer_economics_complete(selected)
     final_result = calculate(selected.resulting_configuration, include_reference=False)
     raw_measures = model_to_dict(raw_selected.parameters)
     commercial_ready = (
@@ -2395,7 +2436,7 @@ def _home_lab_optimizer_success_payload(
         matched_product = next(
             (
                 product
-                for product in heating_planning_options()
+                for product in heating_planning_options(heating_catalog)
                 if product.id == selected_heating["optionId"]
             ),
             None,
