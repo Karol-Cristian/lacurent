@@ -285,10 +285,10 @@ def test_real_product_catalog_has_at_least_five_products_per_heating_category() 
 
 def test_heating_product_is_selected_only_after_raw_finalist_exists() -> None:
     baseline = demo_building()
-    hp = next(item for item in heating_technologies() if item.id == "heat-pump-air-water")
-    hp_building = apply_heating_technology(baseline, hp)
+    technology = next(item for item in heating_technologies() if item.id == "electric-boiler")
+    branch_building = apply_heating_technology(baseline, technology)
     raw = evaluate_parametric_candidate(
-        hp_building,
+        branch_building,
         ParametricMeasuresV1(window_target_u_w_m2k=0.9),
         _catalog(),
     )
@@ -299,7 +299,7 @@ def test_heating_product_is_selected_only_after_raw_finalist_exists() -> None:
         raw,
         original_baseline_bill_lei=baseline_bill,
         original_building=baseline,
-        technology=hp,
+        technology=technology,
     )
     assert raw_branch_candidate is not None
     raw_line = next(
@@ -320,7 +320,39 @@ def test_heating_product_is_selected_only_after_raw_finalist_exists() -> None:
     )
     assert exact_line.product_id == product.id
     assert exact_line.parameter_value == pytest.approx(product.rated_power_kw)
+    assert exact_line.design_available_capacity_kw == pytest.approx(product.rated_power_kw)
+    assert exact_line.capacity_basis == "catalog_rated_output"
     assert str(exact_line.note).startswith(product.label + ":")
+
+
+def test_air_water_heat_pump_is_not_claimed_sufficient_below_published_capacity_curve() -> None:
+    baseline = demo_building()
+    hp = next(item for item in heating_technologies() if item.id == "heat-pump-air-water")
+    hp_building = apply_heating_technology(baseline, hp)
+    raw = evaluate_parametric_candidate(
+        hp_building,
+        ParametricMeasuresV1(window_target_u_w_m2k=0.9),
+        _catalog(),
+    )
+    baseline_bill = float(
+        estimate_energy_cost(calculate(baseline, include_reference=False))["priced_total_lei"]
+    )
+    raw_branch_candidate = _rebase_candidate(
+        raw,
+        original_baseline_bill_lei=baseline_bill,
+        original_building=baseline,
+        technology=hp,
+    )
+    assert raw_branch_candidate is not None
+
+    commercial, product, warnings = commercialize_heating_finalist(
+        raw_branch_candidate,
+        original_building=baseline,
+    )
+
+    assert product is None
+    assert commercial.candidate_id == raw_branch_candidate.candidate_id
+    assert any("nu se extrapolează" in item for item in warnings)
 
 
 def test_air_air_and_ground_source_are_real_technical_branches() -> None:

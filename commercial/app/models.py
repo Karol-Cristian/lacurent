@@ -232,7 +232,20 @@ class ThermalBridge(BaseModel):
 
 
 class VentilationInput(BaseModel):
-    air_changes_per_hour: float = Field(ge=0, le=5)
+    air_changes_per_hour: float = Field(
+        ge=0,
+        le=5,
+        description="Intentional/natural ventilation air-change rate used by the Light Engine.",
+    )
+    infiltration_air_changes_per_hour: float = Field(
+        default=0,
+        ge=0,
+        le=5,
+        description=(
+            "Additional uncontrolled infiltration air-change rate. "
+            "Heat recovery is not credited against this component."
+        ),
+    )
     heat_recovery_efficiency: float = Field(default=0, ge=0, lt=1)
 
 
