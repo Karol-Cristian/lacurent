@@ -1538,6 +1538,46 @@
   ],
   "heat_pump_seasonal_performance": [
     {
+      "product_id": "hp-daikin-altherma3m-ebla08e3v3",
+      "climate": "average",
+      "application_temperature_c": 35,
+      "scop": 4.61,
+      "design_load_kw": 8,
+      "source_kind": "manufacturer_technical_data",
+      "source_url": "https://www.daikin.eu/en_us/products/product.table.html/EBLA04-08E3V3.html",
+      "test_standard": "EN 14825"
+    },
+    {
+      "product_id": "hp-daikin-altherma3m-ebla08e3v3",
+      "climate": "average",
+      "application_temperature_c": 55,
+      "scop": 3.35,
+      "design_load_kw": 8,
+      "source_kind": "manufacturer_technical_data",
+      "source_url": "https://www.daikin.eu/en_us/products/product.table.html/EBLA04-08E3V3.html",
+      "test_standard": "EN 14825"
+    },
+    {
+      "product_id": "hp-lg-therma-v-hm071mr-u44",
+      "climate": "average",
+      "application_temperature_c": 35,
+      "scop": 4.48,
+      "design_load_kw": null,
+      "source_kind": "manufacturer_technical_data",
+      "source_url": "https://www.lg.com/uk/business/hvac/residential-solutions/air-to-water-heat-pump/r32-monobloc/hm071mr-u44/",
+      "test_standard": "manufacturer seasonal efficiency data / ErP"
+    },
+    {
+      "product_id": "hp-lg-therma-v-hm071mr-u44",
+      "climate": "average",
+      "application_temperature_c": 55,
+      "scop": 3.2,
+      "design_load_kw": null,
+      "source_kind": "manufacturer_technical_data",
+      "source_url": "https://www.lg.com/uk/business/hvac/residential-solutions/air-to-water-heat-pump/r32-monobloc/hm071mr-u44/",
+      "test_standard": "manufacturer seasonal efficiency data / ErP"
+    },
+    {
       "product_id": "hp-nibe-s2125-8-400v",
       "climate": "average",
       "application_temperature_c": 35,
