@@ -332,6 +332,25 @@ def test_company_home_is_commercial_landing() -> None:
     assert "Energia ta și bugetul tău merită luate în serios." in response.text
     assert 'href="/home-lab-next"' in response.text
     assert "/static/lacurent-landing.css" in response.text
+    assert 'href="/produse"' in response.text
+    assert "produse reale" in response.text
+
+
+def test_public_product_catalog_exposes_real_commercial_products() -> None:
+    response = client.get("/produse")
+    assert response.status_code == 200
+    assert "data-product-catalog" in response.text
+    assert "Catalog produse" in response.text
+    assert "TEO le poate alege" in response.text
+    assert "produse comerciale" in response.text
+    assert "nodurile parametrice interne" in response.text.lower()
+    assert "Ferroli Bluehelix Alpha 24C" in response.text
+    assert "/static/product-catalog.css" in response.text
+    assert "/static/product-catalog.js" in response.text
+
+    alias = client.get("/catalog", follow_redirects=False)
+    assert alias.status_code == 308
+    assert alias.headers["location"] == "/produse"
 
 
 def test_separated_sites_are_not_served_by_lacurent() -> None:
@@ -392,6 +411,7 @@ def test_robots_and_sitemap_expose_home_lab_facts() -> None:
     sitemap = client.get("/sitemap.xml")
     assert sitemap.status_code == 200
     assert "https://lacurent.com/home-lab-next" in sitemap.text
+    assert "https://lacurent.com/produse" in sitemap.text
     assert "https://lacurent.com/home-lab/facts" in sitemap.text
     assert "http://www.sitemaps.org/schemas/sitemap/0.9" in sitemap.text
 
