@@ -256,10 +256,11 @@ html.lc-snap-page .lc-budget,
 html.lc-snap-page .lc-catalog-promo,
 html.lc-snap-page .lc-close{
   scroll-snap-align:start;
-  scroll-snap-stop:normal;
+  scroll-snap-stop:always;
 }
 @media (min-width:1051px){
   html.lc-snap-page{
+    scroll-snap-type:y mandatory;
     scroll-padding-top:28px;
   }
 }
