@@ -249,7 +249,10 @@ def build_wall_insulation_scenario(
     if material_source == "generic" and product_reference is not None:
         raise ValueError("A generic wall-insulation scenario cannot carry a product reference.")
 
-    baseline_result = calculate(baseline)
+    # Scenario responses only expose the baseline and renovated snapshots. They
+    # never consume the reference-building comparison, so computing it here
+    # would add another complete engine pass for each snapshot.
+    baseline_result = calculate(baseline, include_reference=False)
     baseline_wall_u = baseline_result.envelope_u_values.wall_u_value_w_m2k
     if baseline_wall_u is None:
         raise ValueError("Baseline house has no modeled exterior-wall U-value.")
@@ -259,7 +262,7 @@ def build_wall_insulation_scenario(
     thickness_m = float(added_insulation_thickness_mm) / 1000.0
     added_r = thickness_m / float(insulation_lambda_w_mk)
     scenario_building = _apply_added_wall_resistance(baseline, added_r)
-    scenario_result = calculate(scenario_building)
+    scenario_result = calculate(scenario_building, include_reference=False)
 
     proposed_wall_u = scenario_result.envelope_u_values.wall_u_value_w_m2k
     if proposed_wall_u is None:
