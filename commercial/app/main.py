@@ -3623,6 +3623,7 @@ async def home_lab_optimization_finalize_api(request: Request) -> JSONResponse:
             pareto_scope="raw_all_then_bounded_commercial_recheck",
             raw_selected=raw_selected,
             technical_heating_alternatives=technical_heating_alternatives,
+            heating_catalog=heating_catalog,
         )
         return JSONResponse(payload)
     except Exception as exc:
