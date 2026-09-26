@@ -14,6 +14,7 @@ from .engine import (
     cooling_final_energy,
     dhw_energy,
     design_heat_load_breakdown,
+    envelope_geometry,
     final_energy_by_carrier,
     final_energy_by_service,
     heating_system_performance,
@@ -965,12 +966,34 @@ def evaluate_worker_safe_branch_v2(
     bounds: OptimizationSearchBoundsV1,
     catalog: dict[str, Any],
     heating_catalog: dict[str, Any] | None = None,
+    baseline_annual_bill_lei: float | None = None,
 ) -> WorkerSafeBranchResultV2:
-    baseline_result, baseline_cost = cached_baseline_evaluation(request.baseline)
-    if not baseline_cost.get("complete"):
-        raise ValueError(
-            "Baseline annual bill is incomplete; optimizer V2 cannot run safely."
+    """Evaluate one fast branch batch without requiring a full baseline engine pass.
+
+    V3 already calculates the baseline immediately before search. When that
+    priced annual bill is supplied, the fast kernel only needs baseline
+    envelope geometry for CAPEX quantities; geometry is derived directly from
+    BuildingInput in O(n envelope elements), avoiding an extra calculate()
+    inside every fresh Worker isolate.
+    """
+
+    if baseline_annual_bill_lei is not None:
+        baseline_bill = float(baseline_annual_bill_lei)
+        if baseline_bill < 0:
+            raise ValueError("Baseline annual bill must be non-negative.")
+        baseline_result = SimpleNamespace(
+            envelope_geometry=envelope_geometry(request.baseline),
         )
+        baseline_cost = {
+            "complete": True,
+            "priced_total_lei": baseline_bill,
+        }
+    else:
+        baseline_result, baseline_cost = cached_baseline_evaluation(request.baseline)
+        if not baseline_cost.get("complete"):
+            raise ValueError(
+                "Baseline annual bill is incomplete; optimizer V2 cannot run safely."
+            )
 
     branches = heating_branch_plan(request, heating_catalog)
     branch = next(
@@ -986,6 +1009,7 @@ def evaluate_worker_safe_branch_v2(
         item.id: item
         for item in heating_technologies(
             heating_catalog,
+            include_parametric_nodes=False,
             technology_id=branch_id,
         )
     }
