@@ -7,7 +7,7 @@
   <title>Home Lab Editorial — experiment | LaCurent</title>
   <meta name="robots" content="noindex,nofollow">
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="/static/home-lab-editorial.css?v=13">
+  <link rel="stylesheet" href="/static/home-lab-editorial.css?v=14">
   <link rel="stylesheet" href="/static/privacy-consent.css?v=privacy1">
 </head>
 <body>
@@ -214,10 +214,10 @@
               <label class="ed-field"><span>Izolație pereți</span><div><input id="wallIns" type="text" inputmode="decimal" data-decimal-input data-min="0" data-max="40" value="5"><em>cm</em></div></label>
             </div>
             <details class="ed-details ed-advanced-details">
-              <summary><span>Valori avansate / măsurate</span><small>Opțional · suprascriu estimarea din materiale</small></summary>
+              <summary><span>Valori avansate / calculate</span><small>Calculat automat · editarea devine override</small></summary>
               <div class="ed-details-body">
                 <div class="ed-grid ed-advanced-grid">
-                  <label class="ed-field"><span>U perete măsurat</span><div><input id="advWallU" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0.05" data-max="5" value="" placeholder="ex. 0,32"><em>W/m²K</em></div></label>
+                  <label class="ed-field"><span>U perete</span><div><input id="advWallU" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0.05" data-max="5" value="" placeholder="ex. 0,32"><em>W/m²K</em></div></label>
                   <label class="ed-field"><span>Ψ punți termice</span><div><input id="advBridgePsi" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0" data-max="2" value="" placeholder="ex. 0,08"><em>W/mK</em></div></label>
                 </div>
               </div>
@@ -248,7 +248,7 @@
               <label class="ed-field"><span>Izolație pod / acoperiș</span><div><input id="roofIns" type="text" inputmode="decimal" data-decimal-input data-min="0" data-max="50" value="10"><em>cm</em></div></label>
             </div>
             <details class="ed-details ed-advanced-details">
-              <summary><span>Valori avansate / măsurate</span><small>Opțional · U măsurat are prioritate</small></summary>
+              <summary><span>Valori avansate / calculate</span><small>Calculat automat · editarea devine override</small></summary>
               <div class="ed-details-body">
                 <div class="ed-grid ed-advanced-grid">
                   <label class="ed-field"><span>U acoperiș / planșeu</span><div><input id="advRoofU" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0.05" data-max="5" value="" placeholder="ex. 0,20"><em>W/m²K</em></div></label>
@@ -281,7 +281,7 @@
               <label class="ed-field"><span>Izolație pardoseală</span><div><input id="floorIns" type="text" inputmode="decimal" data-decimal-input data-min="0" data-max="30" value="5"><em>cm</em></div></label>
             </div>
             <details class="ed-details ed-advanced-details">
-              <summary><span>Valori avansate / măsurate</span><small>Opțional · parametri de calcul ai planșeului</small></summary>
+              <summary><span>Valori avansate / calculate</span><small>Calculat automat unde există date · editabil</small></summary>
               <div class="ed-details-body">
                 <div class="ed-grid ed-advanced-grid">
                   <label class="ed-field"><span>U pardoseală / planșeu</span><div><input id="advFloorU" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0.05" data-max="5" value="" placeholder="ex. 0,30"><em>W/m²K</em></div></label>
@@ -311,7 +311,7 @@
               </label>
             </div>
             <details class="ed-details ed-advanced-details">
-              <summary><span>Valori avansate / măsurate</span><small>Opțional · din fișa tehnică sau măsurători</small></summary>
+              <summary><span>Valori avansate / calculate</span><small>Calculat din vitraj · poți introduce valoarea măsurată</small></summary>
               <div class="ed-details-body">
                 <div class="ed-grid ed-advanced-grid">
                   <label class="ed-field"><span>Uw fereastră</span><div><input id="advWindowU" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0.3" data-max="8" value="" placeholder="ex. 0,90"><em>W/m²K</em></div></label>
@@ -365,7 +365,7 @@
             </label>
           </div>
             <details class="ed-details ed-advanced-details">
-              <summary><span>Valori avansate / măsurate</span><small>Opțional · valori din punere în funcțiune / fișa echipamentului</small></summary>
+              <summary><span>Valori avansate / calculate</span><small>Presetul folosit de motor · poți introduce valoarea măsurată</small></summary>
               <div class="ed-details-body">
                 <div class="ed-grid ed-advanced-grid">
                   <label class="ed-field"><span>Randament sezonier η</span><div><input id="advHeatingEfficiency" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="1" data-max="100" value="" placeholder="ex. 94"><em>%</em></div></label>
@@ -398,7 +398,7 @@
               </label>
             </div>
             <details class="ed-details ed-advanced-details">
-              <summary><span>Valori avansate / măsurate</span><small>Opțional · valori de exploatare sau proiectare</small></summary>
+              <summary><span>Valori avansate / calculate</span><small>Presetul folosit de motor · poți introduce valoarea măsurată</small></summary>
               <div class="ed-details-body">
                 <div class="ed-grid ed-advanced-grid">
                   <label class="ed-field"><span>Schimburi de aer n</span><div><input id="advAch" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="0" data-max="5" value="" placeholder="ex. 0,50"><em>1/h</em></div></label>
@@ -436,7 +436,7 @@
             <label class="ed-field"><span>Înclinare PV</span><div><input type="number" name="pv_tilt_degrees" value="30" min="0" max="90" step="5"><em>°</em></div></label>
           </div>
             <details class="ed-details ed-advanced-details">
-              <summary><span>Valori avansate / măsurate</span><small>Opțional · performanță reală a sistemului</small></summary>
+              <summary><span>Valori avansate / calculate</span><small>Valoarea implicită a motorului · editabilă</small></summary>
               <div class="ed-details-body">
                 <div class="ed-grid ed-advanced-grid">
                   <label class="ed-field"><span>Performance ratio PR</span><div><input id="advPvPerformanceRatio" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="1" data-max="100" value="" placeholder="ex. 82"><em>%</em></div></label>
@@ -458,7 +458,7 @@
             <label class="ed-field"><span>Înclinare solar termic</span><div><input type="number" name="solar_thermal_tilt_degrees" value="45" min="0" max="90" step="5"><em>°</em></div></label>
           </div>
             <details class="ed-details ed-advanced-details">
-              <summary><span>Valori avansate / măsurate</span><small>Opțional · randament global al instalației</small></summary>
+              <summary><span>Valori avansate / calculate</span><small>Valoarea implicită a motorului · editabilă</small></summary>
               <div class="ed-details-body">
                 <div class="ed-grid ed-advanced-grid">
                   <label class="ed-field"><span>Randament sistem solar termic</span><div><input id="advSolarThermalEfficiency" type="text" inputmode="decimal" data-decimal-input data-optional-advanced data-min="1" data-max="100" value="" placeholder="ex. 45"><em>%</em></div></label>
@@ -559,6 +559,6 @@
   {% include "_legal_footer.html" %}
   {% include "_privacy_controls.html" %}
   <script src="/static/privacy-consent.js?v=privacy1"></script>
-  <script src="/static/home-lab-editorial.js?v=11"></script>
+  <script src="/static/home-lab-editorial.js?v=12"></script>
 </body>
 </html>
