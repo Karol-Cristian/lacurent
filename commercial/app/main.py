@@ -2485,6 +2485,8 @@ def _home_lab_optimizer_success_payload(
         "label": _home_lab_optimizer_label(mode, form),
         "rationale": selection.rationale,
         "capexLei": float(selected.capex_lei),
+        "baselineAnnualBillLei": float(selected.baseline_annual_bill_lei),
+        "annualBillLei": float(selected.annual_bill_lei),
         "annualSavingLei": float(selected.annual_saving_lei),
         "economicStatus": economic_status,
         "economicsComplete": True,
