@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <title>LaCurent Home — concept comercial</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
+  <link rel="stylesheet" href="/static/home-lab-concept.css?v=concept1">
+</head>
+<body>
+  <div class="lc-demo-ribbon">CONCEPT UX/UI · DATE DEMO · FĂRĂ CALCULE REALE</div>
+
+  <header class="lc-topbar">
+    <a class="lc-brand" href="#" data-go="home" aria-label="LaCurent Home">
+      <span class="lc-brand-mark">LC</span>
+      <span class="lc-brand-copy"><b>LaCurent</b><small>Home</small></span>
+    </a>
+
+    <nav class="lc-nav" aria-label="Navigare concept">
+      <button class="is-active" data-go="home">Acasă</button>
+      <button data-go="house">Casa</button>
+      <button data-go="plan">Planul</button>
+      <button data-go="report">Raport</button>
+    </nav>
+
+    <div class="lc-live-pill">
+      <span class="lc-live-class">D</span>
+      <span><small>Cost estimat</small><b>8.420 lei/an</b></span>
+    </div>
+  </header>
+
+  <main class="lc-app">
+    <section class="lc-screen is-active" data-screen="home">
+      <div class="lc-home-grid">
+        <div class="lc-hero">
+          <p class="lc-kicker">CASA TA · ÎN BANI, NU ÎN TABELE</p>
+          <h1>Înțelege ce te costă casa.<br><span>Și ce merită schimbat.</span></h1>
+          <p class="lc-hero-copy">LaCurent transformă casa într-un plan simplu: unde pierzi bani, ce investiții au sens și ce rezultat poți obține.</p>
+          <div class="lc-hero-actions">
+            <button class="lc-primary" data-go="house">Analizează casa mea <span>→</span></button>
+            <button class="lc-secondary" data-open-story>Vezi cum funcționează</button>
+          </div>
+          <div class="lc-proof-row">
+            <span><i>01</i> Situația actuală</span>
+            <span><i>02</i> Opțiuni comparate</span>
+            <span><i>03</i> Plan final</span>
+          </div>
+        </div>
+
+        <aside class="lc-snapshot">
+          <div class="lc-snapshot-head">
+            <span>Casa ta acum</span>
+            <em>exemplu</em>
+          </div>
+          <div class="lc-class-line">
+            <div class="lc-energy-badge">D</div>
+            <div>
+              <small>Clasă energetică</small>
+              <b>Locuință ineficientă</b>
+            </div>
+          </div>
+          <div class="lc-big-number">
+            <small>Cost energetic anual</small>
+            <strong>8.420 <span>lei</span></strong>
+            <em>≈ 702 lei / lună</em>
+          </div>
+          <div class="lc-spark">
+            <span style="height:50%"></span><span style="height:68%"></span><span style="height:86%"></span><span style="height:96%"></span><span style="height:77%"></span><span style="height:52%"></span><span style="height:36%"></span><span style="height:31%"></span><span style="height:42%"></span><span style="height:61%"></span><span style="height:79%"></span><span style="height:91%"></span>
+          </div>
+          <div class="lc-snapshot-foot">
+            <span><small>Încălzire</small><b>6.130 lei</b></span>
+            <span><small>Electric</small><b>2.290 lei</b></span>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="lc-screen" data-screen="house">
+      <div class="lc-page-head">
+        <div>
+          <p class="lc-kicker">PASUL 1 · CASA TA</p>
+          <h2>Spune-ne doar ce știi.</h2>
+          <p>Ce nu știi estimăm noi. Poți reveni oricând și rafina datele.</p>
+        </div>
+        <span class="lc-step-count">1 / 3</span>
+      </div>
+
+      <div class="lc-house-layout">
+        <div class="lc-panel">
+          <div class="lc-field">
+            <label>Localitate</label>
+            <button class="lc-fake-input lc-location-choice" data-demo-select="location">
+              <span><small>Locație selectată</small><b>Cluj-Napoca</b></span><em>Schimbă</em>
+            </button>
+          </div>
+
+          <div class="lc-field">
+            <label>Tip locuință</label>
+            <div class="lc-segment" data-segment="type">
+              <button class="is-selected">Casă</button><button>Apartament</button>
+            </div>
+          </div>
+
+          <div class="lc-pair">
+            <div class="lc-field">
+              <label>Suprafață încălzită</label>
+              <div class="lc-number-input"><b>128,5</b><span>m²</span></div>
+            </div>
+            <div class="lc-field">
+              <label>An construcție</label>
+              <div class="lc-number-input"><b>1998</b><span></span></div>
+            </div>
+          </div>
+
+          <div class="lc-field">
+            <label>Cât de bine cunoști casa?</label>
+            <div class="lc-segment lc-segment-3" data-segment="knowledge">
+              <button>Puțin</button><button class="is-selected">Destul de bine</button><button>Exact</button>
+            </div>
+          </div>
+
+          <details class="lc-details">
+            <summary>Adaugă detalii despre anvelopă <span>opțional</span></summary>
+            <div class="lc-details-grid">
+              <div><small>Pereți</small><b>Cărămidă + 5 cm EPS</b></div>
+              <div><small>Acoperiș</small><b>10 cm vată</b></div>
+              <div><small>Ferestre</small><b>Tripan</b></div>
+              <div><small>Încălzire</small><b>Gaz condensare</b></div>
+            </div>
+          </details>
+        </div>
+
+        <aside class="lc-context-card">
+          <div class="lc-context-icon">⌂</div>
+          <small>CE FACEM CU DATELE</small>
+          <h3>Construim o imagine suficient de bună pentru decizie.</h3>
+          <p>Nu încercăm să transformăm utilizatorul în auditor energetic. Datele tehnice sunt folosite în fundal.</p>
+          <div class="lc-confidence">
+            <span><i style="width:76%"></i></span>
+            <small>Încredere estimare · bună</small>
+          </div>
+        </aside>
+      </div>
+
+      <div class="lc-bottom-actions">
+        <button class="lc-secondary" data-go="home">Înapoi</button>
+        <button class="lc-primary" data-go="current">Vezi situația actuală <span>→</span></button>
+      </div>
+    </section>
+
+    <section class="lc-screen" data-screen="current">
+      <div class="lc-page-head">
+        <div>
+          <p class="lc-kicker">PASUL 2 · UNDE EȘTI ACUM</p>
+          <h2>Casa te costă mai mult decât ar trebui.</h2>
+          <p>Nu îți arătăm 30 de indicatori. Doar ce schimbă decizia.</p>
+        </div>
+        <span class="lc-step-count">2 / 3</span>
+      </div>
+
+      <div class="lc-current-grid">
+        <article class="lc-main-result">
+          <div class="lc-result-title"><span>Cost anual estimat</span><em>situația actuală</em></div>
+          <strong class="lc-result-number">8.420 <small>lei/an</small></strong>
+          <div class="lc-result-delta">+3.250 lei față de o casă eficientă similară</div>
+
+          <div class="lc-cost-bars">
+            <div><label><span>Încălzire</span><b>6.130 lei</b></label><i><em style="width:73%"></em></i></div>
+            <div><label><span>Electricitate</span><b>1.470 lei</b></label><i><em style="width:18%"></em></i></div>
+            <div><label><span>Apă caldă</span><b>820 lei</b></label><i><em style="width:10%"></em></i></div>
+          </div>
+        </article>
+
+        <article class="lc-result-card">
+          <small>CLASĂ ENERGETICĂ</small>
+          <div class="lc-class-scale">
+            <span>A+</span><span>A</span><span>B</span><span>C</span><span class="is-current">D</span><span>E</span><span>F</span><span>G</span>
+          </div>
+          <h3>D</h3>
+          <p>Principala problemă nu este consumul electric, ci pierderea de căldură și sistemul de încălzire.</p>
+        </article>
+
+        <article class="lc-result-card lc-heat-card">
+          <small>PUTERE NECESARĂ LA FRIG</small>
+          <strong>9,6 <span>kW</span></strong>
+          <p>Acesta este ordinul de mărime pe care trebuie să-l poată acoperi viitorul sistem de încălzire.</p>
+        </article>
+      </div>
+
+      <div class="lc-insight">
+        <span class="lc-insight-number">01</span>
+        <div><small>CEL MAI IMPORTANT LUCRU</small><b>În cazul acestei case, anvelopa trebuie rezolvată înainte să alegi o pompă de căldură.</b></div>
+        <button data-go="plan">Vezi planul recomandat →</button>
+      </div>
+
+      <div class="lc-bottom-actions">
+        <button class="lc-secondary" data-go="house">Modifică datele</button>
+        <button class="lc-primary" data-go="plan">Construiește planul <span>→</span></button>
+      </div>
+    </section>
+
+    <section class="lc-screen" data-screen="plan">
+      <div class="lc-page-head">
+        <div>
+          <p class="lc-kicker">PASUL 3 · PLANUL</p>
+          <h2>Nu cea mai ieftină soluție.<br>Cea care are sens.</h2>
+          <p>Plan demo, construit ca produs comercial: investiție, impact și ordinea corectă a deciziilor.</p>
+        </div>
+        <span class="lc-step-count">3 / 3</span>
+      </div>
+
+      <div class="lc-plan-summary">
+        <div><small>Investiție totală</small><strong>48.600 lei</strong></div>
+        <div><small>Economie anuală</small><strong>4.670 lei</strong></div>
+        <div><small>Cost după renovare</small><strong>3.750 lei/an</strong></div>
+        <div><small>Recuperare estimată</small><strong>10,4 ani</strong></div>
+      </div>
+
+      <div class="lc-plan-list">
+        <article class="lc-plan-item is-priority">
+          <div class="lc-plan-index">01</div>
+          <div class="lc-plan-body">
+            <div class="lc-plan-top"><span>PRIORITATE</span><em>Impact mare · risc mic</em></div>
+            <h3>Izolează planșeul spre pod</h3>
+            <p>Crește izolația la 25 cm. Este cea mai simplă intervenție cu impact imediat pentru această casă.</p>
+            <div class="lc-plan-metrics"><span><small>Investiție</small><b>8.900 lei</b></span><span><small>Economie</small><b>1.180 lei/an</b></span><span><small>Payback</small><b>7,5 ani</b></span></div>
+          </div>
+          <button class="lc-plan-toggle is-on" aria-label="Selectat"><i></i></button>
+        </article>
+
+        <article class="lc-plan-item">
+          <div class="lc-plan-index">02</div>
+          <div class="lc-plan-body">
+            <div class="lc-plan-top"><span>SISTEM</span><em>După anvelopă</em></div>
+            <h3>Pompă de căldură aer-apă · 8 kW</h3>
+            <p>Dimensionată după casa renovată, nu după necesarul actual. Sistemul actual de gaz rămâne referința de comparație.</p>
+            <div class="lc-plan-metrics"><span><small>Investiție</small><b>27.900 lei</b></span><span><small>Economie</small><b>2.540 lei/an</b></span><span><small>SCOP</small><b>3,72</b></span></div>
+          </div>
+          <button class="lc-plan-toggle is-on" aria-label="Selectat"><i></i></button>
+        </article>
+
+        <article class="lc-plan-item">
+          <div class="lc-plan-index">03</div>
+          <div class="lc-plan-body">
+            <div class="lc-plan-top"><span>PRODUCȚIE</span><em>Reduce factura electrică</em></div>
+            <h3>Fotovoltaic · 4,5 kWp</h3>
+            <p>Puterea este limitată la ceea ce are sens pentru consumul rezultat după renovare.</p>
+            <div class="lc-plan-metrics"><span><small>Investiție</small><b>11.800 lei</b></span><span><small>Economie</small><b>950 lei/an</b></span><span><small>Producție</small><b>5.120 kWh/an</b></span></div>
+          </div>
+          <button class="lc-plan-toggle is-on" aria-label="Selectat"><i></i></button>
+        </article>
+      </div>
+
+      <div class="lc-plan-note">
+        <span>De ce în ordinea asta?</span>
+        <p>Pentru că dimensionarea instalației depinde de casa rezultată după intervențiile asupra anvelopei. Produsul ar trebui să explice decizia, nu doar să afișeze un clasament.</p>
+      </div>
+
+      <div class="lc-bottom-actions">
+        <button class="lc-secondary" data-go="current">Înapoi</button>
+        <button class="lc-primary" data-go="report">Vezi rezultatul final <span>→</span></button>
+      </div>
+    </section>
+
+    <section class="lc-screen" data-screen="report">
+      <div class="lc-report-hero">
+        <p class="lc-kicker">RAPORT DEMO · CASA TA DUPĂ PLAN</p>
+        <h2>Plătești mai puțin.<br>Casa devine mai bună.</h2>
+        <div class="lc-before-after">
+          <div class="lc-before">
+            <small>ACUM</small>
+            <span class="lc-report-class">D</span>
+            <strong>8.420 <em>lei/an</em></strong>
+          </div>
+          <div class="lc-arrow">→</div>
+          <div class="lc-after">
+            <small>DUPĂ PLAN</small>
+            <span class="lc-report-class">B</span>
+            <strong>3.750 <em>lei/an</em></strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="lc-report-grid">
+        <article>
+          <small>ECONOMIE ANUALĂ</small>
+          <strong>4.670 lei</strong>
+          <p>≈ 389 lei/lună economisiți la prețurile de referință.</p>
+        </article>
+        <article>
+          <small>INVESTIȚIE</small>
+          <strong>48.600 lei</strong>
+          <p>Planul complet, în ordinea tehnică recomandată.</p>
+        </article>
+        <article>
+          <small>NECESAR TERMIC</small>
+          <strong>9,6 → 6,8 kW</strong>
+          <p>După intervențiile asupra anvelopei.</p>
+        </article>
+      </div>
+
+      <section class="lc-report-story">
+        <div class="lc-story-line"><span>01</span><div><small>ÎNTÂI</small><h3>Reducem pierderile.</h3><p>Casa are nevoie de mai puțină energie pentru același confort.</p></div></div>
+        <div class="lc-story-line"><span>02</span><div><small>APOI</small><h3>Dimensionăm instalația.</h3><p>Echipamentul este ales pentru casa rezultată, nu pentru problema veche.</p></div></div>
+        <div class="lc-story-line"><span>03</span><div><small>LA FINAL</small><h3>Producem o parte din energie.</h3><p>PV-ul vine peste un consum deja redus.</p></div></div>
+      </section>
+
+      <div class="lc-report-cta">
+        <div><small>URMĂTORUL PAS</small><h3>Transformă planul în proiect real.</h3><p>În produsul final aici ar putea începe ofertarea, comparația de produse sau exportul raportului.</p></div>
+        <button class="lc-primary" data-demo-toast>Salvează planul <span>→</span></button>
+      </div>
+
+      <div class="lc-bottom-actions">
+        <button class="lc-secondary" data-go="plan">Înapoi la plan</button>
+        <button class="lc-secondary" data-go="home">Reia demo-ul</button>
+      </div>
+    </section>
+  </main>
+
+  <dialog class="lc-story-modal" id="storyModal">
+    <button class="lc-modal-close" data-close-story>×</button>
+    <p class="lc-kicker">FILOSOFIA PRODUSULUI</p>
+    <h2>Nu vindem un calculator.<br>Vindem claritate.</h2>
+    <p>Utilizatorul nu trebuie să înțeleagă motorul termic înainte să primească valoare. Produsul pornește de la bani și decizii, iar tehnicul devine dovada din spate.</p>
+    <div class="lc-modal-points">
+      <span><b>1</b> Ce mă costă casa?</span>
+      <span><b>2</b> Ce merită schimbat?</span>
+      <span><b>3</b> În ce ordine?</span>
+      <span><b>4</b> Ce obțin la final?</span>
+    </div>
+  </dialog>
+
+  <div class="lc-toast" id="conceptToast">Concept demo — aici ar exista salvarea reală.</div>
+
+  <script src="/static/home-lab-concept.js?v=concept1"></script>
+</body>
+</html>
