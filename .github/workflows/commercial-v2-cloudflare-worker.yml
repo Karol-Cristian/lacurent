@@ -101,10 +101,8 @@ jobs:
         run: |
           git diff --check
           node --check commercial/static/app.js
-          node --check commercial/static/elivio.js
           node --check commercial/static/home-lab-next.js
           node --check commercial/static/home-lab-3d.js
-          node --test commercial/tests/intake.test.cjs
           python -m compileall -q commercial
           python -m py_compile scripts/build-heating-catalog-d1-import.py
           python scripts/build-heating-catalog-d1-import.py \
@@ -221,8 +219,7 @@ jobs:
                   return text
 
           checks = {
-              "/": 'data-page="testing-home"',
-              "/software-testing": 'data-page="software-testing"',
+              "/": "data-editorial-lab",
               "/instalatii": "data-editorial-lab",
               "/instalatii/calculator/legacy": "romaniaLocationMap",
               "/embed": "LaCurent Embed",
@@ -235,11 +232,7 @@ jobs:
               "/static/home-lab/wood-fireplace.svg": "<svg",
               "/static/home-lab/district-heating.svg": "<svg",
               "/static/embed-loader.js": "lacurent:embed-viewport",
-              "/software-testing/resources": "Useful verification knowledge",
               "/static/company.css": ".company-shell",
-              "/static/testing_intake.css": ".intake-details",
-              "/static/software_testing_v2.css": ".clean-hero",
-              "/static/painpoints.css": ".measured-result",
               "/static/favicon.svg": "<svg",
               "/health": '"status":"ok"',
               "/api/market-cost-basis": '"costs"',
@@ -258,10 +251,6 @@ jobs:
               "/static/home-lab-next.css": ".hln-before-after",
               "/static/home-lab-product.js": "data-hlp-demo-shell",
               "/static/home-lab-product.css": ".hlp-house-stage",
-              "/elivio-consilio": "data-chat-launcher",
-              "/elivio-consilio/confidentialitate": "Confidențialitate și AI",
-              "/static/elivio.css": ".ec-hero",
-              "/static/elivio.js": "data-elivio-chat",
           }
 
           for path, expected in checks.items():
@@ -335,15 +324,7 @@ jobs:
               raise AssertionError("Embed runtime did not request/reflect mobile focus mode.")
 
           home_html = get("/")
-          sales_html = get("/software-testing")
-          assert 'href="/software-testing#quick-check"' in home_html
-          assert 'data-page="software-testing"' not in home_html
-          assert 'data-page="testing-home"' not in sales_html
-          energy_html = get("/instalatii")
-          assert "data-editorial-lab" in energy_html
-          assert "Spune-ne cum este casa." in energy_html
-          for marker in ('id="quick-check"', 'id="brief-preview"', 'id="copy-brief"', 'id="open-email"', 'href="#quick-check"'):
-              assert marker in sales_html, f"Missing sales-flow marker: {marker}"
+          assert "data-editorial-lab" in home_html
 
           location_payload = json.loads(get("/api/location-data"))
           localities = location_payload.get("localities", [])
@@ -753,19 +734,18 @@ jobs:
           else:
               raise AssertionError("Production /health did not become healthy.")
 
-          homepage_marker = 'data-page="testing-home"'
+          homepage_marker = "data-editorial-lab"
           for attempt in range(1, 21):
               status, _, body = open_url(apex + f"/?deploy={attempt}")
               if status == 200 and homepage_marker in body:
                   print("/", status)
                   break
-              print(f"waiting for testing homepage, attempt {attempt}: HTTP {status}")
+              print(f"waiting for Home Lab homepage redirect, attempt {attempt}: HTTP {status}")
               time.sleep(5)
           else:
-              raise AssertionError(f"/ did not contain {homepage_marker!r}")
+              raise AssertionError(f"/ did not resolve to Home Lab marker {homepage_marker!r}")
 
           checks = {
-              "/software-testing": 'data-page="software-testing"',
               "/instalatii": "data-editorial-lab",
               "/instalatii/calculator/legacy": "romaniaLocationMap",
               "/embed": "LaCurent Embed",
@@ -779,11 +759,7 @@ jobs:
               "/static/home-lab/district-heating.svg": "<svg",
               "/static/embed-loader.js": "lacurent:embed-viewport",
               "/static/scenario-cockpit.js": "calculateUrl=partnerId?",
-              "/software-testing/resources": "Useful verification knowledge",
               "/static/company.css": ".company-shell",
-              "/static/testing_intake.css": ".intake-details",
-              "/static/software_testing_v2.css": ".clean-hero",
-              "/static/painpoints.css": ".measured-result",
               "/static/favicon.svg": "<svg",
               "/health": '"status":"ok"',
               "/demo": "Cluj Demonstration House",
@@ -793,10 +769,6 @@ jobs:
               "/static/simulation-facts.css": ".facts-grid",
               "/static/app.css": ".app-shell",
               "/static/app.js": "initLocationSelector",
-              "/elivio-consilio": "data-chat-launcher",
-              "/elivio-consilio/confidentialitate": "Confidențialitate și AI",
-              "/static/elivio.css": ".ec-hero",
-              "/static/elivio.js": "data-elivio-chat",
           }
           for path, expected in checks.items():
               status, _, body = open_url(apex + path)
@@ -811,106 +783,6 @@ jobs:
               raise AssertionError(f"/home-lab/facts returned HTTP {status}")
           if "Podul trebuie izolat întotdeauna primul? Nu." in facts_html:
               raise AssertionError("Retired invalid Home Lab fact is still published on production domain.")
-
-          chat_request = json.dumps({
-              "messages": [
-                  {
-                      "role": "user",
-                      "content": "Bună. Caut orientare pentru o decizie personală dificilă.",
-                  }
-              ]
-          }).encode("utf-8")
-          status, _, chat_body = open_url(
-              apex + "/elivio-consilio/api/chat",
-              data=chat_request,
-              headers={"Content-Type": "application/json"},
-              timeout=60,
-          )
-          if status != 200:
-              raise AssertionError(f"/elivio-consilio/api/chat returned HTTP {status}")
-          chat_payload = json.loads(chat_body)
-          if not str(chat_payload.get("reply") or "").strip():
-              raise AssertionError("Production Elivio AI chat did not return a reply.")
-          if chat_payload.get("mode") != "ai":
-              raise AssertionError(
-                  f"Production Elivio AI chat did not use Workers AI: {chat_payload.get('mode')!r}"
-              )
-          print("/elivio-consilio/api/chat", status, chat_payload.get("mode"))
-
-          booking_request = json.dumps({
-              "messages": [
-                  {
-                      "role": "user",
-                      "content": "Vreau să mă programez.",
-                  }
-              ]
-          }).encode("utf-8")
-          status, _, booking_body = open_url(
-              apex + "/elivio-consilio/api/chat",
-              data=booking_request,
-              headers={"Content-Type": "application/json"},
-              timeout=30,
-          )
-          if status != 200:
-              raise AssertionError(f"Elivio booking shortcut returned HTTP {status}")
-          booking_payload = json.loads(booking_body)
-          if booking_payload.get("mode") != "booking":
-              raise AssertionError("Elivio booking intent did not skip the intake flow.")
-          if booking_payload.get("action", {}).get("target") != "#contact":
-              raise AssertionError("Elivio booking intent did not expose the contact CTA.")
-          print("/elivio-consilio/api/chat booking", status, booking_payload.get("mode"))
-
-          out_of_scope_request = json.dumps({
-              "messages": [
-                  {
-                      "role": "user",
-                      "content": "Îmi poți spune cum e mai ieftin să te încălzești? Cu gaz sau lemne?",
-                  }
-              ]
-          }).encode("utf-8")
-          status, _, out_of_scope_body = open_url(
-              apex + "/elivio-consilio/api/chat",
-              data=out_of_scope_request,
-              headers={"Content-Type": "application/json"},
-              timeout=30,
-          )
-          if status != 200:
-              raise AssertionError(f"Elivio scope guard returned HTTP {status}")
-          out_of_scope_payload = json.loads(out_of_scope_body)
-          if out_of_scope_payload.get("mode") != "out_of_scope":
-              raise AssertionError(
-                  "Elivio answered a clearly unrelated heating question instead of applying the scope guard."
-              )
-          print("/elivio-consilio/api/chat scope guard", status, out_of_scope_payload.get("mode"))
-
-          summary_request = json.dumps({
-              "messages": [
-                  {
-                      "role": "user",
-                      "content": "Am o decizie dificilă în familie.",
-                  },
-                  {
-                      "role": "assistant",
-                      "content": "Ce ai vrea să clarifici?",
-                  },
-                  {
-                      "role": "user",
-                      "content": "Aș vrea să fiu mai sigur asupra următorului pas.",
-                  },
-              ]
-          }).encode("utf-8")
-          status, _, summary_body = open_url(
-              apex + "/elivio-consilio/api/chat-summary",
-              data=summary_request,
-              headers={"Content-Type": "application/json"},
-              timeout=60,
-          )
-          if status != 200:
-              raise AssertionError(f"Elivio chat summary returned HTTP {status}")
-          summary_payload = json.loads(summary_body)
-          if not str(summary_payload.get("summary") or "").strip():
-              raise AssertionError("Elivio chat summary did not return contact context.")
-          print("/elivio-consilio/api/chat-summary", status, summary_payload.get("mode"))
 
           for path in (
               "/home-lab-assets/house-fireplace.webp?v=2",
@@ -982,17 +854,7 @@ jobs:
 
           home_status, _, home_html = open_url(apex + "/")
           assert home_status == 200
-          sales_status, _, sales_html = open_url(apex + "/software-testing")
-          assert sales_status == 200
-          assert 'href="/software-testing#quick-check"' in home_html
-          assert 'data-page="software-testing"' not in home_html
-          assert 'data-page="testing-home"' not in sales_html
-          energy_status, _, energy_html = open_url(apex + "/instalatii")
-          assert energy_status == 200
-          assert "data-editorial-lab" in energy_html
-          assert "Spune-ne cum este casa." in energy_html
-          for marker in ('id="quick-check"', 'id="brief-preview"', 'id="copy-brief"', 'id="open-email"', 'href="#quick-check"'):
-              assert marker in sales_html, f"Missing sales-flow marker: {marker}"
+          assert "data-editorial-lab" in home_html
 
           status, _, location_body = open_url(apex + "/api/location-data")
           if status != 200:

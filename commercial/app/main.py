@@ -17,7 +17,6 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .engine import calculate, demo_building, design_heat_load_breakdown
 from .error_page import render_error_html
-from .elivio import router as elivio_router
 from .home_lab_images import HOME_LAB_IMAGE_BYTES
 from .methodology import climate_data, methodology, resolve_locality
 from .models import BuildingInput, building_from_json, model_to_dict, model_to_json
@@ -71,7 +70,6 @@ from .heating_catalog_store import (
     seed_heating_catalog_payload,
 )
 from .pricing import energy_prices, estimate_energy_cost, home_lab_price_overview
-from .personal_blog import router as personal_blog_router
 from .cost_curves import (
     WallCostCurveRequestV1,
     WallProductDiscretizationRequestV1,
@@ -85,7 +83,6 @@ from .product_matching import (
     match_wall_insulation_products,
 )
 from .renovation import WallInsulationScenarioRequestV1, build_wall_insulation_scenario
-from .software_resources import router as software_resources_router
 from .simulation_facts import (
     get_published_simulation_fact,
     list_published_simulation_facts,
@@ -134,12 +131,9 @@ def embed_page_context(partner_id: str) -> dict[str, Any]:
 app = FastAPI(
     title="LaCurent",
     version="2.4.0",
-    description="LaCurent engineering, software testing and energy services.",
+    description="LaCurent Home Lab energy engineering.",
 )
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
-app.include_router(software_resources_router)
-app.include_router(elivio_router)
-app.include_router(personal_blog_router)
 
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
@@ -1996,14 +1990,9 @@ async def favicon() -> RedirectResponse:
     return RedirectResponse("/static/favicon.svg", status_code=307)
 
 
-@app.get("/", response_class=HTMLResponse)
-async def index(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "index.html", {"request": request})
-
-
-@app.get("/software-testing", response_class=HTMLResponse)
-async def software_testing(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "software_testing.html", {"request": request})
+@app.get("/")
+async def index() -> RedirectResponse:
+    return RedirectResponse("/home-lab-next", status_code=308)
 
 
 @app.get("/privacy", response_class=HTMLResponse)
@@ -2098,7 +2087,6 @@ async def robots_txt() -> Response:
 async def sitemap_xml(request: Request) -> Response:
     urls = [
         "https://lacurent.com/",
-        "https://lacurent.com/software-testing",
         "https://lacurent.com/home-lab-next",
         "https://lacurent.com/home-lab/facts",
         "https://lacurent.com/privacy",
