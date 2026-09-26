@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import time
 from typing import Any
 
@@ -10,7 +11,6 @@ from .heating_optimization import heating_planning_catalog
 HEATING_CATALOG_CACHE_SECONDS = 900
 HEATING_CATALOG_RETRY_SECONDS = 30
 HEATING_PARAMETRIC_NODE_TOTAL = 1000
-D1_BATCH_SIZE = 100
 
 _heating_catalog_lock = asyncio.Lock()
 _heating_catalog_cached_payload: dict[str, Any] | None = None
@@ -241,20 +241,6 @@ def build_parametric_heating_nodes(
     return nodes
 
 
-async def _run_d1_batches(
-    db: Any,
-    statements: list[Any],
-    *,
-    chunk_size: int = D1_BATCH_SIZE,
-) -> None:
-    """Execute prepared D1 statements in bounded batches to avoid N round trips."""
-
-    for offset in range(0, len(statements), max(int(chunk_size), 1)):
-        chunk = statements[offset: offset + max(int(chunk_size), 1)]
-        if chunk:
-            await db.batch(chunk)
-
-
 async def _create_heating_catalog_tables(db: Any) -> None:
     await db.prepare(HEATING_PRODUCTS_CREATE_SQL).run()
     await db.prepare(HEAT_PUMP_POINTS_CREATE_SQL).run()
@@ -319,106 +305,136 @@ async def _ensure_heating_catalog_d1(db: Any) -> None:
     ):
         return
 
-    product_stmt = db.prepare(HEATING_PRODUCT_UPSERT_SQL)
-    product_statements = [
-        product_stmt.bind(
-            item["id"],
-            item.get("external_id") or item["id"],
-            item["technology_id"],
-            item["technology_label"],
-            item["label"],
-            item["system_type"],
-            item["generator_type"],
-            item["carrier"],
-            item["cost_profile"],
-            float(item["rated_power_kw"]),
-            None if item.get("efficiency") is None else float(item["efficiency"]),
-            None if item.get("scop") is None else float(item["scop"]),
-            float(item["equipment_price_lei"]),
-            float(item["installation_allowance_lei"]),
-            item["source_kind"],
-            item.get("source_url"),
-            item.get("confidence") or "low",
-            int(bool(item.get("requires_hydronic", True))),
-            int(bool(item.get("requires_existing_gas", False))),
-            int(bool(item.get("requires_existing_high_power_electric", False))),
-            int(bool(item.get("requires_existing_biomass_infrastructure", False))),
-            item.get("capacity_basis") or "catalog_nominal_output",
-            item.get("note") or "",
-            expected_version,
-            observed_on,
+    # D1 Free allows at most 50 queries per Worker invocation. Bulk-ingest
+    # each logical collection through json_each() so a catalog refresh remains
+    # far below that limit even with 1000 parametric planning nodes.
+    await db.prepare(
+        """
+        INSERT OR REPLACE INTO heating_products (
+            id, external_id, technology_id, technology_label, label,
+            system_type, generator_type, carrier, cost_profile,
+            rated_power_kw, efficiency, scop, equipment_price_lei,
+            installation_allowance_lei, source_kind, source_url, confidence,
+            requires_hydronic, requires_existing_gas,
+            requires_existing_high_power_electric,
+            requires_existing_biomass_infrastructure, capacity_basis, note,
+            catalog_version, observed_on, active, updated_at
         )
-        for item in products
-    ]
-    await _run_d1_batches(db, product_statements)
+        SELECT
+            json_extract(value, '$.id'),
+            COALESCE(json_extract(value, '$.external_id'), json_extract(value, '$.id')),
+            json_extract(value, '$.technology_id'),
+            json_extract(value, '$.technology_label'),
+            json_extract(value, '$.label'),
+            json_extract(value, '$.system_type'),
+            json_extract(value, '$.generator_type'),
+            json_extract(value, '$.carrier'),
+            json_extract(value, '$.cost_profile'),
+            CAST(json_extract(value, '$.rated_power_kw') AS REAL),
+            CAST(json_extract(value, '$.efficiency') AS REAL),
+            CAST(json_extract(value, '$.scop') AS REAL),
+            CAST(json_extract(value, '$.equipment_price_lei') AS REAL),
+            CAST(json_extract(value, '$.installation_allowance_lei') AS REAL),
+            json_extract(value, '$.source_kind'),
+            json_extract(value, '$.source_url'),
+            COALESCE(json_extract(value, '$.confidence'), 'low'),
+            COALESCE(CAST(json_extract(value, '$.requires_hydronic') AS INTEGER), 1),
+            COALESCE(CAST(json_extract(value, '$.requires_existing_gas') AS INTEGER), 0),
+            COALESCE(CAST(json_extract(value, '$.requires_existing_high_power_electric') AS INTEGER), 0),
+            COALESCE(CAST(json_extract(value, '$.requires_existing_biomass_infrastructure') AS INTEGER), 0),
+            COALESCE(json_extract(value, '$.capacity_basis'), 'catalog_nominal_output'),
+            COALESCE(json_extract(value, '$.note'), ''),
+            ?,
+            ?,
+            1,
+            CURRENT_TIMESTAMP
+        FROM json_each(?)
+        """
+    ).bind(expected_version, observed_on, json.dumps(products, separators=(",", ":"))).run()
 
-    # Products removed from a later seed remain auditable but stop participating
-    # in optimization/shop queries.
+    # Products removed from a later seed remain auditable but stop participating.
     await db.prepare(
         "UPDATE heating_products SET active = 0 "
         "WHERE active = 1 AND catalog_version <> ?"
     ).bind(expected_version).run()
 
-    point_stmt = db.prepare(HEAT_PUMP_POINT_UPSERT_SQL)
-    point_statements = [
-        point_stmt.bind(
-            point["product_id"],
-            float(point["outdoor_temperature_c"]),
-            float(point["flow_temperature_c"]),
-            None if point.get("return_temperature_c") is None else float(point["return_temperature_c"]),
-            None if point.get("delta_t_k") is None else float(point["delta_t_k"]),
-            None if point.get("heating_capacity_kw") is None else float(point["heating_capacity_kw"]),
-            float(point["cop"]),
-            point.get("test_standard"),
-            point["source_kind"],
-            point.get("source_url"),
-            point.get("note") or "",
-            expected_version,
+    await db.prepare(
+        """
+        INSERT OR REPLACE INTO heat_pump_performance_points (
+            product_id, outdoor_temperature_c, flow_temperature_c,
+            return_temperature_c, delta_t_k, heating_capacity_kw, cop,
+            test_standard, source_kind, source_url, note, catalog_version, updated_at
         )
-        for point in points
-    ]
-    await _run_d1_batches(db, point_statements)
+        SELECT
+            json_extract(value, '$.product_id'),
+            CAST(json_extract(value, '$.outdoor_temperature_c') AS REAL),
+            CAST(json_extract(value, '$.flow_temperature_c') AS REAL),
+            CAST(json_extract(value, '$.return_temperature_c') AS REAL),
+            CAST(json_extract(value, '$.delta_t_k') AS REAL),
+            CAST(json_extract(value, '$.heating_capacity_kw') AS REAL),
+            CAST(json_extract(value, '$.cop') AS REAL),
+            json_extract(value, '$.test_standard'),
+            json_extract(value, '$.source_kind'),
+            json_extract(value, '$.source_url'),
+            COALESCE(json_extract(value, '$.note'), ''),
+            ?,
+            CURRENT_TIMESTAMP
+        FROM json_each(?)
+        """
+    ).bind(expected_version, json.dumps(points, separators=(",", ":"))).run()
     await db.prepare(
         "DELETE FROM heat_pump_performance_points WHERE catalog_version <> ?"
     ).bind(expected_version).run()
 
-    parametric_stmt = db.prepare(HEATING_PARAMETRIC_NODE_UPSERT_SQL)
-    parametric_statements = [
-        parametric_stmt.bind(
-            item["id"],
-            item["technology_id"],
-            item["technology_label"],
-            float(item["required_power_kw"]),
-            float(item["planning_capex_lei"]),
-            int(item["source_product_count"]),
-            float(item["min_source_power_kw"]),
-            float(item["max_source_power_kw"]),
-            item["interpolation_kind"],
-            expected_version,
+    await db.prepare(
+        """
+        INSERT OR REPLACE INTO heating_parametric_nodes (
+            id, technology_id, technology_label, required_power_kw,
+            planning_capex_lei, source_product_count, min_source_power_kw,
+            max_source_power_kw, interpolation_kind, catalog_version, updated_at
         )
-        for item in parametric_nodes
-    ]
-    await _run_d1_batches(db, parametric_statements)
+        SELECT
+            json_extract(value, '$.id'),
+            json_extract(value, '$.technology_id'),
+            json_extract(value, '$.technology_label'),
+            CAST(json_extract(value, '$.required_power_kw') AS REAL),
+            CAST(json_extract(value, '$.planning_capex_lei') AS REAL),
+            CAST(json_extract(value, '$.source_product_count') AS INTEGER),
+            CAST(json_extract(value, '$.min_source_power_kw') AS REAL),
+            CAST(json_extract(value, '$.max_source_power_kw') AS REAL),
+            json_extract(value, '$.interpolation_kind'),
+            ?,
+            CURRENT_TIMESTAMP
+        FROM json_each(?)
+        """
+    ).bind(
+        expected_version,
+        json.dumps(parametric_nodes, separators=(",", ":")),
+    ).run()
     await db.prepare(
         "DELETE FROM heating_parametric_nodes WHERE catalog_version <> ?"
     ).bind(expected_version).run()
 
-    seasonal_stmt = db.prepare(HEAT_PUMP_SEASONAL_UPSERT_SQL)
-    seasonal_statements = [
-        seasonal_stmt.bind(
-            item["product_id"],
-            item["climate"],
-            float(item["application_temperature_c"]),
-            float(item["scop"]),
-            None if item.get("design_load_kw") is None else float(item["design_load_kw"]),
-            item["source_kind"],
-            item.get("source_url"),
-            item.get("test_standard"),
-            expected_version,
+    await db.prepare(
+        """
+        INSERT OR REPLACE INTO heat_pump_seasonal_performance (
+            product_id, climate, application_temperature_c, scop, design_load_kw,
+            source_kind, source_url, test_standard, catalog_version, updated_at
         )
-        for item in seasonal
-    ]
-    await _run_d1_batches(db, seasonal_statements)
+        SELECT
+            json_extract(value, '$.product_id'),
+            json_extract(value, '$.climate'),
+            CAST(json_extract(value, '$.application_temperature_c') AS REAL),
+            CAST(json_extract(value, '$.scop') AS REAL),
+            CAST(json_extract(value, '$.design_load_kw') AS REAL),
+            json_extract(value, '$.source_kind'),
+            json_extract(value, '$.source_url'),
+            json_extract(value, '$.test_standard'),
+            ?,
+            CURRENT_TIMESTAMP
+        FROM json_each(?)
+        """
+    ).bind(expected_version, json.dumps(seasonal, separators=(",", ":"))).run()
     await db.prepare(
         "DELETE FROM heat_pump_seasonal_performance WHERE catalog_version <> ?"
     ).bind(expected_version).run()
