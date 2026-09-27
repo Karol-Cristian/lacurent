@@ -353,13 +353,24 @@ def _candidate_identity_checks(
         capex = float(candidate["capex_lei"])
         saving = float(candidate["annual_saving_lei"])
         payback = candidate.get("payback_years")
-        if capex > 1e-6 and saving > 1e-6:
+        if capex > 1e-6 and saving > 0.01:
             if not _finite(payback):
                 raise CampaignFailure(f"{label}: {name} positive-saving candidate lacks payback")
-            expected = capex / saving
-            if abs(float(payback) - expected) > max(0.03, expected * 0.003):
+            # Candidate CAPEX/saving are public cent-rounded values while
+            # payback is calculated from the unrounded internals. Validate the
+            # interval implied by cent rounding instead of recomputing from
+            # already-rounded values (which is unstable for near-zero saving).
+            capex_low = max(capex - 0.0051, 0.0)
+            capex_high = capex + 0.0051
+            saving_low = max(saving - 0.0051, 1e-12)
+            saving_high = saving + 0.0051
+            lower = capex_low / saving_high
+            upper = capex_high / saving_low
+            tolerance = max(0.03, 0.001 * max(abs(lower), abs(upper), 1.0))
+            if float(payback) < lower - tolerance or float(payback) > upper + tolerance:
                 raise CampaignFailure(
-                    f"{label}: {name} payback identity broken: expected {expected}, got {payback}"
+                    f"{label}: {name} payback outside cent-rounding interval "
+                    f"[{lower}, {upper}], got {payback}"
                 )
 
 
