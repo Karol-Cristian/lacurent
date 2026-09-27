@@ -3066,7 +3066,7 @@
         sourceCandidateCount:localSourceCandidateCount,
         branchFastEvaluations,
         searchPointCount:Number(localSearch.searchPointCount || searchPointCount),
-        verificationFrontierCount:Number(verificationPlan.frontierCount || 0),
+        verificationFrontierCount:Number(localSearch.frontierCount || 0),
         refinementEvaluations,
         browserSearchMethod,
         adaptiveVerification,
