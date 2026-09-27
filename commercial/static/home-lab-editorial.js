@@ -3293,7 +3293,11 @@
   logDialog.addEventListener("click", event => { if (event.target === logDialog) logDialog.close(); });
 
   priceReferenceOpen?.addEventListener("click", () => {
-    renderPriceReferences();
+    renderPriceReferences(
+      current === "report" && optimizationResult
+        ? optimizationSummaryForPersistentBar()
+        : baselineResult
+    );
     if (typeof priceDialog?.showModal === "function") priceDialog.showModal();
     else priceDialog?.setAttribute("open", "");
   });
@@ -3303,7 +3307,11 @@
   });
 
   classReferenceOpen?.addEventListener("click", () => {
-    renderClassReference();
+    renderClassReference(
+      current === "report" && optimizationResult
+        ? optimizationSummaryForPersistentBar()
+        : baselineResult
+    );
     if (typeof classDialog?.showModal === "function") classDialog.showModal();
     else classDialog?.setAttribute("open", "");
   });
