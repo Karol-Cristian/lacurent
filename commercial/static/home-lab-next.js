@@ -1440,6 +1440,8 @@
       "#hlnPersistentClass",
       "#hlnPersistentCost",
       "#hlnPersistentEnergy",
+      "#hlnPersistentHeatingDemand",
+      "#hlnPersistentCoolingDemand",
       "#hlnPersistentCostDelta",
       "#hlnPersistentEnergyDelta",
     ];
@@ -4606,6 +4608,19 @@
       result?.annual_cost_lei == null ? "—" : `${fmt(result.annual_cost_lei)} lei/an`;
     $("#hlnPersistentEnergy").textContent =
       result?.final_energy_kwh == null ? "—" : `${fmt(result.final_energy_kwh)} kWh/an`;
+
+    const heatingDemand = Number(result?.annual_heating_demand_kwh);
+    const coolingDemand = Number(result?.annual_cooling_demand_kwh);
+    const heatingSpecific = Number(result?.heating_demand_specific_kwh_m2);
+    const coolingSpecific = Number(result?.cooling_demand_specific_kwh_m2);
+    $("#hlnPersistentHeatingDemand").textContent =
+      Number.isFinite(heatingDemand) ? `${fmt(heatingDemand)} kWh/an` : "—";
+    $("#hlnPersistentCoolingDemand").textContent =
+      Number.isFinite(coolingDemand) ? `${fmt(coolingDemand)} kWh/an` : "—";
+    $("#hlnPersistentHeatingSpecific").textContent =
+      Number.isFinite(heatingSpecific) ? `${fmt(heatingSpecific,1)} kWh/m²·an · energie utilă` : "energie utilă";
+    $("#hlnPersistentCoolingSpecific").textContent =
+      Number.isFinite(coolingSpecific) ? `${fmt(coolingSpecific,1)} kWh/m²·an · energie utilă` : "energie utilă";
     if (summary) summary.dataset.energyClass = energyClass;
 
     const classContext = $("#hlnPersistentClassContext");
