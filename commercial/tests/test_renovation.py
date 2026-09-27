@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
@@ -12,6 +13,38 @@ from commercial.app.renovation import build_wall_insulation_scenario
 
 
 client = TestClient(app)
+
+
+def test_wall_scenario_releases_baseline_graph_before_scenario_graph() -> None:
+    source = Path("commercial/app/renovation.py").read_text(encoding="utf-8")
+    section = source.split(
+        "def build_wall_insulation_scenario(",
+        1,
+    )[1].split(
+        "return WallInsulationScenarioBundleV1(",
+        1,
+    )[0]
+
+    baseline_index = section.index(
+        "baseline_result = calculate(baseline, include_reference=False)"
+    )
+    snapshot_index = section.index(
+        "baseline_snapshot = house_state.calculation"
+    )
+    release_index = section.index("del baseline_result")
+    scenario_index = section.index(
+        "scenario_result = calculate(scenario_building, include_reference=False)"
+    )
+    scenario_release_index = section.index("del scenario_result")
+
+    assert (
+        baseline_index
+        < snapshot_index
+        < release_index
+        < scenario_index
+        < scenario_release_index
+    )
+    assert section.count("gc.collect()") >= 2
 
 
 def test_wall_scenario_skips_unused_reference_recalculations(monkeypatch) -> None:
