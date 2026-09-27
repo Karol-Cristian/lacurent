@@ -275,7 +275,7 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert "function selectLocality(" in js.text
     assert '"/api/home-lab-next/calculate"' in js.text
     assert '"/api/optimization/home-lab/v4/plan"' in js.text
-    assert '"/static/teo-v4-worker.js?v=3"' in js.text
+    assert '"/static/teo-v4-worker.js?v=4"' in js.text
     assert '"/api/optimization/home-lab/v3/verification-plan"' in js.text
     assert '"/api/optimization/home-lab/v3/verify"' in js.text
     # TEO ends at the canonically verified parametric optimum.
@@ -1733,7 +1733,7 @@ def test_editorial_server_compute_budget_caps_only_full_engine_passes() -> None:
     # Deep parametric search remains browser-side and is intentionally not
     # reduced by the server compute profile.
     assert '"/api/optimization/home-lab/v4/plan"' in source
-    assert '"/static/teo-v4-worker.js?v=3"' in source
+    assert '"/static/teo-v4-worker.js?v=4"' in source
 
 
 def test_optimizer_reuses_baseline_bill_and_resets_cross_run_engine_cache() -> None:
