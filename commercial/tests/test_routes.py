@@ -161,7 +161,7 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'data-page="report"' in page.text
     assert 'data-page="renewables"' in page.text
     assert "/static/home-lab-editorial.css?v=17" in page.text
-    assert "/static/home-lab-editorial.js?v=38" in page.text
+    assert "/static/home-lab-editorial.js?v=39" in page.text
     assert "/static/home-lab-3d.js" not in page.text
     assert 'id="edBaselineClass"' in page.text
     assert 'id="edClassReferenceOpen"' in page.text
@@ -250,6 +250,9 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert "function paintBaselineSummary(" in js.text
     assert "DEFAULT_INFILTRATION_ACH = 0.15" in js.text
     assert "function optimizationSummaryForPersistentBar()" in js.text
+    assert "Shortlist canonic selectat local:" in js.text
+    assert '"/api/optimization/home-lab/v3/verification-plan"' not in js.text
+    assert 'new Worker("/static/teo-v4-worker.js?v=4")' in js.text
     assert '"Rezultat TEO verificat · după intervenții."' in js.text
     assert 'envelopeFamily("wall", "exterior_wall", "wall_added_r_m2k_w")' in js.text
     assert "Fără înlocuire TEO" in js.text
@@ -367,6 +370,7 @@ def test_teo_v4_plan_builds_thousands_of_browser_points_without_server_candidate
     assert "function refineBranch(" in worker.text
     assert "function robustRegretMetricsRows(" in worker.text
     assert "function buildSearchPoints(" in worker.text
+    assert "function verificationPlanRows(" in worker.text
     assert "function radicalInverse(" in worker.text
     assert "LOCAL_REFINEMENT_ROUNDS" in worker.text
 
