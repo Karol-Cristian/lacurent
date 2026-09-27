@@ -1589,6 +1589,25 @@ def test_editorial_finalization_runs_in_browser_after_product_stage() -> None:
     assert "/api/optimization/home-lab/v3/finalize" not in report_section
 
 
+def test_editorial_server_compute_budget_caps_only_full_engine_passes() -> None:
+    js = client.get("/static/home-lab-editorial.js")
+    assert js.status_code == 200
+    source = js.text
+
+    assert "const TEO_MAX_SERVER_CALCULATIONS_PER_RUN = 7" in source
+    assert "const remainingAfterBaseline" in source
+    assert "Math.floor((remainingAfterBaseline * 2) / 3)" in source
+    assert "const verifyTargets = targets.slice(0, verifyLimit)" in source
+    assert "const calculationsUsedBeforeProduct = 1 + verifiedRows.length" in source
+    assert "TEO_MAX_SERVER_CALCULATIONS_PER_RUN - calculationsUsedBeforeProduct" in source
+    assert "Math.min(3, productBudget, verifiedRows.length)" in source
+
+    # Deep parametric search remains browser-side and is intentionally not
+    # reduced by the server compute budget.
+    assert '"/api/optimization/home-lab/v4/plan"' in source
+    assert '"/static/teo-v4-worker.js?v=1"' in source
+
+
 def test_optimizer_reuses_baseline_bill_and_resets_cross_run_engine_cache() -> None:
     js = client.get("/static/home-lab-editorial.js")
     assert js.status_code == 200
@@ -1632,7 +1651,9 @@ def test_editorial_product_stage_is_bounded_and_fails_soft() -> None:
     assert js.status_code == 200
     source = js.text
 
-    assert "verifiedRows.slice(0, Math.min(3, verifiedRows.length))" in source
+    assert "TEO_MAX_SERVER_CALCULATIONS_PER_RUN = 7" in source
+    assert "const verifyTargets = targets.slice(0, verifyLimit)" in source
+    assert "Math.min(3, productBudget, verifiedRows.length)" in source
     assert "PRODUCT SAFE MODE" in source
     assert "retries:0" in source
     assert "await sleep(900)" in source
