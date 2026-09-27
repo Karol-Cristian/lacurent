@@ -224,6 +224,16 @@ def cached_baseline_evaluation(
     return result, dict(priced)
 
 
+
+def clear_baseline_evaluation_cache() -> None:
+    """Drop cross-request full CalculationResult objects from the Worker isolate.
+
+    The cache exists only to amortize legacy repeated baseline work. Optimizer
+    phase barriers call this explicitly so one completed run cannot retain a
+    full engine graph and raise the peak memory of the next Home Lab baseline.
+    """
+    _cached_baseline_evaluation_serialized.cache_clear()
+
 def _stable_candidate_id(measures: ParametricMeasuresV1) -> str:
     raw = json.dumps(
         model_to_dict(measures),

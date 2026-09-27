@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import Any
 
 from pydantic import BaseModel, Field
 
+from .engine import envelope_geometry
 from .heating_optimization import (
     HeatingBranchSummaryV1,
     _rebase_candidate,
@@ -17,7 +19,6 @@ from .optimization import (
     ParametricMeasuresV1,
     _measure_signature,
     _measures_from_normalized,
-    cached_baseline_evaluation,
     evaluate_parametric_candidate,
     pareto_frontier,
 )
@@ -241,14 +242,34 @@ def verify_one_candidate_v3(
     branch_id: str,
     catalog: dict[str, Any],
     heating_catalog: dict[str, Any] | None = None,
+    baseline_annual_bill_lei: float | None = None,
 ) -> VerifiedCandidateV3:
-    """Run exactly one canonical building recalculation for one finalist."""
+    """Run exactly one canonical candidate recalculation for one finalist.
 
-    baseline_result, baseline_cost = cached_baseline_evaluation(request.baseline)
-    if not baseline_cost.get("complete"):
-        raise ValueError(
-            "Baseline annual bill is incomplete; V3 verification cannot run safely."
+    V3 already calculated the user's baseline immediately before optimization.
+    When its priced annual bill is supplied by the browser, keep only the
+    envelope geometry needed for CAPEX calculations instead of pinning another
+    full CalculationResult in a long-lived Cloudflare Python isolate.
+    """
+
+    if baseline_annual_bill_lei is None:
+        # Backward-compatible memory-safe fallback for older Home Lab clients:
+        # the fast candidate already carries the same baseline annual bill used
+        # during search, so no full baseline calculate()/cache is required.
+        baseline_annual_bill_lei = float(
+            fast_candidate.baseline_annual_bill_lei
         )
+    baseline_bill = float(baseline_annual_bill_lei)
+    if baseline_bill < 0:
+        raise ValueError("Baseline annual bill must be non-negative.")
+    baseline_result = SimpleNamespace(
+        input=request.baseline,
+        envelope_geometry=envelope_geometry(request.baseline),
+    )
+    baseline_cost = {
+        "complete": True,
+        "priced_total_lei": baseline_bill,
+    }
 
     technologies = {
         item.id: item
