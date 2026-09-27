@@ -976,6 +976,35 @@ jobs:
               raise AssertionError(f"/calculate failed with HTTP {status}")
           print("/calculate", status)
 
+          reference_building = demo_building()
+          reference_actual = calculate(
+              reference_building,
+              include_reference=False,
+          ).primary_energy.specific_kwh_m2
+          reference_request = json.dumps({
+              "payload": model_to_json(reference_building),
+              "actualSpecificPrimaryKwhM2": reference_actual,
+          }).encode("utf-8")
+          status, _, reference_body = open_url(
+              apex + "/api/reference-comparison",
+              data=reference_request,
+              headers={"Content-Type": "application/json"},
+          )
+          if status != 200:
+              raise AssertionError(
+                  f"/api/reference-comparison failed with HTTP {status}"
+              )
+          reference_payload = json.loads(reference_body)
+          if float(reference_payload.get("referenceSpecificPrimaryKwhM2") or 0) <= 0:
+              raise AssertionError(
+                  "Reference comparison did not return a positive reference indicator."
+              )
+          if reference_payload.get("calculationMode") != "separate_reference_rbpe_request":
+              raise AssertionError(
+                  "Reference comparison did not use the split RBPE request mode."
+              )
+          print("/api/reference-comparison", status)
+
           status, _, embed_calculation = open_url(
               apex + "/embed/demo-store/calculate",
               data=encoded,
