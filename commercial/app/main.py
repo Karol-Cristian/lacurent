@@ -16,7 +16,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from .engine import calculate, demo_building, design_heat_load_breakdown
+from .engine import calculate, demo_building, design_heat_load_breakdown, reference_primary_specific_energy
 from .error_page import render_error_html
 from .home_lab_images import HOME_LAB_IMAGE_BYTES
 from .methodology import climate_data, methodology, resolve_locality
@@ -1678,7 +1678,10 @@ async def render_calculation_from_form(
         clear_baseline_evaluation_cache()
         gc.collect()
         building = build_input_from_form(form)
-        result = calculate(building)
+        # One canonical RBPE pass per HTTP request. The exact reference-house
+        # comparison is loaded through /api/reference-comparison so Cloudflare
+        # never has to execute actual + reference RBPE inside one request budget.
+        result = calculate(building, include_reference=False)
     except Exception as exc:
         return templates.TemplateResponse(
             request,
@@ -5427,6 +5430,46 @@ async def calculate_from_form(request: Request) -> HTMLResponse:
     return await render_calculation_from_form(request)
 
 
+@app.post("/api/reference-comparison")
+async def reference_comparison_api(request: Request) -> JSONResponse:
+    """Exact MC001/RBPE reference comparison in its own Worker request budget."""
+
+    raw = await request.json()
+    payload = raw.get("payload")
+    actual_raw = raw.get("actualSpecificPrimaryKwhM2")
+    if payload in (None, "") or actual_raw in (None, ""):
+        return JSONResponse(
+            {"error": "Lipsesc datele pentru comparația cu clădirea de referință."},
+            status_code=422,
+        )
+    try:
+        building = building_from_json(
+            payload if isinstance(payload, str) else json.dumps(payload)
+        )
+        actual_specific = float(actual_raw)
+        clear_baseline_evaluation_cache()
+        clear_heating_optimizer_runtime_caches()
+        gc.collect()
+        reference_specific = reference_primary_specific_energy(building)
+        difference = actual_specific - reference_specific
+        difference_percent = (
+            100.0 * difference / reference_specific
+            if reference_specific
+            else 0.0
+        )
+        return JSONResponse(
+            {
+                "actualSpecificPrimaryKwhM2": round(actual_specific, 3),
+                "referenceSpecificPrimaryKwhM2": round(reference_specific, 3),
+                "differenceKwhM2": round(difference, 2),
+                "differencePercent": round(difference_percent, 1),
+                "calculationMode": "separate_reference_rbpe_request",
+            }
+        )
+    except Exception as exc:
+        return JSONResponse({"error": user_error(exc)}, status_code=422)
+
+
 @app.get("/magazin", response_class=HTMLResponse)
 @app.get("/embed-host-demo", response_class=HTMLResponse)
 async def embed_host_demo(request: Request) -> HTMLResponse:
@@ -5505,7 +5548,7 @@ async def partner_embed_calculate(request: Request, partner_id: str) -> HTMLResp
 @app.get("/embed/{partner_id}/demo", response_class=HTMLResponse)
 async def partner_embed_demo(request: Request, partner_id: str) -> HTMLResponse:
     page = embed_page_context(partner_id)
-    result = calculate(demo_building())
+    result = calculate(demo_building(), include_reference=False)
     return templates.TemplateResponse(
         request,
         "results.html",
@@ -5515,7 +5558,7 @@ async def partner_embed_demo(request: Request, partner_id: str) -> HTMLResponse:
 
 @app.get("/demo", response_class=HTMLResponse)
 async def demo(request: Request) -> HTMLResponse:
-    result = calculate(demo_building())
+    result = calculate(demo_building(), include_reference=False)
     return templates.TemplateResponse(request, "results.html", result_context(result))
 
 
@@ -5525,7 +5568,7 @@ async def certificate(request: Request) -> HTMLResponse:
     payload = form.get("payload")
     try:
         building = building_from_json(str(payload))
-        result = calculate(building)
+        result = calculate(building, include_reference=False)
     except Exception as exc:
         return templates.TemplateResponse(
             request,
