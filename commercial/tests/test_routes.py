@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from commercial.app.engine import demo_building, dhw_energy
+from commercial.app.engine import calculate, demo_building, dhw_energy
 from commercial.app.main import app, build_input_from_form
 from commercial.app.pricing import _firewood_reference
 from commercial.app.simulation_facts import FACT_SCENARIOS, _build_fact
@@ -2757,7 +2757,6 @@ def test_partner_embed_calculator_uses_compact_partner_house_lab() -> None:
     assert 'id="labReferenceCard"' not in response.text
     assert "embed-house-lab.js" in response.text
     assert "embed-runtime.js" in response.text
-    assert 'data-reference-comparison' in response.text
     assert "Navigare LaCurent Instalații & Energie" not in response.text
 
 
@@ -2909,6 +2908,7 @@ def test_partner_embed_calculation_keeps_partner_cta_and_shared_engine() -> None
     assert 'href="mailto:karol@lacurent.com?subject=Evaluare%20tehnica%20locuinta"' in response.text
     assert 'href="/embed/demo-store"' in response.text
     assert "embed-runtime.js" in response.text
+    assert 'data-reference-comparison' in response.text
 
 
 def test_unknown_partner_embed_returns_404() -> None:
