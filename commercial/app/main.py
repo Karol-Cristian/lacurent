@@ -16,7 +16,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from .engine import calculate, demo_building, design_heat_load_breakdown, reference_primary_specific_energy
+from .engine import calculate, demo_building, design_heat_load_breakdown
 from .error_page import render_error_html
 from .home_lab_images import HOME_LAB_IMAGE_BYTES
 from .methodology import climate_data, methodology, resolve_locality
@@ -5431,43 +5431,13 @@ async def calculate_from_form(request: Request) -> HTMLResponse:
 
 
 @app.post("/api/reference-comparison")
-async def reference_comparison_api(request: Request) -> JSONResponse:
-    """Exact MC001/RBPE reference comparison in its own Worker request budget."""
+async def reference_comparison_api(request: Request) -> RedirectResponse:
+    """Compatibility redirect to the isolated low-memory RBPE service."""
 
-    raw = await request.json()
-    payload = raw.get("payload")
-    actual_raw = raw.get("actualSpecificPrimaryKwhM2")
-    if payload in (None, "") or actual_raw in (None, ""):
-        return JSONResponse(
-            {"error": "Lipsesc datele pentru comparația cu clădirea de referință."},
-            status_code=422,
-        )
-    try:
-        building = building_from_json(
-            payload if isinstance(payload, str) else json.dumps(payload)
-        )
-        actual_specific = float(actual_raw)
-        clear_baseline_evaluation_cache()
-        clear_heating_optimizer_runtime_caches()
-        gc.collect()
-        reference_specific = reference_primary_specific_energy(building)
-        difference = actual_specific - reference_specific
-        difference_percent = (
-            100.0 * difference / reference_specific
-            if reference_specific
-            else 0.0
-        )
-        return JSONResponse(
-            {
-                "actualSpecificPrimaryKwhM2": round(actual_specific, 3),
-                "referenceSpecificPrimaryKwhM2": round(reference_specific, 3),
-                "differenceKwhM2": round(difference, 2),
-                "differencePercent": round(difference_percent, 1),
-                "calculationMode": "separate_reference_rbpe_request",
-            }
-        )
-    except Exception as exc:
-        return JSONResponse({"error": user_error(exc)}, status_code=422)
+    return RedirectResponse(
+        "https://lacurent-reference-rbpe.lemnarukarol.workers.dev/reference-comparison",
+        status_code=307,
+    )
 
 
 @app.get("/magazin", response_class=HTMLResponse)
