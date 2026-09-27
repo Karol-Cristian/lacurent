@@ -1539,6 +1539,31 @@ def test_home_lab_next_calculates_pv_and_solar_thermal_from_solar_resource() -> 
     assert payload["gross_service_final_energy_kwh"] >= payload["final_energy_kwh"]
 
 
+def test_v3_product_and_finalize_do_not_load_complete_heating_marketplace() -> None:
+    source = Path("commercial/app/main.py").read_text(encoding="utf-8")
+
+    product_section = source.split(
+        "async def home_lab_optimization_v3_product_api",
+        1,
+    )[1].split(
+        '@app.post("/api/optimization/home-lab/v3/finalize")',
+        1,
+    )[0]
+    assert "_optimizer_heating_commercial_branch_catalog(" in product_section
+    assert "_optimizer_heating_catalog(request)" not in product_section
+
+    finalize_section = source.split(
+        "async def home_lab_optimization_v3_finalize_api",
+        1,
+    )[1].split(
+        '@app.post("/api/optimization/home-lab/v2/plan")',
+        1,
+    )[0]
+    assert "_optimizer_heating_catalog_summary(request)" in finalize_section
+    assert "_optimizer_heating_commercial_branch_catalog(" in finalize_section
+    assert "_optimizer_heating_catalog(request)" not in finalize_section
+
+
 def test_worker_memory_guard_and_v3_verification_use_bounded_state() -> None:
     source = Path("commercial/app/main.py").read_text(encoding="utf-8")
     assert "async def collect_python_worker_garbage(" in source

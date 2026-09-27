@@ -7,6 +7,7 @@ from commercial.app.heating_catalog_store import (
     HEATING_PARAMETRIC_NODE_TOTAL,
     build_heating_technology_summaries,
     build_parametric_heating_nodes,
+    commercial_heating_branch_catalog_payload,
     compact_heating_branch_catalog_payload,
     seed_heating_branch_catalog_payload,
     seed_heating_catalog_payload,
@@ -128,6 +129,34 @@ def test_compact_branch_catalog_is_independent_of_marketplace_product_count() ->
     )
     assert compact["heat_pump_performance_points"] == []
     assert compact["heat_pump_seasonal_performance"] == []
+
+
+def test_commercial_branch_catalog_contains_only_selected_technology() -> None:
+    full = seed_heating_catalog_payload()
+    technology_id = "heat-pump-air-air"
+
+    branch = commercial_heating_branch_catalog_payload(
+        full,
+        technology_id,
+    )
+
+    assert branch["options"]
+    assert {
+        item["technology_id"]
+        for item in branch["options"]
+    } == {technology_id}
+    product_ids = {item["id"] for item in branch["options"]}
+    assert all(
+        item["product_id"] in product_ids
+        for item in branch["heat_pump_performance_points"]
+    )
+    assert all(
+        item["product_id"] in product_ids
+        for item in branch["heat_pump_seasonal_performance"]
+    )
+    assert branch["parametric_heating_nodes"] == []
+    assert branch["catalog_stats"]["loaded_products"] == len(branch["options"])
+    assert len(branch["options"]) < len(full["options"])
 
 
 def test_compact_branch_profile_preserves_planning_power_range() -> None:

@@ -76,9 +76,11 @@ from .heating_catalog_store import (
     cached_heating_branch_catalog_from_d1,
     cached_heating_catalog_from_d1,
     cached_heating_catalog_summary_from_d1,
+    read_heating_commercial_branch_catalog_from_d1,
     seed_heating_branch_catalog_payload,
     seed_heating_catalog_payload,
     seed_heating_catalog_summary_payload,
+    seed_heating_commercial_branch_catalog_payload,
 )
 from .pricing import energy_prices, estimate_energy_cost, home_lab_price_overview
 from .teo_v4 import build_teo_v4_kernel
@@ -1878,6 +1880,46 @@ async def _optimizer_heating_branch_catalog(
     return seed_heating_branch_catalog_payload(branch_id)
 
 
+async def _optimizer_heating_commercial_branch_catalog(
+    request: Request,
+    branch_id: str,
+) -> dict[str, Any]:
+    """Load exact products/performance only for the finalist technology.
+
+    Unlike the public complete-catalog endpoint, finalist commercialization
+    must never materialize unrelated marketplace technologies in Python.
+    """
+
+    if branch_id == "keep-current-heating":
+        return {
+            "source": "not_required",
+            "catalog_mode": "keep_current_no_heating_catalog",
+            "options": [],
+            "heat_pump_performance_points": [],
+            "heat_pump_seasonal_performance": [],
+            "parametric_heating_nodes": [],
+            "catalog_stats": {
+                "products": 0,
+                "loaded_products": 0,
+                "parametric_nodes": 0,
+                "performance_points": 0,
+                "seasonal_points": 0,
+            },
+            "technology_id": branch_id,
+        }
+
+    env = request.scope.get("env")
+    db = getattr(env, "DB", None) if env is not None else None
+    if db is not None:
+        payload = await read_heating_commercial_branch_catalog_from_d1(
+            db,
+            branch_id,
+        )
+        if payload is not None:
+            return payload
+    return seed_heating_commercial_branch_catalog_payload(branch_id)
+
+
 @app.get("/api/heating-products")
 async def heating_products_api(request: Request) -> JSONResponse:
     payload = await _optimizer_heating_catalog(request)
@@ -3114,7 +3156,10 @@ async def home_lab_optimization_v3_product_api(request: Request) -> JSONResponse
             raise ValueError("Lipsește finalistul V3 pentru maparea comercială.")
 
         _, _, optimization_request = _home_lab_optimization_request_from_form(form)
-        heating_catalog = await _optimizer_heating_catalog(request)
+        heating_catalog = await _optimizer_heating_commercial_branch_catalog(
+            request,
+            branch_id,
+        )
         candidate = CandidateEvaluationV1(**candidate_raw)
         started = time.perf_counter()
         commercial_candidate, matched_product, warnings = (
@@ -3168,11 +3213,12 @@ async def home_lab_optimization_v3_finalize_api(request: Request) -> JSONRespons
             raise ValueError("Lipsesc finaliștii comerciali V3.")
 
         mode, _, optimization_request = _home_lab_optimization_request_from_form(form)
-        heating_catalog = await _optimizer_heating_catalog(request)
+        heating_summary = await _optimizer_heating_catalog_summary(request)
         started = time.perf_counter()
 
         commercial_candidates: list[CandidateEvaluationV1] = []
         source_by_commercial_id: dict[str, str] = {}
+        branch_by_commercial_id: dict[str, str] = {}
         for row in commercial_rows:
             if not isinstance(row, dict):
                 continue
@@ -3183,6 +3229,9 @@ async def home_lab_optimization_v3_finalize_api(request: Request) -> JSONRespons
             commercial_candidates.append(candidate)
             source_by_commercial_id[candidate.candidate_id] = str(
                 row.get("sourceCandidateId") or ""
+            )
+            branch_by_commercial_id[candidate.candidate_id] = str(
+                row.get("branchId") or ""
             )
 
         verified_by_id: dict[str, CandidateEvaluationV1] = {}
@@ -3209,9 +3258,29 @@ async def home_lab_optimization_v3_finalize_api(request: Request) -> JSONRespons
         if raw_selected is None:
             raw_selected = selected
 
+        selected_branch_id = branch_by_commercial_id.get(
+            selected.candidate_id,
+            "keep-current-heating",
+        )
+        selected_branch_catalog = (
+            await _optimizer_heating_commercial_branch_catalog(
+                request,
+                selected_branch_id,
+            )
+        )
+        # Branch-plan eligibility comes from bounded summary metadata; the
+        # selected branch catalog contributes only the exact SKU/performance
+        # rows needed by the final report.
+        heating_catalog = {
+            **selected_branch_catalog,
+            "technology_summaries": list(
+                heating_summary.get("technology_summaries") or []
+            ),
+        }
+
         branch_plan = heating_branch_plan(
             optimization_request,
-            heating_catalog,
+            heating_summary,
         )
         stats_by_id: dict[str, dict[str, Any]] = {
             str(item.get("branchId") or ""): item
