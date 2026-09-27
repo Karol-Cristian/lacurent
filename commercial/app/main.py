@@ -2371,6 +2371,11 @@ async def home_lab_next_calculation(request: Request) -> JSONResponse:
         "on",
     }
     try:
+        # Clear any legacy full-result optimizer cache before allocating this
+        # fresh baseline/scenario engine graph. This bounds cross-run peak
+        # memory in a long-lived Cloudflare Python isolate.
+        clear_baseline_evaluation_cache()
+        gc.collect()
         building = build_input_from_form(form)
         # Home Lab already exposes the MC001 reference parameters separately
         # through embed_lab_result_payload(). Its interactive UI never consumes
