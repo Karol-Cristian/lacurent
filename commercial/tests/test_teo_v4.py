@@ -12,9 +12,11 @@ from commercial.app.optimization import (
     OptimizationMode,
     OptimizationRequestV1,
     OptimizationSearchBoundsV1,
+    CandidateEvaluationV1,
     ParametricMeasuresV1,
 )
 from commercial.app.optimization_v2 import evaluate_worker_safe_branch_v2
+from commercial.app.optimization_v3 import build_verification_plan_v3
 from commercial.app.pricing import estimate_energy_cost
 from commercial.app.teo_v4 import build_teo_v4_kernel
 
@@ -150,6 +152,84 @@ def test_teo_v4_browser_worker_refines_locally_when_bounds_are_supplied() -> Non
     assert worker_result["refinementEvaluations"] > 0
     assert worker_result["sourceCandidateCount"] > 1
     assert worker_result["candidateRows"]
+
+
+def test_teo_v4_browser_verification_plan_matches_python_canonical_ranking() -> None:
+    baseline = demo_building()
+    baseline_result = calculate(baseline, include_reference=False)
+    baseline_cost = estimate_energy_cost(baseline_result)
+    assert baseline_cost["complete"]
+
+    catalog = roi_cost_basis_seed()
+    kernel = build_teo_v4_kernel(
+        baseline,
+        baseline_result,
+        cost_catalog=catalog,
+        branch_catalogs={"keep-current-heating": {}},
+    )
+    bounds = OptimizationSearchBoundsV1()
+    bounds_payload = (
+        bounds.model_dump()
+        if hasattr(bounds, "model_dump")
+        else bounds.dict()
+    )
+    search_points = []
+    for index in range(1, 65):
+        fraction = index / 64
+        measure = ParametricMeasuresV1(
+            wall_added_r_m2k_w=float(bounds.wall_added_r_m2k_w_max) * fraction,
+            roof_added_r_m2k_w=float(bounds.roof_added_r_m2k_w_max) * ((index % 17) / 16),
+            pv_added_kwp=float(bounds.pv_added_kwp_max) * ((index % 13) / 12),
+            window_replacement_fraction=float(bounds.window_replacement_fraction_max) * ((index % 7) / 6),
+        )
+        search_points.append(
+            measure.model_dump()
+            if hasattr(measure, "model_dump")
+            else measure.dict()
+        )
+
+    worker_result = _run_worker(
+        {
+            "type": "run",
+            "kernel": kernel,
+            "searchPoints": search_points,
+            "searchBounds": bounds_payload,
+            "branchIds": ["keep-current-heating"],
+            "mode": "auto_economic",
+            "goals": {},
+            "baselineAnnualBillLei": float(baseline_cost["priced_total_lei"]),
+        }
+    )
+
+    rows = worker_result["candidateRows"]
+    assert rows
+    assert 1 <= len(worker_result["verificationRows"]) <= 8
+
+    candidates = [
+        CandidateEvaluationV1(**row["candidate"])
+        for row in rows
+    ]
+    branch_ids = {
+        row["candidate"]["candidate_id"]: row["branchId"]
+        for row in rows
+    }
+    request = OptimizationRequestV1(
+        baseline=baseline,
+        mode=OptimizationMode.auto_economic,
+    )
+    python_plan = build_verification_plan_v3(
+        request,
+        candidates=candidates,
+        candidate_branch_ids=branch_ids,
+    )
+
+    browser_ids = [
+        row["candidate"]["candidate_id"]
+        for row in worker_result["verificationRows"]
+    ]
+    python_ids = [item.candidate_id for item in python_plan.candidates]
+    assert worker_result["frontierCount"] == python_plan.frontier_count
+    assert browser_ids == python_ids
 
 
 def _signature(measures: dict) -> tuple[float, ...]:
