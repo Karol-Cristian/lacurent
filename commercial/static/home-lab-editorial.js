@@ -2063,7 +2063,7 @@
         reject(new Error("Browserul nu suportă Web Worker pentru TEO V4."));
         return;
       }
-      const worker = new Worker("/static/teo-v4-worker.js?v=3");
+      const worker = new Worker("/static/teo-v4-worker.js?v=4");
       let settled = false;
       const finish = (fn, value) => {
         if (settled) return;
@@ -2975,18 +2975,15 @@
       );
 
       stage("finalize","active","selectează");
-      log(`Construiesc shortlist-ul canonic din ${candidateRows.length} candidați TEO V4 selectați din ${localSourceCandidateCount} evaluări locale.`);
-      const verificationPlan = await postJson(
-        "/api/optimization/home-lab/v3/verification-plan",
-        {
-          form:formPayload,
-          candidateRows
-        },
-        {stageName:"verification plan V3", runId, retries:TEO_SERVER_PROFILE.heavyRetries}
+      const targets = Array.isArray(localSearch.verificationRows)
+        ? localSearch.verificationRows
+        : [];
+      if (!targets.length) {
+        throw new Error("TEO V4 nu a selectat local finaliști pentru verificare canonică.");
+      }
+      log(
+        `Shortlist canonic selectat local: ${targets.length} finaliști din ${candidateRows.length} candidați diverși · Pareto ${Number(localSearch.frontierCount || 0)} · fără request Python pentru ranking.`
       );
-      const targets = Array.isArray(verificationPlan.targets) ? verificationPlan.targets : [];
-      if (!targets.length) throw new Error("V3 nu a selectat finaliști pentru verificare.");
-      log(`Pareto: ${verificationPlan.frontierCount || 0} · verificări canonice: ${targets.length}.`);
 
       const verifiedRows = [];
       let verifyFailures = 0;
