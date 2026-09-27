@@ -1899,11 +1899,12 @@ async def _optimizer_heating_branch_catalog(
 async def _optimizer_heating_commercial_branch_catalog(
     request: Request,
     branch_id: str,
+    required_power_kw: float,
 ) -> dict[str, Any]:
-    """Load exact products/performance only for the finalist technology.
+    """Load a bounded SKU/performance window for one finalist design load.
 
-    Unlike the public complete-catalog endpoint, finalist commercialization
-    must never materialize unrelated marketplace technologies in Python.
+    D1, not the Python Worker, performs the marketplace filtering. The object
+    graph received by PRODUCT stays fixed-size as the catalog grows.
     """
 
     if branch_id == "keep-current-heating":
@@ -1922,18 +1923,23 @@ async def _optimizer_heating_commercial_branch_catalog(
                 "seasonal_points": 0,
             },
             "technology_id": branch_id,
+            "required_power_kw": max(float(required_power_kw), 0.0),
         }
 
     env = request.scope.get("env")
     db = getattr(env, "DB", None) if env is not None else None
     if db is not None:
-        payload = await read_heating_commercial_branch_catalog_from_d1(
+        payload = await read_heating_commercial_candidate_catalog_from_d1(
             db,
             branch_id,
+            required_power_kw,
         )
         if payload is not None:
             return payload
-    return seed_heating_commercial_branch_catalog_payload(branch_id)
+    return seed_heating_commercial_candidate_catalog_payload(
+        branch_id,
+        required_power_kw,
+    )
 
 
 @app.get("/api/heating-products")
