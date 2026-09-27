@@ -854,7 +854,11 @@ def test_keep_current_finalist_never_selects_a_new_generator_product() -> None:
 
 
 def test_air_air_quantity_is_derived_from_single_unit_design_capacity() -> None:
-    baseline = demo_building()
+    baseline_payload = model_to_dict(demo_building())
+    # Use the Home Lab locality token, which resolves the normative Zone III
+    # winter design temperature (-18 °C), not the station mean-daily fallback.
+    baseline_payload["locality"] = "siruta-54984"
+    baseline = BuildingInput(**baseline_payload)
     technology = next(
         item
         for item in heating_technologies()
@@ -878,7 +882,9 @@ def test_air_air_quantity_is_derived_from_single_unit_design_capacity() -> None:
 
 
 def test_air_air_dynamic_quantity_profile_reports_aggregate_design_capacity() -> None:
-    baseline = demo_building()
+    baseline_payload = model_to_dict(demo_building())
+    baseline_payload["locality"] = "siruta-54984"
+    baseline = BuildingInput(**baseline_payload)
     product = next(
         item
         for item in heating_planning_options()
