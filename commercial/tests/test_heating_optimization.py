@@ -115,6 +115,13 @@ def test_compact_branch_catalog_is_independent_of_marketplace_product_count() ->
         ),
     )["id"]
     assert compact["parametric_heating_nodes"]
+    unique_source_powers = {
+        float(item["rated_power_kw"])
+        for item in source_products
+    }
+    assert len(compact["parametric_heating_nodes"]) == len(unique_source_powers)
+    assert len(compact["parametric_heating_nodes"]) < 20
+    assert all(":anchor:" in item["id"] for item in compact["parametric_heating_nodes"])
     assert all(
         item["technology_id"] == technology_id
         for item in compact["parametric_heating_nodes"]
