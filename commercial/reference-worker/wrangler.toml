@@ -3,3 +3,12 @@ main = "src/worker.py"
 compatibility_date = "2026-09-27"
 compatibility_flags = ["python_workers", "enable_weak_ref"]
 workers_dev = true
+
+
+# The RBPE engine reads methodology/climate/solar registries through pathlib.
+# Python Worker bundling only ships non-Python files when Wrangler is told
+# their module type explicitly.
+[[rules]]
+type = "Text"
+globs = ["**/*.json", "**/*.geojson"]
+fallthrough = true
