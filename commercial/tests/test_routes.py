@@ -161,7 +161,7 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'data-page="report"' in page.text
     assert 'data-page="renewables"' in page.text
     assert "/static/home-lab-editorial.css?v=15" in page.text
-    assert "/static/home-lab-editorial.js?v=27" in page.text
+    assert "/static/home-lab-editorial.js?v=28" in page.text
     assert "/static/home-lab-3d.js" not in page.text
     assert 'id="edBaselineClass"' in page.text
     assert 'id="edBaselineCost"' in page.text
@@ -1587,6 +1587,44 @@ def test_editorial_finalization_runs_in_browser_after_product_stage() -> None:
     assert "buildBrowserFinalization({" in report_section
     assert "postJson(" not in report_section
     assert "/api/optimization/home-lab/v3/finalize" not in report_section
+
+
+def test_optimizer_reuses_baseline_bill_and_resets_cross_run_engine_cache() -> None:
+    js = client.get("/static/home-lab-editorial.js")
+    assert js.status_code == 200
+    source = js.text
+    assert "baselineAnnualBillLei:Number(baselineResult?.annual_cost_lei || 0)" in source
+    assert '{stageName:"baseline", runId, retries:0}' in source
+
+    main_source = Path("commercial/app/main.py").read_text(encoding="utf-8")
+    calculate_section = main_source.split(
+        "async def home_lab_next_calculation",
+        1,
+    )[1].split(
+        '@app.post("/api/home-lab-next/calculate")',
+        1,
+    )[0]
+    assert "clear_baseline_evaluation_cache()" in calculate_section
+    assert "gc.collect()" in calculate_section
+
+    verify_section = main_source.split(
+        "async def home_lab_optimization_v3_verify_api",
+        1,
+    )[1].split(
+        '@app.post("/api/optimization/home-lab/v3/product")',
+        1,
+    )[0]
+    assert 'raw.get("baselineAnnualBillLei")' in verify_section
+    assert "baseline_annual_bill_lei=baseline_annual_bill_lei" in verify_section
+
+    product_section = main_source.split(
+        "async def home_lab_optimization_v3_product_api",
+        1,
+    )[1].split(
+        '@app.post("/api/optimization/home-lab/v3/finalize")',
+        1,
+    )[0]
+    assert "clear_baseline_evaluation_cache()" in product_section
 
 
 def test_editorial_product_stage_is_bounded_and_fails_soft() -> None:
