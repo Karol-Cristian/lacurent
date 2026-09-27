@@ -2507,7 +2507,6 @@
     const opt = optimizationResult.optimization || {};
     const parametric = opt.parametricEvaluation || {};
     const engineering = opt.engineeringSpec || {};
-    const measures = opt.selected || [];
     const baselineBill = baselineResult.annual_cost_lei;
     const finalBill = parametric.annualBillLei ?? scenario.annual_cost_lei;
     const locality = baselineResult.locality || $("#localityInput").value;
@@ -2528,10 +2527,10 @@
       </section>
 
       <section class="ed-report-section">
-        <h2>Ce a găsit optimizerul</h2>
-        <p>${escapeHtml(opt.rationale || "Soluția de mai jos este rezultatul selecției economice și al verificării finale.")}</p>
+        <h2>Rezumat economic al optimului TEO</h2>
+        <p>${escapeHtml(opt.rationale || "Rezultatul de mai jos este optimul parametric verificat; discretizarea comercială nu participă la această selecție.")}</p>
         <div class="ed-report-callout">
-          <small>Investiție estimată</small><br>
+          <small>CAPEX parametric estimat</small><br>
           <strong>${money(opt.capexLei)}</strong>
         </div>
         <div class="ed-metrics">
@@ -2543,19 +2542,13 @@
         ${economicStatusText(opt) ? `<p class="ed-hint"><b>Interpretare economică:</b> ${escapeHtml(economicStatusText(opt))}</p>` : ""}
         ${opt.simpleNetBenefitLeiByHorizon ? `
           <h3>Beneficiu net simplu în timp</h3>
-          <p class="ed-hint">Economie anuală × orizont − CAPEX. Fără finanțare, inflație, mentenanță, înlocuiri sau valoare reziduală; acestea vor aparține modelului lifecycle.</p>
+          <p class="ed-hint">Economie anuală × orizont − CAPEX parametric. Fără finanțare, inflație, mentenanță, înlocuiri sau valoare reziduală; acestea vor aparține modelului lifecycle.</p>
           <div class="ed-metrics">
             ${(opt.economicHorizonsYears || [5,10,15,20,25]).map(years =>
               metric(`${years} ani`, money(opt.simpleNetBenefitLeiByHorizon[String(years)]))
             ).join("")}
           </div>
         ` : ""}
-        <h3>Intervențiile selectate</h3>
-        ${measures.length ? measures.map(row => `
-          <div class="ed-measure">
-            <div><b>${escapeHtml(row.label)}</b><br><span>${escapeHtml(row.note || (fmt(row.parameterValue,2) + " " + (row.parameterUnit || "")))}</span></div>
-            <b>${money(row.capexLei)}</b>
-          </div>`).join("") : "<p>Optimizerul nu a selectat intervenții cu CAPEX pozitiv.</p>"}
       </section>
     `;
 
