@@ -3215,7 +3215,7 @@ async def home_lab_optimization_v3_verify_api(request: Request) -> JSONResponse:
 
 @app.post("/api/optimization/home-lab/v3/product")
 async def home_lab_optimization_v3_product_api(request: Request) -> JSONResponse:
-    """Commercial work unit: match and recalculate at most one finalist."""
+    """Commercial work unit: bounded D1 match + one exact finalist recalculation."""
 
     try:
         raw = await request.json()
@@ -3229,38 +3229,92 @@ async def home_lab_optimization_v3_product_api(request: Request) -> JSONResponse
             raise ValueError("Lipsește finalistul V3 pentru maparea comercială.")
 
         _, _, optimization_request = _home_lab_optimization_request_from_form(form)
+        candidate = CandidateEvaluationV1(**candidate_raw)
+        required_power_kw = float(candidate.design_heat_load_kw or 0.0)
+        started = time.perf_counter()
         heating_catalog = await _optimizer_heating_commercial_branch_catalog(
             request,
             branch_id,
+            required_power_kw,
         )
-        candidate = CandidateEvaluationV1(**candidate_raw)
-        started = time.perf_counter()
-        commercial_candidate, matched_product, warnings = (
-            commercialize_heating_finalist(
-                candidate,
-                original_building=optimization_request.baseline,
-                heating_catalog=heating_catalog,
-                branch_id=branch_id,
+        commercialized = commercialize_heating_finalist(
+            candidate,
+            original_building=optimization_request.baseline,
+            heating_catalog=heating_catalog,
+            branch_id=branch_id,
+            return_result=True,
+        )
+        (
+            commercial_candidate,
+            matched_product,
+            warnings,
+            commercial_engine_result,
+        ) = commercialized
+
+        if commercial_engine_result is not None:
+            scenario = embed_lab_result_payload(commercial_engine_result)
+        else:
+            scenario = _optimizer_candidate_scenario_snapshot(
+                commercial_candidate,
+                form,
             )
-        )
+
+        heat_pump_profile: dict[str, Any] | None = None
+        if (
+            commercial_engine_result is not None
+            and matched_product is not None
+            and commercial_candidate.resulting_configuration is not None
+        ):
+            heat_pump_profile = heat_pump_monthly_performance_profile(
+                commercial_candidate.resulting_configuration,
+                matched_product,
+                list(commercial_engine_result.monthly),
+            )
+            if heat_pump_profile is not None:
+                heat_pump_profile["engine_performance_kind"] = (
+                    commercial_engine_result.heating_system.generator_performance_kind
+                )
+                heat_pump_profile["engine_performance_value"] = float(
+                    commercial_engine_result.heating_system.generator_performance
+                )
+                heat_pump_profile["effective_system_performance"] = float(
+                    commercial_engine_result.heating_system.effective_system_performance
+                )
+                heat_pump_profile["performance_source"] = (
+                    commercial_engine_result.heating_system.performance_source
+                )
+
         elapsed_ms = round((time.perf_counter() - started) * 1000.0, 1)
-        return JSONResponse(
-            {
-                "optimizerVersion": "v3-sharded",
-                "branchId": branch_id,
-                "candidate": model_to_dict(commercial_candidate),
-                "sourceCandidateId": (
-                    source_candidate_id or candidate.candidate_id
-                ),
-                "matchedProduct": (
-                    None
-                    if matched_product is None
-                    else model_to_dict(matched_product)
-                ),
-                "warnings": warnings,
-                "calculationTimeMs": elapsed_ms,
-            }
-        )
+        payload = {
+            "optimizerVersion": "v3-sharded",
+            "branchId": branch_id,
+            "candidate": model_to_dict(commercial_candidate),
+            "sourceCandidateId": (
+                source_candidate_id or candidate.candidate_id
+            ),
+            "matchedProduct": (
+                None
+                if matched_product is None
+                else model_to_dict(matched_product)
+            ),
+            "scenario": scenario,
+            "heatPumpPerformanceProfile": heat_pump_profile,
+            "catalogSource": heating_catalog.get("source"),
+            "catalogMode": heating_catalog.get("catalog_mode"),
+            "catalogStats": heating_catalog.get("catalog_stats") or {},
+            "warnings": warnings,
+            "calculationTimeMs": elapsed_ms,
+        }
+        response = JSONResponse(payload)
+
+        # Do not let one commercial request pin its bounded SKU curves or final
+        # engine graph in a long-lived Pyodide isolate.
+        del commercial_engine_result
+        del heating_catalog
+        del optimization_request
+        del payload
+        gc.collect()
+        return response
     except Exception as exc:
         return JSONResponse(
             {
