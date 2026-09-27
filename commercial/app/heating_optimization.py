@@ -1189,6 +1189,8 @@ def heat_pump_monthly_performance_profile(
     building: BuildingInput,
     product: HeatingPlanningOptionV1,
     monthly_rows: list[Any],
+    *,
+    quantity: int = 1,
 ) -> dict[str, Any] | None:
     """Expose COP by month against the modeled monthly useful heating load."""
 
@@ -1199,6 +1201,7 @@ def heat_pump_monthly_performance_profile(
     }:
         return None
 
+    quantity = max(int(quantity), 1)
     points = list(product.performance_points)
     unique_outdoor = sorted(
         {float(point.outdoor_temperature_c) for point in points}
@@ -1234,7 +1237,11 @@ def heat_pump_monthly_performance_profile(
             )
         )
         if capacity_verified:
-            design_capacity_kw = float(available_capacity)
+            design_capacity_kw = float(available_capacity) * quantity
+            if quantity > 1:
+                design_capacity_basis = (
+                    f"{capacity_basis}_x{quantity}_identical_monosplits"
+                )
 
         cop_verified = False
         if product.generator_type == HeatingGeneratorType.heat_pump_air_air:
@@ -1406,7 +1413,17 @@ def heat_pump_monthly_performance_profile(
 
     return {
         "product_id": product.id,
-        "product_label": product.label,
+        "product_label": (
+            f"{quantity} × {product.label}"
+            if quantity > 1
+            else product.label
+        ),
+        "unit_count": quantity,
+        "unit_rated_power_kw": round(float(product.rated_power_kw), 4),
+        "aggregate_rated_power_kw": round(
+            float(product.rated_power_kw) * quantity,
+            4,
+        ),
         "generator_type": product.generator_type.value,
         "profile_kind": profile_kind,
         "declared_scop": (
