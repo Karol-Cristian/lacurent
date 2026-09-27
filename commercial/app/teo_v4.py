@@ -4,7 +4,7 @@ from typing import Any
 
 from .engine import _dhw_useful_for_days, dhw_energy, heating_system_performance
 from .heating_optimization import (
-    apply_heating_technology,
+    apply_parametric_heating_technology,
     heating_technologies,
 )
 from .methodology import methodology, resolve_monthly_plane_hsol
@@ -48,7 +48,10 @@ def _branch_profile(
         if not technologies:
             raise ValueError(f"V4 kernel: lipsește profilul tehnologiei {branch_id!r}.")
         technology = technologies[0]
-        branch_building = apply_heating_technology(baseline, technology)
+        branch_building = apply_parametric_heating_technology(
+            baseline,
+            technology,
+        )
         label = technology.label
         planning_nodes = [
             dict(item)
@@ -103,6 +106,21 @@ def _branch_profile(
         "heating_final_per_useful": heating_ratio,
         "heating_auxiliary_kwh_year": float(
             heating_performance.auxiliary_electricity_kwh
+        ),
+        "heating_generator_performance": float(
+            heating_performance.generator_performance
+        ),
+        "heating_generator_performance_kind": str(
+            heating_performance.generator_performance_kind
+        ),
+        "heating_effective_system_performance": float(
+            heating_performance.effective_system_performance
+        ),
+        "heating_performance_source": str(
+            heating_performance.performance_source
+        ),
+        "heating_performance_confidence": str(
+            heating_performance.confidence
         ),
         "dhw_carrier": (
             _enum_value(dhw.carrier)
