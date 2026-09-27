@@ -533,19 +533,42 @@ function addTop(set, rows, sorter, count) {
 }
 
 function paretoRows(rows) {
+  const EPS_PARETO = 1e-9;
   const sorted = rows.slice().sort((a,b) =>
     num(a.candidate.capex_lei) - num(b.candidate.capex_lei) ||
-    num(a.candidate.annual_bill_lei) - num(b.candidate.annual_bill_lei)
+    num(a.candidate.annual_bill_lei) - num(b.candidate.annual_bill_lei) ||
+    String(a.candidate.candidate_id || "").localeCompare(String(b.candidate.candidate_id || ""))
   );
   const frontier = [];
-  let bestBill = Infinity;
-  for (const row of sorted) {
-    const bill = num(row.candidate.annual_bill_lei, Infinity);
-    if (bill < bestBill - 0.01) {
-      frontier.push(row);
-      bestBill = bill;
+  let bestBillFromLowerCapex = Infinity;
+  let index = 0;
+
+  while (index < sorted.length) {
+    const groupCapex = num(sorted[index].candidate.capex_lei, Infinity);
+    let end = index + 1;
+    while (
+      end < sorted.length
+      && Math.abs(num(sorted[end].candidate.capex_lei, Infinity) - groupCapex) <= EPS_PARETO
+    ) {
+      end += 1;
     }
+
+    const group = sorted.slice(index, end);
+    const groupBestBill = Math.min(
+      ...group.map(row => num(row.candidate.annual_bill_lei, Infinity))
+    );
+    for (const row of group) {
+      const bill = num(row.candidate.annual_bill_lei, Infinity);
+      const dominatedWithinSameCapex = bill > groupBestBill + EPS_PARETO;
+      const dominatedByLowerCapex = bestBillFromLowerCapex <= bill + EPS_PARETO;
+      if (!dominatedWithinSameCapex && !dominatedByLowerCapex) {
+        frontier.push(row);
+      }
+    }
+    bestBillFromLowerCapex = Math.min(bestBillFromLowerCapex, groupBestBill);
+    index = end;
   }
+
   return frontier;
 }
 
