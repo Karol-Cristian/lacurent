@@ -36,6 +36,21 @@ _heating_branch_catalog_cache_expires_at: dict[str, float] = {}
 _heating_branch_catalog_retry_after: dict[str, float] = {}
 
 
+def clear_heating_optimizer_runtime_caches() -> None:
+    """Release optimizer-only catalog objects retained by a warm Worker isolate.
+
+    The low-resource Cloudflare profile favors predictable peak memory over
+    cross-request catalog reuse. Compact summary data remains cached, while
+    branch payloads and the seed fallback catalog are dropped at phase
+    boundaries and rebuilt only when needed.
+    """
+
+    _heating_branch_catalog_cached_payloads.clear()
+    _heating_branch_catalog_cache_expires_at.clear()
+    _heating_branch_catalog_retry_after.clear()
+    heating_planning_catalog.cache_clear()
+
+
 HEATING_PRODUCTS_CREATE_SQL = """
 CREATE TABLE IF NOT EXISTS heating_products (
     id TEXT PRIMARY KEY,
