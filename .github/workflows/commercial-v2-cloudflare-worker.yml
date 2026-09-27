@@ -9,6 +9,7 @@ on:
       - ".github/workflows/commercial-v2-cloudflare-worker.yml"
       - "commercial/**"
       - "scripts/build-heating-catalog-d1-import.py"
+      - "scripts/build-location-payload.mjs"
       - "scripts/prepare-commercial-cloudflare-worker.mjs"
       - "scripts/prepare-reference-cloudflare-worker.mjs"
 
@@ -105,7 +106,10 @@ jobs:
           node --check commercial/static/app.js
           node --check commercial/static/home-lab-next.js
           node --check commercial/static/home-lab-3d.js
+          node --check scripts/build-location-payload.mjs
+          node --check scripts/prepare-commercial-cloudflare-worker.mjs
           node --check scripts/prepare-reference-cloudflare-worker.mjs
+          node --test commercial/tests/location-data-worker-asset.test.mjs
           python -m compileall -q commercial
           python -m py_compile scripts/build-heating-catalog-d1-import.py
           python scripts/build-heating-catalog-d1-import.py \
