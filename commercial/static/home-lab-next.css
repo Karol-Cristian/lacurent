@@ -1794,7 +1794,7 @@ svg{display:block}
 .hln-live-summary[data-energy-class="G"]{--hln-class-color:#ed1c24}
 .hln-live-metrics{
   display:grid;
-  grid-template-columns:minmax(150px,.8fr) minmax(190px,1fr) minmax(190px,1fr);
+  grid-template-columns:minmax(130px,.72fr) minmax(170px,.9fr) minmax(170px,.9fr) minmax(170px,.9fr) minmax(170px,.9fr);
   gap:9px;
   min-width:0;
 }
@@ -1847,6 +1847,14 @@ svg{display:block}
   background:linear-gradient(135deg,#fff5df 0%,#fffaf0 100%);
   box-shadow:inset 4px 0 0 #d78a18;
 }
+.hln-live-heating-card{
+  background:linear-gradient(135deg,#fff0e9 0%,#fffaf6 100%);
+  box-shadow:inset 4px 0 0 #c8643d;
+}
+.hln-live-cooling-card{
+  background:linear-gradient(135deg,#edf6fb 0%,#f8fcfe 100%);
+  box-shadow:inset 4px 0 0 #4f83a4;
+}
 .hln-live-icon{
   display:grid;
   width:36px;
@@ -1856,6 +1864,8 @@ svg{display:block}
 }
 .hln-live-cost-card .hln-live-icon{background:#d9f0ea;color:#166d5d}
 .hln-live-energy-card .hln-live-icon{background:#f8e6bc;color:#9b620f}
+.hln-live-heating-card .hln-live-icon{background:#f7ddd2;color:#a94f2f}
+.hln-live-cooling-card .hln-live-icon{background:#dcecf5;color:#356f92}
 .hln-live-icon svg{
   width:18px;
   height:18px;
@@ -1968,7 +1978,7 @@ svg{display:block}
 @media(max-width:980px){
   .hln-technical-open .hln-persistent-stack{width:100%}
   .hln-live-metrics{
-    grid-template-columns:minmax(130px,.75fr) minmax(160px,1fr) minmax(160px,1fr)
+    grid-template-columns:minmax(118px,.7fr) repeat(4,minmax(130px,1fr))
   }
 }
 @media(max-width:760px){
@@ -1991,9 +2001,10 @@ svg{display:block}
     padding:5px 7px 6px;
   }
   .hln-live-metrics{
-    grid-template-columns:.72fr 1fr 1fr;
+    grid-template-columns:.62fr 1fr 1fr 1fr;
     gap:4px;
   }
+  .hln-live-energy-card{display:none}
   .hln-live-metrics article{
     grid-template-columns:1fr;
     justify-items:start;
