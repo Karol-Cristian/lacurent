@@ -42,8 +42,12 @@ jobs:
           node --check commercial/static/teo-v4-worker.js
           node --check commercial/static/reference-comparison.js
           node --check commercial/static/home-lab-3d.js
+          node --check scripts/build-location-payload.mjs
+          node --check scripts/prepare-commercial-cloudflare-worker.mjs
           node --check scripts/prepare-reference-cloudflare-worker.mjs
+          node scripts/prepare-commercial-cloudflare-worker.mjs
           node scripts/prepare-reference-cloudflare-worker.mjs
+          node --test commercial/tests/location-data-worker-asset.test.mjs
           node --test commercial/tests/language-toggle.test.cjs
           node --test commercial/tests/scenario-cockpit.test.cjs
           node --test commercial/tests/request-timeout.test.cjs
