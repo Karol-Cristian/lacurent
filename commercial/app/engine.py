@@ -1361,6 +1361,77 @@ def _boundary_assumptions(building: BuildingInput) -> list[str]:
     return assumptions
 
 
+def _primary_specific_energy_scalar(building: BuildingInput) -> float:
+    """Run the RBPE energy chain without constructing a report result graph.
+
+    Reference comparison needs only specific primary energy. Reusing the same
+    physical functions here avoids allocating a second CalculationResult with
+    monthly/report/envelope objects in a constrained Python Worker isolate.
+    """
+
+    transmission, _envelope_rows, _bridge_rows = (
+        transmission_heat_transfer_components(building)
+    )
+    h_ve = ventilation_heat_transfer(building)
+    climate = resolve_climate(building.locality)
+    monthly = monthly_energy_balance(building, transmission, h_ve)
+    annual_heating = sum(
+        row["useful_heating_kwh"]
+        for row in monthly
+    )
+    annual_cooling = sum(
+        row["useful_cooling_kwh"]
+        for row in monthly
+    )
+
+    renewable_rows, pv_pr, thermal_efficiency = _renewable_resource_rows(
+        building,
+        climate,
+    )
+    heating, heating_system = heating_system_performance(
+        building,
+        annual_heating,
+    )
+    cooling = cooling_final_energy(building, annual_cooling)
+    dhw_backup_useful = sum(
+        float(row["dhw_backup_useful_kwh"])
+        for row in renewable_rows
+    )
+    dhw = dhw_energy(building, dhw_backup_useful)
+    renewables = renewable_energy_result(
+        building,
+        climate,
+        monthly,
+        heating,
+        cooling,
+        dhw,
+        renewable_rows,
+        pv_pr,
+        thermal_efficiency,
+        heating_auxiliary_kwh_year=(
+            heating_system.auxiliary_electricity_kwh
+        ),
+    )
+    gross_by_carrier = final_energy_by_carrier(
+        heating,
+        cooling,
+        dhw,
+        additional_electricity_kwh=(
+            heating_system.auxiliary_electricity_kwh
+        ),
+    )
+    by_carrier = net_final_energy_by_carrier(
+        gross_by_carrier,
+        renewables,
+    )
+    return float(
+        primary_energy(
+            by_carrier,
+            building.heated_floor_area_m2,
+        ).specific_kwh_m2
+    )
+
+
 def calculate(building: BuildingInput, *, include_reference: bool = True) -> CalculationResult:
     reference_specific: float | None = None
     if include_reference:
@@ -1372,14 +1443,9 @@ def calculate(building: BuildingInput, *, include_reference: bool = True) -> Cal
         # order changes.
         from .reference import build_reference_input
 
-        reference_result = calculate(
-            build_reference_input(building),
-            include_reference=False,
+        reference_specific = _primary_specific_energy_scalar(
+            build_reference_input(building)
         )
-        reference_specific = float(
-            reference_result.primary_energy.specific_kwh_m2
-        )
-        del reference_result
         gc.collect()
 
     transmission, envelope_contributions, bridge_contributions = transmission_heat_transfer_components(building)
