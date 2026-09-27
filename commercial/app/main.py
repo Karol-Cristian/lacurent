@@ -77,11 +77,13 @@ from .heating_catalog_store import (
     cached_heating_catalog_from_d1,
     cached_heating_catalog_summary_from_d1,
     read_heating_commercial_branch_catalog_from_d1,
+    read_heating_commercial_candidate_catalog_from_d1,
     read_heating_public_catalog_from_d1,
     seed_heating_branch_catalog_payload,
     seed_heating_catalog_payload,
     seed_heating_catalog_summary_payload,
     seed_heating_commercial_branch_catalog_payload,
+    seed_heating_commercial_candidate_catalog_payload,
     seed_heating_public_catalog_payload,
 )
 from .pricing import energy_prices, estimate_energy_cost, home_lab_price_overview
