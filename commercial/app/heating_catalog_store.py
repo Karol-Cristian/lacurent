@@ -1312,6 +1312,96 @@ async def read_heating_commercial_branch_catalog_from_d1(
         return None
 
 
+def seed_heating_public_catalog_payload() -> dict[str, Any]:
+    """Public marketplace payload: real products + published performance only."""
+
+    seed = heating_planning_catalog()
+    return {
+        **seed,
+        "parametric_heating_nodes": [],
+        "catalog_stats": {
+            "products": len(seed.get("options") or []),
+            "parametric_nodes": 0,
+            "performance_points": len(
+                seed.get("heat_pump_performance_points") or []
+            ),
+            "seasonal_points": len(
+                seed.get("heat_pump_seasonal_performance") or []
+            ),
+        },
+        "catalog_mode": "seed_public_marketplace",
+        "source": "seed_fallback",
+    }
+
+
+async def read_heating_public_catalog_from_d1(
+    db: Any,
+) -> dict[str, Any] | None:
+    """Read public marketplace data without the internal planning grid.
+
+    The 1000-node kW/CAPEX grid is an optimizer implementation detail and must
+    never be materialized just to render the public catalog/API.
+    """
+
+    try:
+        products_result = await db.prepare(
+            """
+            SELECT id, external_id, technology_id, technology_label, label,
+                   system_type, generator_type, carrier, cost_profile,
+                   rated_power_kw, efficiency, scop, equipment_price_lei,
+                   installation_allowance_lei, source_kind, source_url, confidence,
+                   requires_hydronic, requires_existing_gas,
+                   requires_existing_high_power_electric,
+                   requires_existing_biomass_infrastructure, capacity_basis, note,
+                   catalog_version, observed_on
+            FROM heating_products
+            WHERE active = 1
+            ORDER BY technology_id, rated_power_kw, equipment_price_lei, id
+            """
+        ).run()
+        products = _d1_rows(products_result)
+        if not products:
+            return None
+
+        points_result = await db.prepare(
+            """
+            SELECT pp.product_id, pp.outdoor_temperature_c, pp.flow_temperature_c,
+                   pp.return_temperature_c, pp.delta_t_k, pp.heating_capacity_kw,
+                   pp.cop, pp.test_standard, pp.source_kind, pp.source_url,
+                   pp.note, pp.catalog_version
+            FROM heat_pump_performance_points AS pp
+            INNER JOIN heating_products AS p ON p.id = pp.product_id
+            WHERE p.active = 1
+            ORDER BY pp.product_id, pp.outdoor_temperature_c,
+                     pp.flow_temperature_c
+            """
+        ).run()
+        seasonal_result = await db.prepare(
+            """
+            SELECT sp.product_id, sp.climate, sp.application_temperature_c,
+                   sp.scop, sp.design_load_kw, sp.source_kind, sp.source_url,
+                   sp.test_standard, sp.catalog_version
+            FROM heat_pump_seasonal_performance AS sp
+            INNER JOIN heating_products AS p ON p.id = sp.product_id
+            WHERE p.active = 1
+            ORDER BY sp.product_id, sp.climate, sp.application_temperature_c
+            """
+        ).run()
+
+        payload = _catalog_payload_from_rows(
+            products,
+            _d1_rows(points_result),
+            _d1_rows(seasonal_result),
+            [],
+            source="d1",
+        )
+        payload["catalog_mode"] = "persistent_d1_public_marketplace"
+        payload["catalog_stats"]["loaded_products"] = len(products)
+        return payload
+    except Exception:
+        return None
+
+
 async def _read_heating_catalog_d1(db: Any) -> dict[str, Any]:
     products_result = await db.prepare(
         """
