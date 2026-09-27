@@ -8,7 +8,7 @@
   <meta name="description" content="Modelează casa, compară îmbunătățiri și vezi instant impactul asupra energiei, costului și necesarului termic.">
   {% if not embed_mode %}<link rel="canonical" href="https://lacurent.com/home-lab-next">{% endif %}
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="/static/home-lab-next.css?v=next362-energy-class">
+  <link rel="stylesheet" href="/static/home-lab-next.css?v=next363-useful-demand">
   <link rel="stylesheet" href="/static/home-lab-3d.css?v=3d31">
   <link rel="stylesheet" href="/static/privacy-consent.css?v=privacy1">
 </head>
@@ -94,9 +94,25 @@
           <article class="hln-live-energy-card">
             <span class="hln-live-icon"><svg><use href="#hln-i-bolt"></use></svg></span>
             <span class="hln-live-value">
-              <small>Energie anuală</small>
+              <small>Energie finală anuală</small>
               <strong id="hlnPersistentEnergy">—</strong>
               <em class="hln-live-delta" id="hlnPersistentEnergyDelta">Baseline Casa mea</em>
+            </span>
+          </article>
+          <article class="hln-live-heating-card">
+            <span class="hln-live-icon"><svg><use href="#hln-i-flame"></use></svg></span>
+            <span class="hln-live-value">
+              <small>Necesar încălzire</small>
+              <strong id="hlnPersistentHeatingDemand">—</strong>
+              <em id="hlnPersistentHeatingSpecific">energie utilă</em>
+            </span>
+          </article>
+          <article class="hln-live-cooling-card">
+            <span class="hln-live-icon"><svg><use href="#hln-i-air"></use></svg></span>
+            <span class="hln-live-value">
+              <small>Necesar răcire</small>
+              <strong id="hlnPersistentCoolingDemand">—</strong>
+              <em id="hlnPersistentCoolingSpecific">energie utilă</em>
             </span>
           </article>
         </div>
@@ -1330,7 +1346,7 @@
     }
   </script>
   <script type="module" src="/static/home-lab-3d.js?v=3d55"></script>
-  <script src="/static/home-lab-next.js?v=next72-heating-power"></script>
+  <script src="/static/home-lab-next.js?v=next73-useful-demand"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>
