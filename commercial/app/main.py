@@ -177,25 +177,30 @@ templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 @app.middleware("http")
 async def collect_python_worker_garbage(request: Request, call_next: Any) -> Any:
-    """Keep long-lived Cloudflare Python isolates from retaining cyclic garbage.
+    """Keep long-lived Cloudflare Python isolates below their memory ceiling.
 
-    Cloudflare may route many sequential requests through the same Pyodide/CPython
-    isolate. The optimizer now avoids repeated server-side search, but ordinary
-    calculation/report requests can still arrive in long bursts. Static assets do
-    not allocate the application object graphs this protects, so skip them.
+    A post-request collection alone is too late for sequential heavy requests:
+    while call_next is unwinding, the just-built response may still keep the
+    endpoint graph reachable. Once that response is released there is no
+    guaranteed collection before the next request starts allocating. Collect
+    both before and after dynamic requests so request N+1 starts from reclaimed
+    Python heap instead of inheriting request N's unreachable graph.
     """
 
     path = request.url.path
+    dynamic_request = not path.startswith(
+        (
+            "/static/",
+            "/home-lab-assets/",
+            "/api/optimization/home-lab/v4/flow/",
+        )
+    )
+    if dynamic_request:
+        gc.collect()
     try:
         return await call_next(request)
     finally:
-        if not path.startswith(
-            (
-                "/static/",
-                "/home-lab-assets/",
-                "/api/optimization/home-lab/v4/flow/",
-            )
-        ):
+        if dynamic_request:
             gc.collect()
 
 
