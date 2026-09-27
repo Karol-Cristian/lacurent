@@ -77,10 +77,12 @@ from .heating_catalog_store import (
     cached_heating_catalog_from_d1,
     cached_heating_catalog_summary_from_d1,
     read_heating_commercial_branch_catalog_from_d1,
+    read_heating_public_catalog_from_d1,
     seed_heating_branch_catalog_payload,
     seed_heating_catalog_payload,
     seed_heating_catalog_summary_payload,
     seed_heating_commercial_branch_catalog_payload,
+    seed_heating_public_catalog_payload,
 )
 from .pricing import energy_prices, estimate_energy_cost, home_lab_price_overview
 from .teo_v4 import build_teo_v4_kernel
@@ -1832,6 +1834,18 @@ async def _optimizer_heating_catalog(request: Request) -> dict[str, Any]:
     return seed_heating_catalog_payload()
 
 
+async def _public_heating_catalog(request: Request) -> dict[str, Any]:
+    """Return real products/performance without internal optimizer planning rows."""
+
+    env = request.scope.get("env")
+    db = getattr(env, "DB", None) if env is not None else None
+    if db is not None:
+        payload = await read_heating_public_catalog_from_d1(db)
+        if payload is not None:
+            return payload
+    return seed_heating_public_catalog_payload()
+
+
 async def _optimizer_heating_catalog_summary(request: Request) -> dict[str, Any]:
     """Return product/branch metadata without loading the 1000-node dense grid."""
     env = request.scope.get("env")
@@ -1922,7 +1936,7 @@ async def _optimizer_heating_commercial_branch_catalog(
 
 @app.get("/api/heating-products")
 async def heating_products_api(request: Request) -> JSONResponse:
-    payload = await _optimizer_heating_catalog(request)
+    payload = await _public_heating_catalog(request)
     return JSONResponse(
         payload,
         headers={
@@ -2166,7 +2180,7 @@ async def index(request: Request) -> HTMLResponse:
 
 @app.get("/produse", response_class=HTMLResponse)
 async def product_catalog_page(request: Request) -> HTMLResponse:
-    catalog = await _optimizer_heating_catalog(request)
+    catalog = await _public_heating_catalog(request)
     return templates.TemplateResponse(
         request,
         "product_catalog.html",

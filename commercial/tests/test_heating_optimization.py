@@ -12,6 +12,7 @@ from commercial.app.heating_catalog_store import (
     seed_heating_branch_catalog_payload,
     seed_heating_catalog_payload,
     seed_heating_catalog_summary_payload,
+    seed_heating_public_catalog_payload,
 )
 from commercial.app.heating_optimization import (
     _estimated_heat_pump_scop,
@@ -129,6 +130,18 @@ def test_compact_branch_catalog_is_independent_of_marketplace_product_count() ->
     )
     assert compact["heat_pump_performance_points"] == []
     assert compact["heat_pump_seasonal_performance"] == []
+
+
+def test_public_heating_catalog_excludes_internal_parametric_grid() -> None:
+    public = seed_heating_public_catalog_payload()
+    full = seed_heating_catalog_payload()
+
+    assert len(public["options"]) == len(full["options"])
+    assert len(public["heat_pump_performance_points"]) == len(
+        full["heat_pump_performance_points"]
+    )
+    assert public["parametric_heating_nodes"] == []
+    assert public["catalog_stats"]["parametric_nodes"] == 0
 
 
 def test_commercial_branch_catalog_contains_only_selected_technology() -> None:
