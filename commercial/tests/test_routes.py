@@ -1929,7 +1929,21 @@ def test_worker_memory_guard_and_v3_verification_use_bounded_state() -> None:
     assert '"/static/"' in source
     assert '"/home-lab-assets/"' in source
     assert '"/api/optimization/home-lab/v4/flow/"' in source
-    assert "gc.collect()" in source
+
+    middleware_section = source.split(
+        "async def collect_python_worker_garbage(",
+        1,
+    )[1].split(
+        "def _browser_navigation",
+        1,
+    )[0]
+    pre_collect = middleware_section.index(
+        "if dynamic_request:\n        gc.collect()"
+    )
+    call_next = middleware_section.index("return await call_next(request)")
+    finally_block = middleware_section.index("finally:")
+    assert pre_collect < call_next < finally_block
+    assert middleware_section.count("gc.collect()") >= 2
 
     verify_section = source.split(
         "async def home_lab_optimization_v3_verify_api",
