@@ -22,6 +22,13 @@
   const baselineClass = $("#edBaselineClass");
   const baselineCost = $("#edBaselineCost");
   const baselineStatus = $("#edBaselineStatus");
+  const priceDialog = $("#priceDialog");
+  const priceReferenceOpen = $("#edPriceReferencesOpen");
+  const priceReferenceGrid = $("#edPriceReferenceGrid");
+  const priceReferenceBody = $("#edPriceReferenceBody");
+  const priceRetrievedOn = $("#edPriceRetrievedOn");
+  const priceReferenceFallbackHtml = priceReferenceGrid?.innerHTML || "";
+  const priceReferenceFallbackIntro = priceReferenceBody?.querySelector(".ed-price-reference-intro")?.textContent || "";
   const stageEls = Object.fromEntries([...document.querySelectorAll("[data-run-stage]")].map(el => [el.dataset.runStage, el]));
 
   const WALL_STRUCTURE_PRESETS = Object.freeze({
@@ -1747,6 +1754,77 @@
     return "";
   }
 
+  function priceReferenceStatusLabel(status) {
+    if (status === "stale") return "Referință expirată";
+    if (status === "not_yet_valid") return "Referință viitoare";
+    return "Referință";
+  }
+
+  function renderPriceReferences(result = baselineResult) {
+    if (!priceReferenceGrid || !priceReferenceBody) return;
+    const rows = Array.isArray(result?.price_reference_rows)
+      ? result.price_reference_rows.filter(row => Number(row?.final_kwh || 0) > 0.0001)
+      : [];
+
+    const intro = priceReferenceBody.querySelector(".ed-price-reference-intro");
+    if (!rows.length) {
+      priceReferenceGrid.innerHTML = priceReferenceFallbackHtml;
+      if (intro) intro.textContent = priceReferenceFallbackIntro;
+      return;
+    }
+
+    const retrievedOn = String(result?.price_retrieved_on || "").trim();
+    if (priceRetrievedOn && retrievedOn) {
+      priceRetrievedOn.textContent = retrievedOn;
+      priceRetrievedOn.setAttribute("datetime", retrievedOn);
+    }
+    if (intro) {
+      intro.textContent =
+        "Mai jos sunt exact referințele folosite în costul anual afișat pentru configurația curentă.";
+    }
+
+    priceReferenceGrid.innerHTML = rows.map(row => {
+      const status = String(row.price_status || "current");
+      const statusClass = status === "current" ? "" : " is-stale";
+      const sourceName = escapeHtml(row.source_name || "Sursă neprecizată");
+      const rawUrl = String(row.source_url || "");
+      const source = /^https?:\/\//i.test(rawUrl)
+        ? '<a href="' + escapeHtml(rawUrl) + '" target="_blank" rel="noopener noreferrer">' + sourceName + ' ↗</a>'
+        : sourceName;
+      const validFrom = row.valid_from ? escapeHtml(row.valid_from) : "—";
+      const validUntil = row.valid_until ? escapeHtml(row.valid_until) : "prezent";
+      const basis = row.basis
+        ? '<div><dt>Bază</dt><dd>' + escapeHtml(row.basis) + '</dd></div>'
+        : "";
+      const note = row.note
+        ? '<p class="ed-price-reference-note">' + escapeHtml(row.note) + '</p>'
+        : "";
+      const annual = row.annual_cost_lei == null
+        ? ""
+        : '<p class="ed-price-reference-contribution">Contribuție în estimare: <b>' + escapeHtml(money(row.annual_cost_lei)) + '/an</b></p>';
+      const validity = (row.valid_from || row.valid_until)
+        ? '<div><dt>Valabilitate</dt><dd>' + validFrom + ' → ' + validUntil + '</dd></div>'
+        : "";
+
+      return (
+        '<article class="ed-price-reference-card">' +
+          '<div class="ed-price-reference-card-head">' +
+            '<strong>' + escapeHtml(row.label || row.carrier || "Energie") + '</strong>' +
+            '<span class="ed-price-reference-status' + statusClass + '">' + escapeHtml(priceReferenceStatusLabel(status)) + '</span>' +
+          '</div>' +
+          '<p class="ed-price-reference-value">' + escapeHtml(fmt(row.unit_price_lei_per_kwh, 3)) + ' <small>lei/kWh</small></p>' +
+          annual +
+          '<dl>' +
+            '<div><dt>Sursă</dt><dd>' + source + '</dd></div>' +
+            basis +
+            validity +
+          '</dl>' +
+          note +
+        '</article>'
+      );
+    }).join("");
+  }
+
   function paintBaselineSummary(result, statusText = "Estimare pentru configurația curentă.") {
     if (!result) return;
     const energyClass = String(result.energy_class || "—").trim().toUpperCase() || "—";
@@ -1759,6 +1837,7 @@
     baselineCost.textContent = result.annual_cost_lei == null ? "—" : money(result.annual_cost_lei) + "/an";
     baselineStatus.textContent = statusText;
     baselineBar.classList.remove("is-updating");
+    if (priceDialog?.open) renderPriceReferences(result);
   }
 
   function baselineSummaryReady() {
@@ -3026,6 +3105,16 @@
   $("#errorLog").addEventListener("click", openLog);
   $("#closeLog").addEventListener("click", () => logDialog.close());
   logDialog.addEventListener("click", event => { if (event.target === logDialog) logDialog.close(); });
+
+  priceReferenceOpen?.addEventListener("click", () => {
+    renderPriceReferences();
+    if (typeof priceDialog?.showModal === "function") priceDialog.showModal();
+    else priceDialog?.setAttribute("open", "");
+  });
+  $("#closePriceReferences")?.addEventListener("click", () => priceDialog?.close());
+  priceDialog?.addEventListener("click", event => {
+    if (event.target === priceDialog) priceDialog.close();
+  });
 
   form.addEventListener("input", event => {
     if (event.target?.type === "hidden") return;

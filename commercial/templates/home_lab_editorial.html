@@ -7,7 +7,7 @@
   <title>Home Lab Editorial — experiment | LaCurent</title>
   <meta name="robots" content="noindex,nofollow">
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="/static/home-lab-editorial.css?v=15">
+  <link rel="stylesheet" href="/static/home-lab-editorial.css?v=16">
   <link rel="stylesheet" href="/static/privacy-consent.css?v=privacy1">
 </head>
 <body>
@@ -38,10 +38,11 @@
         <strong id="edBaselineClass">—</strong>
       </div>
       <i aria-hidden="true"></i>
-      <div class="ed-baseline-item">
+      <button class="ed-baseline-item ed-price-reference-trigger" type="button" id="edPriceReferencesOpen" aria-haspopup="dialog" aria-controls="priceDialog" title="Vezi sursele și data prețurilor folosite">
         <span>Cost anual estimat</span>
         <strong id="edBaselineCost">—</strong>
-      </div>
+        <span class="ed-price-info" aria-hidden="true">i</span>
+      </button>
       <small id="edBaselineStatus">Se actualizează după primele date.</small>
     </div>
   </aside>
@@ -556,11 +557,46 @@
       <div><b>Jurnal calcul</b><button type="button" id="closeLog" aria-label="Închide">×</button></div>
       <pre id="logDialogBody"></pre>
     </dialog>
+
+    <dialog class="ed-price-dialog" id="priceDialog" aria-labelledby="priceDialogTitle">
+      <div class="ed-price-dialog-shell">
+        <header class="ed-price-dialog-header">
+          <div>
+            <p class="ed-eyebrow">Cost anual estimat</p>
+            <h2 id="priceDialogTitle">Referințele de preț</h2>
+            <p>Prețuri de referință, nu cotații live. Setul de date a fost salvat la <time id="edPriceRetrievedOn" datetime="{{ energy_overview.retrieved_on }}">{{ energy_overview.retrieved_on }}</time>.</p>
+          </div>
+          <button type="button" id="closePriceReferences" aria-label="Închide referințele de preț">×</button>
+        </header>
+        <div class="ed-price-reference-body" id="edPriceReferenceBody">
+          <p class="ed-price-reference-intro">După ce casa este calculată, aici apar exact purtătorii de energie și referințele folosite în suma afișată. Până atunci sunt afișate referințele disponibile în baza de prețuri.</p>
+          <div class="ed-price-reference-grid" id="edPriceReferenceGrid">
+            {% for item in energy_overview.rows %}
+            <article class="ed-price-reference-card">
+              <div class="ed-price-reference-card-head">
+                <strong>{{ item.label }}</strong>
+                <span class="ed-price-reference-status{% if item.status != 'current' %} is-stale{% endif %}">{{ item.status_label }}</span>
+              </div>
+              <p class="ed-price-reference-value">{{ item.value }} <small>{{ item.unit }}</small></p>
+              <dl>
+                <div><dt>Sursă</dt><dd><a href="{{ item.source_url }}" target="_blank" rel="noopener noreferrer">{{ item.source_name }} ↗</a></dd></div>
+                {% if item.valid_from or item.valid_until %}
+                <div><dt>Valabilitate</dt><dd>{% if item.valid_from %}{{ item.valid_from }}{% else %}—{% endif %} → {% if item.valid_until %}{{ item.valid_until }}{% else %}prezent{% endif %}</dd></div>
+                {% endif %}
+              </dl>
+              <p class="ed-price-reference-note">{{ item.note }}</p>
+            </article>
+            {% endfor %}
+          </div>
+          <p class="ed-price-reference-footnote">Costul real depinde de contract, furnizor, operator, taxe și condițiile locale. Pentru electricitate, calculatorul folosește operatorul asociat județului localității selectate.</p>
+        </div>
+      </div>
+    </dialog>
   </main>
 
   {% include "_legal_footer.html" %}
   {% include "_privacy_controls.html" %}
   <script src="/static/privacy-consent.js?v=privacy1"></script>
-  <script src="/static/home-lab-editorial.js?v=34"></script>
+  <script src="/static/home-lab-editorial.js?v=35"></script>
 </body>
 </html>
