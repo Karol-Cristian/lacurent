@@ -25,6 +25,12 @@ def _price_payload(reference: dict[str, Any] | None) -> dict[str, Any] | None:
         "delivery_cost_lei_per_batch",
         "delivery_batch_size_packages",
         "energy_kwh_per_package",
+        "basis",
+        "source_name",
+        "source_url",
+        "valid_from",
+        "valid_until",
+        "note",
     }
     return {key: reference.get(key) for key in keys if reference.get(key) is not None}
 
