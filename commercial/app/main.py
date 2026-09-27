@@ -2511,6 +2511,8 @@ def _home_lab_optimizer_success_payload(
     raw_selected: CandidateEvaluationV1 | None = None,
     technical_heating_alternatives: list[dict[str, Any]] | None = None,
     heating_catalog: dict[str, Any] | None = None,
+    precomputed_scenario: dict[str, Any] | None = None,
+    precomputed_heat_pump_profile: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     selected = selection.selected
     if selected is None or selected.resulting_configuration is None:
@@ -2518,7 +2520,15 @@ def _home_lab_optimizer_success_payload(
 
     raw_selected = raw_selected or selected
     _assert_optimizer_economics_complete(selected)
-    final_result = calculate(selected.resulting_configuration, include_reference=False)
+    final_result = None
+    if precomputed_scenario is None:
+        final_result = calculate(
+            selected.resulting_configuration,
+            include_reference=False,
+        )
+        scenario_payload = embed_lab_result_payload(final_result)
+    else:
+        scenario_payload = dict(precomputed_scenario)
     raw_measures = model_to_dict(raw_selected.parameters)
     commercial_ready = (
         selected.commercialization_status == "commercialized"
@@ -2626,8 +2636,17 @@ def _home_lab_optimizer_success_payload(
         ),
         None,
     )
-    heat_pump_profile: dict[str, Any] | None = None
-    if selected_heating is not None and selected_heating.get("optionId"):
+    heat_pump_profile: dict[str, Any] | None = (
+        None
+        if precomputed_heat_pump_profile is None
+        else dict(precomputed_heat_pump_profile)
+    )
+    if (
+        heat_pump_profile is None
+        and final_result is not None
+        and selected_heating is not None
+        and selected_heating.get("optionId")
+    ):
         matched_product = next(
             (
                 product
@@ -2788,7 +2807,7 @@ def _home_lab_optimizer_success_payload(
         "executionMode": "sharded_by_heating_branch",
     }
     return {
-        "scenario": embed_lab_result_payload(final_result),
+        "scenario": scenario_payload,
         "optimization": optimization_payload,
     }
 
