@@ -54,56 +54,6 @@ jobs:
           python -m compileall -q commercial
           python -m pytest commercial/tests -q
 
-      - name: Diagnose currently deployed location payload
-        continue-on-error: true
-        run: |
-          python - <<'PY'
-          import hashlib
-          from pathlib import Path
-          import urllib.request
-
-          expected = Path(".wrangler/commercial-v2-worker/public/api/location-data").read_bytes()
-          expected_sha = hashlib.sha256(expected).hexdigest()
-          print("expected", len(expected), expected_sha)
-          for attempt in range(1, 6):
-              request = urllib.request.Request(
-                  "https://lacurent.com/api/location-data",
-                  headers={
-                      "User-Agent": "LaCurent-location-root-cause/1.0",
-                      "Cache-Control": "no-cache",
-                  },
-              )
-              with urllib.request.urlopen(request, timeout=45) as response:
-                  actual = response.read()
-                  delivery = response.headers.get("X-LaCurent-Location-Delivery")
-                  cf_cache = response.headers.get("CF-Cache-Status")
-              actual_sha = hashlib.sha256(actual).hexdigest()
-              shared = min(len(actual), len(expected))
-              mismatch = next(
-                  (i for i in range(shared) if actual[i] != expected[i]),
-                  shared,
-              )
-              print(
-                  "attempt",
-                  attempt,
-                  "actual_bytes",
-                  len(actual),
-                  "actual_sha256",
-                  actual_sha,
-                  "delivery",
-                  delivery,
-                  "cf_cache",
-                  cf_cache,
-                  "first_mismatch_byte",
-                  mismatch if actual != expected else None,
-              )
-              if actual != expected:
-                  lo = max(0, mismatch - 80)
-                  hi = mismatch + 160
-                  print("actual_context", repr(actual[lo:hi]))
-                  print("expected_context", repr(expected[lo:hi]))
-          PY
-
       - name: Install Chromium smoke dependency
         run: |
           npm install --no-save playwright@1.55.0
