@@ -1703,10 +1703,16 @@ async def render_calculation_from_form(
 
 @app.get("/api/location-data")
 async def location_data_api() -> StreamingResponse:
+    # Pure-ASGI fallback for local/Uvicorn execution. The Cloudflare bundle
+    # publishes the same bytes as a Static Asset on this exact path, which is
+    # matched before the Python Worker is invoked.
     return StreamingResponse(
         _location_payload_stream(),
         media_type="application/json",
-        headers={"Cache-Control": "public, max-age=3600"},
+        headers={
+            "Cache-Control": "public, max-age=3600",
+            "X-LaCurent-Location-Delivery": "fastapi-stream-fallback",
+        },
     )
 
 

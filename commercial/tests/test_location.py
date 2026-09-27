@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -129,12 +131,15 @@ def test_location_data_endpoint_streams_registry_without_parsing_it(
     response = client.get("/api/location-data")
 
     assert response.status_code == 200
-    payload = response.json()
+    # Parse the complete HTTP body, not the generator directly. This protects
+    # against truncation/framing regressions in response delivery.
+    payload = json.loads(response.content)
     assert payload["stats"]["localities"] == 13622
     assert len(payload["localities"]) == 13622
     assert payload["climateZones"]["type"] == "FeatureCollection"
     assert payload["romaniaBoundary"]["type"] == "FeatureCollection"
     assert response.headers["cache-control"] == "public, max-age=3600"
+    assert response.headers["x-lacurent-location-delivery"] == "fastapi-stream-fallback"
 
 
 def test_calculate_form_accepts_stable_locality_id() -> None:
