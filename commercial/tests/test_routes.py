@@ -304,6 +304,7 @@ def test_teo_v4_plan_builds_thousands_of_browser_points_without_server_candidate
     assert "function monthlyBalance(" in worker.text
     assert "function shortlist(" in worker.text
     assert "function refineBranch(" in worker.text
+    assert "function robustRegretMetricsRows(" in worker.text
     assert "LOCAL_REFINEMENT_ROUNDS" in worker.text
 
 
