@@ -940,6 +940,68 @@ def test_cooling_seer_changes_final_energy_not_useful_demand() -> None:
     assert_close(seer_3.cooling.final_kwh / 2, seer_6.cooling.final_kwh, tolerance=1e-3)
 
 
+def test_cooling_demand_exists_without_installed_cooling_equipment() -> None:
+    active = calculate(
+        simple_building(
+            solar_gains_kwh_m2_month=4.0,
+            cooling={"enabled": True, "seer": 3.5, "setpoint_c": 24},
+        ),
+        include_reference=False,
+    )
+    no_equipment = calculate(
+        simple_building(
+            solar_gains_kwh_m2_month=4.0,
+            cooling={"enabled": False, "seer": None, "setpoint_c": 24},
+        ),
+        include_reference=False,
+    )
+
+    assert no_equipment.annual_cooling_demand_kwh > 0
+    assert_close(
+        no_equipment.annual_cooling_demand_kwh,
+        active.annual_cooling_demand_kwh,
+        tolerance=1e-3,
+    )
+    assert_close(no_equipment.cooling.final_kwh, 0)
+    assert active.cooling.final_kwh > 0
+    assert_close(
+        sum(row.useful_cooling_kwh for row in no_equipment.monthly),
+        no_equipment.annual_cooling_demand_kwh,
+        tolerance=1e-3,
+    )
+
+
+def test_heating_demand_is_independent_of_heating_energy_carrier() -> None:
+    gas = calculate(
+        simple_building(
+            heating={
+                "system_type": "condensing_gas_boiler",
+                "efficiency": 0.94,
+                "carrier": "natural_gas",
+            }
+        ),
+        include_reference=False,
+    )
+    electric = calculate(
+        simple_building(
+            heating={
+                "system_type": "electric_resistance",
+                "efficiency": 1.0,
+                "carrier": "electricity",
+            }
+        ),
+        include_reference=False,
+    )
+
+    assert_close(
+        gas.annual_heating_demand_kwh,
+        electric.annual_heating_demand_kwh,
+        tolerance=1e-3,
+    )
+    assert gas.heating.final_kwh != electric.heating.final_kwh
+    assert gas.primary_energy.total_kwh != electric.primary_energy.total_kwh
+
+
 def test_methodology_no_longer_uses_synthetic_daily_weather_profile() -> None:
     cfg = methodology()
     assert cfg["version"] == "lacurent-commercial-v2.10"
