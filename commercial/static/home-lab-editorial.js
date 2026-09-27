@@ -42,8 +42,8 @@
   const WALL_SURFACE_RESISTANCE_M2K_W = 0.17;
 
   // Temporary Cloudflare low-resource profile. Deep TEO search remains in the
-  // browser; only canonical Python passes are capped. The count includes:
-  // 1 BASELINE + 1 PLAN kernel baseline + VERIFY + PRODUCT.
+  // browser; only canonical Python passes are capped. TEO itself uses:
+  // 1 BASELINE + 1 PLAN kernel baseline + VERIFY. PRODUCT is a later workflow.
   // Raise maxCanonicalPasses later when the execution environment has more headroom.
   const TEO_SERVER_PROFILE = Object.freeze({
     name:"cloudflare-low-resource",
