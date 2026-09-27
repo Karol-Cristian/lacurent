@@ -62,6 +62,58 @@ process.stdout.write(JSON.stringify(terminal));
     return message
 
 
+
+
+def test_teo_v4_browser_worker_refines_locally_when_bounds_are_supplied() -> None:
+    baseline = demo_building()
+    baseline_result = calculate(baseline, include_reference=False)
+    baseline_cost = estimate_energy_cost(baseline_result)
+    assert baseline_cost["complete"]
+
+    catalog = roi_cost_basis_seed()
+    kernel = build_teo_v4_kernel(
+        baseline,
+        baseline_result,
+        cost_catalog=catalog,
+        branch_catalogs={"keep-current-heating": {}},
+    )
+    bounds = OptimizationSearchBoundsV1()
+    bounds_payload = (
+        bounds.model_dump()
+        if hasattr(bounds, "model_dump")
+        else bounds.dict()
+    )
+    seed = ParametricMeasuresV1(
+        wall_added_r_m2k_w=1.0,
+        roof_added_r_m2k_w=1.0,
+        pv_added_kwp=1.0,
+    )
+    seed_payload = (
+        seed.model_dump()
+        if hasattr(seed, "model_dump")
+        else seed.dict()
+    )
+
+    worker_result = _run_worker(
+        {
+            "type": "run",
+            "kernel": kernel,
+            "searchPoints": [seed_payload],
+            "searchBounds": bounds_payload,
+            "branchIds": ["keep-current-heating"],
+            "mode": "auto_economic",
+            "goals": {},
+            "baselineAnnualBillLei": float(baseline_cost["priced_total_lei"]),
+        }
+    )
+
+    assert worker_result["searchMethod"] == "teo_v4_halton_plus_local_refinement"
+    assert worker_result["globalEvaluations"] == 1
+    assert worker_result["refinementEvaluations"] > 0
+    assert worker_result["sourceCandidateCount"] > 1
+    assert worker_result["candidateRows"]
+
+
 def _signature(measures: dict) -> tuple[float, ...]:
     return (
         float(measures.get("wall_added_r_m2k_w") or 0),
