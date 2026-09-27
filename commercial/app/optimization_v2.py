@@ -30,6 +30,7 @@ from .heating_optimization import (
     HeatingTechnologyV2,
     _rebase_candidate,
     apply_heating_technology,
+    apply_parametric_heating_technology,
     heating_branch_plan,
     heating_technologies,
     technology_is_eligible,
@@ -289,7 +290,7 @@ def _branch_baseline(
     technology = technologies.get(branch_id)
     if technology is None:
         raise ValueError(f"Unknown economic heating branch {branch_id!r}.")
-    return apply_heating_technology(request.baseline, technology), technology
+    return apply_parametric_heating_technology(request.baseline, technology), technology
 
 
 def _fast_branch_candidate(

@@ -50,6 +50,7 @@
     unknown:1.00,cold_attic:3.25,heated_attic:1.00,flat_roof:2.25,
   });
   const WALL_SURFACE_RESISTANCE_M2K_W = 0.17;
+  const DEFAULT_INFILTRATION_ACH = 0.15;
 
   // Temporary Cloudflare low-resource profile. Deep TEO search remains in the
   // browser; only canonical Python passes are capped. TEO itself uses:
@@ -437,6 +438,7 @@
   }
 
   function showPage(name) {
+    const previous = current;
     current = name;
     const wizardIndex = wizardOrder.indexOf(name);
     if (wizardIndex >= 0) furthestWizardIndex = Math.max(furthestWizardIndex, wizardIndex);
@@ -444,6 +446,14 @@
     stepNumber.textContent = stepNumbers[name] || "—";
     stepName.textContent = stepNames[name] || name;
     renderProgressHistory();
+    if (name === "report" && optimizationResult) {
+      paintBaselineSummary(
+        optimizationSummaryForPersistentBar(),
+        "Rezultat TEO verificat · după intervenții."
+      );
+    } else if (previous === "report" && baselineResult) {
+      paintBaselineSummary(baselineResult);
+    }
     window.scrollTo({top:0, behavior:"instant"});
   }
 
@@ -876,7 +886,7 @@
       ach = 0.65; recovery = 0;
     }
     setValue("techAch", optionalAdvancedNumber("advAch") ?? ach);
-    setValue("techInfiltrationAch", optionalAdvancedNumber("advInfiltrationAch") ?? 0);
+    setValue("techInfiltrationAch", optionalAdvancedNumber("advInfiltrationAch") ?? DEFAULT_INFILTRATION_ACH);
     const advancedRecovery = optionalAdvancedNumber("advHeatRecovery");
     setValue("techHeatRecovery", advancedRecovery === null ? recovery : advancedRecovery / 100);
 
@@ -1782,8 +1792,9 @@
       priceRetrievedOn.setAttribute("datetime", retrievedOn);
     }
     if (intro) {
-      intro.textContent =
-        "Mai jos sunt exact referințele folosite în costul anual afișat pentru configurația curentă.";
+      intro.textContent = result?._summary_scope === "teo_final"
+        ? "Acestea sunt referințele unitare de preț folosite pentru rezultatul TEO afișat. Contribuția pe purtător este omisă aici deoarece raportul parametric păstrează doar totalul verificat."
+        : "Mai jos sunt exact referințele folosite în costul anual afișat pentru configurația curentă.";
     }
 
     priceReferenceGrid.innerHTML = rows.map(row => {
@@ -1879,7 +1890,7 @@
         '<div class="ed-class-threshold-row' + active + '">' +
           '<span class="ed-class-chip" data-energy-class="' + escapeHtml(label) + '">' + escapeHtml(label) + '</span>' +
           '<b>' + escapeHtml(energyClassRangeText(interval)) + '</b>' +
-          (active ? '<em>Casa ta</em>' : '') +
+          (active ? '<em>' + (result?._summary_scope === "teo_final" ? "Rezultat TEO" : "Casa ta") + '</em>' : '') +
         '</div>'
       );
     }).join("");
@@ -1906,7 +1917,7 @@
         '<div class="ed-class-current-summary">' +
           '<div>' +
             '<span class="ed-class-chip ed-class-chip-large" data-energy-class="' + escapeHtml(currentClass) + '">' + escapeHtml(currentClass) + '</span>' +
-            '<div><small>Casa ta</small><strong>' + (Number.isFinite(currentPrimary) ? escapeHtml(fmt(currentPrimary, 1)) : "—") + ' kWh/(m²·an)</strong></div>' +
+            '<div><small>' + (result?._summary_scope === "teo_final" ? "După intervențiile TEO" : "Casa ta") + '</small><strong>' + (Number.isFinite(currentPrimary) ? escapeHtml(fmt(currentPrimary, 1)) : "—") + ' kWh/(m²·an)</strong></div>' +
           '</div>' +
           '<p>Clasificarea folosește energia primară specifică totală. Intervalele sunt deschise la stânga și închise la dreapta.</p>' +
         '</div>' +
@@ -1936,6 +1947,51 @@
         '</div>' +
       '</section>' +
       '<p class="ed-class-reference-footnote">Această afișare explică modelul tehnic folosit de Home Lab și nu reprezintă un Certificat de Performanță Energetică emis legal.</p>';
+  }
+
+  function optimizationSummaryForPersistentBar() {
+    const opt = optimizationResult?.optimization || {};
+    const parametric = opt.parametricEvaluation || {};
+    const scenario = optimizationResult?.scenario || {};
+    const branchId = String(opt?.engineeringSpec?.heating?.technology_branch || "");
+    const branchProfile = (lastPlan?.kernel?.branches || []).find(
+      item => String(item?.branch_id || "") === branchId
+    );
+    const carrierLabels = {
+      electricity:"Electricitate",
+      natural_gas:"Gaz natural",
+      district_heat:"Termoficare",
+      biomass:"Biomasă",
+    };
+    const finalPriceRows = Object.entries(branchProfile?.prices || {})
+      .filter(([, value]) => value?.reference)
+      .map(([carrier, value]) => ({
+        carrier,
+        label:carrierLabels[carrier] || carrier,
+        final_kwh:1,
+        annual_cost_lei:null,
+        price_status:"current",
+        ...value.reference,
+      }));
+    const fallbackPriceRows = Array.isArray(baselineResult?.price_reference_rows)
+      ? baselineResult.price_reference_rows.map(row => ({
+          ...row,
+          final_kwh:Math.max(Number(row?.final_kwh || 0), 1),
+          annual_cost_lei:null,
+        }))
+      : [];
+
+    return {
+      ...(baselineResult || {}),
+      energy_class:parametric.energyClass ?? scenario.energy_class ?? baselineResult?.energy_class,
+      annual_cost_lei:parametric.annualBillLei ?? scenario.annual_cost_lei ?? null,
+      primary_specific_kwh_m2:
+        parametric.primarySpecificKwhM2
+        ?? scenario.primary_specific_kwh_m2
+        ?? baselineResult?.primary_specific_kwh_m2,
+      price_reference_rows:finalPriceRows.length ? finalPriceRows : fallbackPriceRows,
+      _summary_scope:"teo_final",
+    };
   }
 
   function paintBaselineSummary(result, statusText = "Estimare pentru configurația curentă.") {
@@ -1969,7 +2025,7 @@
   }
 
   async function refreshBaselineSummary() {
-    if (current === "run" || !baselineSummaryReady()) return;
+    if (current === "run" || current === "report" || !baselineSummaryReady()) return;
     const revision = ++baselineSummaryRevision;
     baselineSummaryController?.abort();
     baselineSummaryController = new AbortController();
@@ -2566,12 +2622,16 @@
     ) || null;
     const heating = config?.heating || {};
     const details = heating?.details || {};
+    const branchId = String(verifiedRow?.branchId || "");
+    const branchProfile = (lastPlan?.kernel?.branches || []).find(
+      item => String(item?.branch_id || "") === branchId
+    ) || {};
     const pv = config?.renewables?.pv || {};
     const solarThermal = config?.renewables?.solar_thermal || {};
 
     return {
       envelope:{
-        wall:envelopeFamily("wall", "wall", "wall_added_r_m2k_w"),
+        wall:envelopeFamily("wall", "exterior_wall", "wall_added_r_m2k_w"),
         roof:envelopeFamily("roof", "roof", "roof_added_r_m2k_w"),
         floor:envelopeFamily("floor", "floor", "floor_added_r_m2k_w"),
         windows:{
@@ -2618,7 +2678,14 @@
         ),
         design_flow_temperature_c:details?.design_flow_temperature_c ?? null,
         design_return_temperature_c:details?.design_return_temperature_c ?? null,
-        scop_target:heating?.scop ?? null,
+        scop_model:(
+          String(branchProfile?.heating_generator_performance_kind || "") === "scop"
+            ? Number(branchProfile?.heating_generator_performance)
+            : (heating?.scop ?? null)
+        ),
+        effective_system_performance:branchProfile?.heating_effective_system_performance ?? null,
+        performance_source:branchProfile?.heating_performance_source || null,
+        performance_confidence:branchProfile?.heating_performance_confidence || null,
         efficiency_target:heating?.efficiency ?? null,
         system_type:heating?.system_type || null,
         generator_type:details?.generator_type || null,
@@ -3118,9 +3185,12 @@
         ${familyCard("Pardoseală", env.floor)}
         <div class="ed-measure">
           <div><b>Ferestre</b><br><span>
-            Uw țintă ${env.windows?.target_u_w_m2k == null ? "—" : fmt(env.windows.target_u_w_m2k,3) + " W/m²K"}
-            · Uw rezultat ${env.windows?.final_u_w_m2k == null ? "—" : fmt(env.windows.final_u_w_m2k,3) + " W/m²K"}
-            · înlocuire ${fmt(100 * Number(env.windows?.replacement_fraction || 0),1)}%
+            ${Number(env.windows?.replacement_fraction || 0) <= 1e-9
+              ? "Fără înlocuire TEO · Uw existent/rezultat " + (env.windows?.final_u_w_m2k == null ? "—" : fmt(env.windows.final_u_w_m2k,3) + " W/m²K")
+              : "Uw țintă " + (env.windows?.target_u_w_m2k == null ? "—" : fmt(env.windows.target_u_w_m2k,3) + " W/m²K")
+                + " · Uw rezultat " + (env.windows?.final_u_w_m2k == null ? "—" : fmt(env.windows.final_u_w_m2k,3) + " W/m²K")
+                + " · înlocuire " + fmt(100 * Number(env.windows?.replacement_fraction || 0),1) + "%"
+            }
           </span></div>
         </div>
         <div class="ed-measure">
@@ -3142,7 +3212,8 @@
             ramură ${escapeHtml(heat.technology_branch || heat.generator_type || "sistem existent")}
             · putere de proiect ${fmt(heat.design_required_power_kw || 0,2)} kW
             · țintă instalată ${fmt(heat.installed_power_target_kw || 0,2)} kW
-            ${heat.scop_target == null ? "" : " · SCOP țintă " + fmt(heat.scop_target,2)}
+            ${heat.scop_model == null ? "" : " · SCOP model parametric " + fmt(heat.scop_model,2)}
+            ${heat.effective_system_performance == null ? "" : " · performanță efectivă sistem " + fmt(heat.effective_system_performance,2)}
             ${heat.efficiency_target == null ? "" : " · η țintă " + fmt(100 * Number(heat.efficiency_target),1) + "%"}
             ${heat.design_flow_temperature_c == null ? "" : " · tur " + fmt(heat.design_flow_temperature_c,0) + " °C"}
             ${heat.design_return_temperature_c == null ? "" : " · retur " + fmt(heat.design_return_temperature_c,0) + " °C"}
@@ -3164,7 +3235,7 @@
             ${solarSpec.system_efficiency == null ? "" : " · η " + fmt(100 * Number(solarSpec.system_efficiency),1) + "%"}
           </span></div>
         </div>
-        <p class="ed-hint">λ este valoarea de calcul folosită pentru conversia dintre rezistență termică și grosime; TEO optimizează în prezent ΔR/U, nu un material comercial. Valorile ψ sunt raportate din modelul fizic și nu sunt încă variabile independente de optimizare.</p>
+        <p class="ed-hint">λ este valoarea de calcul folosită pentru conversia dintre rezistență termică și grosime; TEO optimizează în prezent ΔR/U, nu un material comercial. Valorile ψ sunt raportate din modelul fizic și nu sunt încă variabile independente de optimizare. Pentru pompele de căldură, SCOP-ul din această secțiune este modelul tehnic parametric al ramurii; COP/SCOP-ul produsului real se confirmă numai după discretizarea comercială.</p>
       </section>
 
       <section class="ed-report-section">
@@ -3222,7 +3293,11 @@
   logDialog.addEventListener("click", event => { if (event.target === logDialog) logDialog.close(); });
 
   priceReferenceOpen?.addEventListener("click", () => {
-    renderPriceReferences();
+    renderPriceReferences(
+      current === "report" && optimizationResult
+        ? optimizationSummaryForPersistentBar()
+        : baselineResult
+    );
     if (typeof priceDialog?.showModal === "function") priceDialog.showModal();
     else priceDialog?.setAttribute("open", "");
   });
@@ -3232,7 +3307,11 @@
   });
 
   classReferenceOpen?.addEventListener("click", () => {
-    renderClassReference();
+    renderClassReference(
+      current === "report" && optimizationResult
+        ? optimizationSummaryForPersistentBar()
+        : baselineResult
+    );
     if (typeof classDialog?.showModal === "function") classDialog.showModal();
     else classDialog?.setAttribute("open", "");
   });

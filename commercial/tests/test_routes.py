@@ -161,7 +161,7 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'data-page="report"' in page.text
     assert 'data-page="renewables"' in page.text
     assert "/static/home-lab-editorial.css?v=17" in page.text
-    assert "/static/home-lab-editorial.js?v=37" in page.text
+    assert "/static/home-lab-editorial.js?v=38" in page.text
     assert "/static/home-lab-3d.js" not in page.text
     assert 'id="edBaselineClass"' in page.text
     assert 'id="edClassReferenceOpen"' in page.text
@@ -171,6 +171,8 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'id="edPriceReferencesOpen"' in page.text
     assert 'id="priceDialog"' in page.text
     assert 'id="edPriceReferenceGrid"' in page.text
+    assert 'name="infiltration_air_changes_per_hour" id="techInfiltrationAch" value="0.15"' in page.text
+    assert 'placeholder="implicit 0,15"' in page.text
     assert "Referințele de preț" in page.text
     assert "Prețuri de referință, nu cotații live" in page.text
     assert 'class="ed-baseline-bar"' in page.text
@@ -246,6 +248,12 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert "function syncTechnicalForm()" in js.text
     assert "function scheduleBaselineSummary(" in js.text
     assert "function paintBaselineSummary(" in js.text
+    assert "DEFAULT_INFILTRATION_ACH = 0.15" in js.text
+    assert "function optimizationSummaryForPersistentBar()" in js.text
+    assert '"Rezultat TEO verificat · după intervenții."' in js.text
+    assert 'envelopeFamily("wall", "exterior_wall", "wall_added_r_m2k_w")' in js.text
+    assert "Fără înlocuire TEO" in js.text
+    assert "SCOP model parametric" in js.text
     assert 'baselineClass.dataset.energyClass = energyClass' in js.text
     assert 'delete baselineClass.dataset.energyClass' in js.text
     assert "function parseDecimal(" in js.text
@@ -342,6 +350,14 @@ def test_teo_v4_plan_builds_thousands_of_browser_points_without_server_candidate
     assert len(kernel["monthly"]) == 12
     assert kernel["cost_catalog"]
     assert all("planning_nodes" in branch for branch in kernel["branches"])
+    air_air = next(
+        branch
+        for branch in kernel["branches"]
+        if branch["branch_id"] == "heat-pump-air-air"
+    )
+    assert air_air["heating_generator_performance_kind"] == "scop"
+    assert air_air["heating_generator_performance"] == pytest.approx(3.0)
+    assert air_air["heating_performance_source"] == "lacurent_light_product_estimate"
 
     worker = client.get("/static/teo-v4-worker.js")
     assert worker.status_code == 200

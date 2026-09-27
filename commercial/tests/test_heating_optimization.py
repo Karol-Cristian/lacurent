@@ -21,6 +21,7 @@ from commercial.app.heating_optimization import (
     _rebase_candidate,
     _select_sized_product,
     apply_heating_technology,
+    apply_parametric_heating_technology,
     apply_supplemental_heating_technology,
     commercialize_heating_finalist,
     heating_branch_plan,
@@ -396,6 +397,31 @@ def test_branch_plan_has_one_heat_pump_branch_not_one_branch_per_power_step() ->
     assert air_air.commercialization_mode == "raw_parametric_then_product_match"
     assert air_air.min_product_power_kw == pytest.approx(4.0)
     assert air_air.max_product_power_kw == pytest.approx(21.6)
+
+
+def test_parametric_heat_pump_branch_does_not_borrow_smallest_sku_scop() -> None:
+    baseline = demo_building()
+    technology = next(
+        item
+        for item in heating_technologies()
+        if item.id == "heat-pump-air-air"
+    )
+
+    assert technology.representative.scop == pytest.approx(5.2)
+
+    parametric = apply_parametric_heating_technology(
+        baseline,
+        technology,
+    )
+    assert parametric.heating.scop is None
+    assert parametric.heating.details is not None
+    assert parametric.heating.details.generator_type.value == "heat_pump_air_air"
+    assert parametric.heating.details.emitter_type.value == "air"
+
+    result = calculate(parametric, include_reference=False)
+    assert result.heating_system.generator_performance_kind == "scop"
+    assert result.heating_system.generator_performance == pytest.approx(3.0)
+    assert result.heating_system.performance_source == "lacurent_light_product_estimate"
 
 
 def test_heating_capacity_is_derived_after_each_complete_house_recalculation() -> None:

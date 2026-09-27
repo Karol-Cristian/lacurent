@@ -211,6 +211,29 @@ try {
   await page.locator("#openReport").click();
   await expectVisible('[data-page="report"].is-active');
   const editorialReportText = await page.locator("#reportBody").innerText();
+  const editorialHudStatus = await page.locator("#edBaselineStatus").innerText();
+  if (!editorialHudStatus.includes("Rezultat TEO verificat")) {
+    throw new Error(
+      "Editorial persistent HUD did not switch to the verified TEO result: " +
+      editorialHudStatus
+    );
+  }
+  if (!editorialReportText.includes("infiltrații 0,15 1/h")) {
+    throw new Error(
+      "Editorial medium default infiltration did not reach the final engineering report: " +
+      editorialReportText.slice(0, 5000)
+    );
+  }
+  if (/Pereți\s+U final\s+—/i.test(editorialReportText)) {
+    throw new Error(
+      "Editorial wall U-value is still missing from the final engineering report."
+    );
+  }
+  if (editorialReportText.includes("SCOP țintă")) {
+    throw new Error(
+      "Editorial report still presents a representative-SKU SCOP as a parametric target."
+    );
+  }
   if (!editorialReportText.includes("Optim TEO · specificație inginerească") ||
       !editorialReportText.includes("Discretizare comercială") ||
       !editorialReportText.includes("CAPEX parametric estimat")) {
