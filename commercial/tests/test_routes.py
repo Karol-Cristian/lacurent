@@ -161,7 +161,7 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'data-page="report"' in page.text
     assert 'data-page="renewables"' in page.text
     assert "/static/home-lab-editorial.css?v=15" in page.text
-    assert "/static/home-lab-editorial.js?v=31" in page.text
+    assert "/static/home-lab-editorial.js?v=32" in page.text
     assert "/static/home-lab-3d.js" not in page.text
     assert 'id="edBaselineClass"' in page.text
     assert 'id="edBaselineCost"' in page.text
@@ -1564,7 +1564,7 @@ def test_home_lab_next_calculates_pv_and_solar_thermal_from_solar_resource() -> 
     assert payload["gross_service_final_energy_kwh"] >= payload["final_energy_kwh"]
 
 
-def test_editorial_finalization_runs_in_browser_after_product_stage() -> None:
+def test_editorial_finalization_runs_in_browser_after_parametric_verify() -> None:
     js = client.get("/static/home-lab-editorial.js")
     assert js.status_code == 200
     source = js.text
@@ -1595,15 +1595,15 @@ def test_editorial_server_compute_budget_caps_only_full_engine_passes() -> None:
     source = js.text
 
     assert 'name:"cloudflare-low-resource"' in source
-    assert "maxCanonicalPasses:4" in source
+    assert "maxCanonicalPasses:3" in source
     assert "maxVerifyPasses:1" in source
-    assert "maxProductPasses:1" in source
+    assert "maxProductPasses:0" in source
     assert "heavyRetries:0" in source
     assert "cooldownMs:1200" in source
     assert "const verifyTargets = targets.slice(0, verifyLimit)" in source
-    assert "const canonicalPassesUsed = 2 + verifiedRows.length" in source
-    assert "TEO_SERVER_PROFILE.maxCanonicalPasses - canonicalPassesUsed" in source
-    assert "TEO_SERVER_PROFILE.maxProductPasses" in source
+    assert "TEO PARAMETRIC" in source
+    assert "Discretizarea comercială este amânată" in source
+    assert "commercialRechecks:0" in source
 
     # Deep parametric search remains browser-side and is intentionally not
     # reduced by the server compute profile.
@@ -1662,35 +1662,38 @@ def test_optimizer_reuses_baseline_bill_and_resets_cross_run_engine_cache() -> N
     assert "clear_heating_optimizer_runtime_caches()" in verify_section
 
 
-def test_editorial_product_stage_is_bounded_and_fails_soft() -> None:
+def test_editorial_teo_run_has_no_product_discretization_stage() -> None:
     js = client.get("/static/home-lab-editorial.js")
     assert js.status_code == 200
     source = js.text
 
-    assert "maxCanonicalPasses:4" in source
+    assert "maxCanonicalPasses:3" in source
     assert "maxVerifyPasses:1" in source
-    assert "maxProductPasses:1" in source
-    assert "const verifyTargets = targets.slice(0, verifyLimit)" in source
-    assert "TEO_SERVER_PROFILE.maxProductPasses" in source
-    assert "PRODUCT SAFE MODE" in source
-    assert "heavyRetries:0" in source
-    assert "await sleep(900)" in source
-    assert "PRODUCT FALLBACK" in source
-    assert "productFailureCount:productFailures" in source
-    assert "branchPlan:Array.isArray(lastPlan.branches)" in source
-    assert "buildBrowserFinalization({" in source
-    assert "finalizeHttpRequests:0" in source
-    assert 'postJson(\n        "/api/optimization/home-lab/v3/finalize"' not in source
+    assert "maxProductPasses:0" in source
+    assert "TEO PARAMETRIC" in source
+    assert "function engineeringSpecLocal(" in source
+    assert 'commercializationStatus:"deferred_after_teo"' in source
+    assert "commercialRechecks:0" in source
+    assert "commercialMatches:0" in source
+    assert "parametricEvaluation:" in source
 
-    # Product retries must not use the generic aggressive retry path anymore.
-    product_section = source.split(
-        'const productTargets = verifiedRows.slice',
+    run_section = source.split(
+        "async function runAnalysis()",
         1,
     )[1].split(
-        'log("REPORT',
+        "function escapeHtml",
         1,
     )[0]
-    assert "retries:2" not in product_section
+    assert '"/api/optimization/home-lab/v3/product"' not in run_section
+    assert "PRODUCT SAFE MODE" not in run_section
+    assert "PRODUCT FALLBACK" not in run_section
+
+    assert "Optim TEO · specificație inginerească" in source
+    assert "Discretizare comercială" in source
+    assert "reference_lambda_w_mk" in source
+    assert "sum_psi_l_w_k" in source
+    assert "design_required_power_kw" in source
+    assert "installed_power_target_kw" in source
 
 
 def test_v3_finalize_can_fall_back_to_canonical_verified_candidates() -> None:
