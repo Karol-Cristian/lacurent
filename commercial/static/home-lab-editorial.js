@@ -2463,6 +2463,7 @@
     searchPointCount,
     verificationFrontierCount,
     refinementEvaluations,
+    browserSearchMethod,
     adaptiveVerification,
     runId,
   }) {
@@ -2597,9 +2598,9 @@
         costCatalogVersion:selected?.cost_catalog_version,
         warnings,
         autoHorizonsYears:mode === "auto_economic" ? [...OPTIMIZER_FINALIZE_HORIZONS] : [],
-        executionMode:"browser_finalize_parametric_teo_only",
-        optimizerVersion:"teo-v4-parametric-only",
-        searchMethod:lastPlan?.searchMethod || "teo_v4_browser_worker_mc001_kernel",
+        executionMode:"browser_refine_adaptive_verify_parametric_teo",
+        optimizerVersion:"teo-v4-adaptive-parametric",
+        searchMethod:browserSearchMethod || lastPlan?.searchMethod || "teo_v4_halton_plus_local_refinement",
         representativeEvaluations:Number(lastPlan?.representativeEvaluations || 0),
         branchFastEvaluations:Number(branchFastEvaluations || 0),
         refinementEvaluations:Number(refinementEvaluations || 0),
@@ -2698,6 +2699,9 @@
         : [];
       const branchFastEvaluations = Number(localSearch.fastEvaluations || 0);
       const refinementEvaluations = Number(localSearch.refinementEvaluations || 0);
+      const browserSearchMethod = String(
+        localSearch.searchMethod || lastPlan.searchMethod || "teo_v4_halton_plus_local_refinement"
+      );
       const localSourceCandidateCount = Number(
         localSearch.sourceCandidateCount || candidateRows.length
       );
@@ -2797,6 +2801,7 @@
         searchPointCount:searchPoints.length,
         verificationFrontierCount:Number(verificationPlan.frontierCount || 0),
         refinementEvaluations,
+        browserSearchMethod,
         adaptiveVerification,
         runId,
       });
