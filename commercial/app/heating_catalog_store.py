@@ -608,6 +608,57 @@ def _catalog_payload_from_rows(
     }
 
 
+def _planning_anchor_nodes_from_products(
+    products: list[dict[str, Any]],
+    technology_id: str,
+) -> list[dict[str, Any]]:
+    """Return the exact source-backed kW/CAPEX anchors for one technology.
+
+    The previous runtime branch payload shipped ~1000 linearly interpolated
+    points across technologies. Linear interpolation between the original
+    market anchors is mathematically identical and needs only O(products)
+    objects (currently single digits per technology).
+    """
+
+    filtered = [
+        dict(item)
+        for item in products
+        if str(item.get("technology_id") or "") == technology_id
+        and float(item.get("rated_power_kw") or 0.0) > 0
+    ]
+    if not filtered:
+        return []
+    by_power: dict[float, float] = {}
+    for item in filtered:
+        power = float(item["rated_power_kw"])
+        installed = float(item.get("equipment_price_lei") or 0.0) + float(
+            item.get("installation_allowance_lei") or 0.0
+        )
+        previous = by_power.get(power)
+        if previous is None or installed < previous:
+            by_power[power] = installed
+    anchors = sorted(by_power.items())
+    min_power = float(anchors[0][0])
+    max_power = float(anchors[-1][0])
+    label = str(filtered[0].get("technology_label") or technology_id)
+    signature = _catalog_anchor_signature(filtered)
+    return [
+        {
+            "id": f"{technology_id}:anchor:{index:03d}",
+            "technology_id": technology_id,
+            "technology_label": label,
+            "required_power_kw": round(power, 6),
+            "planning_capex_lei": round(capex, 2),
+            "source_product_count": len(filtered),
+            "min_source_power_kw": round(min_power, 6),
+            "max_source_power_kw": round(max_power, 6),
+            "interpolation_kind": "linear_between_source_backed_market_anchors",
+            "source_signature": signature,
+        }
+        for index, (power, capex) in enumerate(anchors)
+    ]
+
+
 def compact_heating_branch_catalog_payload(
     payload: dict[str, Any],
     technology_id: str,
@@ -633,12 +684,7 @@ def compact_heating_branch_catalog_payload(
             str(item.get("id") or ""),
         )
     )
-    nodes = [
-        dict(item)
-        for item in (payload.get("parametric_heating_nodes") or [])
-        if str(item.get("technology_id") or "") == technology_id
-    ]
-    nodes.sort(key=lambda item: float(item.get("required_power_kw") or 0.0))
+    nodes = _planning_anchor_nodes_from_products(options, technology_id)
 
     source_stats = dict(payload.get("catalog_stats") or {})
     result = {
@@ -679,7 +725,13 @@ async def _read_heating_branch_catalog_d1(
     db: Any,
     technology_id: str,
 ) -> dict[str, Any]:
-    """Read O(1 technology) planning data, not O(all marketplace products)."""
+    """Read one representative plus exact source market anchors.
+
+    Runtime optimization no longer reads the 1000-row derived planning grid.
+    Linear interpolation directly between source product anchors is equivalent
+    to interpolating the already-linear derived grid, while keeping the Python
+    object graph tiny.
+    """
 
     representative_result = await db.prepare(
         """
@@ -699,83 +751,80 @@ async def _read_heating_branch_catalog_d1(
         LIMIT 1
         """
     ).bind(technology_id).run()
-    node_result = await db.prepare(
+    anchors_result = await db.prepare(
         """
-        SELECT id, technology_id, technology_label, required_power_kw,
-               planning_capex_lei, source_product_count, min_source_power_kw,
-               max_source_power_kw, interpolation_kind, source_signature
-        FROM heating_parametric_nodes
-        WHERE technology_id = ?
-        ORDER BY required_power_kw, id
+        SELECT technology_id,
+               MIN(technology_label) AS technology_label,
+               rated_power_kw AS required_power_kw,
+               MIN(equipment_price_lei + installation_allowance_lei)
+                   AS planning_capex_lei
+        FROM heating_products
+        WHERE active = 1 AND technology_id = ?
+        GROUP BY technology_id, rated_power_kw
+        ORDER BY rated_power_kw
         """
     ).bind(technology_id).run()
     stats_result = await db.prepare(
         """
-        SELECT
-          (SELECT COUNT(*) FROM heating_products
-             WHERE active = 1 AND technology_id = ?) AS products,
-          (SELECT COUNT(*) FROM heating_parametric_nodes
-             WHERE technology_id = ?) AS parametric_nodes,
-          (SELECT COALESCE(MAX(source_product_count), 0)
-             FROM heating_parametric_nodes
-             WHERE technology_id = ?) AS node_source_products
+        SELECT COUNT(*) AS products,
+               MIN(rated_power_kw) AS min_power_kw,
+               MAX(rated_power_kw) AS max_power_kw,
+               MIN(catalog_version) AS catalog_version,
+               MIN(observed_on) AS observed_on
+        FROM heating_products
+        WHERE active = 1 AND technology_id = ?
         """
-    ).bind(technology_id, technology_id, technology_id).run()
+    ).bind(technology_id).run()
 
     representative_rows = _d1_rows(representative_result)
-    node_rows = _d1_rows(node_result)
+    anchor_rows = _d1_rows(anchors_result)
     stats_rows = _d1_rows(stats_result)
     stats = stats_rows[0] if stats_rows else {}
     product_count = int(stats.get("products") or 0)
-    node_source_products = int(stats.get("node_source_products") or 0)
+    if not representative_rows or not anchor_rows or product_count <= 0:
+        return {
+            "options": [],
+            "parametric_heating_nodes": [],
+            "catalog_mode": "branch_market_anchors_empty",
+            "source": "d1",
+            "technology_id": technology_id,
+        }
 
-    # If the derived curve is missing or visibly stale, preserve correctness by
-    # falling back to this technology's source rows only. Normal production
-    # operation uses the fixed-size node path.
-    if product_count > 0 and (
-        not node_rows or node_source_products != product_count
-    ):
-        all_products_result = await db.prepare(
-            """
-            SELECT id, external_id, technology_id, technology_label, label,
-                   system_type, generator_type, carrier, cost_profile,
-                   rated_power_kw, efficiency, scop, equipment_price_lei,
-                   installation_allowance_lei, source_kind, source_url, confidence,
-                   requires_hydronic, requires_existing_gas,
-                   requires_existing_high_power_electric,
-                   requires_existing_biomass_infrastructure, capacity_basis, note,
-                   catalog_version, observed_on
-            FROM heating_products
-            WHERE active = 1 AND technology_id = ?
-            ORDER BY rated_power_kw, equipment_price_lei, id
-            """
-        ).bind(technology_id).run()
-        payload = _catalog_payload_from_rows(
-            _d1_rows(all_products_result),
-            [],
-            [],
-            [],
-            source="d1",
-        )
-        payload["catalog_mode"] = "branch_products_fallback_missing_or_stale_curve"
-        payload["technology_id"] = technology_id
-        payload["catalog_stats"]["products"] = product_count
-        payload["catalog_stats"]["loaded_products"] = len(payload.get("options") or [])
-        return payload
-
+    min_power = float(stats.get("min_power_kw") or 0.0)
+    max_power = float(stats.get("max_power_kw") or 0.0)
+    label = str(anchor_rows[0].get("technology_label") or technology_id)
+    nodes = [
+        {
+            "id": f"{technology_id}:anchor:{index:03d}",
+            "technology_id": technology_id,
+            "technology_label": label,
+            "required_power_kw": round(
+                float(row.get("required_power_kw") or 0.0), 6
+            ),
+            "planning_capex_lei": round(
+                float(row.get("planning_capex_lei") or 0.0), 2
+            ),
+            "source_product_count": product_count,
+            "min_source_power_kw": round(min_power, 6),
+            "max_source_power_kw": round(max_power, 6),
+            "interpolation_kind": "linear_between_source_backed_market_anchors",
+            "source_signature": "d1-direct-market-anchors",
+        }
+        for index, row in enumerate(anchor_rows)
+    ]
     payload = _catalog_payload_from_rows(
         representative_rows,
         [],
         [],
-        node_rows,
+        nodes,
         source="d1",
     )
-    payload["catalog_mode"] = "persistent_d1_branch_compact"
+    payload["catalog_mode"] = "persistent_d1_branch_market_anchors"
     payload["technology_id"] = technology_id
     payload["catalog_stats"] = {
         "products": product_count,
         "loaded_products": len(representative_rows),
-        "parametric_nodes": len(node_rows),
+        "parametric_nodes": len(nodes),
         "performance_points": 0,
         "seasonal_points": 0,
     }
