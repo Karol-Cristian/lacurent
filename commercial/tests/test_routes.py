@@ -161,7 +161,7 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'data-page="report"' in page.text
     assert 'data-page="renewables"' in page.text
     assert "/static/home-lab-editorial.css?v=15" in page.text
-    assert "/static/home-lab-editorial.js?v=26" in page.text
+    assert "/static/home-lab-editorial.js?v=27" in page.text
     assert "/static/home-lab-3d.js" not in page.text
     assert 'id="edBaselineClass"' in page.text
     assert 'id="edBaselineCost"' in page.text
@@ -260,7 +260,8 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert '"/api/optimization/home-lab/v3/verification-plan"' in js.text
     assert '"/api/optimization/home-lab/v3/verify"' in js.text
     assert '"/api/optimization/home-lab/v3/product"' in js.text
-    assert '"/api/optimization/home-lab/v3/finalize"' in js.text
+    assert "buildBrowserFinalization" in js.text
+    assert "finalizeHttpRequests:0" in js.text
     assert 'showPage("done");' in js.text
     assert '$("#openReport").addEventListener("click", () => showPage("report"));' in js.text
 
@@ -1563,6 +1564,31 @@ def test_home_lab_next_calculates_pv_and_solar_thermal_from_solar_resource() -> 
     assert payload["gross_service_final_energy_kwh"] >= payload["final_energy_kwh"]
 
 
+def test_editorial_finalization_runs_in_browser_after_product_stage() -> None:
+    js = client.get("/static/home-lab-editorial.js")
+    assert js.status_code == 200
+    source = js.text
+
+    assert "function paretoFrontierLocal(" in source
+    assert "function robustRegretMetricsLocal(" in source
+    assert "function selectOptimizationCandidateLocal(" in source
+    assert "function buildBrowserFinalization(" in source
+    assert "finalizeRecalculations:0" in source
+    assert "finalizeCatalogReads:0" in source
+    assert "finalizeHttpRequests:0" in source
+
+    report_section = source.split(
+        'log("REPORT · selecție finală + asamblare raport direct în browser',
+        1,
+    )[1].split(
+        'stage("finalize","done","gata")',
+        1,
+    )[0]
+    assert "buildBrowserFinalization({" in report_section
+    assert "postJson(" not in report_section
+    assert "/api/optimization/home-lab/v3/finalize" not in report_section
+
+
 def test_editorial_product_stage_is_bounded_and_fails_soft() -> None:
     js = client.get("/static/home-lab-editorial.js")
     assert js.status_code == 200
@@ -1575,7 +1601,9 @@ def test_editorial_product_stage_is_bounded_and_fails_soft() -> None:
     assert "PRODUCT FALLBACK" in source
     assert "productFailureCount:productFailures" in source
     assert "branchPlan:Array.isArray(lastPlan.branches)" in source
-    assert '{stageName:"finalize V3", runId, retries:0}' in source
+    assert "buildBrowserFinalization({" in source
+    assert "finalizeHttpRequests:0" in source
+    assert 'postJson(\n        "/api/optimization/home-lab/v3/finalize"' not in source
 
     # Product retries must not use the generic aggressive retry path anymore.
     product_section = source.split(
