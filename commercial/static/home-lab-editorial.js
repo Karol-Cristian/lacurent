@@ -47,9 +47,9 @@
   // Raise maxCanonicalPasses later when the execution environment has more headroom.
   const TEO_SERVER_PROFILE = Object.freeze({
     name:"cloudflare-low-resource",
-    maxCanonicalPasses:4,
+    maxCanonicalPasses:3,
     maxVerifyPasses:1,
-    maxProductPasses:1,
+    maxProductPasses:0,
     heavyRetries:0,
     cooldownMs:1200,
   });
@@ -2027,11 +2027,133 @@
     };
   }
 
+  function weightedEnvelopeU(config, type) {
+    const rows = (config?.envelope || []).filter(item => String(item?.type || "") === type);
+    const area = rows.reduce((sum,item) => sum + Number(item?.area_m2 || 0), 0);
+    if (area <= 0) return null;
+    return rows.reduce(
+      (sum,item) => sum + Number(item?.area_m2 || 0) * Number(item?.u_value_w_m2k || 0),
+      0
+    ) / area;
+  }
+
+  function engineeringSpecLocal(candidate, verifiedRow) {
+    const config = candidate?.resulting_configuration || {};
+    const parameters = candidate?.parameters || {};
+    const lambda = lastPlan?.kernel?.normalization_lambda || {};
+    const envelopeFamily = (family, type, addedRKey) => {
+      const addedR = Number(parameters?.[addedRKey] || 0);
+      const lambdaValue = Number(lambda?.[family] || 0);
+      return {
+        family,
+        final_u_w_m2k:weightedEnvelopeU(config, type),
+        added_r_m2k_w:addedR,
+        reference_lambda_w_mk:lambdaValue > 0 ? lambdaValue : null,
+        equivalent_insulation_thickness_cm:(
+          lambdaValue > 0 ? addedR * lambdaValue * 100 : null
+        ),
+        lambda_is_optimized:false,
+        optimized_quantity:"thermal_resistance_and_resulting_u_value",
+      };
+    };
+
+    const bridges = Array.isArray(config?.thermal_bridges)
+      ? config.thermal_bridges
+      : [];
+    const psiL = bridges.reduce(
+      (sum,item) => sum + Number(item?.psi_w_mk || 0) * Number(item?.length_m || 0),
+      0
+    );
+    const bridgeLength = bridges.reduce(
+      (sum,item) => sum + Number(item?.length_m || 0),
+      0
+    );
+    const heatingLine = (candidate?.cost_breakdown || []).find(
+      item => item?.family === "heating"
+    ) || null;
+    const heating = config?.heating || {};
+    const details = heating?.details || {};
+    const pv = config?.renewables?.pv || {};
+    const solarThermal = config?.renewables?.solar_thermal || {};
+
+    return {
+      envelope:{
+        wall:envelopeFamily("wall", "wall", "wall_added_r_m2k_w"),
+        roof:envelopeFamily("roof", "roof", "roof_added_r_m2k_w"),
+        floor:envelopeFamily("floor", "floor", "floor_added_r_m2k_w"),
+        windows:{
+          final_u_w_m2k:weightedEnvelopeU(config, "window"),
+          replacement_fraction:Number(parameters?.window_replacement_fraction || 0),
+          target_u_w_m2k:Number(parameters?.window_target_u_w_m2k || 0),
+        },
+      },
+      thermal_bridges:{
+        sum_psi_l_w_k:psiL,
+        total_length_m:bridgeLength,
+        weighted_mean_psi_w_mk:bridgeLength > 0 ? psiL / bridgeLength : null,
+        optimized:false,
+        rows:bridges.map(item => ({
+          name:item?.name || "",
+          length_m:Number(item?.length_m || 0),
+          psi_w_mk:Number(item?.psi_w_mk || 0),
+          component:item?.component || null,
+        })),
+      },
+      ventilation:{
+        air_changes_per_hour:Number(config?.ventilation?.air_changes_per_hour || 0),
+        infiltration_air_changes_per_hour:Number(
+          config?.ventilation?.infiltration_air_changes_per_hour || 0
+        ),
+        heat_recovery_efficiency:Number(
+          config?.ventilation?.heat_recovery_efficiency || 0
+        ),
+        optimized_heat_recovery_target:Number(
+          parameters?.ventilation_heat_recovery_efficiency_target || 0
+        ),
+      },
+      heating:{
+        technology_branch:String(verifiedRow?.branchId || ""),
+        design_required_power_kw:Number(
+          candidate?.design_heat_load_kw
+          ?? heatingLine?.parameter_value
+          ?? 0
+        ),
+        installed_power_target_kw:Number(
+          heatingLine?.parameter_value
+          ?? candidate?.design_heat_load_kw
+          ?? 0
+        ),
+        design_flow_temperature_c:details?.design_flow_temperature_c ?? null,
+        design_return_temperature_c:details?.design_return_temperature_c ?? null,
+        scop_target:heating?.scop ?? null,
+        efficiency_target:heating?.efficiency ?? null,
+        system_type:heating?.system_type || null,
+        generator_type:details?.generator_type || null,
+        product_selected:false,
+      },
+      pv:{
+        installed_power_kwp:Number(pv?.installed_power_kwp || 0),
+        added_power_kwp:Number(parameters?.pv_added_kwp || 0),
+        performance_ratio:pv?.performance_ratio ?? parameters?.pv_performance_ratio ?? null,
+        orientation:pv?.orientation || null,
+        tilt_degrees:pv?.tilt_degrees ?? null,
+      },
+      solar_thermal:{
+        collector_area_m2:Number(solarThermal?.collector_area_m2 || 0),
+        added_area_m2:Number(parameters?.solar_thermal_added_m2 || 0),
+        system_efficiency:solarThermal?.system_efficiency
+          ?? parameters?.solar_thermal_system_efficiency
+          ?? null,
+        orientation:solarThermal?.orientation || null,
+        tilt_degrees:solarThermal?.tilt_degrees ?? null,
+      },
+    };
+  }
+
   function buildBrowserFinalization({
     formPayload,
     mode,
     goals,
-    commercialRows,
     verifiedRows,
     branchStats,
     branchPlan,
@@ -2040,42 +2162,22 @@
     branchFastEvaluations,
     searchPointCount,
     verificationFrontierCount,
-    productTargetCount,
-    productFailureCount,
     runId,
   }) {
-    const verifiedById = new Map();
-    for (const row of verifiedRows || []) {
-      const candidate = row?.candidate;
-      if (candidate?.candidate_id) verifiedById.set(String(candidate.candidate_id), row);
-    }
-    const commercialCandidates = (commercialRows || [])
-      .map(row => row?.candidate)
-      .filter(Boolean);
     const verifiedCandidates = (verifiedRows || [])
       .map(row => row?.candidate)
       .filter(Boolean);
     const selection = selectOptimizationCandidateLocal(
-      commercialCandidates.length ? commercialCandidates : verifiedCandidates,
+      verifiedCandidates,
       mode,
       goals
     );
     const selected = selection.selected;
-    const selectedProductRow = (commercialRows || []).find(
-      row => String(row?.candidate?.candidate_id || "") === String(selected.candidate_id || "")
+    const selectedVerifiedRow = (verifiedRows || []).find(
+      row => String(row?.candidate?.candidate_id || "") === String(selected?.candidate_id || "")
     ) || null;
-    const rawVerified = (
-      selectedProductRow?.sourceCandidateId
-        ? verifiedById.get(String(selectedProductRow.sourceCandidateId))
-        : null
-    );
-    const rawSelected = rawVerified?.candidate || selected;
-    const selectedHeating = selectedHeatingLocal(selected, selectedProductRow);
-    const scenario = (
-      selectedProductRow?.scenario && typeof selectedProductRow.scenario === "object"
-        ? selectedProductRow.scenario
-        : candidateScenarioSnapshotLocal(selected, formPayload)
-    );
+    const scenario = candidateScenarioSnapshotLocal(selected, formPayload);
+    const engineeringSpec = engineeringSpecLocal(selected, selectedVerifiedRow);
     const capex = Number(selected.capex_lei || 0);
     const saving = Number(selected.annual_saving_lei || 0);
     let economicStatus = "incomplete_economic_result";
@@ -2100,7 +2202,9 @@
     }
 
     const branches = (branchPlan || []).map(branch => {
-      const stats = (branchStats || []).find(item => String(item?.branchId || "") === String(branch?.branch_id || ""));
+      const stats = (branchStats || []).find(
+        item => String(item?.branchId || "") === String(branch?.branch_id || "")
+      );
       if (!stats) return branch;
       return {
         ...branch,
@@ -2109,26 +2213,23 @@
         feasible_candidates:Number(stats.feasibleCandidates || 0),
       };
     });
-    const feasibleTotal = branches.reduce((sum,item) => sum + Number(item?.feasible_candidates || 0), 0);
+    const feasibleTotal = branches.reduce(
+      (sum,item) => sum + Number(item?.feasible_candidates || 0),
+      0
+    );
     const warnings = [
-      "TEO a executat căutarea profundă și verificările canonice pe server; alegerea finală și asamblarea raportului s-au făcut în browser.",
-      "După ultimul PRODUCT nu mai este trimis niciun request FINALIZE către Python Worker.",
-      "Profil temporar Cloudflare low-resource: un singur VERIFY canonic și maximum un PRODUCT exact; căutarea parametrizată profundă rămâne în browser.",
-      `PRODUCT safe mode: ${commercialRows.length}/${productTargetCount || commercialRows.length} recheck-uri comerciale exacte au fost finalizate.`,
+      "TEO produce exclusiv optimul parametric tehnico-economic; produsele comerciale nu participă la alegerea soluției.",
+      "Discretizarea în SKU-uri reale este o etapă separată, ulterioară rezultatului TEO.",
+      "Profil temporar Cloudflare low-resource: BASELINE + PLAN kernel + un singur VERIFY canonic; căutarea profundă rămâne în browser.",
+      "λ-urile afișate pentru anvelopă sunt valorile de calcul/reference folosite la transformarea R↔grosime; în această versiune TEO optimizează R și U rezultat, nu λ ca material comercial independent.",
+      "Valorile ψ provin din modelul clădirii și sunt raportate inginerește; optimizarea explicită a punților termice va necesita o variabilă TEO separată.",
     ];
-    if (productFailureCount) {
-      warnings.push(`${productFailureCount} request(uri) PRODUCT au eșuat și au fost omise fără retry agresiv.`);
-    }
-    for (const row of [...(verifiedRows || []), ...(commercialRows || [])]) {
+    for (const row of (verifiedRows || [])) {
       for (const warning of (row?.warnings || [])) {
         if (warning) warnings.push(String(warning));
       }
     }
 
-    const commercialReady = (
-      selected.commercialization_status === "commercialized"
-      || (selected.commercialization_status === "raw_only" && capex <= 1e-9)
-    );
     return {
       scenario,
       optimization:{
@@ -2148,83 +2249,66 @@
         roiPercentPerYear:selected.roi_percent_per_year == null ? null : Number(selected.roi_percent_per_year),
         paybackYears:selected.payback_years == null ? null : Number(selected.payback_years),
         selected:optimizerMeasureRowsLocal(selected),
-        selectedHeating,
-        heatPumpPerformanceProfile:selectedProductRow?.heatPumpPerformanceProfile || null,
+        selectedHeating:null,
+        heatPumpPerformanceProfile:null,
+        engineeringSpec,
         evaluatedCandidates:Number(sourceCandidateCount || 0),
         calculationTimeMs:Number(backendElapsedMs || 0),
         parametricEvaluations:Number(branchFastEvaluations || 0),
         heatingBranchEvaluations:Number(branchFastEvaluations || 0),
         feasibleCandidates:Number(feasibleTotal || selection.feasibleCount || 0),
         paretoSolutions:Number(selection.paretoCount || 0),
-        paretoScope:commercialCandidates.length
-          ? "browser_verified_bounded_commercial_rechecks"
-          : "browser_canonical_fallback_no_commercial_recheck",
+        paretoScope:"verified_parametric_teo_only",
         heatingBranches:branches,
         technicalHeatingAlternatives:[],
-        rawSolution:rawSelected?.parameters || {},
+        rawSolution:selected?.parameters || {},
         rawEvaluation:{
-          candidateId:rawSelected?.candidate_id,
-          annualBillLei:Number(rawSelected?.annual_bill_lei || 0),
-          baselineAnnualBillLei:Number(rawSelected?.baseline_annual_bill_lei || 0),
-          finalEnergyKwh:Number(rawSelected?.final_energy_kwh || 0),
-          primarySpecificKwhM2:Number(rawSelected?.primary_specific_kwh_m2 || 0),
-          co2TotalKg:Number(rawSelected?.co2_total_kg || 0),
-          co2SpecificKgM2:Number(rawSelected?.co2_specific_kg_m2 || 0),
-          energyClass:rawSelected?.energy_class,
-          designHeatLoadKw:rawSelected?.design_heat_load_kw ?? null,
+          candidateId:selected?.candidate_id,
+          annualBillLei:Number(selected?.annual_bill_lei || 0),
+          baselineAnnualBillLei:Number(selected?.baseline_annual_bill_lei || 0),
+          finalEnergyKwh:Number(selected?.final_energy_kwh || 0),
+          primarySpecificKwhM2:Number(selected?.primary_specific_kwh_m2 || 0),
+          co2TotalKg:Number(selected?.co2_total_kg || 0),
+          co2SpecificKgM2:Number(selected?.co2_specific_kg_m2 || 0),
+          energyClass:selected?.energy_class,
+          designHeatLoadKw:selected?.design_heat_load_kw ?? null,
         },
-        commercialEvaluation:{
-          candidateId:selected.candidate_id,
-          annualBillLei:Number(selected.annual_bill_lei || 0),
+        parametricEvaluation:{
+          candidateId:selected?.candidate_id,
+          annualBillLei:Number(selected?.annual_bill_lei || 0),
           capexLei:capex,
           annualSavingLei:saving,
-          finalEnergyKwh:Number(selected.final_energy_kwh || 0),
-          primarySpecificKwhM2:Number(selected.primary_specific_kwh_m2 || 0),
-          co2SpecificKgM2:Number(selected.co2_specific_kg_m2 || 0),
-          energyClass:selected.energy_class,
-          designHeatLoadKw:selected.design_heat_load_kw ?? null,
+          finalEnergyKwh:Number(selected?.final_energy_kwh || 0),
+          primarySpecificKwhM2:Number(selected?.primary_specific_kwh_m2 || 0),
+          co2SpecificKgM2:Number(selected?.co2_specific_kg_m2 || 0),
+          energyClass:selected?.energy_class,
+          designHeatLoadKw:selected?.design_heat_load_kw ?? null,
         },
-        resultingConfiguration:selected.resulting_configuration || null,
-        commercialSolution:(
-          selectedHeating?.optionId
-            ? {
-                items:[{
-                  family:"heating",
-                  label:selectedHeating.label,
-                  detail:`Produs real selectat după optimizarea parametrică · ${Number(selectedHeating.ratedPowerKw || 0).toFixed(2)} kW · CAPEX ${Number(selectedHeating.capexLei || 0).toFixed(0)} lei`,
-                }],
-              }
-            : null
-        ),
-        commercializationStatus:selected.commercialization_status,
-        commercialReady,
-        commercialMessage:(
-          commercialReady
-            ? "Soluția nu necesită discretizare comercială suplimentară."
-            : selectedHeating?.optionId
-              ? "Generatorul finalist a fost discretizat la un produs real; celelalte familii active rămân parametrice până la atașarea catalogului complet de produse."
-              : "Catalogul comercial complet nu este atașat acestei rulări; raportul păstrează optimul parametric verificat fără a inventa produse."
-        ),
+        resultingConfiguration:selected?.resulting_configuration || null,
+        commercialSolution:null,
+        commercializationStatus:"deferred_after_teo",
+        commercialReady:false,
+        commercialMessage:"Discretizarea comercială este intenționat separată de TEO și se execută numai după acceptarea optimului parametric.",
         discretization:[],
-        costSource:selected.cost_source,
-        costCatalogVersion:selected.cost_catalog_version,
+        costSource:selected?.cost_source,
+        costCatalogVersion:selected?.cost_catalog_version,
         warnings,
         autoHorizonsYears:mode === "auto_economic" ? [...OPTIMIZER_FINALIZE_HORIZONS] : [],
-        executionMode:"browser_finalize_after_server_verification",
-        optimizerVersion:"teo-v4-browser-finalize",
+        executionMode:"browser_finalize_parametric_teo_only",
+        optimizerVersion:"teo-v4-parametric-only",
         searchMethod:lastPlan?.searchMethod || "teo_v4_browser_worker_mc001_kernel",
         representativeEvaluations:Number(lastPlan?.representativeEvaluations || 0),
         branchFastEvaluations:Number(branchFastEvaluations || 0),
         fullEngineVerifications:Number(verifiedRows.length || 0),
-        commercialRechecks:Number(commercialRows.length || 0),
-        commercialMatches:Number((commercialRows || []).filter(row => row?.matchedProduct).length),
-        commercialRecheckTargetCount:Number(productTargetCount || 0),
-        commercialRecheckFailures:Number(productFailureCount || 0),
+        commercialRechecks:0,
+        commercialMatches:0,
+        commercialRecheckTargetCount:0,
+        commercialRecheckFailures:0,
         searchPointCount:Number(searchPointCount || 0),
         branchBatchSize:0,
         verificationFrontierCount:Number(verificationFrontierCount || 0),
         runId:String(runId || ""),
-        heatingCatalogSource:selectedProductRow?.catalogSource || "browser-precomputed",
+        heatingCatalogSource:"not_loaded_in_teo_finalize",
         finalizeRecalculations:0,
         finalizeCatalogReads:0,
         finalizeHttpRequests:0,
@@ -2370,78 +2454,15 @@
         throw new Error("Verificarea canonică nu a răspuns în modul low-resource. Reîncearcă rularea; căutarea locală nu este promovată ca rezultat verificat.");
       }
 
-      const canonicalPassesUsed = 2 + verifiedRows.length;
-      const productBudget = Math.max(
-        0,
-        TEO_SERVER_PROFILE.maxCanonicalPasses - canonicalPassesUsed
-      );
-      const productTargets = verifiedRows.slice(
-        0,
-        Math.min(
-          TEO_SERVER_PROFILE.maxProductPasses,
-          productBudget,
-          verifiedRows.length
-        )
-      );
-      const commercialRows = [];
-      let productFailures = 0;
       log(
-        `PRODUCT SAFE MODE · ${productTargets.length} recheck exact din ${verifiedRows.length} finalist verificat · profil ${TEO_SERVER_PROFILE.name} · fără retry agresiv.`
+        "TEO PARAMETRIC · verificarea canonică este gata. Discretizarea comercială este amânată pentru o etapă separată."
       );
-      if (productTargets.length) {
-        await sleep(TEO_SERVER_PROFILE.cooldownMs);
-      }
-      for (let i = 0; i < productTargets.length; i++) {
-        const verified = productTargets[i];
-        log(`PRODUCT ${i + 1}/${productTargets.length} · sizing + produs comercial exact.`);
-        try {
-          const commercial = await postJson(
-            "/api/optimization/home-lab/v3/product",
-            {
-              form:formPayload,
-              branchId:verified.branchId,
-              candidate:verified.candidate,
-              sourceCandidateId:verified.candidate?.candidate_id
-            },
-            // A failed heavy product request can indicate a poisoned Python
-            // isolate. Immediate retries made the 503→500→1101 sequence worse,
-            // so product rechecks fail soft and the run continues.
-            {stageName:`product ${i + 1}/${productTargets.length}`, runId, retries:TEO_SERVER_PROFILE.heavyRetries}
-          );
-          commercialRows.push(commercial);
-          backendElapsedMs += Number(commercial.calculationTimeMs || 0);
-          const loadedProducts = Number(commercial.catalogStats?.loaded_products || 0);
-          const candidateLimit = Number(commercial.catalogStats?.candidate_limit || 0);
-          log(
-            `PRODUCT ${i + 1}/${productTargets.length} gata · D1→Worker ${loadedProducts}${candidateLimit ? "/" + candidateLimit : ""} produse candidate.`
-          );
-        } catch (error) {
-          productFailures += 1;
-          log(
-            `PRODUCT ${i + 1}/${productTargets.length} indisponibil · ${error?.message || String(error)} · continui fără retry.`
-          );
-        }
-        if (i + 1 < productTargets.length) {
-          await sleep(900);
-        }
-      }
-
-      if (!commercialRows.length) {
-        log(
-          "PRODUCT FALLBACK · niciun recheck comercial exact nu a răspuns; raportul va folosi finalistul canonic și va marca discretizarea comercială ca nefinalizată."
-        );
-      } else if (productFailures) {
-        log(
-          `PRODUCT SAFE MODE · ${commercialRows.length}/${productTargets.length} recheck-uri exacte reușite; finalize alegere dintre rezultatele comerciale disponibile.`
-        );
-      }
 
       log("REPORT · selecție finală + asamblare raport direct în browser; 0 request-uri suplimentare către Python Worker.");
       optimizationResult = buildBrowserFinalization({
         formPayload,
         mode:lastPlan.economicMode || formPayload._optimization_mode || "auto_economic",
         goals,
-        commercialRows,
         verifiedRows,
         branchStats,
         branchPlan:Array.isArray(lastPlan.branches) ? lastPlan.branches : [],
@@ -2450,8 +2471,6 @@
         branchFastEvaluations,
         searchPointCount:searchPoints.length,
         verificationFrontierCount:Number(verificationPlan.frontierCount || 0),
-        productTargetCount:productTargets.length,
-        productFailureCount:productFailures,
         runId,
       });
       stage("finalize","done","gata");
@@ -2486,12 +2505,11 @@
     if (!baselineResult || !optimizationResult) return;
     const scenario = optimizationResult.scenario || {};
     const opt = optimizationResult.optimization || {};
-    const commercial = opt.commercialEvaluation || {};
-    const heating = opt.selectedHeating || null;
-    const hp = opt.heatPumpPerformanceProfile || null;
+    const parametric = opt.parametricEvaluation || {};
+    const engineering = opt.engineeringSpec || {};
     const measures = opt.selected || [];
     const baselineBill = baselineResult.annual_cost_lei;
-    const finalBill = commercial.annualBillLei ?? scenario.annual_cost_lei;
+    const finalBill = parametric.annualBillLei ?? scenario.annual_cost_lei;
     const locality = baselineResult.locality || $("#localityInput").value;
 
     $("#reportIntro").textContent =
@@ -2520,7 +2538,7 @@
           ${metric("Economii estimate", opt.annualSavingLei == null ? "Nedeterminate" : money(opt.annualSavingLei) + "/an")}
           ${metric("Cost după intervenții", money(finalBill))}
           ${metric("Recuperare", paybackDisplay(opt))}
-          ${metric("Putere finală necesară · spații", commercial.designHeatLoadKw == null ? "—" : fmt(commercial.designHeatLoadKw,1) + " kW")}
+          ${metric("Putere finală necesară · spații", parametric.designHeatLoadKw == null ? "—" : fmt(parametric.designHeatLoadKw,1) + " kW")}
         </div>
         ${economicStatusText(opt) ? `<p class="ed-hint"><b>Interpretare economică:</b> ${escapeHtml(economicStatusText(opt))}</p>` : ""}
         ${opt.simpleNetBenefitLeiByHorizon ? `
@@ -2541,71 +2559,91 @@
       </section>
     `;
 
-    if (heating) {
-      html += `
-        <section class="ed-report-section">
-          <h2>Dimensionarea încălzirii</h2>
-          <p>Sistemul finalist este dimensionat față de necesarul termic de calcul al configurației rezultate, nu față de o putere nominală aleasă arbitrar.</p>
-          <div class="ed-metrics">
-            ${metric("Necesar încălzire spații", heating.requiredPowerKw == null ? "—" : fmt(heating.requiredPowerKw,2) + " kW")}
-            ${metric(
-              heating.capacityVerified ? "Capacitate disponibilă la proiect" : "Capacitate la proiect",
-              heating.capacityVerified && heating.availableDesignCapacityKw != null
-                ? fmt(heating.availableDesignCapacityKw,2) + " kW"
-                : "Neverificată"
-            )}
-            ${metric("Putere nominală catalog", heating.ratedPowerKw == null ? (heating.label || "—") : fmt(heating.ratedPowerKw,2) + " kW")}
+    const env = engineering.envelope || {};
+    const bridges = engineering.thermal_bridges || {};
+    const ventilation = engineering.ventilation || {};
+    const heat = engineering.heating || {};
+    const pvSpec = engineering.pv || {};
+    const solarSpec = engineering.solar_thermal || {};
+    const familyCard = (label, spec) => {
+      if (!spec) return "";
+      return `
+        <div class="ed-measure">
+          <div>
+            <b>${escapeHtml(label)}</b><br>
+            <span>
+              U final ${spec.final_u_w_m2k == null ? "—" : fmt(spec.final_u_w_m2k,3) + " W/m²K"}
+              · ΔR ${fmt(spec.added_r_m2k_w || 0,2)} m²K/W
+              · λ calcul ${spec.reference_lambda_w_mk == null ? "—" : fmt(spec.reference_lambda_w_mk,3) + " W/mK"}
+              · grosime echiv. ${spec.equivalent_insulation_thickness_cm == null ? "—" : fmt(spec.equivalent_insulation_thickness_cm,1) + " cm"}
+            </span>
           </div>
-          <p><b>${escapeHtml(heating.label || "Sistem de încălzire")}</b>${heating.oversizePercent == null ? "" : ` · rezervă la punctul de proiect ${fmt(heating.oversizePercent,1)}%`}.</p>
-          ${heating.capacityVerified ? "" : '<p class="ed-hint">Curba de capacitate publicată nu acoperă punctul exact de proiect; puterea nominală poate fi folosită doar ca reper provizoriu, nu ca dovadă că echipamentul acoperă necesarul.</p>'}
-          <p class="ed-hint">Necesarul de mai sus este pentru încălzirea spațiilor. Dacă același generator prepară ACM, puterea de reîncălzire a boilerului trebuie verificată separat în funcție de volumul de stocare și timpul de reîncălzire.</p>
-        </section>
-      `;
-    }
+        </div>`;
+    };
 
-    if (hp) {
-      html += `
-        <section class="ed-report-section">
-          <h2>Performanța pompei de căldură</h2>
-          <p>${escapeHtml(hp.note || "")}</p>
-          <div class="ed-metrics">
-            ${metric("Tip performanță", hp.profile_kind === "cop_curve" ? "COP lunar + SCOP" : "SCOP sezonier")}
-            ${metric("SCOP declarat", hp.declared_scop == null ? "—" : fmt(hp.declared_scop,2))}
-            ${metric("SCOP modelat", hp.modeled_scop_from_monthly_cop == null ? "—" : fmt(hp.modeled_scop_from_monthly_cop,2))}
-            ${metric("COP la +7 °C", hp.reference_cop_at_7c == null ? "—" : fmt(hp.reference_cop_at_7c,2))}
-            ${metric(
-              "Temperatură exterioară de proiect",
-              hp.design_point?.outdoor_temperature_c == null
-                ? "—"
-                : fmt(hp.design_point.outdoor_temperature_c,0) + " °C"
-            )}
-            ${metric(
-              "Tur la proiect",
-              hp.design_point?.flow_temperature_c == null
-                ? "—"
-                : fmt(hp.design_point.flow_temperature_c,0) + " °C"
-            )}
-            ${metric(
-              "COP la punctul de proiect",
-              hp.design_point?.cop == null
-                ? (hp.design_point?.covered ? "—" : "Neacoperit")
-                : fmt(hp.design_point.cop,2)
-            )}
-            ${metric(
-              "Capacitate la punctul de proiect",
-              hp.design_point?.heating_capacity_kw == null
-                ? (hp.design_point?.covered ? "—" : "Neacoperită")
-                : fmt(hp.design_point.heating_capacity_kw,2) + " kW"
-            )}
-          </div>
-          ${hp.design_point && !hp.design_point.covered ? '<p class="ed-hint">Punctul extrem de proiect nu este acoperit complet de curba publicată pentru acest produs. LaCurent nu extrapolează COP-ul sau capacitatea dincolo de domeniul source-backed.</p>' : ""}
-          ${Array.isArray(hp.monthly) && hp.monthly.some(x => x.cop != null) ? `
-            <h3>COP lunar raportat la sarcina casei</h3>
-            ${hp.monthly.map(row => `<div class="ed-measure"><span>${escapeHtml(row.month)} · ${fmt(row.outdoor_temperature_c,1)} °C · ${fmt(row.useful_heating_kwh,0)} kWh utili</span><b>${row.cop == null ? "—" : "COP " + fmt(row.cop,2)}</b></div>`).join("")}
-          ` : ""}
-        </section>
-      `;
-    }
+    html += `
+      <section class="ed-report-section">
+        <h2>Optim TEO · specificație inginerească</h2>
+        <p>Acesta este designul parametric verificat. Nu conține SKU-uri și nu rotunjește soluția la trepte comerciale.</p>
+        ${familyCard("Pereți", env.wall)}
+        ${familyCard("Acoperiș / pod", env.roof)}
+        ${familyCard("Pardoseală", env.floor)}
+        <div class="ed-measure">
+          <div><b>Ferestre</b><br><span>
+            Uw țintă ${env.windows?.target_u_w_m2k == null ? "—" : fmt(env.windows.target_u_w_m2k,3) + " W/m²K"}
+            · Uw rezultat ${env.windows?.final_u_w_m2k == null ? "—" : fmt(env.windows.final_u_w_m2k,3) + " W/m²K"}
+            · înlocuire ${fmt(100 * Number(env.windows?.replacement_fraction || 0),1)}%
+          </span></div>
+        </div>
+        <div class="ed-measure">
+          <div><b>Punți termice</b><br><span>
+            Σψ·L ${fmt(bridges.sum_psi_l_w_k || 0,2)} W/K
+            · ψ mediu ponderat ${bridges.weighted_mean_psi_w_mk == null ? "—" : fmt(bridges.weighted_mean_psi_w_mk,3) + " W/mK"}
+            · lungime totală ${fmt(bridges.total_length_m || 0,1)} m
+          </span></div>
+        </div>
+        <div class="ed-measure">
+          <div><b>Ventilație / infiltrații</b><br><span>
+            ACH ${fmt(ventilation.air_changes_per_hour || 0,2)}
+            · infiltrații ${fmt(ventilation.infiltration_air_changes_per_hour || 0,2)} 1/h
+            · η recuperare ${fmt(100 * Number(ventilation.heat_recovery_efficiency || 0),1)}%
+          </span></div>
+        </div>
+        <div class="ed-measure">
+          <div><b>Încălzire</b><br><span>
+            ramură ${escapeHtml(heat.technology_branch || heat.generator_type || "sistem existent")}
+            · putere de proiect ${fmt(heat.design_required_power_kw || 0,2)} kW
+            · țintă instalată ${fmt(heat.installed_power_target_kw || 0,2)} kW
+            ${heat.scop_target == null ? "" : " · SCOP țintă " + fmt(heat.scop_target,2)}
+            ${heat.efficiency_target == null ? "" : " · η țintă " + fmt(100 * Number(heat.efficiency_target),1) + "%"}
+            ${heat.design_flow_temperature_c == null ? "" : " · tur " + fmt(heat.design_flow_temperature_c,0) + " °C"}
+            ${heat.design_return_temperature_c == null ? "" : " · retur " + fmt(heat.design_return_temperature_c,0) + " °C"}
+          </span></div>
+        </div>
+        <div class="ed-measure">
+          <div><b>Fotovoltaice</b><br><span>
+            ${fmt(pvSpec.installed_power_kwp || 0,2)} kWp total
+            · +${fmt(pvSpec.added_power_kwp || 0,2)} kWp TEO
+            ${pvSpec.orientation ? " · " + escapeHtml(pvSpec.orientation) : ""}
+            ${pvSpec.tilt_degrees == null ? "" : " · " + fmt(pvSpec.tilt_degrees,0) + "°"}
+            ${pvSpec.performance_ratio == null ? "" : " · PR " + fmt(pvSpec.performance_ratio,3)}
+          </span></div>
+        </div>
+        <div class="ed-measure">
+          <div><b>Solar termic</b><br><span>
+            ${fmt(solarSpec.collector_area_m2 || 0,2)} m² total
+            · +${fmt(solarSpec.added_area_m2 || 0,2)} m² TEO
+            ${solarSpec.system_efficiency == null ? "" : " · η " + fmt(100 * Number(solarSpec.system_efficiency),1) + "%"}
+          </span></div>
+        </div>
+        <p class="ed-hint">λ este valoarea de calcul folosită pentru conversia dintre rezistență termică și grosime; TEO optimizează în prezent ΔR/U, nu un material comercial. Valorile ψ sunt raportate din modelul fizic și nu sunt încă variabile independente de optimizare.</p>
+      </section>
+
+      <section class="ed-report-section">
+        <h2>Discretizare comercială</h2>
+        <p>Nu face parte din TEO. Produsele reale, grosimile comerciale, SKU-urile și curbele de producător se vor potrivi ulterior peste această specificație inginerească, fără să redefinească optimul parametric.</p>
+      </section>
+    `;
 
     if (scenario.annual_fuel_use && Object.keys(scenario.annual_fuel_use).length) {
       html += `
@@ -2620,7 +2658,7 @@
     html += `
       <section class="ed-report-section">
         <h2>Cum a fost verificat rezultatul</h2>
-        <p>Optimizerul a folosit un shortlist fizic, a evaluat separat ramurile de încălzire și a verificat finaliștii cu motorul energetic complet înainte de selecția comercială.</p>
+        <p>Optimizerul a căutat parametric în browser, a evaluat separat ramurile de încălzire și a verificat finalistul cu motorul energetic complet. Selecția comercială este intenționat în afara TEO.</p>
         <div class="ed-metrics">
           ${metric("Candidați evaluați", fmt(opt.evaluatedCandidates || 0))}
           ${metric("Evaluări parametrice", fmt(opt.parametricEvaluations || 0))}
