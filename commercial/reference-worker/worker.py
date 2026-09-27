@@ -84,6 +84,9 @@ class Default(WorkerEntrypoint):
             return response
         except Exception as exc:
             return _json_response(
-                {"error": str(exc)},
+                {
+                    "error": str(exc),
+                    "errorType": type(exc).__name__,
+                },
                 status=422,
             )
