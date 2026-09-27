@@ -41,6 +41,11 @@
   });
   const WALL_SURFACE_RESISTANCE_M2K_W = 0.17;
 
+  // Single knob for server-side full-engine work. Deep TEO search remains in
+  // the browser; this budget only caps expensive Python/Cloudflare calculate()
+  // passes. Raise it later when the execution environment has more headroom.
+  const TEO_MAX_SERVER_CALCULATIONS_PER_RUN = 7;
+
   let current = "intro";
   let furthestWizardIndex = -1;
   let baselineResult = null;
@@ -2314,9 +2319,24 @@
       log(`Pareto: ${verificationPlan.frontierCount || 0} · verificări canonice: ${targets.length}.`);
 
       const verifiedRows = [];
-      for (let i = 0; i < targets.length; i++) {
-        const target = targets[i];
-        log(`VERIFY ${i + 1}/${targets.length} · ${target.branchId} · un singur calculate() complet.`);
+      // Baseline already consumed one canonical calculate(). Reserve roughly
+      // one third of the remaining budget for PRODUCT rechecks, and spend the
+      // rest on canonical VERIFY passes. Search depth itself is unchanged.
+      const remainingAfterBaseline = Math.max(1, TEO_MAX_SERVER_CALCULATIONS_PER_RUN - 1);
+      const verifyLimit = Math.max(
+        1,
+        Math.min(
+          targets.length,
+          Math.floor((remainingAfterBaseline * 2) / 3)
+        )
+      );
+      const verifyTargets = targets.slice(0, verifyLimit);
+      log(
+        `RESOURCE BUDGET · max ${TEO_MAX_SERVER_CALCULATIONS_PER_RUN} calculate() server/run · VERIFY ${verifyTargets.length}/${targets.length}.`
+      );
+      for (let i = 0; i < verifyTargets.length; i++) {
+        const target = verifyTargets[i];
+        log(`VERIFY ${i + 1}/${verifyTargets.length} · ${target.branchId} · un singur calculate() complet.`);
         const verified = await postJson(
           "/api/optimization/home-lab/v3/verify",
           {
@@ -2336,11 +2356,19 @@
       // each PRODUCT request performs another full canonical calculate(). The
       // verification plan is already robust-ranked, so the first three are the
       // strongest candidates for exact SKU recheck.
-      const productTargets = verifiedRows.slice(0, Math.min(3, verifiedRows.length));
+      const calculationsUsedBeforeProduct = 1 + verifiedRows.length;
+      const productBudget = Math.max(
+        0,
+        TEO_MAX_SERVER_CALCULATIONS_PER_RUN - calculationsUsedBeforeProduct
+      );
+      const productTargets = verifiedRows.slice(
+        0,
+        Math.min(3, productBudget, verifiedRows.length)
+      );
       const commercialRows = [];
       let productFailures = 0;
       log(
-        `PRODUCT SAFE MODE · ${productTargets.length} recheck-uri exacte din ${verifiedRows.length} finaliști canonici · fără retry agresiv.`
+        `PRODUCT SAFE MODE · ${productTargets.length} recheck-uri exacte din ${verifiedRows.length} finaliști canonici · buget server ${TEO_MAX_SERVER_CALCULATIONS_PER_RUN} calculate() · fără retry agresiv.`
       );
       for (let i = 0; i < productTargets.length; i++) {
         const verified = productTargets[i];
