@@ -1805,7 +1805,9 @@ def test_v3_product_is_bounded_and_finalize_is_pure_assembly() -> None:
 def test_worker_memory_guard_and_v3_verification_use_bounded_state() -> None:
     source = Path("commercial/app/main.py").read_text(encoding="utf-8")
     assert "async def collect_python_worker_garbage(" in source
-    assert 'path.startswith(("/static/", "/home-lab-assets/"))' in source
+    assert '"/static/"' in source
+    assert '"/home-lab-assets/"' in source
+    assert '"/api/optimization/home-lab/v4/flow/"' in source
     assert "gc.collect()" in source
 
     verify_section = source.split(
