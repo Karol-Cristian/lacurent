@@ -3328,7 +3328,7 @@ async def home_lab_optimization_v3_product_api(request: Request) -> JSONResponse
 
 @app.post("/api/optimization/home-lab/v3/finalize")
 async def home_lab_optimization_v3_finalize_api(request: Request) -> JSONResponse:
-    """Select already verified/product-matched rows; only render the winner once."""
+    """Pure selection/report assembly over already-computed VERIFY/PRODUCT rows."""
 
     try:
         raw = await request.json()
@@ -3336,18 +3336,21 @@ async def home_lab_optimization_v3_finalize_api(request: Request) -> JSONRespons
         commercial_rows = raw.get("commercialRows") or []
         verified_rows = raw.get("verifiedRows") or []
         branch_stats = raw.get("branchStats") or []
+        branch_plan_raw = raw.get("branchPlan") or []
         if not isinstance(commercial_rows, list):
             raise ValueError("Finaliștii comerciali V3 trebuie să fie o listă.")
         if not isinstance(verified_rows, list) or not verified_rows:
             raise ValueError("Lipsesc finaliștii canonici V3.")
+        if not isinstance(branch_plan_raw, list):
+            branch_plan_raw = []
 
         mode, _, optimization_request = _home_lab_optimization_request_from_form(form)
-        heating_summary = await _optimizer_heating_catalog_summary(request)
         started = time.perf_counter()
 
         commercial_candidates: list[CandidateEvaluationV1] = []
         source_by_commercial_id: dict[str, str] = {}
         branch_by_commercial_id: dict[str, str] = {}
+        row_by_commercial_id: dict[str, dict[str, Any]] = {}
         for row in commercial_rows:
             if not isinstance(row, dict):
                 continue
@@ -3362,6 +3365,7 @@ async def home_lab_optimization_v3_finalize_api(request: Request) -> JSONRespons
             branch_by_commercial_id[candidate.candidate_id] = str(
                 row.get("branchId") or ""
             )
+            row_by_commercial_id[candidate.candidate_id] = row
 
         verified_by_id: dict[str, CandidateEvaluationV1] = {}
         branch_by_verified_id: dict[str, str] = {}
@@ -3377,11 +3381,6 @@ async def home_lab_optimization_v3_finalize_api(request: Request) -> JSONRespons
                 row.get("branchId") or ""
             )
 
-        # PRODUCT is a post-search discretization stage, not the source of truth
-        # for physics. If Cloudflare refuses every exact commercial recheck, keep
-        # the already-canonical verified candidates and finish with an explicit
-        # non-commercialized result instead of turning the whole user run into
-        # an error page.
         selection_pool = (
             commercial_candidates
             if commercial_candidates
@@ -3408,43 +3407,79 @@ async def home_lab_optimization_v3_finalize_api(request: Request) -> JSONRespons
             or branch_by_verified_id.get(raw_selected.candidate_id)
             or "keep-current-heating"
         )
-        if commercial_candidates:
-            selected_branch_catalog = (
-                await _optimizer_heating_commercial_branch_catalog(
-                    request,
-                    selected_branch_id,
-                )
+
+        selected_product_row = row_by_commercial_id.get(selected.candidate_id)
+        precomputed_scenario: dict[str, Any]
+        precomputed_heat_pump_profile: dict[str, Any] | None = None
+        if selected_product_row is not None:
+            scenario_raw = selected_product_row.get("scenario")
+            precomputed_scenario = (
+                dict(scenario_raw)
+                if isinstance(scenario_raw, dict)
+                else _optimizer_candidate_scenario_snapshot(selected, form)
             )
-            # Branch-plan eligibility comes from bounded summary metadata; the
-            # selected branch catalog contributes only the exact SKU/performance
-            # rows needed by the final report.
+            hp_raw = selected_product_row.get("heatPumpPerformanceProfile")
+            if isinstance(hp_raw, dict):
+                precomputed_heat_pump_profile = dict(hp_raw)
+
+            matched_product_raw = selected_product_row.get("matchedProduct")
+            matched_options = (
+                [dict(matched_product_raw)]
+                if isinstance(matched_product_raw, dict)
+                else []
+            )
             heating_catalog = {
-                **selected_branch_catalog,
-                "technology_summaries": list(
-                    heating_summary.get("technology_summaries") or []
-                ),
+                "source": selected_product_row.get("catalogSource")
+                or "precomputed_product_row",
+                "catalog_mode": "finalize_precomputed_product_row",
+                "technology_id": selected_branch_id,
+                "options": matched_options,
+                "heat_pump_performance_points": [],
+                "heat_pump_seasonal_performance": [],
+                "parametric_heating_nodes": [],
+                "catalog_stats": {
+                    "products": len(matched_options),
+                    "loaded_products": len(matched_options),
+                    "performance_points": 0,
+                    "seasonal_points": 0,
+                    "parametric_nodes": 0,
+                },
             }
         else:
+            precomputed_scenario = _optimizer_candidate_scenario_snapshot(
+                selected,
+                form,
+            )
             heating_catalog = {
-                **heating_summary,
+                "source": "canonical_fallback",
+                "catalog_mode": "canonical_fallback_no_product_read",
+                "technology_id": selected_branch_id,
                 "options": [],
                 "heat_pump_performance_points": [],
                 "heat_pump_seasonal_performance": [],
                 "parametric_heating_nodes": [],
-                "catalog_mode": "canonical_fallback_no_commercial_recheck",
+                "catalog_stats": {
+                    "products": 0,
+                    "loaded_products": 0,
+                    "performance_points": 0,
+                    "seasonal_points": 0,
+                    "parametric_nodes": 0,
+                },
             }
 
-        branch_plan = heating_branch_plan(
-            optimization_request,
-            heating_summary,
-        )
         stats_by_id: dict[str, dict[str, Any]] = {
             str(item.get("branchId") or ""): item
             for item in branch_stats
             if isinstance(item, dict)
         }
         branches: list[HeatingBranchSummaryV1] = []
-        for branch in branch_plan:
+        for branch_raw in branch_plan_raw:
+            if not isinstance(branch_raw, dict):
+                continue
+            try:
+                branch = HeatingBranchSummaryV1(**branch_raw)
+            except Exception:
+                continue
             stats = stats_by_id.get(branch.branch_id)
             if not stats:
                 branches.append(branch)
@@ -3484,9 +3519,13 @@ async def home_lab_optimization_v3_finalize_api(request: Request) -> JSONRespons
         product_failure_count = int(raw.get("productFailureCount") or 0)
         warnings = [
             (
-                "TEO V4 păstrează căutarea profundă și verificarea canonică a "
-                "finaliștilor; etapa PRODUCT este limitată separat la maximum "
-                "3 recalculări comerciale exacte pentru stabilitatea Worker-ului."
+                "TEO păstrează căutarea profundă și verificarea canonică; "
+                "PRODUCT citește din D1 numai un set fix de SKU-uri din jurul "
+                "necesarului de putere și curbele asociate acelor SKU-uri."
+            ),
+            (
+                "FINALIZE este acum o etapă de selecție și serializare: "
+                "0 recalculări energetice și 0 citiri de catalog."
             ),
             (
                 f"PRODUCT safe mode: {len(commercial_rows)}/"
@@ -3498,16 +3537,15 @@ async def home_lab_optimization_v3_finalize_api(request: Request) -> JSONRespons
             warnings.append(
                 (
                     f"{product_failure_count} request(uri) PRODUCT au eșuat și au "
-                    "fost omise fără retry agresiv, pentru a evita secvența "
-                    "503→500→1101 observată pe isolate-ul Python."
+                    "fost omise fără retry agresiv."
                 )
             )
         if not commercial_candidates:
             warnings.append(
                 (
                     "Niciun recheck PRODUCT nu a fost disponibil; rezultatul final "
-                    "rămâne finalistul canonic verificat, iar discretizarea comercială "
-                    "este marcată explicit ca nefinalizată."
+                    "rămâne finalistul canonic verificat, fără o nouă rulare a "
+                    "motorului în FINALIZE."
                 )
             )
         for row in [*verified_rows, *commercial_rows]:
@@ -3538,6 +3576,8 @@ async def home_lab_optimization_v3_finalize_api(request: Request) -> JSONRespons
             raw_selected=raw_selected,
             technical_heating_alternatives=[],
             heating_catalog=heating_catalog,
+            precomputed_scenario=precomputed_scenario,
+            precomputed_heat_pump_profile=precomputed_heat_pump_profile,
         )
         payload["optimization"].update(
             {
@@ -3560,6 +3600,8 @@ async def home_lab_optimization_v3_finalize_api(request: Request) -> JSONRespons
                 ),
                 "runId": str(raw.get("runId") or ""),
                 "heatingCatalogSource": heating_catalog.get("source"),
+                "finalizeRecalculations": 0,
+                "finalizeCatalogReads": 0,
             }
         )
         return JSONResponse(payload)
