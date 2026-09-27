@@ -1516,6 +1516,14 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
         "energy_class": result.energy_class,
         "final_energy_kwh": float(result.total_final_energy_kwh),
         "gross_service_final_energy_kwh": float(result.total_service_final_energy_kwh),
+        "annual_heating_demand_kwh": float(result.annual_heating_demand_kwh),
+        "annual_cooling_demand_kwh": float(result.annual_cooling_demand_kwh),
+        "heating_demand_specific_kwh_m2": (
+            float(result.annual_heating_demand_kwh) / float(result.input.heated_floor_area_m2)
+        ),
+        "cooling_demand_specific_kwh_m2": (
+            float(result.annual_cooling_demand_kwh) / float(result.input.heated_floor_area_m2)
+        ),
         "primary_specific_kwh_m2": float(result.primary_energy.specific_kwh_m2),
         "co2_kg": float(result.co2.total_kg),
         "co2_specific_kg_m2": float(result.co2.specific_kg_m2),
