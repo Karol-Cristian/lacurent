@@ -19,6 +19,7 @@ from commercial.app.heating_catalog_store import (
 from commercial.app.heating_optimization import (
     _estimated_heat_pump_scop,
     _rebase_candidate,
+    _select_sized_product,
     apply_heating_technology,
     apply_supplemental_heating_technology,
     commercialize_heating_finalist,
@@ -172,6 +173,24 @@ def test_commercial_branch_catalog_contains_only_selected_technology() -> None:
     assert branch["parametric_heating_nodes"] == []
     assert branch["catalog_stats"]["loaded_products"] == len(branch["options"])
     assert len(branch["options"]) < len(full["options"])
+
+
+def test_air_air_bounded_product_window_uses_unit_products_not_fixed_bundles() -> None:
+    bounded = _bounded_commercial_branch_payload(
+        seed_heating_catalog_payload(),
+        "heat-pump-air-air",
+        4.76,
+    )
+
+    assert bounded["options"]
+    assert any(
+        item["id"] == "hp-aa-daikin-perfera-35a9"
+        for item in bounded["options"]
+    )
+    assert all(
+        not str(item.get("source_kind") or "").startswith("derived_bundle_")
+        for item in bounded["options"]
+    )
 
 
 def test_finalist_commercial_catalog_stays_fixed_size_as_marketplace_grows() -> None:
@@ -832,6 +851,69 @@ def test_keep_current_finalist_never_selects_a_new_generator_product() -> None:
     assert not any(line.family == "heating" for line in commercial.cost_breakdown)
     assert any("nu necesită achiziția" in item for item in warnings)
 
+
+
+def test_air_air_quantity_is_derived_from_single_unit_design_capacity() -> None:
+    baseline_payload = model_to_dict(demo_building())
+    # Use the browser-selected climate token carried by Home Lab so this
+    # regression exercises the normative Zone III winter design temperature.
+    baseline_payload["locality"] = "@lc|cluj_napoca|III|-18|Cluj-Napoca"
+    baseline = BuildingInput(**baseline_payload)
+    technology = next(
+        item
+        for item in heating_technologies()
+        if item.id == "heat-pump-air-air"
+    )
+
+    sized = _select_sized_product(
+        baseline,
+        technology,
+        4.76,
+    )
+
+    assert sized is not None
+    assert sized.product.id == "hp-aa-daikin-perfera-35a9"
+    assert sized.quantity == 2
+    assert sized.aggregate_rated_power_kw == pytest.approx(8.0)
+    assert sized.available_design_capacity_kw >= 4.76
+    assert sized.available_design_capacity_kw < 5.1
+    assert "x2_identical_monosplits" in sized.capacity_basis
+    assert sized.installed_capex_lei == pytest.approx(2 * 7845.32)
+
+
+def test_air_air_dynamic_quantity_profile_reports_aggregate_design_capacity() -> None:
+    baseline_payload = model_to_dict(demo_building())
+    baseline_payload["locality"] = "@lc|cluj_napoca|III|-18|Cluj-Napoca"
+    baseline = BuildingInput(**baseline_payload)
+    product = next(
+        item
+        for item in heating_planning_options()
+        if item.id == "hp-aa-daikin-perfera-35a9"
+    )
+    result = calculate(baseline, include_reference=False)
+
+    single = heat_pump_monthly_performance_profile(
+        baseline,
+        product,
+        list(result.monthly),
+        quantity=1,
+    )
+    double = heat_pump_monthly_performance_profile(
+        baseline,
+        product,
+        list(result.monthly),
+        quantity=2,
+    )
+
+    assert single is not None
+    assert double is not None
+    assert double["unit_count"] == 2
+    assert double["unit_rated_power_kw"] == pytest.approx(4.0)
+    assert double["aggregate_rated_power_kw"] == pytest.approx(8.0)
+    assert double["product_label"].startswith("2 × Daikin Perfera")
+    assert double["design_point"]["heating_capacity_kw"] == pytest.approx(
+        2 * single["design_point"]["heating_capacity_kw"]
+    )
 
 
 def test_air_air_catalog_has_commercial_cost_and_monthly_cop_curve() -> None:

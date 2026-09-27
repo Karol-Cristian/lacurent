@@ -2661,6 +2661,8 @@ def _home_lab_optimizer_success_payload(
                 "sourceUrl": line.source_url,
                 "confidence": line.confidence,
                 "optionId": line.product_id,
+                "quantity": float(line.quantity or 1),
+                "quantityUnit": line.quantity_unit,
                 "technologyId": next(
                     (
                         product.technology_id
@@ -2702,6 +2704,10 @@ def _home_lab_optimizer_success_payload(
                 selected.resulting_configuration,
                 matched_product,
                 list(final_result.monthly),
+                quantity=max(
+                    1,
+                    int(float(selected_heating.get("quantity") or 1)),
+                ),
             )
             if heat_pump_profile is not None:
                 heat_pump_profile["engine_performance_kind"] = (
@@ -3276,6 +3282,20 @@ async def home_lab_optimization_v3_product_api(request: Request) -> JSONResponse
                 form,
             )
 
+        matched_quantity = next(
+            (
+                max(1, int(float(line.quantity or 1)))
+                for line in commercial_candidate.cost_breakdown
+                if (
+                    line.family == "heating"
+                    and line.product_id is not None
+                    and matched_product is not None
+                    and line.product_id == matched_product.id
+                )
+            ),
+            1,
+        )
+
         heat_pump_profile: dict[str, Any] | None = None
         if (
             commercial_engine_result is not None
@@ -3286,6 +3306,7 @@ async def home_lab_optimization_v3_product_api(request: Request) -> JSONResponse
                 commercial_candidate.resulting_configuration,
                 matched_product,
                 list(commercial_engine_result.monthly),
+                quantity=matched_quantity,
             )
             if heat_pump_profile is not None:
                 heat_pump_profile["engine_performance_kind"] = (
@@ -3314,6 +3335,7 @@ async def home_lab_optimization_v3_product_api(request: Request) -> JSONResponse
                 if matched_product is None
                 else model_to_dict(matched_product)
             ),
+            "matchedProductQuantity": matched_quantity,
             "scenario": scenario,
             "heatPumpPerformanceProfile": heat_pump_profile,
             "catalogSource": heating_catalog.get("source"),

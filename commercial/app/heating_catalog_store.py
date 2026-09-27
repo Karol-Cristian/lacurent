@@ -1257,6 +1257,17 @@ def _bounded_commercial_branch_payload(
     required = max(float(required_power_kw), 0.0)
     branch = commercial_heating_branch_catalog_payload(payload, technology_id)
     products = list(branch.get("options") or [])
+    if technology_id == "heat-pump-air-air":
+        # Air-air quantity is derived from the real per-unit product at the
+        # building design point. Legacy 2x/3x/4x bundle rows remain public for
+        # traceability but must not crowd the bounded PRODUCT candidate window.
+        products = [
+            item
+            for item in products
+            if not str(item.get("source_kind") or "").startswith(
+                "derived_bundle_"
+            )
+        ]
 
     above = sorted(
         (
@@ -1388,6 +1399,10 @@ async def read_heating_commercial_candidate_catalog_from_d1(
             FROM heating_products
             WHERE active = 1
               AND technology_id = ?
+              AND NOT (
+                  technology_id = 'heat-pump-air-air'
+                  AND COALESCE(source_kind, '') LIKE 'derived_bundle_%'
+              )
               AND rated_power_kw >= ?
             ORDER BY rated_power_kw, equipment_price_lei, id
             LIMIT ?
@@ -1411,6 +1426,10 @@ async def read_heating_commercial_candidate_catalog_from_d1(
             FROM heating_products
             WHERE active = 1
               AND technology_id = ?
+              AND NOT (
+                  technology_id = 'heat-pump-air-air'
+                  AND COALESCE(source_kind, '') LIKE 'derived_bundle_%'
+              )
               AND rated_power_kw >= ?
             ORDER BY rated_power_kw, equipment_price_lei, id
             LIMIT ?
@@ -1434,6 +1453,10 @@ async def read_heating_commercial_candidate_catalog_from_d1(
             FROM heating_products
             WHERE active = 1
               AND technology_id = ?
+              AND NOT (
+                  technology_id = 'heat-pump-air-air'
+                  AND COALESCE(source_kind, '') LIKE 'derived_bundle_%'
+              )
               AND rated_power_kw < ?
             ORDER BY rated_power_kw DESC, equipment_price_lei, id
             LIMIT ?
