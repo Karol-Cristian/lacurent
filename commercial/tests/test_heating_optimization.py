@@ -175,6 +175,24 @@ def test_commercial_branch_catalog_contains_only_selected_technology() -> None:
     assert len(branch["options"]) < len(full["options"])
 
 
+def test_air_air_bounded_product_window_uses_unit_products_not_fixed_bundles() -> None:
+    bounded = _bounded_commercial_branch_payload(
+        seed_heating_catalog_payload(),
+        "heat-pump-air-air",
+        4.76,
+    )
+
+    assert bounded["options"]
+    assert any(
+        item["id"] == "hp-aa-daikin-perfera-35a9"
+        for item in bounded["options"]
+    )
+    assert all(
+        not str(item.get("source_kind") or "").startswith("derived_bundle_")
+        for item in bounded["options"]
+    )
+
+
 def test_finalist_commercial_catalog_stays_fixed_size_as_marketplace_grows() -> None:
     full = seed_heating_catalog_payload()
     template = next(
