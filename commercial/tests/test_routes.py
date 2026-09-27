@@ -361,6 +361,30 @@ def test_home_lab_local_persistence_and_analytics_are_consent_gated() -> None:
     assert "if (!autosaveAllowed()) return false;" in autosave_js.text
 
 
+def test_public_product_routes_do_not_load_optimizer_planning_catalog() -> None:
+    source = Path("commercial/app/main.py").read_text(encoding="utf-8")
+
+    api_section = source.split(
+        'async def heating_products_api(request: Request) -> JSONResponse:',
+        1,
+    )[1].split(
+        '@app.post("/api/optimization/cost-curves/wall")',
+        1,
+    )[0]
+    assert "_public_heating_catalog(request)" in api_section
+    assert "_optimizer_heating_catalog(request)" not in api_section
+
+    page_section = source.split(
+        'async def product_catalog_page(request: Request) -> HTMLResponse:',
+        1,
+    )[1].split(
+        '@app.get("/catalog")',
+        1,
+    )[0]
+    assert "_public_heating_catalog(request)" in page_section
+    assert "_optimizer_heating_catalog(request)" not in page_section
+
+
 def test_landing_uses_compact_heating_summary_not_full_catalog() -> None:
     source = Path("commercial/app/main.py").read_text(encoding="utf-8")
     section = source.split(
