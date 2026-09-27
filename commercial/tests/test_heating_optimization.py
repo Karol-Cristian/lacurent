@@ -4,7 +4,9 @@ import pytest
 
 from commercial.app.engine import calculate, demo_building
 from commercial.app.heating_catalog_store import (
+    COMMERCIAL_FINALIST_MAX_PRODUCTS,
     HEATING_PARAMETRIC_NODE_TOTAL,
+    _bounded_commercial_branch_payload,
     build_heating_technology_summaries,
     build_parametric_heating_nodes,
     commercial_heating_branch_catalog_payload,
@@ -170,6 +172,51 @@ def test_commercial_branch_catalog_contains_only_selected_technology() -> None:
     assert branch["parametric_heating_nodes"] == []
     assert branch["catalog_stats"]["loaded_products"] == len(branch["options"])
     assert len(branch["options"]) < len(full["options"])
+
+
+def test_finalist_commercial_catalog_stays_fixed_size_as_marketplace_grows() -> None:
+    full = seed_heating_catalog_payload()
+    template = next(
+        item
+        for item in full["options"]
+        if item["technology_id"] == "heat-pump-air-air"
+    )
+    products = []
+    for index in range(250):
+        item = dict(template)
+        item["id"] = f"synthetic-air-air-{index:03d}"
+        item["external_id"] = item["id"]
+        item["rated_power_kw"] = round(4.0 + index * 0.08, 3)
+        item["equipment_price_lei"] = 9000 + index
+        products.append(item)
+
+    synthetic = {
+        **full,
+        "options": products,
+        "heat_pump_performance_points": [],
+        "heat_pump_seasonal_performance": [],
+    }
+    bounded = _bounded_commercial_branch_payload(
+        synthetic,
+        "heat-pump-air-air",
+        10.0,
+    )
+
+    assert len(bounded["options"]) <= COMMERCIAL_FINALIST_MAX_PRODUCTS
+    assert bounded["catalog_stats"]["loaded_products"] == len(
+        bounded["options"]
+    )
+    assert bounded["catalog_stats"]["candidate_limit"] == (
+        COMMERCIAL_FINALIST_MAX_PRODUCTS
+    )
+    assert all(
+        item["technology_id"] == "heat-pump-air-air"
+        for item in bounded["options"]
+    )
+    assert any(
+        float(item["rated_power_kw"]) >= 15.0
+        for item in bounded["options"]
+    )
 
 
 def test_compact_branch_profile_preserves_planning_power_range() -> None:
