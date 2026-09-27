@@ -135,6 +135,7 @@ def test_v3_verify_work_unit_recalculates_one_candidate_only() -> None:
         fast_candidate=fast_candidate,
         branch_id="keep-current-heating",
         catalog=_catalog(),
+        baseline_annual_bill_lei=12000.0,
     )
 
     assert verified.branch_id == "keep-current-heating"
