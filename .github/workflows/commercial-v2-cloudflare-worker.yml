@@ -1090,25 +1090,41 @@ jobs:
               "payload": model_to_json(reference_building),
               "actualSpecificPrimaryKwhM2": reference_actual,
           }).encode("utf-8")
-          status, _, reference_body = open_url(
+          reference_worker_url = (
+              "https://lacurent-reference-rbpe.lemnarukarol.workers.dev"
+              "/reference-comparison"
+          )
+          status, location, _ = open_url(
               apex + "/api/reference-comparison",
+              data=reference_request,
+              headers={"Content-Type": "application/json"},
+              follow_redirects=False,
+          )
+          if status != 307 or location != reference_worker_url:
+              raise AssertionError(
+                  "Main Worker reference route did not redirect to the isolated service: "
+                  f"HTTP {status}, location={location!r}"
+              )
+
+          status, _, reference_body = open_url(
+              reference_worker_url,
               data=reference_request,
               headers={"Content-Type": "application/json"},
           )
           if status != 200:
               raise AssertionError(
-                  f"/api/reference-comparison failed with HTTP {status}"
+                  f"Dedicated reference Worker failed with HTTP {status}"
               )
           reference_payload = json.loads(reference_body)
           if float(reference_payload.get("referenceSpecificPrimaryKwhM2") or 0) <= 0:
               raise AssertionError(
                   "Reference comparison did not return a positive reference indicator."
               )
-          if reference_payload.get("calculationMode") != "separate_reference_rbpe_request":
+          if reference_payload.get("calculationMode") != "dedicated_reference_rbpe_worker":
               raise AssertionError(
-                  "Reference comparison did not use the split RBPE request mode."
+                  "Reference comparison did not use the dedicated Worker mode."
               )
-          print("/api/reference-comparison", status)
+          print("dedicated /reference-comparison", status)
 
           status, _, embed_calculation = open_url(
               apex + "/embed/demo-store/calculate",
