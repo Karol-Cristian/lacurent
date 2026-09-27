@@ -1871,25 +1871,58 @@
         backendElapsedMs += Number(verified.calculationTimeMs || 0);
       }
 
+      // Search depth stays unchanged: all canonical finalists above remain
+      // verified. Commercial discretization is intentionally bounded because
+      // each PRODUCT request performs another full canonical calculate(). The
+      // verification plan is already robust-ranked, so the first three are the
+      // strongest candidates for exact SKU recheck.
+      const productTargets = verifiedRows.slice(0, Math.min(3, verifiedRows.length));
       const commercialRows = [];
-      for (let i = 0; i < verifiedRows.length; i++) {
-        const verified = verifiedRows[i];
-        log(`PRODUCT ${i + 1}/${verifiedRows.length} · sizing + produs comercial separat.`);
-        const commercial = await postJson(
-          "/api/optimization/home-lab/v3/product",
-          {
-            form:formPayload,
-            branchId:verified.branchId,
-            candidate:verified.candidate,
-            sourceCandidateId:verified.candidate?.candidate_id
-          },
-          {stageName:`product ${i + 1}/${verifiedRows.length}`, runId, retries:2}
-        );
-        commercialRows.push(commercial);
-        backendElapsedMs += Number(commercial.calculationTimeMs || 0);
+      let productFailures = 0;
+      log(
+        `PRODUCT SAFE MODE · ${productTargets.length} recheck-uri exacte din ${verifiedRows.length} finaliști canonici · fără retry agresiv.`
+      );
+      for (let i = 0; i < productTargets.length; i++) {
+        const verified = productTargets[i];
+        log(`PRODUCT ${i + 1}/${productTargets.length} · sizing + produs comercial exact.`);
+        try {
+          const commercial = await postJson(
+            "/api/optimization/home-lab/v3/product",
+            {
+              form:formPayload,
+              branchId:verified.branchId,
+              candidate:verified.candidate,
+              sourceCandidateId:verified.candidate?.candidate_id
+            },
+            // A failed heavy product request can indicate a poisoned Python
+            // isolate. Immediate retries made the 503→500→1101 sequence worse,
+            // so product rechecks fail soft and the run continues.
+            {stageName:`product ${i + 1}/${productTargets.length}`, runId, retries:0}
+          );
+          commercialRows.push(commercial);
+          backendElapsedMs += Number(commercial.calculationTimeMs || 0);
+        } catch (error) {
+          productFailures += 1;
+          log(
+            `PRODUCT ${i + 1}/${productTargets.length} indisponibil · ${error?.message || String(error)} · continui fără retry.`
+          );
+        }
+        if (i + 1 < productTargets.length) {
+          await sleep(900);
+        }
       }
 
-      log("REPORT · aleg rezultatul dintre finaliști deja verificați; finalize nu mai rulează 3+3 calcule grele.");
+      if (!commercialRows.length) {
+        log(
+          "PRODUCT FALLBACK · niciun recheck comercial exact nu a răspuns; raportul va folosi finalistul canonic și va marca discretizarea comercială ca nefinalizată."
+        );
+      } else if (productFailures) {
+        log(
+          `PRODUCT SAFE MODE · ${commercialRows.length}/${productTargets.length} recheck-uri exacte reușite; finalize alegere dintre rezultatele comerciale disponibile.`
+        );
+      }
+
+      log("REPORT · aleg rezultatul dintre finaliștii comerciali reușiți; fallback canonic explicit dacă etapa PRODUCT nu răspunde.");
       optimizationResult = await postJson(
         "/api/optimization/home-lab/v3/finalize",
         {
@@ -1904,7 +1937,9 @@
           sourceCandidateCount:localSourceCandidateCount,
           searchPointCount:searchPoints.length,
           branchBatchSize:0,
-          verificationFrontierCount:Number(verificationPlan.frontierCount || 0)
+          verificationFrontierCount:Number(verificationPlan.frontierCount || 0),
+          productTargetCount:productTargets.length,
+          productFailureCount:productFailures
         },
         {stageName:"finalize V3", runId, retries:2}
       );
