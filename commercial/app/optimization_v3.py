@@ -253,8 +253,11 @@ def verify_one_candidate_v3(
     """
 
     if baseline_annual_bill_lei is None:
-        raise ValueError(
-            "Baseline annual bill is required for memory-safe V3 verification."
+        # Backward-compatible memory-safe fallback for older Home Lab clients:
+        # the fast candidate already carries the same baseline annual bill used
+        # during search, so no full baseline calculate()/cache is required.
+        baseline_annual_bill_lei = float(
+            fast_candidate.baseline_annual_bill_lei
         )
     baseline_bill = float(baseline_annual_bill_lei)
     if baseline_bill < 0:
