@@ -1232,6 +1232,115 @@ def commercial_heating_branch_catalog_payload(
     }
 
 
+COMMERCIAL_FINALIST_NEAR_LIMIT = 20
+COMMERCIAL_FINALIST_HEADROOM_LIMIT = 8
+COMMERCIAL_FINALIST_BELOW_LIMIT = 4
+COMMERCIAL_FINALIST_MAX_PRODUCTS = (
+    COMMERCIAL_FINALIST_NEAR_LIMIT
+    + COMMERCIAL_FINALIST_HEADROOM_LIMIT
+    + COMMERCIAL_FINALIST_BELOW_LIMIT
+)
+
+
+def _bounded_commercial_branch_payload(
+    payload: dict[str, Any],
+    technology_id: str,
+    required_power_kw: float,
+) -> dict[str, Any]:
+    """Keep a fixed-size commercial candidate set around one design load.
+
+    The exact capacity check still happens in heating_optimization.py against
+    source-backed performance curves. This helper only prevents a finalist
+    request from materializing every SKU in a marketplace technology.
+    """
+
+    required = max(float(required_power_kw), 0.0)
+    branch = commercial_heating_branch_catalog_payload(payload, technology_id)
+    products = list(branch.get("options") or [])
+
+    above = sorted(
+        (
+            item
+            for item in products
+            if float(item.get("rated_power_kw") or 0.0) >= required
+        ),
+        key=lambda item: (
+            float(item.get("rated_power_kw") or 0.0),
+            float(item.get("equipment_price_lei") or 0.0),
+            str(item.get("id") or ""),
+        ),
+    )[:COMMERCIAL_FINALIST_NEAR_LIMIT]
+
+    headroom_threshold = required * 1.5
+    headroom = sorted(
+        (
+            item
+            for item in products
+            if float(item.get("rated_power_kw") or 0.0) >= headroom_threshold
+        ),
+        key=lambda item: (
+            float(item.get("rated_power_kw") or 0.0),
+            float(item.get("equipment_price_lei") or 0.0),
+            str(item.get("id") or ""),
+        ),
+    )[:COMMERCIAL_FINALIST_HEADROOM_LIMIT]
+
+    below = sorted(
+        (
+            item
+            for item in products
+            if float(item.get("rated_power_kw") or 0.0) < required
+        ),
+        key=lambda item: (
+            -float(item.get("rated_power_kw") or 0.0),
+            float(item.get("equipment_price_lei") or 0.0),
+            str(item.get("id") or ""),
+        ),
+    )[:COMMERCIAL_FINALIST_BELOW_LIMIT]
+
+    selected_by_id: dict[str, dict[str, Any]] = {}
+    for item in [*above, *headroom, *below]:
+        product_id = str(item.get("id") or "")
+        if product_id:
+            selected_by_id[product_id] = dict(item)
+
+    selected = sorted(
+        selected_by_id.values(),
+        key=lambda item: (
+            float(item.get("rated_power_kw") or 0.0),
+            float(item.get("equipment_price_lei") or 0.0),
+            str(item.get("id") or ""),
+        ),
+    )[:COMMERCIAL_FINALIST_MAX_PRODUCTS]
+    product_ids = {str(item.get("id") or "") for item in selected}
+    points = [
+        dict(item)
+        for item in (branch.get("heat_pump_performance_points") or [])
+        if str(item.get("product_id") or "") in product_ids
+    ]
+    seasonal = [
+        dict(item)
+        for item in (branch.get("heat_pump_seasonal_performance") or [])
+        if str(item.get("product_id") or "") in product_ids
+    ]
+
+    return {
+        **branch,
+        "options": selected,
+        "heat_pump_performance_points": points,
+        "heat_pump_seasonal_performance": seasonal,
+        "catalog_mode": "commercial_finalist_bounded_candidates",
+        "catalog_stats": {
+            **dict(branch.get("catalog_stats") or {}),
+            "loaded_products": len(selected),
+            "candidate_limit": COMMERCIAL_FINALIST_MAX_PRODUCTS,
+            "performance_points": len(points),
+            "seasonal_points": len(seasonal),
+        },
+        "required_power_kw": required,
+    }
+
+
 def seed_heating_commercial_branch_catalog_payload(
     technology_id: str,
 ) -> dict[str, Any]:
@@ -1239,6 +1348,166 @@ def seed_heating_commercial_branch_catalog_payload(
         heating_planning_catalog(),
         technology_id,
     )
+
+
+def seed_heating_commercial_candidate_catalog_payload(
+    technology_id: str,
+    required_power_kw: float,
+) -> dict[str, Any]:
+    return _bounded_commercial_branch_payload(
+        heating_planning_catalog(),
+        technology_id,
+        required_power_kw,
+    )
+
+
+async def read_heating_commercial_candidate_catalog_from_d1(
+    db: Any,
+    technology_id: str,
+    required_power_kw: float,
+) -> dict[str, Any] | None:
+    """Read only a fixed-size SKU window for one finalist.
+
+    D1 performs the filtering. Python receives at most 32 products, and COP /
+    capacity rows are fetched only for those product IDs. Marketplace growth
+    therefore does not increase the Worker object graph for a PRODUCT request.
+    """
+
+    required = max(float(required_power_kw), 0.0)
+    try:
+        near_result = await db.prepare(
+            """
+            SELECT id, external_id, technology_id, technology_label, label,
+                   system_type, generator_type, carrier, cost_profile,
+                   rated_power_kw, efficiency, scop, equipment_price_lei,
+                   installation_allowance_lei, source_kind, source_url, confidence,
+                   requires_hydronic, requires_existing_gas,
+                   requires_existing_high_power_electric,
+                   requires_existing_biomass_infrastructure, capacity_basis, note,
+                   catalog_version, observed_on
+            FROM heating_products
+            WHERE active = 1
+              AND technology_id = ?
+              AND rated_power_kw >= ?
+            ORDER BY rated_power_kw, equipment_price_lei, id
+            LIMIT ?
+            """
+        ).bind(
+            technology_id,
+            required,
+            COMMERCIAL_FINALIST_NEAR_LIMIT,
+        ).run()
+
+        headroom_result = await db.prepare(
+            """
+            SELECT id, external_id, technology_id, technology_label, label,
+                   system_type, generator_type, carrier, cost_profile,
+                   rated_power_kw, efficiency, scop, equipment_price_lei,
+                   installation_allowance_lei, source_kind, source_url, confidence,
+                   requires_hydronic, requires_existing_gas,
+                   requires_existing_high_power_electric,
+                   requires_existing_biomass_infrastructure, capacity_basis, note,
+                   catalog_version, observed_on
+            FROM heating_products
+            WHERE active = 1
+              AND technology_id = ?
+              AND rated_power_kw >= ?
+            ORDER BY rated_power_kw, equipment_price_lei, id
+            LIMIT ?
+            """
+        ).bind(
+            technology_id,
+            required * 1.5,
+            COMMERCIAL_FINALIST_HEADROOM_LIMIT,
+        ).run()
+
+        below_result = await db.prepare(
+            """
+            SELECT id, external_id, technology_id, technology_label, label,
+                   system_type, generator_type, carrier, cost_profile,
+                   rated_power_kw, efficiency, scop, equipment_price_lei,
+                   installation_allowance_lei, source_kind, source_url, confidence,
+                   requires_hydronic, requires_existing_gas,
+                   requires_existing_high_power_electric,
+                   requires_existing_biomass_infrastructure, capacity_basis, note,
+                   catalog_version, observed_on
+            FROM heating_products
+            WHERE active = 1
+              AND technology_id = ?
+              AND rated_power_kw < ?
+            ORDER BY rated_power_kw DESC, equipment_price_lei, id
+            LIMIT ?
+            """
+        ).bind(
+            technology_id,
+            required,
+            COMMERCIAL_FINALIST_BELOW_LIMIT,
+        ).run()
+
+        selected_by_id: dict[str, dict[str, Any]] = {}
+        for row in [
+            *_d1_rows(near_result),
+            *_d1_rows(headroom_result),
+            *_d1_rows(below_result),
+        ]:
+            product_id = str(row.get("id") or "")
+            if product_id:
+                selected_by_id[product_id] = row
+
+        products = sorted(
+            selected_by_id.values(),
+            key=lambda item: (
+                float(item.get("rated_power_kw") or 0.0),
+                float(item.get("equipment_price_lei") or 0.0),
+                str(item.get("id") or ""),
+            ),
+        )[:COMMERCIAL_FINALIST_MAX_PRODUCTS]
+        if not products:
+            return None
+
+        product_ids = [str(item.get("id") or "") for item in products]
+        placeholders = ",".join("?" for _ in product_ids)
+
+        points_result = await db.prepare(
+            f"""
+            SELECT product_id, outdoor_temperature_c, flow_temperature_c,
+                   return_temperature_c, delta_t_k, heating_capacity_kw,
+                   cop, test_standard, source_kind, source_url,
+                   note, catalog_version
+            FROM heat_pump_performance_points
+            WHERE product_id IN ({placeholders})
+            ORDER BY product_id, outdoor_temperature_c, flow_temperature_c
+            """
+        ).bind(*product_ids).run()
+
+        seasonal_result = await db.prepare(
+            f"""
+            SELECT product_id, climate, application_temperature_c,
+                   scop, design_load_kw, source_kind, source_url,
+                   test_standard, catalog_version
+            FROM heat_pump_seasonal_performance
+            WHERE product_id IN ({placeholders})
+            ORDER BY product_id, climate, application_temperature_c
+            """
+        ).bind(*product_ids).run()
+
+        payload = _catalog_payload_from_rows(
+            products,
+            _d1_rows(points_result),
+            _d1_rows(seasonal_result),
+            [],
+            source="d1",
+        )
+        payload["catalog_mode"] = "persistent_d1_commercial_finalist_bounded"
+        payload["technology_id"] = technology_id
+        payload["required_power_kw"] = required
+        payload["catalog_stats"]["loaded_products"] = len(products)
+        payload["catalog_stats"]["candidate_limit"] = (
+            COMMERCIAL_FINALIST_MAX_PRODUCTS
+        )
+        return payload
+    except Exception:
+        return None
 
 
 async def read_heating_commercial_branch_catalog_from_d1(
