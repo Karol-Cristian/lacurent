@@ -2383,30 +2383,24 @@
         );
       }
 
-      log("REPORT · aleg rezultatul dintre finaliștii comerciali reușiți; fallback canonic explicit dacă etapa PRODUCT nu răspunde.");
-      optimizationResult = await postJson(
-        "/api/optimization/home-lab/v3/finalize",
-        {
-          form:formPayload,
-          runId,
-          commercialRows,
-          verifiedRows,
-          branchStats,
-          branchPlan:Array.isArray(lastPlan.branches) ? lastPlan.branches : [],
-          representativeEvaluations:lastPlan.representativeEvaluations || 0,
-          branchFastEvaluations,
-          priorCalculationTimeMs:backendElapsedMs,
-          sourceCandidateCount:localSourceCandidateCount,
-          searchPointCount:searchPoints.length,
-          branchBatchSize:0,
-          verificationFrontierCount:Number(verificationPlan.frontierCount || 0),
-          productTargetCount:productTargets.length,
-          productFailureCount:productFailures
-        },
-        // FINALIZE performs only selection + JSON assembly. Retrying a server
-        // failure on a stressed isolate can turn one failure into 500/1101.
-        {stageName:"finalize V3", runId, retries:0}
-      );
+      log("REPORT · selecție finală + asamblare raport direct în browser; 0 request-uri suplimentare către Python Worker.");
+      optimizationResult = buildBrowserFinalization({
+        formPayload,
+        mode:lastPlan.economicMode || formPayload._optimization_mode || "auto_economic",
+        goals,
+        commercialRows,
+        verifiedRows,
+        branchStats,
+        branchPlan:Array.isArray(lastPlan.branches) ? lastPlan.branches : [],
+        backendElapsedMs,
+        sourceCandidateCount:localSourceCandidateCount,
+        branchFastEvaluations,
+        searchPointCount:searchPoints.length,
+        verificationFrontierCount:Number(verificationPlan.frontierCount || 0),
+        productTargetCount:productTargets.length,
+        productFailureCount:productFailures,
+        runId,
+      });
       stage("finalize","done","gata");
       const opt = optimizationResult.optimization || {};
       log(`Finalizat: ${opt.evaluatedCandidates || 0} candidați economici · ${opt.fullEngineVerifications || 0} verificări complete · status economic ${opt.economicStatus || "necunoscut"}.`);
