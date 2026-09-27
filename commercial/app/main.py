@@ -1790,6 +1790,10 @@ async def _teo_flow_start(
 
     await _ensure_teo_flow_d1(db)
     await db.prepare(
+        "DELETE FROM teo_verification_runs "
+        "WHERE updated_at < datetime('now', '-1 day')"
+    ).run()
+    await db.prepare(
         """
         INSERT INTO teo_verification_runs(
             run_id, status, planned_verifications, verified_count,
