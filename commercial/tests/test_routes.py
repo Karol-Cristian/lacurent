@@ -161,7 +161,7 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'data-page="report"' in page.text
     assert 'data-page="renewables"' in page.text
     assert "/static/home-lab-editorial.css?v=15" in page.text
-    assert "/static/home-lab-editorial.js?v=30" in page.text
+    assert "/static/home-lab-editorial.js?v=31" in page.text
     assert "/static/home-lab-3d.js" not in page.text
     assert 'id="edBaselineClass"' in page.text
     assert 'id="edBaselineCost"' in page.text
@@ -1594,16 +1594,19 @@ def test_editorial_server_compute_budget_caps_only_full_engine_passes() -> None:
     assert js.status_code == 200
     source = js.text
 
-    assert "const TEO_MAX_SERVER_CALCULATIONS_PER_RUN = 7" in source
-    assert "const remainingAfterBaseline" in source
-    assert "Math.floor((remainingAfterBaseline * 2) / 3)" in source
+    assert 'name:"cloudflare-low-resource"' in source
+    assert "maxCanonicalPasses:4" in source
+    assert "maxVerifyPasses:1" in source
+    assert "maxProductPasses:1" in source
+    assert "heavyRetries:0" in source
+    assert "cooldownMs:1200" in source
     assert "const verifyTargets = targets.slice(0, verifyLimit)" in source
-    assert "const calculationsUsedBeforeProduct = 1 + verifiedRows.length" in source
-    assert "TEO_MAX_SERVER_CALCULATIONS_PER_RUN - calculationsUsedBeforeProduct" in source
-    assert "Math.min(3, productBudget, verifiedRows.length)" in source
+    assert "const canonicalPassesUsed = 2 + verifiedRows.length" in source
+    assert "TEO_SERVER_PROFILE.maxCanonicalPasses - canonicalPassesUsed" in source
+    assert "TEO_SERVER_PROFILE.maxProductPasses" in source
 
     # Deep parametric search remains browser-side and is intentionally not
-    # reduced by the server compute budget.
+    # reduced by the server compute profile.
     assert '"/api/optimization/home-lab/v4/plan"' in source
     assert '"/static/teo-v4-worker.js?v=1"' in source
 
@@ -1644,6 +1647,19 @@ def test_optimizer_reuses_baseline_bill_and_resets_cross_run_engine_cache() -> N
         1,
     )[0]
     assert "clear_baseline_evaluation_cache()" in product_section
+    assert "clear_heating_optimizer_runtime_caches()" in product_section
+
+    plan_section = main_source.split(
+        "async def home_lab_optimization_v4_plan_api",
+        1,
+    )[1].split(
+        '@app.post("/api/optimization/home-lab/v3/plan")',
+        1,
+    )[0]
+    assert "del baseline_result" in plan_section
+    assert "clear_heating_optimizer_runtime_caches()" in plan_section
+
+    assert "clear_heating_optimizer_runtime_caches()" in verify_section
 
 
 def test_editorial_product_stage_is_bounded_and_fails_soft() -> None:
@@ -1651,11 +1667,13 @@ def test_editorial_product_stage_is_bounded_and_fails_soft() -> None:
     assert js.status_code == 200
     source = js.text
 
-    assert "TEO_MAX_SERVER_CALCULATIONS_PER_RUN = 7" in source
+    assert "maxCanonicalPasses:4" in source
+    assert "maxVerifyPasses:1" in source
+    assert "maxProductPasses:1" in source
     assert "const verifyTargets = targets.slice(0, verifyLimit)" in source
-    assert "Math.min(3, productBudget, verifiedRows.length)" in source
+    assert "TEO_SERVER_PROFILE.maxProductPasses" in source
     assert "PRODUCT SAFE MODE" in source
-    assert "retries:0" in source
+    assert "heavyRetries:0" in source
     assert "await sleep(900)" in source
     assert "PRODUCT FALLBACK" in source
     assert "productFailureCount:productFailures" in source
