@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+import gc
 import math
 
 from .methodology import (
@@ -1361,6 +1362,26 @@ def _boundary_assumptions(building: BuildingInput) -> list[str]:
 
 
 def calculate(building: BuildingInput, *, include_reference: bool = True) -> CalculationResult:
+    reference_specific: float | None = None
+    if include_reference:
+        # Compute the reference building before allocating the evaluated
+        # building's complete monthly/report graph. Previously the evaluated
+        # graph stayed live while a second full RBPE graph was built for the
+        # reference building, doubling peak memory in long-lived Cloudflare
+        # Python isolates. The calculation itself is unchanged; only allocation
+        # order changes.
+        from .reference import build_reference_input
+
+        reference_result = calculate(
+            build_reference_input(building),
+            include_reference=False,
+        )
+        reference_specific = float(
+            reference_result.primary_energy.specific_kwh_m2
+        )
+        del reference_result
+        gc.collect()
+
     transmission, envelope_contributions, bridge_contributions = transmission_heat_transfer_components(building)
     h_tr = transmission.htr_w_k
     h_ve = ventilation_heat_transfer(building)
@@ -1405,17 +1426,18 @@ def calculate(building: BuildingInput, *, include_reference: bool = True) -> Cal
     energy_class = classify_energy(building, primary.specific_kwh_m2)
 
     comparison = None
-    if include_reference:
-        from .reference import build_reference_input
-
-        reference_result = calculate(build_reference_input(building), include_reference=False)
-        reference_specific = reference_result.primary_energy.specific_kwh_m2
+    if reference_specific is not None:
         diff = primary.specific_kwh_m2 - reference_specific
         comparison = ComparisonResult(
             actual_specific_primary_kwh_m2=primary.specific_kwh_m2,
             reference_specific_primary_kwh_m2=reference_specific,
             difference_kwh_m2=_round(diff, 2),
-            difference_percent=_round(100 * diff / reference_specific if reference_specific else 0, 1),
+            difference_percent=_round(
+                100 * diff / reference_specific
+                if reference_specific
+                else 0,
+                1,
+            ),
         )
 
     return CalculationResult(

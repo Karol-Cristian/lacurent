@@ -985,6 +985,35 @@ def test_reference_glazing_is_independent_from_real_glazing_and_climate_zone_bac
     assert "copy_window_area_orientation" in clear_mapping["window"]["geometry_policy"]
 
 
+def test_reference_first_calculation_preserves_reference_metrics() -> None:
+    actual = simple_building()
+    reference_building = build_reference_input(actual)
+
+    reference_only = calculate(
+        reference_building,
+        include_reference=False,
+    )
+    evaluated = calculate(actual)
+
+    assert evaluated.reference is not None
+    assert evaluated.reference.reference_specific_primary_kwh_m2 == pytest.approx(
+        reference_only.primary_energy.specific_kwh_m2,
+        abs=1e-9,
+    )
+    assert evaluated.reference.actual_specific_primary_kwh_m2 == pytest.approx(
+        evaluated.primary_energy.specific_kwh_m2,
+        abs=1e-9,
+    )
+    expected_diff = (
+        evaluated.primary_energy.specific_kwh_m2
+        - reference_only.primary_energy.specific_kwh_m2
+    )
+    assert evaluated.reference.difference_kwh_m2 == pytest.approx(
+        round(expected_diff, 2),
+        abs=1e-9,
+    )
+
+
 def test_reference_building_is_calculated_with_same_engine() -> None:
     result = calculate(simple_building())
 

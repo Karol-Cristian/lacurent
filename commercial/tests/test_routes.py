@@ -1891,6 +1891,25 @@ def test_v3_product_is_bounded_and_finalize_is_pure_assembly() -> None:
     assert "COMMERCIAL_FINALIST_MAX_PRODUCTS" in bounded_section
 
 
+def test_reference_engine_pass_is_completed_before_evaluated_graph_allocation() -> None:
+    source = Path("commercial/app/engine.py").read_text(encoding="utf-8")
+    section = source.split(
+        "def calculate(building: BuildingInput, *, include_reference: bool = True)",
+        1,
+    )[1].split(
+        "def demo_building()",
+        1,
+    )[0]
+    reference_index = section.index("reference_result = calculate(")
+    release_index = section.index("del reference_result")
+    actual_graph_index = section.index(
+        "transmission, envelope_contributions, bridge_contributions = "
+        "transmission_heat_transfer_components(building)"
+    )
+    assert reference_index < release_index < actual_graph_index
+    assert "gc.collect()" in section
+
+
 def test_worker_memory_guard_and_v3_verification_use_bounded_state() -> None:
     source = Path("commercial/app/main.py").read_text(encoding="utf-8")
     assert "async def collect_python_worker_garbage(" in source
@@ -2793,6 +2812,18 @@ def test_partner_embed_lab_calculation_returns_live_metrics() -> None:
     assert sum(row["value_w_k"] for row in payload["heat_loss_breakdown"]) > 0
     assert payload["reference"] is None
     assert payload["reference_parameters"]["u_values_w_m2k"]["exterior_wall"] > 0
+
+
+def test_public_then_partner_calculation_sequence_stays_healthy() -> None:
+    data = demo_form_data()
+    public = client.post("/calculate", data=data)
+    assert public.status_code == 200
+    assert "Rezultatul calculului" in public.text
+
+    partner = client.post("/embed/demo-store/calculate", data=data)
+    assert partner.status_code == 200
+    assert "Cere ofertă pentru casa configurată" in partner.text
+    assert 'data-embed-partner="demo-store"' in partner.text
 
 
 def test_partner_embed_calculation_keeps_partner_cta_and_shared_engine() -> None:
