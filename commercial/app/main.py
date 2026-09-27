@@ -125,6 +125,8 @@ _roi_cost_basis_retry_after = 0.0
 TEO_FLOW_MAX_VERIFICATIONS = 3
 TEO_FLOW_COOLDOWN_MS = 1800
 TEO_FLOW_LEASE_MS = 30000
+_teo_flow_schema_lock = asyncio.Lock()
+_teo_flow_schema_ready = False
 TEO_FLOW_CREATE_SQL = """
 CREATE TABLE IF NOT EXISTS teo_verification_runs (
     run_id TEXT PRIMARY KEY,
@@ -1698,11 +1700,18 @@ def _teo_flow_now_ms() -> int:
 
 
 async def _ensure_teo_flow_d1(db: Any) -> None:
-    await db.prepare(TEO_FLOW_CREATE_SQL).run()
-    await db.prepare(
-        "CREATE INDEX IF NOT EXISTS teo_verification_runs_status_idx "
-        "ON teo_verification_runs(status, next_allowed_at_ms)"
-    ).run()
+    global _teo_flow_schema_ready
+    if _teo_flow_schema_ready:
+        return
+    async with _teo_flow_schema_lock:
+        if _teo_flow_schema_ready:
+            return
+        await db.prepare(TEO_FLOW_CREATE_SQL).run()
+        await db.prepare(
+            "CREATE INDEX IF NOT EXISTS teo_verification_runs_status_idx "
+            "ON teo_verification_runs(status, next_allowed_at_ms)"
+        ).run()
+        _teo_flow_schema_ready = True
 
 
 async def _teo_flow_row(db: Any, run_id: str) -> dict[str, Any] | None:
