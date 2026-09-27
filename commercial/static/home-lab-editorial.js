@@ -1994,6 +1994,8 @@
       sourceUrl:line.source_url,
       confidence:line.confidence,
       optionId:line.product_id,
+      quantity:Number(line.quantity || productRow?.matchedProductQuantity || 1),
+      quantityUnit:line.quantity_unit || null,
       technologyId:matched?.technology_id || productRow?.branchId || null,
       equipmentPriceLei:line.material_subtotal_lei,
       installationAllowanceLei:line.nonmaterial_subtotal_lei,
