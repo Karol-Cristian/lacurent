@@ -1760,6 +1760,462 @@
     });
   }
 
+  const OPTIMIZER_FINALIZE_HORIZONS = [5, 10, 15, 20, 25];
+
+  function uniqueCandidatesLocal(candidates) {
+    const byId = new Map();
+    for (const candidate of candidates || []) {
+      const id = String(candidate?.candidate_id || "");
+      if (id) byId.set(id, candidate);
+    }
+    return [...byId.values()];
+  }
+
+  function paretoFrontierLocal(candidates) {
+    const rows = uniqueCandidatesLocal(candidates);
+    return rows
+      .filter(candidate => !rows.some(other => {
+        if (String(other?.candidate_id || "") === String(candidate?.candidate_id || "")) return false;
+        const otherCapex = Number(other?.capex_lei || 0);
+        const otherBill = Number(other?.annual_bill_lei || 0);
+        const capex = Number(candidate?.capex_lei || 0);
+        const bill = Number(candidate?.annual_bill_lei || 0);
+        return (
+          otherCapex <= capex + 1e-9
+          && otherBill <= bill + 1e-9
+          && (otherCapex < capex - 1e-9 || otherBill < bill - 1e-9)
+        );
+      }))
+      .sort((a,b) =>
+        Number(a?.capex_lei || 0) - Number(b?.capex_lei || 0)
+        || Number(a?.annual_bill_lei || 0) - Number(b?.annual_bill_lei || 0)
+      );
+  }
+
+  function robustRegretMetricsLocal(candidates) {
+    const net = new Map();
+    for (const candidate of candidates) {
+      const id = String(candidate.candidate_id);
+      const saving = Number(candidate.annual_saving_lei || 0);
+      const capex = Number(candidate.capex_lei || 0);
+      const byHorizon = {};
+      for (const horizon of OPTIMIZER_FINALIZE_HORIZONS) {
+        byHorizon[horizon] = saving * horizon - capex;
+      }
+      net.set(id, byHorizon);
+    }
+    const best = {};
+    for (const horizon of OPTIMIZER_FINALIZE_HORIZONS) {
+      best[horizon] = Math.max(...candidates.map(candidate =>
+        Number(net.get(String(candidate.candidate_id))?.[horizon] ?? -Infinity)
+      ));
+    }
+    const metrics = new Map();
+    for (const candidate of candidates) {
+      const id = String(candidate.candidate_id);
+      const relative = [];
+      const absolute = [];
+      for (const horizon of OPTIMIZER_FINALIZE_HORIZONS) {
+        const value = Number(net.get(id)?.[horizon] ?? 0);
+        const regret = Number(best[horizon]) - value;
+        const denominator = Math.max(Math.abs(Number(best[horizon])), 1);
+        relative.push(regret / denominator);
+        absolute.push(regret);
+      }
+      metrics.set(id, {
+        worstRelative:Math.max(...relative),
+        meanRelative:relative.reduce((sum,value) => sum + value, 0) / relative.length,
+        absolute: absolute.reduce((sum,value) => sum + value, 0),
+      });
+    }
+    return metrics;
+  }
+
+  function compareTupleLocal(left, right) {
+    const count = Math.max(left.length, right.length);
+    for (let i = 0; i < count; i++) {
+      const a = Number(left[i] ?? 0);
+      const b = Number(right[i] ?? 0);
+      if (a < b) return -1;
+      if (a > b) return 1;
+    }
+    return 0;
+  }
+
+  function selectOptimizationCandidateLocal(candidates, mode, goals) {
+    const unique = uniqueCandidatesLocal(candidates);
+    const frontier = paretoFrontierLocal(unique);
+    if (!unique.length) throw new Error("Nu există finaliști locali pentru selecția economică.");
+
+    let feasible = [];
+    let selected = null;
+    let rationale = "";
+
+    if (mode === "investment_budget") {
+      const budget = Number(goals?.investment_budget_lei || 0);
+      feasible = unique.filter(item => Number(item.capex_lei || 0) <= budget + 1e-6);
+      if (feasible.length) {
+        selected = [...feasible].sort((a,b) => compareTupleLocal(
+          [-Number(a.annual_saving_lei || 0), Number(a.capex_lei || 0), Number(a.annual_bill_lei || 0)],
+          [-Number(b.annual_saving_lei || 0), Number(b.capex_lei || 0), Number(b.annual_bill_lei || 0)]
+        ))[0];
+      }
+      rationale = `A fost selectată economia anuală maximă fără depășirea bugetului de ${budget.toFixed(2)} lei; egalitățile preferă investiția mai mică.`;
+    } else if (mode === "annual_bill_target") {
+      const target = Number(goals?.annual_bill_target_lei || 0);
+      feasible = unique.filter(item => Number(item.annual_bill_lei || 0) <= target + 1e-6);
+      if (feasible.length) {
+        selected = [...feasible].sort((a,b) => compareTupleLocal(
+          [Number(a.capex_lei || 0), Number(a.annual_bill_lei || 0), -Number(a.annual_saving_lei || 0)],
+          [Number(b.capex_lei || 0), Number(b.annual_bill_lei || 0), -Number(b.annual_saving_lei || 0)]
+        ))[0];
+      }
+      rationale = `A fost selectat CAPEX-ul minim care atinge factura anuală țintă de maximum ${target.toFixed(2)} lei.`;
+    } else if (mode === "max_payback_years") {
+      const limit = Number(goals?.max_payback_years || 0);
+      feasible = unique.filter(item =>
+        item.payback_years != null
+        && Number(item.payback_years) <= limit + 1e-6
+        && Number(item.annual_saving_lei || 0) > 0
+      );
+      if (feasible.length) {
+        selected = [...feasible].sort((a,b) => compareTupleLocal(
+          [-Number(a.annual_saving_lei || 0), Number(a.capex_lei || 0), Number(a.payback_years ?? Infinity)],
+          [-Number(b.annual_saving_lei || 0), Number(b.capex_lei || 0), Number(b.payback_years ?? Infinity)]
+        ))[0];
+      }
+      rationale = `Au fost acceptați numai candidații cu recuperare simplă ≤ ${limit.toFixed(2)} ani, apoi a fost aleasă economia anuală maximă.`;
+    } else {
+      const pool = frontier.length ? frontier : unique;
+      feasible = pool;
+      const metrics = robustRegretMetricsLocal(pool);
+      selected = [...pool].sort((a,b) => {
+        const ma = metrics.get(String(a.candidate_id));
+        const mb = metrics.get(String(b.candidate_id));
+        return compareTupleLocal(
+          [
+            ma?.worstRelative ?? Infinity,
+            ma?.meanRelative ?? Infinity,
+            -(Number(a.annual_saving_lei || 0) * 20 - Number(a.capex_lei || 0)),
+            Number(a.capex_lei || 0),
+          ],
+          [
+            mb?.worstRelative ?? Infinity,
+            mb?.meanRelative ?? Infinity,
+            -(Number(b.annual_saving_lei || 0) * 20 - Number(b.capex_lei || 0)),
+            Number(b.capex_lei || 0),
+          ]
+        );
+      })[0] || null;
+      rationale = "TEO minimizează regretul economic relativ maxim pe orizonturile 5, 10, 15, 20 și 25 ani, folosind beneficiul net simplu (economie anuală × orizont − CAPEX).";
+    }
+
+    if (!selected) {
+      throw new Error("Niciun finalist verificat nu satisface regula economică aleasă.");
+    }
+    return {
+      selected,
+      candidateCount:unique.length,
+      feasibleCount:feasible.length,
+      paretoCount:frontier.length,
+      rationale,
+    };
+  }
+
+  function optimizerMeasureRowsLocal(candidate) {
+    const labels = {
+      wall:"Izolație pereți",
+      roof:"Izolație acoperiș / pod",
+      floor:"Izolație pardoseală",
+      windows:"Ferestre",
+      ventilation:"Ventilație cu recuperare",
+      pv:"Fotovoltaice",
+      solar_thermal:"Solar termic",
+      heating:"Sistem de încălzire",
+    };
+    return (candidate?.cost_breakdown || [])
+      .filter(line => Number(line?.capex_lei || 0) > 0)
+      .map(line => ({
+        family:line.family,
+        label:labels[line.family] || String(line.family || "").replaceAll("_"," "),
+        capexLei:Number(line.capex_lei || 0),
+        parameterValue:Number(line.parameter_value || 0),
+        parameterUnit:line.parameter_unit,
+        sourceKind:line.source_kind,
+        productId:line.product_id,
+        sku:line.sku,
+        quantity:line.quantity,
+        quantityUnit:line.quantity_unit,
+        materialSubtotalLei:line.material_subtotal_lei,
+        nonmaterialSubtotalLei:line.nonmaterial_subtotal_lei,
+        note:line.note,
+      }));
+  }
+
+  function selectedHeatingLocal(candidate, productRow) {
+    const line = (candidate?.cost_breakdown || []).find(item => item?.family === "heating");
+    if (!line) return null;
+    const basis = String(line.capacity_basis || "");
+    const capacityVerified = Boolean(
+      line.product_id
+      && !["unverified","unavailable","missing"].some(marker => basis.includes(marker))
+    );
+    const required = candidate?.design_heat_load_kw == null ? null : Number(candidate.design_heat_load_kw);
+    const available = line.design_available_capacity_kw == null ? null : Number(line.design_available_capacity_kw);
+    const rated = line.product_id ? Number(line.parameter_value || 0) : null;
+    const oversizeKw = (
+      capacityVerified && required != null
+        ? Math.max(Number(available ?? rated ?? 0) - required, 0)
+        : null
+    );
+    const matched = productRow?.matchedProduct || null;
+    return {
+      label:String(line.note || matched?.label || "Sistem de încălzire").split(":",1)[0],
+      capexLei:Number(line.capex_lei || 0),
+      requiredPowerKw:required,
+      planningPowerKw:Number(line.parameter_value || 0),
+      ratedPowerKw:rated,
+      availableDesignCapacityKw:capacityVerified ? available : null,
+      provisionalCapacityKw:available ?? rated,
+      capacityBasis:line.capacity_basis,
+      capacityVerified,
+      oversizeKw,
+      oversizePercent:(
+        oversizeKw == null || required == null || required <= 1e-9
+          ? null
+          : 100 * oversizeKw / required
+      ),
+      sourceKind:line.source_kind,
+      sourceUrl:line.source_url,
+      confidence:line.confidence,
+      optionId:line.product_id,
+      technologyId:matched?.technology_id || productRow?.branchId || null,
+      equipmentPriceLei:line.material_subtotal_lei,
+      installationAllowanceLei:line.nonmaterial_subtotal_lei,
+      sizingBasis:"design_heat_load_at_normative_winter_design_temperature",
+    };
+  }
+
+  function candidateScenarioSnapshotLocal(candidate, formPayload) {
+    return {
+      locality:String(formPayload?.locality || formPayload?.locality_id || ""),
+      annual_cost_lei:Number(candidate?.annual_bill_lei || 0),
+      final_energy_kwh:Number(candidate?.final_energy_kwh || 0),
+      primary_specific_kwh_m2:Number(candidate?.primary_specific_kwh_m2 || 0),
+      co2_total_kg:Number(candidate?.co2_total_kg || 0),
+      co2_specific_kg_m2:Number(candidate?.co2_specific_kg_m2 || 0),
+      energy_class:candidate?.energy_class || "—",
+      design_heat_load_kw:candidate?.design_heat_load_kw ?? null,
+      annual_fuel_use:{},
+      assumptions:Array.isArray(candidate?.assumptions) ? [...candidate.assumptions] : [],
+      scenario_detail:"canonical_scalar_snapshot_browser_finalize",
+    };
+  }
+
+  function buildBrowserFinalization({
+    formPayload,
+    mode,
+    goals,
+    commercialRows,
+    verifiedRows,
+    branchStats,
+    branchPlan,
+    backendElapsedMs,
+    sourceCandidateCount,
+    branchFastEvaluations,
+    searchPointCount,
+    verificationFrontierCount,
+    productTargetCount,
+    productFailureCount,
+    runId,
+  }) {
+    const verifiedById = new Map();
+    for (const row of verifiedRows || []) {
+      const candidate = row?.candidate;
+      if (candidate?.candidate_id) verifiedById.set(String(candidate.candidate_id), row);
+    }
+    const commercialCandidates = (commercialRows || [])
+      .map(row => row?.candidate)
+      .filter(Boolean);
+    const verifiedCandidates = (verifiedRows || [])
+      .map(row => row?.candidate)
+      .filter(Boolean);
+    const selection = selectOptimizationCandidateLocal(
+      commercialCandidates.length ? commercialCandidates : verifiedCandidates,
+      mode,
+      goals
+    );
+    const selected = selection.selected;
+    const selectedProductRow = (commercialRows || []).find(
+      row => String(row?.candidate?.candidate_id || "") === String(selected.candidate_id || "")
+    ) || null;
+    const rawVerified = (
+      selectedProductRow?.sourceCandidateId
+        ? verifiedById.get(String(selectedProductRow.sourceCandidateId))
+        : null
+    );
+    const rawSelected = rawVerified?.candidate || selected;
+    const selectedHeating = selectedHeatingLocal(selected, selectedProductRow);
+    const scenario = (
+      selectedProductRow?.scenario && typeof selectedProductRow.scenario === "object"
+        ? selectedProductRow.scenario
+        : candidateScenarioSnapshotLocal(selected, formPayload)
+    );
+    const capex = Number(selected.capex_lei || 0);
+    const saving = Number(selected.annual_saving_lei || 0);
+    let economicStatus = "incomplete_economic_result";
+    let paybackStatus = "unavailable";
+    if (capex <= 1e-9 && saving <= 1e-9) {
+      economicStatus = "no_positive_intervention";
+      paybackStatus = "not_applicable_no_investment";
+    } else if (capex <= 1e-9 && saving > 1e-9) {
+      economicStatus = "positive_saving_zero_capex";
+      paybackStatus = "immediate";
+    } else if (saving > 1e-9 && selected.payback_years != null) {
+      economicStatus = "positive_saving";
+      paybackStatus = "finite";
+    } else if (saving <= 0) {
+      economicStatus = "non_positive_saving";
+      paybackStatus = "never_at_current_prices";
+    }
+
+    const netBenefit = {};
+    for (const years of OPTIMIZER_FINALIZE_HORIZONS) {
+      netBenefit[String(years)] = Math.round((saving * years - capex) * 100) / 100;
+    }
+
+    const branches = (branchPlan || []).map(branch => {
+      const stats = (branchStats || []).find(item => String(item?.branchId || "") === String(branch?.branch_id || ""));
+      if (!stats) return branch;
+      return {
+        ...branch,
+        evaluated_candidates:Number(stats.evaluatedCandidates || 0),
+        accepted_candidates:Number(stats.acceptedCandidates || 0),
+        feasible_candidates:Number(stats.feasibleCandidates || 0),
+      };
+    });
+    const feasibleTotal = branches.reduce((sum,item) => sum + Number(item?.feasible_candidates || 0), 0);
+    const warnings = [
+      "TEO a executat căutarea profundă și verificările canonice pe server; alegerea finală și asamblarea raportului s-au făcut în browser.",
+      "După ultimul PRODUCT nu mai este trimis niciun request FINALIZE către Python Worker.",
+      `PRODUCT safe mode: ${commercialRows.length}/${productTargetCount || commercialRows.length} recheck-uri comerciale exacte au fost finalizate.`,
+    ];
+    if (productFailureCount) {
+      warnings.push(`${productFailureCount} request(uri) PRODUCT au eșuat și au fost omise fără retry agresiv.`);
+    }
+    for (const row of [...(verifiedRows || []), ...(commercialRows || [])]) {
+      for (const warning of (row?.warnings || [])) {
+        if (warning) warnings.push(String(warning));
+      }
+    }
+
+    const commercialReady = (
+      selected.commercialization_status === "commercialized"
+      || (selected.commercialization_status === "raw_only" && capex <= 1e-9)
+    );
+    return {
+      scenario,
+      optimization:{
+        kind:"parametric_economic",
+        mode:"parametric_economic",
+        economicMode:mode,
+        label:lastPlan?.label || "Optimizare economică",
+        rationale:selection.rationale,
+        capexLei:capex,
+        baselineAnnualBillLei:Number(selected.baseline_annual_bill_lei || 0),
+        annualBillLei:Number(selected.annual_bill_lei || 0),
+        annualSavingLei:saving,
+        economicStatus,
+        paybackStatus,
+        simpleNetBenefitLeiByHorizon:netBenefit,
+        economicHorizonsYears:[...OPTIMIZER_FINALIZE_HORIZONS],
+        roiPercentPerYear:selected.roi_percent_per_year == null ? null : Number(selected.roi_percent_per_year),
+        paybackYears:selected.payback_years == null ? null : Number(selected.payback_years),
+        selected:optimizerMeasureRowsLocal(selected),
+        selectedHeating,
+        heatPumpPerformanceProfile:selectedProductRow?.heatPumpPerformanceProfile || null,
+        evaluatedCandidates:Number(sourceCandidateCount || 0),
+        calculationTimeMs:Number(backendElapsedMs || 0),
+        parametricEvaluations:Number(branchFastEvaluations || 0),
+        heatingBranchEvaluations:Number(branchFastEvaluations || 0),
+        feasibleCandidates:Number(feasibleTotal || selection.feasibleCount || 0),
+        paretoSolutions:Number(selection.paretoCount || 0),
+        paretoScope:commercialCandidates.length
+          ? "browser_verified_bounded_commercial_rechecks"
+          : "browser_canonical_fallback_no_commercial_recheck",
+        heatingBranches:branches,
+        technicalHeatingAlternatives:[],
+        rawSolution:rawSelected?.parameters || {},
+        rawEvaluation:{
+          candidateId:rawSelected?.candidate_id,
+          annualBillLei:Number(rawSelected?.annual_bill_lei || 0),
+          baselineAnnualBillLei:Number(rawSelected?.baseline_annual_bill_lei || 0),
+          finalEnergyKwh:Number(rawSelected?.final_energy_kwh || 0),
+          primarySpecificKwhM2:Number(rawSelected?.primary_specific_kwh_m2 || 0),
+          co2TotalKg:Number(rawSelected?.co2_total_kg || 0),
+          co2SpecificKgM2:Number(rawSelected?.co2_specific_kg_m2 || 0),
+          energyClass:rawSelected?.energy_class,
+          designHeatLoadKw:rawSelected?.design_heat_load_kw ?? null,
+        },
+        commercialEvaluation:{
+          candidateId:selected.candidate_id,
+          annualBillLei:Number(selected.annual_bill_lei || 0),
+          capexLei:capex,
+          annualSavingLei:saving,
+          finalEnergyKwh:Number(selected.final_energy_kwh || 0),
+          primarySpecificKwhM2:Number(selected.primary_specific_kwh_m2 || 0),
+          co2SpecificKgM2:Number(selected.co2_specific_kg_m2 || 0),
+          energyClass:selected.energy_class,
+          designHeatLoadKw:selected.design_heat_load_kw ?? null,
+        },
+        resultingConfiguration:selected.resulting_configuration || null,
+        commercialSolution:(
+          selectedHeating?.optionId
+            ? {
+                items:[{
+                  family:"heating",
+                  label:selectedHeating.label,
+                  detail:`Produs real selectat după optimizarea parametrică · ${Number(selectedHeating.ratedPowerKw || 0).toFixed(2)} kW · CAPEX ${Number(selectedHeating.capexLei || 0).toFixed(0)} lei`,
+                }],
+              }
+            : null
+        ),
+        commercializationStatus:selected.commercialization_status,
+        commercialReady,
+        commercialMessage:(
+          commercialReady
+            ? "Soluția nu necesită discretizare comercială suplimentară."
+            : selectedHeating?.optionId
+              ? "Generatorul finalist a fost discretizat la un produs real; celelalte familii active rămân parametrice până la atașarea catalogului complet de produse."
+              : "Catalogul comercial complet nu este atașat acestei rulări; raportul păstrează optimul parametric verificat fără a inventa produse."
+        ),
+        discretization:[],
+        costSource:selected.cost_source,
+        costCatalogVersion:selected.cost_catalog_version,
+        warnings,
+        autoHorizonsYears:mode === "auto_economic" ? [...OPTIMIZER_FINALIZE_HORIZONS] : [],
+        executionMode:"browser_finalize_after_server_verification",
+        optimizerVersion:"teo-v4-browser-finalize",
+        searchMethod:lastPlan?.searchMethod || "teo_v4_browser_worker_mc001_kernel",
+        representativeEvaluations:Number(lastPlan?.representativeEvaluations || 0),
+        branchFastEvaluations:Number(branchFastEvaluations || 0),
+        fullEngineVerifications:Number(verifiedRows.length || 0),
+        commercialRechecks:Number(commercialRows.length || 0),
+        commercialMatches:Number((commercialRows || []).filter(row => row?.matchedProduct).length),
+        commercialRecheckTargetCount:Number(productTargetCount || 0),
+        commercialRecheckFailures:Number(productFailureCount || 0),
+        searchPointCount:Number(searchPointCount || 0),
+        branchBatchSize:0,
+        verificationFrontierCount:Number(verificationFrontierCount || 0),
+        runId:String(runId || ""),
+        heatingCatalogSource:selectedProductRow?.catalogSource || "browser-precomputed",
+        finalizeRecalculations:0,
+        finalizeCatalogReads:0,
+        finalizeHttpRequests:0,
+      },
+    };
+  }
+
   async function runAnalysis() {
     syncTechnicalForm();
     if (!validatePage("goal")) return;
