@@ -41,10 +41,18 @@
   });
   const WALL_SURFACE_RESISTANCE_M2K_W = 0.17;
 
-  // Single knob for server-side full-engine work. Deep TEO search remains in
-  // the browser; this budget only caps expensive Python/Cloudflare calculate()
-  // passes. Raise it later when the execution environment has more headroom.
-  const TEO_MAX_SERVER_CALCULATIONS_PER_RUN = 7;
+  // Temporary Cloudflare low-resource profile. Deep TEO search remains in the
+  // browser; only canonical Python passes are capped. The count includes:
+  // 1 BASELINE + 1 PLAN kernel baseline + VERIFY + PRODUCT.
+  // Raise maxCanonicalPasses later when the execution environment has more headroom.
+  const TEO_SERVER_PROFILE = Object.freeze({
+    name:"cloudflare-low-resource",
+    maxCanonicalPasses:4,
+    maxVerifyPasses:1,
+    maxProductPasses:1,
+    heavyRetries:0,
+    cooldownMs:1200,
+  });
 
   let current = "intro";
   let furthestWizardIndex = -1;
@@ -2105,6 +2113,7 @@
     const warnings = [
       "TEO a executat căutarea profundă și verificările canonice pe server; alegerea finală și asamblarea raportului s-au făcut în browser.",
       "După ultimul PRODUCT nu mai este trimis niciun request FINALIZE către Python Worker.",
+      "Profil temporar Cloudflare low-resource: un singur VERIFY canonic și maximum un PRODUCT exact; căutarea parametrizată profundă rămâne în browser.",
       `PRODUCT safe mode: ${commercialRows.length}/${productTargetCount || commercialRows.length} recheck-uri comerciale exacte au fost finalizate.`,
     ];
     if (productFailureCount) {
@@ -2257,7 +2266,7 @@
       lastPlan = await postForm(
         "/api/optimization/home-lab/v4/plan",
         planData,
-        {stageName:"plan TEO V4", runId, retries:2}
+        {stageName:"plan TEO V4", runId, retries:TEO_SERVER_PROFILE.heavyRetries}
       );
       const searchPoints = Array.isArray(lastPlan.searchPoints) ? lastPlan.searchPoints : [];
       const branchIds = Array.isArray(lastPlan.runBranchIds) ? lastPlan.runBranchIds : [];
@@ -2314,64 +2323,74 @@
           form:formPayload,
           candidateRows
         },
-        {stageName:"verification plan V3", runId, retries:2}
+        {stageName:"verification plan V3", runId, retries:TEO_SERVER_PROFILE.heavyRetries}
       );
       const targets = Array.isArray(verificationPlan.targets) ? verificationPlan.targets : [];
       if (!targets.length) throw new Error("V3 nu a selectat finaliști pentru verificare.");
       log(`Pareto: ${verificationPlan.frontierCount || 0} · verificări canonice: ${targets.length}.`);
 
       const verifiedRows = [];
-      // Baseline already consumed one canonical calculate(). Reserve roughly
-      // one third of the remaining budget for PRODUCT rechecks, and spend the
-      // rest on canonical VERIFY passes. Search depth itself is unchanged.
-      const remainingAfterBaseline = Math.max(1, TEO_MAX_SERVER_CALCULATIONS_PER_RUN - 1);
+      let verifyFailures = 0;
+      // Two canonical passes already happened before VERIFY:
+      // 1) visible baseline, 2) PLAN kernel baseline. In temporary low-resource
+      // mode we spend only one more pass on the best canonical finalist.
       const verifyLimit = Math.max(
         1,
-        Math.min(
-          targets.length,
-          Math.floor((remainingAfterBaseline * 2) / 3)
-        )
+        Math.min(targets.length, TEO_SERVER_PROFILE.maxVerifyPasses)
       );
       const verifyTargets = targets.slice(0, verifyLimit);
       log(
-        `RESOURCE BUDGET · max ${TEO_MAX_SERVER_CALCULATIONS_PER_RUN} calculate() server/run · VERIFY ${verifyTargets.length}/${targets.length}.`
+        `RESOURCE PROFILE · ${TEO_SERVER_PROFILE.name} · max ${TEO_SERVER_PROFILE.maxCanonicalPasses} canonical passes/run = BASELINE 1 + PLAN 1 + VERIFY ${verifyTargets.length} + PRODUCT ≤ ${TEO_SERVER_PROFILE.maxProductPasses}.`
       );
+      await sleep(TEO_SERVER_PROFILE.cooldownMs);
       for (let i = 0; i < verifyTargets.length; i++) {
         const target = verifyTargets[i];
         log(`VERIFY ${i + 1}/${verifyTargets.length} · ${target.branchId} · un singur calculate() complet.`);
-        const verified = await postJson(
-          "/api/optimization/home-lab/v3/verify",
-          {
-            form:formPayload,
-            branchId:target.branchId,
-            candidate:target.candidate,
-            baselineAnnualBillLei:Number(baselineResult?.annual_cost_lei || 0)
-          },
-          {stageName:`verify ${i + 1}/${targets.length}`, runId, retries:2}
-        );
-        verifiedRows.push(verified);
-        backendElapsedMs += Number(verified.calculationTimeMs || 0);
+        try {
+          const verified = await postJson(
+            "/api/optimization/home-lab/v3/verify",
+            {
+              form:formPayload,
+              branchId:target.branchId,
+              candidate:target.candidate,
+              baselineAnnualBillLei:Number(baselineResult?.annual_cost_lei || 0)
+            },
+            {stageName:`verify ${i + 1}/${verifyTargets.length}`, runId, retries:TEO_SERVER_PROFILE.heavyRetries}
+          );
+          verifiedRows.push(verified);
+          backendElapsedMs += Number(verified.calculationTimeMs || 0);
+        } catch (error) {
+          verifyFailures += 1;
+          log(
+            `VERIFY ${i + 1}/${verifyTargets.length} indisponibil · ${error?.message || String(error)} · fără retry în low-resource mode.`
+          );
+        }
+      }
+      if (!verifiedRows.length) {
+        throw new Error("Verificarea canonică nu a răspuns în modul low-resource. Reîncearcă rularea; căutarea locală nu este promovată ca rezultat verificat.");
       }
 
-      // Search depth stays unchanged: all canonical finalists above remain
-      // verified. Commercial discretization is intentionally bounded because
-      // each PRODUCT request performs another full canonical calculate(). The
-      // verification plan is already robust-ranked, so the first three are the
-      // strongest candidates for exact SKU recheck.
-      const calculationsUsedBeforeProduct = 1 + verifiedRows.length;
+      const canonicalPassesUsed = 2 + verifiedRows.length;
       const productBudget = Math.max(
         0,
-        TEO_MAX_SERVER_CALCULATIONS_PER_RUN - calculationsUsedBeforeProduct
+        TEO_SERVER_PROFILE.maxCanonicalPasses - canonicalPassesUsed
       );
       const productTargets = verifiedRows.slice(
         0,
-        Math.min(3, productBudget, verifiedRows.length)
+        Math.min(
+          TEO_SERVER_PROFILE.maxProductPasses,
+          productBudget,
+          verifiedRows.length
+        )
       );
       const commercialRows = [];
       let productFailures = 0;
       log(
-        `PRODUCT SAFE MODE · ${productTargets.length} recheck-uri exacte din ${verifiedRows.length} finaliști canonici · buget server ${TEO_MAX_SERVER_CALCULATIONS_PER_RUN} calculate() · fără retry agresiv.`
+        `PRODUCT SAFE MODE · ${productTargets.length} recheck exact din ${verifiedRows.length} finalist verificat · profil ${TEO_SERVER_PROFILE.name} · fără retry agresiv.`
       );
+      if (productTargets.length) {
+        await sleep(TEO_SERVER_PROFILE.cooldownMs);
+      }
       for (let i = 0; i < productTargets.length; i++) {
         const verified = productTargets[i];
         log(`PRODUCT ${i + 1}/${productTargets.length} · sizing + produs comercial exact.`);
@@ -2387,7 +2406,7 @@
             // A failed heavy product request can indicate a poisoned Python
             // isolate. Immediate retries made the 503→500→1101 sequence worse,
             // so product rechecks fail soft and the run continues.
-            {stageName:`product ${i + 1}/${productTargets.length}`, runId, retries:0}
+            {stageName:`product ${i + 1}/${productTargets.length}`, runId, retries:TEO_SERVER_PROFILE.heavyRetries}
           );
           commercialRows.push(commercial);
           backendElapsedMs += Number(commercial.calculationTimeMs || 0);
