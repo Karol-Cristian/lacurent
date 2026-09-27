@@ -3223,8 +3223,10 @@ async def home_lab_optimization_v3_finalize_api(request: Request) -> JSONRespons
         commercial_rows = raw.get("commercialRows") or []
         verified_rows = raw.get("verifiedRows") or []
         branch_stats = raw.get("branchStats") or []
-        if not isinstance(commercial_rows, list) or not commercial_rows:
-            raise ValueError("Lipsesc finaliștii comerciali V3.")
+        if not isinstance(commercial_rows, list):
+            raise ValueError("Finaliștii comerciali V3 trebuie să fie o listă.")
+        if not isinstance(verified_rows, list) or not verified_rows:
+            raise ValueError("Lipsesc finaliștii canonici V3.")
 
         mode, _, optimization_request = _home_lab_optimization_request_from_form(form)
         heating_summary = await _optimizer_heating_catalog_summary(request)
@@ -3249,6 +3251,7 @@ async def home_lab_optimization_v3_finalize_api(request: Request) -> JSONRespons
             )
 
         verified_by_id: dict[str, CandidateEvaluationV1] = {}
+        branch_by_verified_id: dict[str, str] = {}
         for row in verified_rows:
             if not isinstance(row, dict):
                 continue
@@ -3257,40 +3260,66 @@ async def home_lab_optimization_v3_finalize_api(request: Request) -> JSONRespons
                 continue
             candidate = CandidateEvaluationV1(**candidate_raw)
             verified_by_id[candidate.candidate_id] = candidate
+            branch_by_verified_id[candidate.candidate_id] = str(
+                row.get("branchId") or ""
+            )
 
+        # PRODUCT is a post-search discretization stage, not the source of truth
+        # for physics. If Cloudflare refuses every exact commercial recheck, keep
+        # the already-canonical verified candidates and finish with an explicit
+        # non-commercialized result instead of turning the whole user run into
+        # an error page.
+        selection_pool = (
+            commercial_candidates
+            if commercial_candidates
+            else list(verified_by_id.values())
+        )
         selection = select_optimization_candidate_v2(
             optimization_request,
-            commercial_candidates,
+            selection_pool,
         )
         if selection.selected is None:
             raise ValueError("Nicio soluție V3 verificată nu satisface regula economică.")
 
         selected = selection.selected
-        raw_selected = verified_by_id.get(
-            source_by_commercial_id.get(selected.candidate_id, "")
+        commercial_source_id = source_by_commercial_id.get(
+            selected.candidate_id,
+            "",
         )
+        raw_selected = verified_by_id.get(commercial_source_id)
         if raw_selected is None:
             raw_selected = selected
 
-        selected_branch_id = branch_by_commercial_id.get(
-            selected.candidate_id,
-            "keep-current-heating",
+        selected_branch_id = (
+            branch_by_commercial_id.get(selected.candidate_id)
+            or branch_by_verified_id.get(raw_selected.candidate_id)
+            or "keep-current-heating"
         )
-        selected_branch_catalog = (
-            await _optimizer_heating_commercial_branch_catalog(
-                request,
-                selected_branch_id,
+        if commercial_candidates:
+            selected_branch_catalog = (
+                await _optimizer_heating_commercial_branch_catalog(
+                    request,
+                    selected_branch_id,
+                )
             )
-        )
-        # Branch-plan eligibility comes from bounded summary metadata; the
-        # selected branch catalog contributes only the exact SKU/performance
-        # rows needed by the final report.
-        heating_catalog = {
-            **selected_branch_catalog,
-            "technology_summaries": list(
-                heating_summary.get("technology_summaries") or []
-            ),
-        }
+            # Branch-plan eligibility comes from bounded summary metadata; the
+            # selected branch catalog contributes only the exact SKU/performance
+            # rows needed by the final report.
+            heating_catalog = {
+                **selected_branch_catalog,
+                "technology_summaries": list(
+                    heating_summary.get("technology_summaries") or []
+                ),
+            }
+        else:
+            heating_catalog = {
+                **heating_summary,
+                "options": [],
+                "heat_pump_performance_points": [],
+                "heat_pump_seasonal_performance": [],
+                "parametric_heating_nodes": [],
+                "catalog_mode": "canonical_fallback_no_commercial_recheck",
+            }
 
         branch_plan = heating_branch_plan(
             optimization_request,
@@ -3338,20 +3367,36 @@ async def home_lab_optimization_v3_finalize_api(request: Request) -> JSONRespons
             for row in commercial_rows
             if isinstance(row, dict) and row.get("matchedProduct")
         )
+        product_target_count = int(raw.get("productTargetCount") or 0)
+        product_failure_count = int(raw.get("productFailureCount") or 0)
         warnings = [
             (
-                "Optimizer V3: căutarea multidimensională a fost împărțită în "
-                "batch-uri CPU-safe orchestrate de UI."
+                "TEO V4 păstrează căutarea profundă și verificarea canonică a "
+                "finaliștilor; etapa PRODUCT este limitată separat la maximum "
+                "3 recalculări comerciale exacte pentru stabilitatea Worker-ului."
             ),
             (
-                "Fiecare finalist a fost verificat canonic într-un request separat; "
-                "maparea pe produs a rulat de asemenea un finalist per request."
-            ),
-            (
-                "Finalizarea nu mai repetă verificarea tuturor finaliștilor și nu "
-                "mai execută mapări comerciale multiple în același Worker request."
+                f"PRODUCT safe mode: {len(commercial_rows)}/"
+                f"{product_target_count or len(commercial_rows)} recheck-uri "
+                "comerciale exacte au fost finalizate."
             ),
         ]
+        if product_failure_count:
+            warnings.append(
+                (
+                    f"{product_failure_count} request(uri) PRODUCT au eșuat și au "
+                    "fost omise fără retry agresiv, pentru a evita secvența "
+                    "503→500→1101 observată pe isolate-ul Python."
+                )
+            )
+        if not commercial_candidates:
+            warnings.append(
+                (
+                    "Niciun recheck PRODUCT nu a fost disponibil; rezultatul final "
+                    "rămâne finalistul canonic verificat, iar discretizarea comercială "
+                    "este marcată explicit ca nefinalizată."
+                )
+            )
         for row in [*verified_rows, *commercial_rows]:
             if isinstance(row, dict):
                 warnings.extend(
@@ -3372,7 +3417,11 @@ async def home_lab_optimization_v3_finalize_api(request: Request) -> JSONRespons
             heating_branch_evaluations=branch_fast_evaluations,
             warnings=warnings,
             calculation_time_ms=elapsed_ms,
-            pareto_scope="v3_verified_commercial_finalists",
+            pareto_scope=(
+                "v3_verified_bounded_commercial_rechecks"
+                if commercial_candidates
+                else "v3_canonical_fallback_no_commercial_recheck"
+            ),
             raw_selected=raw_selected,
             technical_heating_alternatives=[],
             heating_catalog=heating_catalog,
@@ -3387,6 +3436,8 @@ async def home_lab_optimization_v3_finalize_api(request: Request) -> JSONRespons
                 "fullEngineVerifications": len(verified_rows),
                 "commercialRechecks": len(commercial_rows),
                 "commercialMatches": commercial_matches,
+                "commercialRecheckTargetCount": product_target_count,
+                "commercialRecheckFailures": product_failure_count,
                 "searchPointCount": int(raw.get("searchPointCount") or 0),
                 "branchBatchSize": int(
                     raw.get("branchBatchSize") or V3_BRANCH_BATCH_SIZE
