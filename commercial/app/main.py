@@ -16,7 +16,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from .engine import calculate, demo_building, design_heat_load_breakdown
+from .engine import calculate, demo_building, design_heat_load_breakdown, reference_primary_specific_energy
 from .error_page import render_error_html
 from .home_lab_images import HOME_LAB_IMAGE_BYTES
 from .methodology import climate_data, methodology, resolve_locality
@@ -5431,13 +5431,66 @@ async def calculate_from_form(request: Request) -> HTMLResponse:
 
 
 @app.post("/api/reference-comparison")
-async def reference_comparison_api(request: Request) -> RedirectResponse:
-    """Compatibility redirect to the isolated low-memory RBPE service."""
+async def reference_comparison_api(request: Request) -> JSONResponse:
+    """Run exact reference RBPE in a private, separately bounded Worker."""
 
-    return RedirectResponse(
-        "https://lacurent-reference-rbpe.lemnarukarol.workers.dev/reference-comparison",
-        status_code=307,
-    )
+    raw = await request.json()
+    payload = raw.get("payload")
+    actual_raw = raw.get("actualSpecificPrimaryKwhM2")
+    if payload in (None, "") or actual_raw in (None, ""):
+        return JSONResponse(
+            {"error": "Lipsesc datele pentru comparația cu clădirea de referință."},
+            status_code=422,
+        )
+
+    try:
+        actual_specific = float(actual_raw)
+        env = request.scope.get("env")
+        if env is not None:
+            service = getattr(env, "REFERENCE_RBPE", None)
+            if service is None:
+                return JSONResponse(
+                    {"error": "Serviciul RBPE de referință nu este disponibil."},
+                    status_code=503,
+                )
+            result = await service.reference_comparison(payload, actual_specific)
+            if hasattr(result, "to_py"):
+                result = result.to_py()
+            if not isinstance(result, dict):
+                result = dict(result)
+            return JSONResponse(result)
+
+        # FastAPI/unit-test fallback. Production never uses this path: keeping
+        # the dedicated Worker boundary there is what gives the reference RBPE
+        # its own Cloudflare CPU/memory budget.
+        building = building_from_json(
+            payload if isinstance(payload, str) else json.dumps(payload)
+        )
+        reference_specific = reference_primary_specific_energy(building)
+        difference = actual_specific - reference_specific
+        return JSONResponse(
+            {
+                "actualSpecificPrimaryKwhM2": round(actual_specific, 3),
+                "referenceSpecificPrimaryKwhM2": round(reference_specific, 3),
+                "differenceKwhM2": round(difference, 2),
+                "differencePercent": round(
+                    100.0 * difference / reference_specific
+                    if reference_specific
+                    else 0.0,
+                    1,
+                ),
+                "calculationMode": "local_reference_rbpe_fallback",
+            }
+        )
+    except Exception as exc:
+        print(
+            "[LaCurent] reference comparison failed "
+            f"type={type(exc).__name__} detail={str(exc)[:300]}"
+        )
+        return JSONResponse(
+            {"error": "Comparația cu clădirea de referință este temporar indisponibilă."},
+            status_code=503,
+        )
 
 
 @app.get("/magazin", response_class=HTMLResponse)
