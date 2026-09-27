@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
@@ -147,6 +148,17 @@ class HeatingPlanningOptionV1(BaseModel):
     @property
     def installed_capex_lei(self) -> float:
         return float(self.equipment_price_lei) + float(self.installation_allowance_lei)
+
+
+class SizedHeatingProductV1(BaseModel):
+    """One real market unit model plus the count required by design load."""
+
+    product: HeatingPlanningOptionV1
+    quantity: int = Field(ge=1)
+    aggregate_rated_power_kw: float = Field(gt=0)
+    available_design_capacity_kw: float = Field(gt=0)
+    capacity_basis: str
+    installed_capex_lei: float = Field(ge=0)
 
 
 class HeatingParametricNodeV1(BaseModel):
@@ -832,32 +844,103 @@ def _product_available_capacity_at_design_kw(
     return float(product.rated_power_kw), "catalog_rated_output_ground_source_design_curve_unavailable"
 
 
+def _is_derived_air_air_bundle(product: HeatingPlanningOptionV1) -> bool:
+    return bool(
+        product.generator_type == HeatingGeneratorType.heat_pump_air_air
+        and str(product.source_kind or "").startswith("derived_bundle_")
+    )
+
+
 def _select_sized_product(
     building: BuildingInput,
     technology: HeatingTechnologyV2,
     required_power_kw: float,
-) -> tuple[HeatingPlanningOptionV1, float, str] | None:
-    candidates: list[tuple[HeatingPlanningOptionV1, float, str]] = []
+) -> SizedHeatingProductV1 | None:
+    """Select a real unit model and derive quantity from design-point capacity.
+
+    Air-air systems are fundamentally repeatable terminal units. Treating
+    prebuilt 2x/3x/4x catalog bundles as independent products caused the
+    optimizer to jump from one insufficient monosplit directly to a 3-unit
+    bundle. Instead, size the count from the source-backed per-unit capacity
+    curve at the locality winter design temperature.
+
+    Other generator families remain one commercial product per system.
+    """
+
+    required = max(float(required_power_kw), 0.0)
+    candidates: list[SizedHeatingProductV1] = []
+
     for product in technology.products:
         if not _product_infrastructure_eligible(building, product):
             continue
+
+        # Legacy fixed bundles stay visible in the public catalog for traceability
+        # but are not atomic optimizer products anymore.
+        if _is_derived_air_air_bundle(product):
+            continue
+
         available_kw, basis = _product_available_capacity_at_design_kw(
             building,
             product,
         )
-        if available_kw is None:
+        if available_kw is None or float(available_kw) <= 0:
             continue
-        if float(available_kw) + 1e-9 < float(required_power_kw):
+
+        quantity = 1
+        aggregate_available_kw = float(available_kw)
+
+        if product.generator_type == HeatingGeneratorType.heat_pump_air_air:
+            capacity_verified = not any(
+                marker in str(basis)
+                for marker in (
+                    "unverified",
+                    "unavailable",
+                    "missing",
+                    "does_not_cover",
+                    "not_interpolable",
+                )
+            )
+            if aggregate_available_kw + 1e-9 < required:
+                # Multiplying units is valid only when the per-unit design-point
+                # capacity is source-backed. Do not multiply a nominal/fallback
+                # rating into a false winter-design claim.
+                if not capacity_verified:
+                    continue
+                quantity = max(
+                    1,
+                    int(math.ceil(required / aggregate_available_kw - 1e-12)),
+                )
+                aggregate_available_kw *= quantity
+                basis = (
+                    f"{basis}_x{quantity}_identical_monosplits"
+                )
+        elif aggregate_available_kw + 1e-9 < required:
             continue
-        candidates.append((product, float(available_kw), basis))
+
+        aggregate_rated_power_kw = float(product.rated_power_kw) * quantity
+        candidates.append(
+            SizedHeatingProductV1(
+                product=product,
+                quantity=quantity,
+                aggregate_rated_power_kw=aggregate_rated_power_kw,
+                available_design_capacity_kw=aggregate_available_kw,
+                capacity_basis=str(basis),
+                installed_capex_lei=(
+                    float(product.installed_capex_lei) * quantity
+                ),
+            )
+        )
 
     if not candidates:
         return None
+
     return min(
         candidates,
         key=lambda item: (
-            float(item[0].rated_power_kw),
-            float(item[0].installed_capex_lei),
+            float(item.aggregate_rated_power_kw),
+            float(item.installed_capex_lei),
+            int(item.quantity),
+            str(item.product.id),
         ),
     )
 
@@ -1793,7 +1876,13 @@ def commercialize_heating_finalist(
                 )
             ],
         )
-    product, available_design_capacity_kw, capacity_basis = sized
+    product = sized.product
+    product_quantity = int(sized.quantity)
+    available_design_capacity_kw = float(
+        sized.available_design_capacity_kw
+    )
+    aggregate_rated_power_kw = float(sized.aggregate_rated_power_kw)
+    capacity_basis = sized.capacity_basis
     building_data = model_to_dict(raw_building)
     product_heating = HeatingInput(
         system_type=product.system_type,
@@ -1815,6 +1904,19 @@ def commercialize_heating_finalist(
             f"using {capacity_basis}."
         )
     ]
+    if (
+        product.generator_type == HeatingGeneratorType.heat_pump_air_air
+        and product_quantity > 1
+    ):
+        product_assumptions.append(
+            (
+                f"Air-air quantity is derived from design-point capacity: "
+                f"{product_quantity} identical monosplit units × "
+                f"{available_design_capacity_kw / product_quantity:.2f} kW/unit "
+                f"= {available_design_capacity_kw:.2f} kW at the winter design "
+                "condition. Room-by-room zoning remains a project check."
+            )
+        )
     if (
         "unverified" in capacity_basis
         or "unavailable" in capacity_basis
@@ -1853,29 +1955,48 @@ def commercialize_heating_finalist(
         for line in candidate.cost_breakdown
         if line.family != "heating"
     ]
+    display_label = (
+        f"{product_quantity} × {product.label}"
+        if product_quantity > 1
+        else product.label
+    )
     lines.append(
         CostLineV1(
             family="heating",
-            capex_lei=round(product.installed_capex_lei, 2),
-            parameter_value=float(product.rated_power_kw),
-            parameter_unit="kW_rated",
+            capex_lei=round(sized.installed_capex_lei, 2),
+            parameter_value=round(aggregate_rated_power_kw, 4),
+            parameter_unit="kW_rated_aggregate",
             source_kind=product.source_kind,
             source_url=product.source_url,
             confidence=product.confidence,
-            catalog_unit="finalist_product_plus_installation_allowance",
+            catalog_unit="real_unit_product_times_design_quantity",
             note=(
-                f"{product.label}: produs real ales numai după optimizarea parametrică; "
-                f"necesar final {required_power_kw:.2f} kW; capacitate disponibilă "
+                f"{display_label}: produs real dimensionat după optimizarea parametrică; "
+                f"necesar final {required_power_kw:.2f} kW; capacitate totală disponibilă "
                 f"la condiția de proiect {available_design_capacity_kw:.2f} kW "
-                f"({capacity_basis}); putere nominală catalog "
-                f"{product.rated_power_kw:.2f} kW. {product.note}"
+                f"({capacity_basis}); putere nominală totală "
+                f"{aggregate_rated_power_kw:.2f} kW"
+                + (
+                    f" ({product_quantity} × {product.rated_power_kw:.2f} kW/unit). "
+                    if product_quantity > 1
+                    else ". "
+                )
+                + product.note
             ),
             product_id=product.id,
-            quantity=1,
-            quantity_unit="system",
-            material_subtotal_lei=round(float(product.equipment_price_lei), 2),
+            sku=product.external_id,
+            quantity=product_quantity,
+            quantity_unit=(
+                "monosplit_unit"
+                if product.generator_type == HeatingGeneratorType.heat_pump_air_air
+                else "system"
+            ),
+            material_subtotal_lei=round(
+                float(product.equipment_price_lei) * product_quantity,
+                2,
+            ),
             nonmaterial_subtotal_lei=round(
-                float(product.installation_allowance_lei),
+                float(product.installation_allowance_lei) * product_quantity,
                 2,
             ),
             design_available_capacity_kw=round(
@@ -1903,7 +2024,7 @@ def commercialize_heating_finalist(
             "candidate_id": _stable_mixed_id(
                 candidate.candidate_id,
                 technology_id,
-                product.id,
+                f"{product.id}:x{product_quantity}",
             ),
             "capex_lei": round(capex, 2),
             "annual_bill_lei": round(annual_bill, 2),
