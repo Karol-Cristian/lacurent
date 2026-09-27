@@ -1,0 +1,16 @@
+[project]
+name = "lacurent-reference-rbpe-worker"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+  "pydantic>=1.10,<2",
+]
+
+[dependency-groups]
+dev = [
+  "workers-py",
+  "workers-runtime-sdk",
+]
+
+[tool.pywrangler]
+allow-build = false
