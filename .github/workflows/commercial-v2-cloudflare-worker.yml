@@ -27,7 +27,7 @@ permissions:
 jobs:
   worker-runtime:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -1489,3 +1489,13 @@ jobs:
               raise AssertionError("Staging workers.dev health failed after production deployment.")
           print("staging health", status)
           PY
+
+      - name: Install Chromium for production Home Lab / TEO smoke
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Run production Home Lab / TEO browser smoke
+        env:
+          HOME_LAB_BASE_URL: https://lacurent.com
+        run: node scripts/smoke-home-lab-browser.mjs
