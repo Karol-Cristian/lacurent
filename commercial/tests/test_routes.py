@@ -261,7 +261,7 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert '"/api/optimization/home-lab/v3/verify"' in js.text
     assert '"/api/optimization/home-lab/v3/product"' in js.text
     assert "buildBrowserFinalization" in js.text
-    assert '"finalizeHttpRequests:0"' not in js.text
+    assert "finalizeHttpRequests:0" in js.text
     assert 'showPage("done");' in js.text
     assert '$("#openReport").addEventListener("click", () => showPage("report"));' in js.text
 
