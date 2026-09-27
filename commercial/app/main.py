@@ -122,6 +122,23 @@ _roi_cost_basis_cached_payload: dict[str, Any] | None = None
 _roi_cost_basis_cache_expires_at = 0.0
 _roi_cost_basis_retry_after = 0.0
 
+TEO_FLOW_MAX_VERIFICATIONS = 3
+TEO_FLOW_COOLDOWN_MS = 1800
+TEO_FLOW_LEASE_MS = 30000
+TEO_FLOW_CREATE_SQL = """
+CREATE TABLE IF NOT EXISTS teo_verification_runs (
+    run_id TEXT PRIMARY KEY,
+    status TEXT NOT NULL DEFAULT 'ready',
+    planned_verifications INTEGER NOT NULL DEFAULT 1,
+    verified_count INTEGER NOT NULL DEFAULT 0,
+    next_allowed_at_ms INTEGER NOT NULL DEFAULT 0,
+    in_flight INTEGER NOT NULL DEFAULT 0,
+    lease_token TEXT,
+    lease_expires_at_ms INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+)
+"""
+
 @lru_cache(maxsize=1)
 def embed_partner_registry() -> dict[str, Any]:
     path = BASE_DIR / "data" / "embed-partners.json"
@@ -1664,6 +1681,307 @@ def _d1_rows(result: Any) -> list[dict[str, Any]]:
     return [dict(row) for row in (raw_rows or [])]
 
 
+
+def _teo_flow_db(request: Request) -> Any | None:
+    env = request.scope.get("env")
+    return getattr(env, "DB", None) if env is not None else None
+
+
+def _teo_flow_now_ms() -> int:
+    return int(time.time() * 1000.0)
+
+
+async def _ensure_teo_flow_d1(db: Any) -> None:
+    await db.prepare(TEO_FLOW_CREATE_SQL).run()
+    await db.prepare(
+        "CREATE INDEX IF NOT EXISTS teo_verification_runs_status_idx "
+        "ON teo_verification_runs(status, next_allowed_at_ms)"
+    ).run()
+
+
+async def _teo_flow_row(db: Any, run_id: str) -> dict[str, Any] | None:
+    result = await db.prepare(
+        """
+        SELECT run_id, status, planned_verifications, verified_count,
+               next_allowed_at_ms, in_flight, lease_token,
+               lease_expires_at_ms, updated_at
+        FROM teo_verification_runs
+        WHERE run_id = ?
+        LIMIT 1
+        """
+    ).bind(run_id).run()
+    rows = _d1_rows(result)
+    return rows[0] if rows else None
+
+
+def _teo_flow_public_state(
+    row: dict[str, Any] | None,
+    *,
+    storage: str,
+) -> dict[str, Any]:
+    now_ms = _teo_flow_now_ms()
+    if row is None:
+        return {
+            "status": "ready",
+            "ready": True,
+            "verifiedCount": 0,
+            "plannedVerifications": TEO_FLOW_MAX_VERIFICATIONS,
+            "retryAfterMs": 0,
+            "storage": storage,
+        }
+
+    verified_count = int(row.get("verified_count") or 0)
+    planned = max(1, int(row.get("planned_verifications") or 1))
+    next_allowed = int(row.get("next_allowed_at_ms") or 0)
+    in_flight = bool(int(row.get("in_flight") or 0))
+    lease_expires = int(row.get("lease_expires_at_ms") or 0)
+
+    if verified_count >= planned or str(row.get("status") or "") == "complete":
+        status = "complete"
+        ready = False
+        retry_after = 0
+    elif in_flight and lease_expires > now_ms:
+        status = "running"
+        ready = False
+        retry_after = max(100, lease_expires - now_ms)
+    elif next_allowed > now_ms:
+        status = "cooldown"
+        ready = False
+        retry_after = next_allowed - now_ms
+    else:
+        status = "ready"
+        ready = True
+        retry_after = 0
+
+    return {
+        "runId": str(row.get("run_id") or ""),
+        "status": status,
+        "ready": ready,
+        "verifiedCount": verified_count,
+        "plannedVerifications": planned,
+        "retryAfterMs": int(retry_after),
+        "storage": storage,
+    }
+
+
+async def _teo_flow_start(
+    request: Request,
+    run_id: str,
+    planned_verifications: int,
+) -> dict[str, Any]:
+    db = _teo_flow_db(request)
+    planned = max(1, min(int(planned_verifications), TEO_FLOW_MAX_VERIFICATIONS))
+    if db is None:
+        return {
+            "runId": run_id,
+            "status": "ready",
+            "ready": True,
+            "verifiedCount": 0,
+            "plannedVerifications": planned,
+            "retryAfterMs": 0,
+            "storage": "none",
+        }
+
+    await _ensure_teo_flow_d1(db)
+    await db.prepare(
+        """
+        INSERT INTO teo_verification_runs(
+            run_id, status, planned_verifications, verified_count,
+            next_allowed_at_ms, in_flight, lease_token,
+            lease_expires_at_ms, updated_at
+        )
+        VALUES (?, 'ready', ?, 0, 0, 0, NULL, 0, CURRENT_TIMESTAMP)
+        ON CONFLICT(run_id) DO UPDATE SET
+            status = 'ready',
+            planned_verifications = excluded.planned_verifications,
+            verified_count = 0,
+            next_allowed_at_ms = 0,
+            in_flight = 0,
+            lease_token = NULL,
+            lease_expires_at_ms = 0,
+            updated_at = CURRENT_TIMESTAMP
+        """
+    ).bind(run_id, planned).run()
+    return _teo_flow_public_state(
+        await _teo_flow_row(db, run_id),
+        storage="d1",
+    )
+
+
+async def _teo_flow_status(
+    request: Request,
+    run_id: str,
+) -> dict[str, Any]:
+    db = _teo_flow_db(request)
+    if db is None:
+        return {
+            "runId": run_id,
+            "status": "ready",
+            "ready": True,
+            "verifiedCount": 0,
+            "plannedVerifications": TEO_FLOW_MAX_VERIFICATIONS,
+            "retryAfterMs": 0,
+            "storage": "none",
+        }
+    await _ensure_teo_flow_d1(db)
+    return _teo_flow_public_state(
+        await _teo_flow_row(db, run_id),
+        storage="d1",
+    )
+
+
+async def _teo_flow_acquire_verification(
+    request: Request,
+    run_id: str,
+) -> dict[str, Any]:
+    db = _teo_flow_db(request)
+    if db is None:
+        return {
+            "acquired": True,
+            "leaseToken": None,
+            "state": await _teo_flow_status(request, run_id),
+        }
+
+    await _ensure_teo_flow_d1(db)
+    row = await _teo_flow_row(db, run_id)
+    if row is None:
+        await _teo_flow_start(request, run_id, TEO_FLOW_MAX_VERIFICATIONS)
+        row = await _teo_flow_row(db, run_id)
+
+    state = _teo_flow_public_state(row, storage="d1")
+    if not state["ready"]:
+        return {"acquired": False, "leaseToken": None, "state": state}
+
+    now_ms = _teo_flow_now_ms()
+    lease_token = f"{run_id}:{time.time_ns()}"
+    await db.prepare(
+        """
+        UPDATE teo_verification_runs
+        SET status = 'running',
+            in_flight = 1,
+            lease_token = ?,
+            lease_expires_at_ms = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE run_id = ?
+          AND verified_count < planned_verifications
+          AND next_allowed_at_ms <= ?
+          AND (in_flight = 0 OR lease_expires_at_ms <= ?)
+        """
+    ).bind(
+        lease_token,
+        now_ms + TEO_FLOW_LEASE_MS,
+        run_id,
+        now_ms,
+        now_ms,
+    ).run()
+    acquired_row = await _teo_flow_row(db, run_id)
+    acquired = bool(
+        acquired_row
+        and str(acquired_row.get("lease_token") or "") == lease_token
+    )
+    return {
+        "acquired": acquired,
+        "leaseToken": lease_token if acquired else None,
+        "state": _teo_flow_public_state(acquired_row, storage="d1"),
+    }
+
+
+async def _teo_flow_complete_verification(
+    request: Request,
+    run_id: str,
+    lease_token: str | None,
+) -> dict[str, Any]:
+    db = _teo_flow_db(request)
+    if db is None or lease_token is None:
+        return await _teo_flow_status(request, run_id)
+
+    now_ms = _teo_flow_now_ms()
+    await db.prepare(
+        """
+        UPDATE teo_verification_runs
+        SET verified_count = verified_count + 1,
+            status = CASE
+                WHEN verified_count + 1 >= planned_verifications
+                THEN 'complete'
+                ELSE 'cooldown'
+            END,
+            next_allowed_at_ms = ?,
+            in_flight = 0,
+            lease_token = NULL,
+            lease_expires_at_ms = 0,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE run_id = ? AND lease_token = ?
+        """
+    ).bind(
+        now_ms + TEO_FLOW_COOLDOWN_MS,
+        run_id,
+        lease_token,
+    ).run()
+    return _teo_flow_public_state(
+        await _teo_flow_row(db, run_id),
+        storage="d1",
+    )
+
+
+async def _teo_flow_release_verification(
+    request: Request,
+    run_id: str,
+    lease_token: str | None,
+) -> None:
+    db = _teo_flow_db(request)
+    if db is None or lease_token is None:
+        return
+    await db.prepare(
+        """
+        UPDATE teo_verification_runs
+        SET status = 'cooldown',
+            next_allowed_at_ms = ?,
+            in_flight = 0,
+            lease_token = NULL,
+            lease_expires_at_ms = 0,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE run_id = ? AND lease_token = ?
+        """
+    ).bind(
+        _teo_flow_now_ms() + TEO_FLOW_COOLDOWN_MS,
+        run_id,
+        lease_token,
+    ).run()
+
+
+async def _teo_flow_finish(
+    request: Request,
+    run_id: str,
+) -> dict[str, Any]:
+    db = _teo_flow_db(request)
+    if db is None:
+        return {
+            "runId": run_id,
+            "status": "complete",
+            "ready": False,
+            "verifiedCount": 0,
+            "plannedVerifications": TEO_FLOW_MAX_VERIFICATIONS,
+            "retryAfterMs": 0,
+            "storage": "none",
+        }
+    await _ensure_teo_flow_d1(db)
+    await db.prepare(
+        """
+        UPDATE teo_verification_runs
+        SET status = 'complete',
+            in_flight = 0,
+            lease_token = NULL,
+            lease_expires_at_ms = 0,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE run_id = ?
+        """
+    ).bind(run_id).run()
+    return _teo_flow_public_state(
+        await _teo_flow_row(db, run_id),
+        storage="d1",
+    )
+
+
 async def _ensure_roi_cost_basis_d1(db: Any) -> None:
     """Create/refresh the small commercial ROI table through the Worker binding.
 
@@ -2875,9 +3193,10 @@ async def home_lab_optimization_v4_plan_api(request: Request) -> JSONResponse:
         cost_catalog = await _optimizer_cost_catalog(request)
 
         started = time.perf_counter()
+        bounds = OptimizationSearchBoundsV1()
         plan = build_worker_safe_plan_v3(
             optimization_request,
-            bounds=OptimizationSearchBoundsV1(),
+            bounds=bounds,
             heating_catalog=heating_summary,
             halton_samples=2048,
             branch_batch_size=V3_BRANCH_BATCH_SIZE,
@@ -2914,6 +3233,8 @@ async def home_lab_optimization_v4_plan_api(request: Request) -> JSONResponse:
             "label": _home_lab_optimizer_label(mode, form),
             "searchMethod": "teo_v4_browser_worker_mc001_kernel",
             "searchPoints": [model_to_dict(item) for item in plan.search_points],
+            "searchBounds": model_to_dict(bounds),
+            "refinementStrategy": "halton_global_plus_two_local_coordinate_rounds",
             "branches": [model_to_dict(item) for item in plan.branches],
             "runBranchIds": economic_ids,
             "searchPointCount": len(plan.search_points),
@@ -3130,6 +3451,72 @@ async def home_lab_optimization_v3_branch_api(request: Request) -> JSONResponse:
         )
 
 
+@app.post("/api/optimization/home-lab/v4/flow/start")
+async def home_lab_optimization_v4_flow_start_api(request: Request) -> JSONResponse:
+    """Start a D1-backed verification flow that serializes heavy RBPE passes."""
+
+    try:
+        raw = await request.json()
+        run_id = str(raw.get("runId") or "").strip()
+        if not run_id or len(run_id) > 160:
+            raise ValueError("Run ID TEO invalid.")
+        planned = int(raw.get("plannedVerifications") or TEO_FLOW_MAX_VERIFICATIONS)
+        return JSONResponse(
+            await _teo_flow_start(request, run_id, planned),
+            headers={"Cache-Control": "no-store"},
+        )
+    except Exception as exc:
+        return JSONResponse(
+            {"error": user_error(exc), "stage": "teo-flow-start"},
+            status_code=422,
+            headers={"Cache-Control": "no-store"},
+        )
+
+
+@app.get("/api/optimization/home-lab/v4/flow/{run_id}")
+async def home_lab_optimization_v4_flow_status_api(
+    run_id: str,
+    request: Request,
+) -> JSONResponse:
+    """Cheap status probe. It never runs RBPE physics."""
+
+    try:
+        if not run_id or len(run_id) > 160:
+            raise ValueError("Run ID TEO invalid.")
+        return JSONResponse(
+            await _teo_flow_status(request, run_id),
+            headers={"Cache-Control": "no-store"},
+        )
+    except Exception as exc:
+        return JSONResponse(
+            {"error": user_error(exc), "stage": "teo-flow-status"},
+            status_code=422,
+            headers={"Cache-Control": "no-store"},
+        )
+
+
+@app.post("/api/optimization/home-lab/v4/flow/{run_id}/finish")
+async def home_lab_optimization_v4_flow_finish_api(
+    run_id: str,
+    request: Request,
+) -> JSONResponse:
+    """Mark an adaptively completed verification flow as finished."""
+
+    try:
+        if not run_id or len(run_id) > 160:
+            raise ValueError("Run ID TEO invalid.")
+        return JSONResponse(
+            await _teo_flow_finish(request, run_id),
+            headers={"Cache-Control": "no-store"},
+        )
+    except Exception as exc:
+        return JSONResponse(
+            {"error": user_error(exc), "stage": "teo-flow-finish"},
+            status_code=422,
+            headers={"Cache-Control": "no-store"},
+        )
+
+
 @app.post("/api/optimization/home-lab/v3/verification-plan")
 async def home_lab_optimization_v3_verification_plan_api(
     request: Request,
@@ -3193,13 +3580,16 @@ async def home_lab_optimization_v3_verification_plan_api(
 
 @app.post("/api/optimization/home-lab/v3/verify")
 async def home_lab_optimization_v3_verify_api(request: Request) -> JSONResponse:
-    """Canonical verification work unit: exactly one finalist per request."""
+    """Canonical verification work unit: exactly one finalist per gated request."""
 
+    flow_lease_token: str | None = None
+    run_id = ""
     try:
         raw = await request.json()
         form = dict(raw.get("form") or {})
         branch_id = str(raw.get("branchId") or "").strip()
         candidate_raw = raw.get("candidate")
+        run_id = str(raw.get("runId") or form.get("_optimizer_run_id") or "").strip()
         baseline_bill_raw = raw.get("baselineAnnualBillLei")
         baseline_annual_bill_lei = (
             None
@@ -3208,6 +3598,26 @@ async def home_lab_optimization_v3_verify_api(request: Request) -> JSONResponse:
         )
         if not branch_id or not isinstance(candidate_raw, dict):
             raise ValueError("Lipsește finalistul V3 pentru verificare.")
+
+        if run_id:
+            gate = await _teo_flow_acquire_verification(request, run_id)
+            if not gate.get("acquired"):
+                state = gate.get("state") or {}
+                retry_after_ms = int(state.get("retryAfterMs") or TEO_FLOW_COOLDOWN_MS)
+                return JSONResponse(
+                    {
+                        "error": "TEO Worker Flow nu este încă pregătit pentru următorul VERIFY.",
+                        "optimizerVersion": "v4-adaptive",
+                        "stage": "verify-gate",
+                        "workerFlow": state,
+                    },
+                    status_code=409,
+                    headers={
+                        "Cache-Control": "no-store",
+                        "Retry-After": str(max(1, math.ceil(retry_after_ms / 1000))),
+                    },
+                )
+            flow_lease_token = gate.get("leaseToken")
 
         _, _, optimization_request = _home_lab_optimization_request_from_form(form)
         cost_catalog = await _optimizer_cost_catalog(request)
@@ -3226,8 +3636,17 @@ async def home_lab_optimization_v3_verify_api(request: Request) -> JSONResponse:
             baseline_annual_bill_lei=baseline_annual_bill_lei,
         )
         elapsed_ms = round((time.perf_counter() - started) * 1000.0, 1)
+        worker_flow = (
+            await _teo_flow_complete_verification(
+                request,
+                run_id,
+                flow_lease_token,
+            )
+            if run_id
+            else None
+        )
         payload = {
-            "optimizerVersion": "v3-sharded",
+            "optimizerVersion": "v4-adaptive",
             "branchId": branch_id,
             "candidate": model_to_dict(verified.candidate),
             "sourceCandidateId": fast_candidate.candidate_id,
@@ -3235,8 +3654,12 @@ async def home_lab_optimization_v3_verify_api(request: Request) -> JSONResponse:
             "designLoadDeltaKw": verified.design_load_delta_kw,
             "warnings": verified.warnings,
             "calculationTimeMs": elapsed_ms,
+            "workerFlow": worker_flow,
         }
-        response = JSONResponse(payload)
+        response = JSONResponse(
+            payload,
+            headers={"Cache-Control": "no-store"},
+        )
 
         del verified
         del fast_candidate
@@ -3249,13 +3672,23 @@ async def home_lab_optimization_v3_verify_api(request: Request) -> JSONResponse:
         gc.collect()
         return response
     except Exception as exc:
+        if run_id and flow_lease_token:
+            try:
+                await _teo_flow_release_verification(
+                    request,
+                    run_id,
+                    flow_lease_token,
+                )
+            except Exception:
+                pass
         return JSONResponse(
             {
                 "error": user_error(exc),
-                "optimizerVersion": "v3-sharded",
+                "optimizerVersion": "v4-adaptive",
                 "stage": "verify",
             },
             status_code=422,
+            headers={"Cache-Control": "no-store"},
         )
 
 
