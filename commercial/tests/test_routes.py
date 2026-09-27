@@ -264,7 +264,7 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert "function selectLocality(" in js.text
     assert '"/api/home-lab-next/calculate"' in js.text
     assert '"/api/optimization/home-lab/v4/plan"' in js.text
-    assert '"/static/teo-v4-worker.js?v=2"' in js.text
+    assert '"/static/teo-v4-worker.js?v=3"' in js.text
     assert '"/api/optimization/home-lab/v3/verification-plan"' in js.text
     assert '"/api/optimization/home-lab/v3/verify"' in js.text
     # TEO ends at the canonically verified parametric optimum.
@@ -325,9 +325,14 @@ def test_teo_v4_plan_builds_thousands_of_browser_points_without_server_candidate
     assert payload["optimizerVersion"] == "teo-v4-browser"
     assert payload["executionMode"] == "browser_web_worker_v4"
     assert payload["serverCandidateEvaluations"] == 0
+    assert payload["serverGeneratedSearchPoints"] == 0
     assert payload["baselineCanonicalPasses"] == 1
-    assert payload["searchPointCount"] >= 2000
-    assert payload["lowDiscrepancyPoints"] >= 2000
+    assert payload["searchPointCount"] == 2064
+    assert payload["deterministicAxisPoints"] == 15
+    assert payload["lowDiscrepancyPoints"] == 2048
+    assert "searchPoints" not in payload
+    assert payload["searchSpec"]["version"] == "teo-v4-local-halton-1"
+    assert payload["searchSpec"]["haltonSamples"] == 2048
     assert payload["searchBounds"]["wall_added_r_m2k_w_max"] > 0
     assert payload["refinementStrategy"] == "halton_global_plus_two_local_coordinate_rounds"
     assert payload["runBranchIds"]
@@ -345,6 +350,8 @@ def test_teo_v4_plan_builds_thousands_of_browser_points_without_server_candidate
     assert "function shortlist(" in worker.text
     assert "function refineBranch(" in worker.text
     assert "function robustRegretMetricsRows(" in worker.text
+    assert "function buildSearchPoints(" in worker.text
+    assert "function radicalInverse(" in worker.text
     assert "LOCAL_REFINEMENT_ROUNDS" in worker.text
 
 
@@ -1706,7 +1713,7 @@ def test_editorial_server_compute_budget_caps_only_full_engine_passes() -> None:
     # Deep parametric search remains browser-side and is intentionally not
     # reduced by the server compute profile.
     assert '"/api/optimization/home-lab/v4/plan"' in source
-    assert '"/static/teo-v4-worker.js?v=2"' in source
+    assert '"/static/teo-v4-worker.js?v=3"' in source
 
 
 def test_optimizer_reuses_baseline_bill_and_resets_cross_run_engine_cache() -> None:
@@ -1756,6 +1763,9 @@ def test_optimizer_reuses_baseline_bill_and_resets_cross_run_engine_cache() -> N
     )[0]
     assert "del baseline_result" in plan_section
     assert "clear_heating_optimizer_runtime_caches()" in plan_section
+    assert "build_worker_safe_plan_v3(" not in plan_section
+    assert '"searchPoints"' not in plan_section
+    assert '"searchSpec": search_spec' in plan_section
 
     assert "clear_heating_optimizer_runtime_caches()" in verify_section
 
