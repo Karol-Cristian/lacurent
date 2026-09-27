@@ -8,6 +8,7 @@ from commercial.app.engine import (
     _cooling_heat_transfer_utilization_factor,
     _monthly_cooling_need,
     _monthly_utilization_parameter,
+    _primary_specific_energy_scalar,
     calculate,
     co2_emissions,
     demo_building,
@@ -983,6 +984,40 @@ def test_reference_glazing_is_independent_from_real_glazing_and_climate_zone_bac
     assert triple_mapping["window"]["solar_gn"] == pytest.approx(0.47)
     assert clear_mapping["window"]["solar_climate_zone"] == "III"
     assert "copy_window_area_orientation" in clear_mapping["window"]["geometry_policy"]
+
+
+@pytest.mark.parametrize(
+    "building",
+    [
+        simple_building(),
+        demo_building(),
+        simple_building(
+            renewables={
+                "pv": {
+                    "enabled": True,
+                    "installed_power_kwp": 4.0,
+                    "orientation": "south",
+                    "tilt_degrees": 30,
+                    "performance_ratio": 0.82,
+                },
+                "solar_thermal": {
+                    "enabled": False,
+                    "collector_area_m2": 0,
+                    "orientation": "south",
+                    "tilt_degrees": 45,
+                    "system_efficiency": 0.45,
+                },
+            }
+        ),
+    ],
+)
+def test_compact_primary_scalar_matches_full_rbpe(building: BuildingInput) -> None:
+    full = calculate(building, include_reference=False)
+    compact = _primary_specific_energy_scalar(building)
+    assert compact == pytest.approx(
+        full.primary_energy.specific_kwh_m2,
+        abs=1e-9,
+    )
 
 
 def test_reference_first_calculation_preserves_reference_metrics() -> None:
