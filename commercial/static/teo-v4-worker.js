@@ -651,6 +651,84 @@ function measuresFromNormalized(vector, bounds, template = {}) {
   return out;
 }
 
+function radicalInverse(index, base) {
+  if (index <= 0) return 0;
+  const inverse = 1 / base;
+  let factor = inverse;
+  let value = 0;
+  let current = Math.floor(index);
+  while (current > 0) {
+    const digit = current % base;
+    current = Math.floor(current / base);
+    value += digit * factor;
+    factor *= inverse;
+  }
+  return value;
+}
+
+function buildSearchPoints(bounds, spec = {}) {
+  const dimensions = Math.max(
+    1,
+    Math.min(Number(spec.dimensions || SEARCH_DIMENSIONS.length), SEARCH_DIMENSIONS.length)
+  );
+  const axisLevels = Array.isArray(spec.axisLevels) && spec.axisLevels.length
+    ? spec.axisLevels.map(value => clamp(num(value), 0, 1))
+    : [0.5, 1.0];
+  const haltonBases = Array.isArray(spec.haltonBases) && spec.haltonBases.length >= dimensions
+    ? spec.haltonBases.slice(0, dimensions).map(value => Math.max(2, Math.floor(num(value, 2))))
+    : [2, 3, 5, 7, 11, 13, 17].slice(0, dimensions);
+  const haltonSamples = Math.max(0, Math.floor(num(spec.haltonSamples, 0)));
+  const haltonStartIndex = Math.max(1, Math.floor(num(spec.haltonStartIndex, 1)));
+  const rows = [];
+  const seen = new Set();
+  const add = measures => {
+    const signature = measureSignature(measures);
+    if (seen.has(signature)) return false;
+    seen.add(signature);
+    rows.push(measures);
+    return true;
+  };
+
+  let deterministicAxisPoints = 0;
+  if (spec.includeOrigin !== false) {
+    if (add(measuresFromNormalized(new Array(dimensions).fill(0), bounds))) {
+      deterministicAxisPoints += 1;
+    }
+  }
+  for (let dimension = 0; dimension < dimensions; dimension++) {
+    for (const level of axisLevels) {
+      const vector = new Array(dimensions).fill(0);
+      vector[dimension] = level;
+      if (add(measuresFromNormalized(vector, bounds))) {
+        deterministicAxisPoints += 1;
+      }
+    }
+  }
+
+  let lowDiscrepancyPoints = 0;
+  for (let offset = 0; offset < haltonSamples; offset++) {
+    const index = haltonStartIndex + offset;
+    const vector = haltonBases.map(base => radicalInverse(index, base));
+    if (add(measuresFromNormalized(vector, bounds))) {
+      lowDiscrepancyPoints += 1;
+    }
+  }
+
+  let maxCornerPoints = 0;
+  if (spec.includeMaxCorner !== false) {
+    if (add(measuresFromNormalized(new Array(dimensions).fill(1), bounds))) {
+      maxCornerPoints = 1;
+    }
+  }
+
+  return {
+    points:rows,
+    deterministicAxisPoints,
+    lowDiscrepancyPoints,
+    maxCornerPoints,
+  };
+}
+
 function robustRegretMetricsRows(rows) {
   const unique = [...new Map(
     (rows || []).map(row => [String(row?.candidate?.candidate_id || ""), row])
@@ -846,9 +924,21 @@ self.onmessage = event => {
   const started = performance.now();
   try {
     const kernel = data.kernel || {};
-    const searchPoints = Array.isArray(data.searchPoints) ? data.searchPoints : [];
+    const suppliedSearchPoints = Array.isArray(data.searchPoints) ? data.searchPoints : [];
     const branchIds = Array.isArray(data.branchIds) ? data.branchIds : [];
     const searchBounds = data.searchBounds || {};
+    const generatedSearch = suppliedSearchPoints.length
+      ? {
+          points:suppliedSearchPoints,
+          deterministicAxisPoints:num(data.deterministicAxisPoints),
+          lowDiscrepancyPoints:num(data.lowDiscrepancyPoints),
+          maxCornerPoints:0,
+        }
+      : buildSearchPoints(searchBounds, data.searchSpec || {});
+    const searchPoints = generatedSearch.points;
+    if (!searchPoints.length) {
+      throw new Error("TEO V4 nu are puncte de căutare locale.");
+    }
     const baselineBill = num(data.baselineAnnualBillLei);
     const branches = new Map((kernel.branches || []).map(branch => [branch.branch_id, branch]));
     const allRows = [];
@@ -953,6 +1043,11 @@ self.onmessage = event => {
       refinementRounds:LOCAL_REFINEMENT_ROUNDS.length,
       calculationTimeMs:round(performance.now() - started, 1),
       searchMethod:"teo_v4_halton_plus_local_refinement",
+      searchGeneration:suppliedSearchPoints.length ? "supplied" : "browser",
+      searchPointCount:searchPoints.length,
+      deterministicAxisPoints:generatedSearch.deterministicAxisPoints,
+      lowDiscrepancyPoints:generatedSearch.lowDiscrepancyPoints,
+      maxCornerPoints:generatedSearch.maxCornerPoints,
     });
   } catch (error) {
     self.postMessage({

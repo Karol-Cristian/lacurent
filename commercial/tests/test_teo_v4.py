@@ -64,6 +64,44 @@ process.stdout.write(JSON.stringify(terminal));
 
 
 
+def test_teo_v4_browser_worker_generates_full_search_grid_locally() -> None:
+    bounds = OptimizationSearchBoundsV1()
+    bounds_payload = (
+        bounds.model_dump()
+        if hasattr(bounds, "model_dump")
+        else bounds.dict()
+    )
+
+    worker_result = _run_worker(
+        {
+            "type": "run",
+            "kernel": {"branches": []},
+            "searchSpec": {
+                "version": "teo-v4-local-halton-1",
+                "haltonSamples": 2048,
+                "haltonStartIndex": 1,
+                "haltonBases": [2, 3, 5, 7, 11, 13, 17],
+                "axisLevels": [0.5, 1.0],
+                "dimensions": 7,
+                "includeOrigin": True,
+                "includeMaxCorner": True,
+            },
+            "searchBounds": bounds_payload,
+            "branchIds": [],
+            "mode": "auto_economic",
+            "goals": {},
+            "baselineAnnualBillLei": 0,
+        }
+    )
+
+    assert worker_result["searchGeneration"] == "browser"
+    assert worker_result["searchPointCount"] == 2064
+    assert worker_result["deterministicAxisPoints"] == 15
+    assert worker_result["lowDiscrepancyPoints"] == 2048
+    assert worker_result["maxCornerPoints"] == 1
+    assert worker_result["globalEvaluations"] == 0
+
+
 def test_teo_v4_browser_worker_refines_locally_when_bounds_are_supplied() -> None:
     baseline = demo_building()
     baseline_result = calculate(baseline, include_reference=False)

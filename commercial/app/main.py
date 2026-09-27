@@ -3271,18 +3271,36 @@ async def home_lab_optimization_v4_plan_api(request: Request) -> JSONResponse:
 
         started = time.perf_counter()
         bounds = OptimizationSearchBoundsV1()
-        plan = build_worker_safe_plan_v3(
+        branches = heating_branch_plan(
             optimization_request,
-            bounds=bounds,
-            heating_catalog=heating_summary,
-            halton_samples=2048,
-            branch_batch_size=V3_BRANCH_BATCH_SIZE,
+            heating_summary,
         )
         economic_ids = [
             item.branch_id
-            for item in plan.branches
+            for item in branches
             if item.eligible and item.economic_eligible
         ]
+        # Do not materialize the 2k+ TEO search grid in the constrained Python
+        # isolate. The browser worker deterministically reconstructs exactly the
+        # same axis + Halton + max-corner coverage from this compact spec.
+        search_spec = {
+            "version": "teo-v4-local-halton-1",
+            "haltonSamples": 2048,
+            "haltonStartIndex": 1,
+            "haltonBases": [2, 3, 5, 7, 11, 13, 17],
+            "axisLevels": [0.5, 1.0],
+            "dimensions": 7,
+            "includeOrigin": True,
+            "includeMaxCorner": True,
+        }
+        deterministic_axis_points = 1 + (
+            int(search_spec["dimensions"]) * len(search_spec["axisLevels"])
+        )
+        search_point_count = (
+            deterministic_axis_points
+            + int(search_spec["haltonSamples"])
+            + (1 if search_spec["includeMaxCorner"] else 0)
+        )
         if not economic_ids:
             raise ValueError("TEO V4 nu are nicio ramură economică eligibilă.")
 
@@ -3309,14 +3327,15 @@ async def home_lab_optimization_v4_plan_api(request: Request) -> JSONResponse:
             "economicMode": mode.value,
             "label": _home_lab_optimizer_label(mode, form),
             "searchMethod": "teo_v4_browser_worker_mc001_kernel",
-            "searchPoints": [model_to_dict(item) for item in plan.search_points],
+            "searchSpec": search_spec,
             "searchBounds": model_to_dict(bounds),
             "refinementStrategy": "halton_global_plus_two_local_coordinate_rounds",
-            "branches": [model_to_dict(item) for item in plan.branches],
+            "branches": [model_to_dict(item) for item in branches],
             "runBranchIds": economic_ids,
-            "searchPointCount": len(plan.search_points),
-            "deterministicAxisPoints": int(plan.deterministic_axis_points),
-            "lowDiscrepancyPoints": int(plan.low_discrepancy_points),
+            "searchPointCount": search_point_count,
+            "deterministicAxisPoints": deterministic_axis_points,
+            "lowDiscrepancyPoints": int(search_spec["haltonSamples"]),
+            "serverGeneratedSearchPoints": 0,
             "kernel": kernel,
             "serverCandidateEvaluations": 0,
             "baselineCanonicalPasses": 1,
@@ -3333,7 +3352,8 @@ async def home_lab_optimization_v4_plan_api(request: Request) -> JSONResponse:
         del branch_catalogs
         del cost_catalog
         del kernel
-        del plan
+        del branches
+        del search_spec
         del payload
         clear_baseline_evaluation_cache()
         clear_heating_optimizer_runtime_caches()

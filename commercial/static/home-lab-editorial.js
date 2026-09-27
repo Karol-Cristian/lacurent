@@ -2001,13 +2001,13 @@
     baselineSummaryTimer = window.setTimeout(refreshBaselineSummary, delay);
   }
 
-  function runTeoV4Worker({kernel, searchPoints, searchBounds, branchIds, mode, goals, baselineAnnualBillLei}) {
+  function runTeoV4Worker({kernel, searchSpec, searchBounds, branchIds, mode, goals, baselineAnnualBillLei}) {
     return new Promise((resolve, reject) => {
       if (!("Worker" in window)) {
         reject(new Error("Browserul nu suportă Web Worker pentru TEO V4."));
         return;
       }
-      const worker = new Worker("/static/teo-v4-worker.js?v=2");
+      const worker = new Worker("/static/teo-v4-worker.js?v=3");
       let settled = false;
       const finish = (fn, value) => {
         if (settled) return;
@@ -2052,7 +2052,7 @@
       worker.postMessage({
         type:"run",
         kernel,
-        searchPoints,
+        searchSpec,
         branchIds,
         searchBounds,
         mode,
@@ -2854,13 +2854,14 @@
         planData,
         {stageName:"plan TEO V4", runId, retries:TEO_SERVER_PROFILE.heavyRetries}
       );
-      const searchPoints = Array.isArray(lastPlan.searchPoints) ? lastPlan.searchPoints : [];
+      const searchSpec = lastPlan.searchSpec || {};
+      const searchPointCount = Number(lastPlan.searchPointCount || 0);
       const branchIds = Array.isArray(lastPlan.runBranchIds) ? lastPlan.runBranchIds : [];
-      if (!branchIds.length || !searchPoints.length || !lastPlan.kernel) {
-        throw new Error("TEO V4 nu a construit kernelul sau punctele de căutare eligibile.");
+      if (!branchIds.length || !searchPointCount || !lastPlan.kernel) {
+        throw new Error("TEO V4 nu a construit kernelul sau specificația locală de căutare.");
       }
-      stage("plan","done", `${searchPoints.length} puncte`);
-      log(`TEO V4: ${searchPoints.length} puncte/ramură · ${lastPlan.deterministicAxisPoints || 0} axe deterministe · ${lastPlan.lowDiscrepancyPoints || 0} low-discrepancy · 0 evaluări candidat pe server.`);
+      stage("plan","done", `${searchPointCount} puncte locale`);
+      log(`TEO V4: ${searchPointCount} puncte/ramură generate în browser · ${lastPlan.deterministicAxisPoints || 0} axe deterministe · ${lastPlan.lowDiscrepancyPoints || 0} low-discrepancy · ${lastPlan.serverGeneratedSearchPoints || 0} puncte materializate pe server.`);
       log(`Metodă: ${lastPlan.searchMethod || "teo_v4_browser_worker_mc001_kernel"} · execuție ${lastPlan.executionMode || "browser_web_worker_v4"}.`);
       const catalogStats = lastPlan.heatingCatalogStats || {};
       log(`Catalog încălzire: ${catalogStats.products ?? "?"} SKU-uri comerciale · ${catalogStats.parametric_nodes ?? "?"} noduri parametrice · ${catalogStats.performance_points ?? "?"} puncte COP/capacitate · sursă ${lastPlan.heatingCatalogSource || "?"}.`);
@@ -2874,10 +2875,10 @@
         annual_bill_target_lei:Number(formPayload._annual_bill_target_lei || 0),
         max_payback_years:Number(formPayload._max_payback_years || 0),
       };
-      log(`TEO V4 local: ${searchPoints.length * branchIds.length} evaluări planificate în browser, fără request HTTP per candidat.`);
+      log(`TEO V4 local: ${searchPointCount * branchIds.length} evaluări planificate în browser, fără request HTTP per candidat.`);
       const localSearch = await runTeoV4Worker({
         kernel:lastPlan.kernel,
-        searchPoints,
+        searchSpec,
         searchBounds:lastPlan.searchBounds || {},
         branchIds,
         mode:lastPlan.economicMode || formPayload._optimization_mode || "auto_economic",
@@ -3000,7 +3001,7 @@
         backendElapsedMs,
         sourceCandidateCount:localSourceCandidateCount,
         branchFastEvaluations,
-        searchPointCount:searchPoints.length,
+        searchPointCount:Number(localSearch.searchPointCount || searchPointCount),
         verificationFrontierCount:Number(verificationPlan.frontierCount || 0),
         refinementEvaluations,
         browserSearchMethod,
