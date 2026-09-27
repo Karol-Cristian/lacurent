@@ -2761,7 +2761,7 @@
 
           adaptiveVerification = adaptiveVerificationDecisionLocal({
             verifiedRows,
-            targets:verifyTargets,
+            targets,
             mode:lastPlan.economicMode || formPayload._optimization_mode || "auto_economic",
             goals,
             maxVerifications:verifyLimit,
@@ -2770,6 +2770,15 @@
             `ADAPTIVE VERIFY · ${adaptiveVerification.reason} · exact ${verifiedRows.length}/${verifyLimit}.`
           );
           if (!adaptiveVerification.continueVerification) break;
+          if (
+            verified?.workerFlow?.storage === "none"
+            && i + 1 < verifyTargets.length
+          ) {
+            log(
+              `WORKER FLOW · fără D1 persistent; aplic cooldown local de ${(TEO_SERVER_PROFILE.cooldownMs / 1000).toFixed(1)} s înainte de următorul VERIFY.`
+            );
+            await sleep(TEO_SERVER_PROFILE.cooldownMs);
+          }
         } catch (error) {
           verifyFailures += 1;
           log(
