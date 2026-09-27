@@ -712,28 +712,30 @@ def monthly_energy_balance(
         q_h_ht = q_h_tr_excl_ground + q_h_ground + q_h_ve
         useful_heating = _monthly_heating_need(q_h_ht, total_gains, a_h)
 
-        useful_cooling = 0.0
-        if building.cooling.enabled:
-            q_c_tr_excl_ground = (
-                h_excluding_ground
-                * (building.cooling.setpoint_c - outdoor)
-                * hours
-                / 1000
-            )
-            q_c_ground = (
-                transmission.hg_w_k
-                * (building.cooling.setpoint_c - annual_outdoor)
-                * hours
-                / 1000
-            )
-            q_c_ve = (
-                h_ve_w_k
-                * (building.cooling.setpoint_c - outdoor)
-                * hours
-                / 1000
-            )
-            q_c_ht = q_c_tr_excl_ground + q_c_ground + q_c_ve
-            useful_cooling = _monthly_cooling_need(q_c_ht, total_gains, a_c, a_c_red)
+        # Cooling demand is a property of the building, climate and comfort
+        # setpoint, not of whether active cooling equipment is installed.
+        # Equipment availability is applied later by cooling_final_energy(),
+        # which keeps final cooling energy at zero when cooling.enabled is false.
+        q_c_tr_excl_ground = (
+            h_excluding_ground
+            * (building.cooling.setpoint_c - outdoor)
+            * hours
+            / 1000
+        )
+        q_c_ground = (
+            transmission.hg_w_k
+            * (building.cooling.setpoint_c - annual_outdoor)
+            * hours
+            / 1000
+        )
+        q_c_ve = (
+            h_ve_w_k
+            * (building.cooling.setpoint_c - outdoor)
+            * hours
+            / 1000
+        )
+        q_c_ht = q_c_tr_excl_ground + q_c_ground + q_c_ve
+        useful_cooling = _monthly_cooling_need(q_c_ht, total_gains, a_c, a_c_red)
 
         monthly.append({
             "month": month["id"],
