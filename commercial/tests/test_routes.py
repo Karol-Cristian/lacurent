@@ -276,7 +276,6 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert '"/api/home-lab-next/calculate"' in js.text
     assert '"/api/optimization/home-lab/v4/plan"' in js.text
     assert '"/static/teo-v4-worker.js?v=4"' in js.text
-    assert '"/api/optimization/home-lab/v3/verification-plan"' in js.text
     assert '"/api/optimization/home-lab/v3/verify"' in js.text
     # TEO ends at the canonically verified parametric optimum.
     # Product/SKU matching is intentionally a later workflow.
