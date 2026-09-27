@@ -676,6 +676,13 @@ function objectiveSeedSorter(mode, goals) {
   };
 }
 
+function hasSearchBounds(bounds) {
+  return Boolean(
+    bounds
+    && SEARCH_DIMENSIONS.every(([, boundKey]) => num(bounds?.[boundKey]) > 0)
+  );
+}
+
 function refinementSeeds(rows, mode, goals, count) {
   const chosen = new Map();
   const frontier = paretoRows(rows);
@@ -701,7 +708,7 @@ function refineBranch({
   baselineBill,
 }) {
   const cfg = LOCAL_REFINEMENT_ROUNDS[roundIndex];
-  if (!cfg || !bounds || !rows.length) return {rows:[], attempts:0};
+  if (!cfg || !hasSearchBounds(bounds) || !rows.length) return {rows:[], attempts:0};
   const seeds = refinementSeeds(rows, mode, goals, cfg.seedCount);
   const generated = [];
   let ordinal = 0;
