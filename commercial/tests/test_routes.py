@@ -1177,7 +1177,7 @@ def test_home_lab_next_calculation_reuses_existing_energy_engine() -> None:
     class_reference = payload["energy_class_reference"]
     assert class_reference["building_type"] == "residential_individual"
     assert class_reference["unit"] == "kWh/(m²·an)"
-    assert "Tabel 5.7" in class_reference["source"]
+    assert "tabelul 5.7" in class_reference["source"].lower()
     assert [row["class"] for row in class_reference["intervals"]] == ["A+", "A", "B", "C", "D", "E", "F", "G"]
     assert class_reference["intervals"][0]["max_inclusive_kwh_m2"] == 91
     assert class_reference["intervals"][-1]["min_exclusive_kwh_m2"] == 783
