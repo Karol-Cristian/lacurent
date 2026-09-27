@@ -1563,6 +1563,47 @@ def test_home_lab_next_calculates_pv_and_solar_thermal_from_solar_resource() -> 
     assert payload["gross_service_final_energy_kwh"] >= payload["final_energy_kwh"]
 
 
+def test_editorial_product_stage_is_bounded_and_fails_soft() -> None:
+    js = client.get("/static/home-lab-editorial.js")
+    assert js.status_code == 200
+    source = js.text
+
+    assert "verifiedRows.slice(0, Math.min(3, verifiedRows.length))" in source
+    assert "PRODUCT SAFE MODE" in source
+    assert "retries:0" in source
+    assert "await sleep(900)" in source
+    assert "PRODUCT FALLBACK" in source
+    assert "productFailureCount:productFailures" in source
+
+    # Product retries must not use the generic aggressive retry path anymore.
+    product_section = source.split(
+        'const productTargets = verifiedRows.slice',
+        1,
+    )[1].split(
+        'log("REPORT',
+        1,
+    )[0]
+    assert "retries:2" not in product_section
+
+
+def test_v3_finalize_can_fall_back_to_canonical_verified_candidates() -> None:
+    source = Path("commercial/app/main.py").read_text(encoding="utf-8")
+    section = source.split(
+        "async def home_lab_optimization_v3_finalize_api",
+        1,
+    )[1].split(
+        '@app.post("/api/optimization/home-lab/v2/plan")',
+        1,
+    )[0]
+
+    assert "selection_pool = (" in section
+    assert "if commercial_candidates" in section
+    assert "else list(verified_by_id.values())" in section
+    assert "canonical_fallback_no_commercial_recheck" in section
+    assert "commercialRecheckTargetCount" in section
+    assert "commercialRecheckFailures" in section
+
+
 def test_v3_product_and_finalize_do_not_load_complete_heating_marketplace() -> None:
     source = Path("commercial/app/main.py").read_text(encoding="utf-8")
 
