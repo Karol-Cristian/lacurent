@@ -1187,6 +1187,131 @@ def seed_heating_catalog_summary_payload() -> dict[str, Any]:
         "source": "seed_summary",
     }
 
+def commercial_heating_branch_catalog_payload(
+    payload: dict[str, Any],
+    technology_id: str,
+) -> dict[str, Any]:
+    """Keep only real commercial rows needed to size one finalist branch."""
+
+    products = [
+        dict(item)
+        for item in (payload.get("options") or [])
+        if str(item.get("technology_id") or "") == technology_id
+    ]
+    product_ids = {str(item.get("id") or "") for item in products}
+    points = [
+        dict(item)
+        for item in (payload.get("heat_pump_performance_points") or [])
+        if str(item.get("product_id") or "") in product_ids
+    ]
+    seasonal = [
+        dict(item)
+        for item in (payload.get("heat_pump_seasonal_performance") or [])
+        if str(item.get("product_id") or "") in product_ids
+    ]
+    return {
+        "schema_version": payload.get("schema_version"),
+        "catalog_version": payload.get("catalog_version"),
+        "catalog_versions": list(payload.get("catalog_versions") or []),
+        "observed_on": payload.get("observed_on"),
+        "sizing_policy": dict(payload.get("sizing_policy") or {}),
+        "options": products,
+        "heat_pump_performance_points": points,
+        "heat_pump_seasonal_performance": seasonal,
+        "parametric_heating_nodes": [],
+        "catalog_stats": {
+            "products": len(products),
+            "loaded_products": len(products),
+            "parametric_nodes": 0,
+            "performance_points": len(points),
+            "seasonal_points": len(seasonal),
+        },
+        "catalog_mode": "commercial_branch_exact_products",
+        "source": payload.get("source") or "seed",
+        "technology_id": technology_id,
+    }
+
+
+def seed_heating_commercial_branch_catalog_payload(
+    technology_id: str,
+) -> dict[str, Any]:
+    return commercial_heating_branch_catalog_payload(
+        heating_planning_catalog(),
+        technology_id,
+    )
+
+
+async def read_heating_commercial_branch_catalog_from_d1(
+    db: Any,
+    technology_id: str,
+) -> dict[str, Any] | None:
+    """Read exact commercial SKUs and performance rows for one technology only.
+
+    This is intentionally request-scoped. Product finalization should scale with
+    the selected technology, not with the entire marketplace catalog, and the
+    resulting Python object graph must not be retained in a long-lived isolate.
+    """
+
+    try:
+        products_result = await db.prepare(
+            """
+            SELECT id, external_id, technology_id, technology_label, label,
+                   system_type, generator_type, carrier, cost_profile,
+                   rated_power_kw, efficiency, scop, equipment_price_lei,
+                   installation_allowance_lei, source_kind, source_url, confidence,
+                   requires_hydronic, requires_existing_gas,
+                   requires_existing_high_power_electric,
+                   requires_existing_biomass_infrastructure, capacity_basis, note,
+                   catalog_version, observed_on
+            FROM heating_products
+            WHERE active = 1 AND technology_id = ?
+            ORDER BY rated_power_kw, equipment_price_lei, id
+            """
+        ).bind(technology_id).run()
+        products = _d1_rows(products_result)
+        if not products:
+            return None
+
+        points_result = await db.prepare(
+            """
+            SELECT pp.product_id, pp.outdoor_temperature_c, pp.flow_temperature_c,
+                   pp.return_temperature_c, pp.delta_t_k, pp.heating_capacity_kw,
+                   pp.cop, pp.test_standard, pp.source_kind, pp.source_url,
+                   pp.note, pp.catalog_version
+            FROM heat_pump_performance_points AS pp
+            INNER JOIN heating_products AS p ON p.id = pp.product_id
+            WHERE p.active = 1 AND p.technology_id = ?
+            ORDER BY pp.product_id, pp.outdoor_temperature_c,
+                     pp.flow_temperature_c
+            """
+        ).bind(technology_id).run()
+        seasonal_result = await db.prepare(
+            """
+            SELECT sp.product_id, sp.climate, sp.application_temperature_c,
+                   sp.scop, sp.design_load_kw, sp.source_kind, sp.source_url,
+                   sp.test_standard, sp.catalog_version
+            FROM heat_pump_seasonal_performance AS sp
+            INNER JOIN heating_products AS p ON p.id = sp.product_id
+            WHERE p.active = 1 AND p.technology_id = ?
+            ORDER BY sp.product_id, sp.climate, sp.application_temperature_c
+            """
+        ).bind(technology_id).run()
+
+        payload = _catalog_payload_from_rows(
+            products,
+            _d1_rows(points_result),
+            _d1_rows(seasonal_result),
+            [],
+            source="d1",
+        )
+        payload["catalog_mode"] = "persistent_d1_commercial_branch"
+        payload["technology_id"] = technology_id
+        payload["catalog_stats"]["loaded_products"] = len(products)
+        return payload
+    except Exception:
+        return None
+
+
 async def _read_heating_catalog_d1(db: Any) -> dict[str, Any]:
     products_result = await db.prepare(
         """
