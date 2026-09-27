@@ -77,6 +77,7 @@ from .heating_catalog_store import (
     cached_heating_branch_catalog_from_d1,
     cached_heating_catalog_from_d1,
     cached_heating_catalog_summary_from_d1,
+    clear_heating_optimizer_runtime_caches,
     read_heating_commercial_candidate_catalog_from_d1,
     read_heating_public_catalog_from_d1,
     seed_heating_branch_catalog_payload,
@@ -2906,28 +2907,40 @@ async def home_lab_optimization_v4_plan_api(request: Request) -> JSONResponse:
         )
         elapsed_ms = round((time.perf_counter() - started) * 1000.0, 1)
 
-        return JSONResponse(
-            {
-                "optimizerVersion": "teo-v4-browser",
-                "runId": run_id,
-                "economicMode": mode.value,
-                "label": _home_lab_optimizer_label(mode, form),
-                "searchMethod": "teo_v4_browser_worker_mc001_kernel",
-                "searchPoints": [model_to_dict(item) for item in plan.search_points],
-                "branches": [model_to_dict(item) for item in plan.branches],
-                "runBranchIds": economic_ids,
-                "searchPointCount": len(plan.search_points),
-                "deterministicAxisPoints": int(plan.deterministic_axis_points),
-                "lowDiscrepancyPoints": int(plan.low_discrepancy_points),
-                "kernel": kernel,
-                "serverCandidateEvaluations": 0,
-                "baselineCanonicalPasses": 1,
-                "calculationTimeMs": elapsed_ms,
-                "executionMode": "browser_web_worker_v4",
-                "heatingCatalogSource": heating_summary.get("source"),
-                "heatingCatalogStats": heating_summary.get("catalog_stats") or {},
-            }
-        )
+        payload = {
+            "optimizerVersion": "teo-v4-browser",
+            "runId": run_id,
+            "economicMode": mode.value,
+            "label": _home_lab_optimizer_label(mode, form),
+            "searchMethod": "teo_v4_browser_worker_mc001_kernel",
+            "searchPoints": [model_to_dict(item) for item in plan.search_points],
+            "branches": [model_to_dict(item) for item in plan.branches],
+            "runBranchIds": economic_ids,
+            "searchPointCount": len(plan.search_points),
+            "deterministicAxisPoints": int(plan.deterministic_axis_points),
+            "lowDiscrepancyPoints": int(plan.low_discrepancy_points),
+            "kernel": kernel,
+            "serverCandidateEvaluations": 0,
+            "baselineCanonicalPasses": 1,
+            "calculationTimeMs": elapsed_ms,
+            "executionMode": "browser_web_worker_v4",
+            "heatingCatalogSource": heating_summary.get("source"),
+            "heatingCatalogStats": heating_summary.get("catalog_stats") or {},
+        }
+        response = JSONResponse(payload)
+
+        # The kernel is already encoded into the response. Do not retain branch
+        # catalogs or a full canonical baseline in the warm Python isolate.
+        del baseline_result
+        del branch_catalogs
+        del cost_catalog
+        del kernel
+        del plan
+        del payload
+        clear_baseline_evaluation_cache()
+        clear_heating_optimizer_runtime_caches()
+        gc.collect()
+        return response
     except Exception as exc:
         return JSONResponse(
             {
@@ -3213,18 +3226,28 @@ async def home_lab_optimization_v3_verify_api(request: Request) -> JSONResponse:
             baseline_annual_bill_lei=baseline_annual_bill_lei,
         )
         elapsed_ms = round((time.perf_counter() - started) * 1000.0, 1)
-        return JSONResponse(
-            {
-                "optimizerVersion": "v3-sharded",
-                "branchId": branch_id,
-                "candidate": model_to_dict(verified.candidate),
-                "sourceCandidateId": fast_candidate.candidate_id,
-                "annualBillDeltaLei": verified.annual_bill_delta_lei,
-                "designLoadDeltaKw": verified.design_load_delta_kw,
-                "warnings": verified.warnings,
-                "calculationTimeMs": elapsed_ms,
-            }
-        )
+        payload = {
+            "optimizerVersion": "v3-sharded",
+            "branchId": branch_id,
+            "candidate": model_to_dict(verified.candidate),
+            "sourceCandidateId": fast_candidate.candidate_id,
+            "annualBillDeltaLei": verified.annual_bill_delta_lei,
+            "designLoadDeltaKw": verified.design_load_delta_kw,
+            "warnings": verified.warnings,
+            "calculationTimeMs": elapsed_ms,
+        }
+        response = JSONResponse(payload)
+
+        del verified
+        del fast_candidate
+        del optimization_request
+        del cost_catalog
+        del heating_catalog
+        del payload
+        clear_baseline_evaluation_cache()
+        clear_heating_optimizer_runtime_caches()
+        gc.collect()
+        return response
     except Exception as exc:
         return JSONResponse(
             {
@@ -3353,6 +3376,7 @@ async def home_lab_optimization_v3_product_api(request: Request) -> JSONResponse
         del optimization_request
         del payload
         clear_baseline_evaluation_cache()
+        clear_heating_optimizer_runtime_caches()
         gc.collect()
         return response
     except Exception as exc:
