@@ -2070,15 +2070,30 @@ async def favicon() -> RedirectResponse:
 
 def _public_catalog_context(payload: dict[str, Any]) -> dict[str, Any]:
     products = list(payload.get("options") or [])
+    summaries = list(payload.get("technology_summaries") or [])
     counts: dict[str, dict[str, Any]] = {}
-    for product in products:
-        technology_id = str(product.get("technology_id") or "other")
-        technology_label = str(product.get("technology_label") or "Alte produse")
-        entry = counts.setdefault(
-            technology_id,
-            {"id": technology_id, "label": technology_label, "count": 0},
-        )
-        entry["count"] = int(entry["count"]) + 1
+    if summaries:
+        for summary in summaries:
+            technology_id = str(summary.get("technology_id") or "other")
+            technology_label = str(
+                summary.get("technology_label") or "Alte produse"
+            )
+            counts[technology_id] = {
+                "id": technology_id,
+                "label": technology_label,
+                "count": int(summary.get("product_count") or 0),
+            }
+    else:
+        for product in products:
+            technology_id = str(product.get("technology_id") or "other")
+            technology_label = str(
+                product.get("technology_label") or "Alte produse"
+            )
+            entry = counts.setdefault(
+                technology_id,
+                {"id": technology_id, "label": technology_label, "count": 0},
+            )
+            entry["count"] = int(entry["count"]) + 1
     categories = sorted(
         counts.values(),
         key=lambda item: (-int(item["count"]), str(item["label"])),
@@ -2095,7 +2110,11 @@ def _public_catalog_context(payload: dict[str, Any]) -> dict[str, Any]:
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
-    catalog = await _optimizer_heating_catalog(request)
+    # The landing page needs only counts/family metadata. Loading the complete
+    # product + performance + 1000-node planning catalog here used to pin a
+    # large Python object graph in every Worker isolate and could exhaust the
+    # Cloudflare Python memory budget after ordinary browsing.
+    catalog = await _optimizer_heating_catalog_summary(request)
     return templates.TemplateResponse(
         request,
         "landing.html",
