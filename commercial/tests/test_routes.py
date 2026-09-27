@@ -672,7 +672,8 @@ def test_form_calculation_renders_romanian_results_and_costs() -> None:
     assert "Trace" not in response.text
     assert 'data-reference-comparison' in response.text
     assert '/static/reference-comparison.js?v=1' in response.text
-    assert "https://lacurent-reference-rbpe.lemnarukarol.workers.dev/reference-comparison" in response.text
+    assert 'data-reference-url="/api/reference-comparison"' in response.text
+    assert "workers.dev" not in response.text
     assert "Se calculează…" in response.text
 
 
@@ -692,29 +693,48 @@ def test_certificate_renders_romanian_printable_report_with_costs() -> None:
     assert '/static/reference-comparison.js?v=1' in response.text
 
 
-def test_reference_comparison_api_redirects_to_dedicated_worker() -> None:
+def test_reference_comparison_api_local_fallback_matches_canonical_reference() -> None:
+    building = demo_building()
+    canonical = calculate(building)
+    assert canonical.reference is not None
+
     response = client.post(
         "/api/reference-comparison",
-        json={"payload": "unused"},
-        follow_redirects=False,
+        json={
+            "payload": building.model_dump_json(),
+            "actualSpecificPrimaryKwhM2": canonical.primary_energy.specific_kwh_m2,
+        },
     )
-    assert response.status_code == 307
-    assert response.headers["location"] == (
-        "https://lacurent-reference-rbpe.lemnarukarol.workers.dev/"
-        "reference-comparison"
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["calculationMode"] == "local_reference_rbpe_fallback"
+    assert payload["referenceSpecificPrimaryKwhM2"] == pytest.approx(
+        canonical.reference.reference_specific_primary_kwh_m2,
+        abs=1e-3,
+    )
+    assert payload["differencePercent"] == pytest.approx(
+        canonical.reference.difference_percent,
+        abs=0.1,
     )
 
 
-def test_reference_worker_is_minimal_and_weakref_enabled() -> None:
+def test_reference_worker_is_minimal_private_and_service_bound() -> None:
     worker = Path("commercial/reference-worker/worker.py").read_text(encoding="utf-8")
     wrangler = Path("commercial/reference-worker/wrangler.toml").read_text(encoding="utf-8")
+    main_wrangler = Path("commercial/cloudflare-worker/wrangler.toml").read_text(
+        encoding="utf-8"
+    )
     prepare = Path("scripts/prepare-reference-cloudflare-worker.mjs").read_text(encoding="utf-8")
 
     assert "from app.engine import reference_primary_specific_energy" in worker
     assert "from app.main import" not in worker
     assert "fastapi" not in worker.lower()
+    assert "async def reference_comparison(" in worker
     assert 'compatibility_flags = ["python_workers", "enable_weak_ref"]' in wrangler
+    assert 'workers_dev = false' in wrangler
     assert "lacurent-reference-rbpe" in wrangler
+    assert 'binding = "REFERENCE_RBPE"' in main_wrangler
+    assert 'service = "lacurent-reference-rbpe"' in main_wrangler
     assert ".wrangler/reference-rbpe-worker" in prepare
 
 

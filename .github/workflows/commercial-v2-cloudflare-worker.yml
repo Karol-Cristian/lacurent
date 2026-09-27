@@ -635,27 +635,10 @@ jobs:
           export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
           uvx --from workers-py pywrangler deploy
 
-      - name: Verify dedicated Reference RBPE Worker
+      - name: Verify dedicated Reference RBPE Worker deployment
         run: |
-          python - <<'PY'
-          import json
-          import time
-          import urllib.request
-
-          url = "https://lacurent-reference-rbpe.lemnarukarol.workers.dev/health"
-          for attempt in range(1, 31):
-              try:
-                  with urllib.request.urlopen(url, timeout=20) as response:
-                      payload = json.loads(response.read().decode("utf-8"))
-                      if response.status == 200 and payload.get("status") == "ok":
-                          print("Reference RBPE Worker healthy", payload)
-                          break
-              except Exception as exc:
-                  print(f"waiting for reference worker attempt {attempt}: {exc}")
-              time.sleep(2)
-          else:
-              raise AssertionError("Dedicated Reference RBPE Worker did not become healthy.")
-          PY
+          echo "Reference RBPE Worker is private (workers_dev=false)."
+          echo "Local runtime smoke passed; production integration is verified through the REFERENCE_RBPE service binding after the main Worker deploy."
 
       - name: Prepare production custom domains
         working-directory: .wrangler/commercial-v2-worker
@@ -1097,30 +1080,15 @@ jobs:
               "payload": model_to_json(reference_building),
               "actualSpecificPrimaryKwhM2": reference_actual,
           }).encode("utf-8")
-          reference_worker_url = (
-              "https://lacurent-reference-rbpe.lemnarukarol.workers.dev"
-              "/reference-comparison"
-          )
-          status, location, _ = open_url(
-              apex + "/api/reference-comparison",
-              data=reference_request,
-              headers={"Content-Type": "application/json"},
-              follow_redirects=False,
-          )
-          if status != 307 or location != reference_worker_url:
-              raise AssertionError(
-                  "Main Worker reference route did not redirect to the isolated service: "
-                  f"HTTP {status}, location={location!r}"
-              )
-
           status, _, reference_body = open_url(
-              reference_worker_url,
+              apex + "/api/reference-comparison",
               data=reference_request,
               headers={"Content-Type": "application/json"},
           )
           if status != 200:
               raise AssertionError(
-                  f"Dedicated reference Worker failed with HTTP {status}"
+                  f"/api/reference-comparison service binding failed with HTTP {status}: "
+                  f"{reference_body[:500]}"
               )
           reference_payload = json.loads(reference_body)
           if float(reference_payload.get("referenceSpecificPrimaryKwhM2") or 0) <= 0:
@@ -1129,9 +1097,10 @@ jobs:
               )
           if reference_payload.get("calculationMode") != "dedicated_reference_rbpe_worker":
               raise AssertionError(
-                  "Reference comparison did not use the dedicated Worker mode."
+                  "Reference comparison did not execute in the dedicated Worker: "
+                  f"{reference_payload!r}"
               )
-          print("dedicated /reference-comparison", status)
+          print("/api/reference-comparison service binding", status)
 
           status, _, embed_calculation = open_url(
               apex + "/embed/demo-store/calculate",
