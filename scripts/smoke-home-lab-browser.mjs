@@ -139,6 +139,87 @@ try {
     throw new Error("Editorial climate map did not reveal additional locality tiers after zoom");
   }
 
+  // Execute the complete Editorial TEO flow as a user would. This covers the
+  // browser Halton + local-refinement worker, verification-plan, adaptive
+  // 1–3 canonical VERIFY orchestration, Worker Flow pacing and browser-side
+  // report finalization instead of merely checking that the UI renders.
+  const selectedLocalityId = await page.locator("#localityId").inputValue();
+  if (!selectedLocalityId) {
+    throw new Error("Editorial map selection did not produce a canonical locality token");
+  }
+
+  await page.locator('[data-page="house"] [data-next]').click();
+  await expectVisible('[data-page="envelope"].is-active');
+  await page.locator('[data-page="envelope"] [data-next]').click();
+  await expectVisible('[data-page="systems"].is-active');
+  await page.locator('[data-page="systems"] [data-next]').click();
+  await expectVisible('[data-page="renewables"].is-active');
+  await page.locator('[data-page="renewables"] [data-next]').click();
+  await expectVisible('[data-page="goal"].is-active');
+
+  const editorialProductRequests = [];
+  const productRequestListener = request => {
+    try {
+      if (new URL(request.url()).pathname === "/api/optimization/home-lab/v3/product") {
+        editorialProductRequests.push(request.url());
+      }
+    } catch (_) {}
+  };
+  page.on("request", productRequestListener);
+
+  await page.locator("#runAnalysis").click();
+  await page.waitForFunction(
+    () => {
+      const done = document.querySelector('[data-page="done"]');
+      const error = document.querySelector('[data-page="error"]');
+      return done?.classList.contains("is-active") || error?.classList.contains("is-active");
+    },
+    null,
+    {timeout:180000}
+  );
+  page.off("request", productRequestListener);
+
+  if (await page.locator('[data-page="error"].is-active').count()) {
+    const editorialError = await page.locator("#errorText").innerText();
+    const editorialLog = await page.locator("#runLog").innerText();
+    throw new Error(
+      "Editorial adaptive TEO flow failed: " + editorialError +
+      " log=" + editorialLog
+    );
+  }
+  if (editorialProductRequests.length) {
+    throw new Error(
+      "Editorial TEO unexpectedly entered PRODUCT discretization: " +
+      JSON.stringify(editorialProductRequests)
+    );
+  }
+
+  const editorialRunLog = await page.locator("#runLog").innerText();
+  const verifyMatches = editorialRunLog.match(/VERIFY\s+\d+\/\d+/g) || [];
+  if (!editorialRunLog.includes("WORKER FLOW") ||
+      !editorialRunLog.includes("ADAPTIVE VERIFY") ||
+      !editorialRunLog.includes("TEO PARAMETRIC") ||
+      !editorialRunLog.includes("REPORT") ||
+      verifyMatches.length < 2 ||
+      verifyMatches.length > 3) {
+    throw new Error(
+      "Editorial adaptive TEO trace is incomplete: " +
+      JSON.stringify({verifyCount:verifyMatches.length, log:editorialRunLog})
+    );
+  }
+
+  await page.locator("#openReport").click();
+  await expectVisible('[data-page="report"].is-active');
+  const editorialReportText = await page.locator("#reportBody").innerText();
+  if (!editorialReportText.includes("Optim TEO · specificație inginerească") ||
+      !editorialReportText.includes("Discretizare comercială") ||
+      !editorialReportText.includes("CAPEX parametric estimat")) {
+    throw new Error(
+      "Editorial TEO report is missing engineering-first sections: " +
+      editorialReportText.slice(0, 4000)
+    );
+  }
+
   await page.goto(baseUrl + "/home-lab-classic", {waitUntil:"networkidle", timeout:30000});
   await expectVisible("[data-home-lab-next]");
   await expectVisible('[data-hln-screen="home"].is-active');
