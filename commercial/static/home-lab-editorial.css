@@ -148,7 +148,80 @@ button{cursor:pointer}
 .ed-log-dialog>div{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--line)}
 .ed-log-dialog button{border:0;background:none;font-size:24px;color:var(--muted)}
 .ed-log-dialog pre{margin:0;padding:18px;white-space:pre-wrap;font:12px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace;overflow:auto}
+
+.ed-price-dialog{
+  width:min(94vw,820px);
+  max-height:min(86vh,760px);
+  border:1px solid var(--line);
+  border-radius:22px;
+  padding:0;
+  background:#fff;
+  box-shadow:0 32px 110px rgba(16,22,32,.18);
+  color:var(--ink);
+}
+.ed-price-dialog::backdrop{
+  background:rgba(17,19,24,.28);
+  backdrop-filter:blur(5px);
+  -webkit-backdrop-filter:blur(5px);
+}
+.ed-price-dialog-shell{overflow:auto;max-height:min(86vh,760px)}
+.ed-price-dialog-header{
+  position:sticky;
+  top:0;
+  z-index:2;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:20px;
+  padding:22px 24px 18px;
+  border-bottom:1px solid var(--line);
+  background:rgba(255,255,255,.95);
+  backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+}
+.ed-price-dialog-header h2{font-size:27px;line-height:1.05;letter-spacing:-.035em;margin:3px 0 8px}
+.ed-price-dialog-header>div>p:last-child{margin:0;color:var(--muted);font-size:12px;line-height:1.5}
+.ed-price-dialog-header>button{
+  width:34px;height:34px;border:0;border-radius:50%;background:var(--soft);color:var(--ink);
+  font-size:23px;line-height:1;cursor:pointer;flex:0 0 auto;
+}
+.ed-price-reference-body{padding:20px 24px 24px}
+.ed-price-reference-intro{margin:0 0 16px;color:#3c424c;font-size:13px;line-height:1.55}
+.ed-price-reference-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ed-price-reference-card{border:1px solid var(--line);border-radius:15px;padding:15px;background:#fff}
+.ed-price-reference-card-head{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.ed-price-reference-card-head>strong{font-size:14px}
+.ed-price-reference-status{
+  display:inline-flex;align-items:center;min-height:20px;padding:0 7px;border-radius:99px;
+  background:#edf7ef;color:#27623a;font-size:9px;font-weight:750;white-space:nowrap;
+}
+.ed-price-reference-status.is-stale{background:#fff1e5;color:#8a4f1e}
+.ed-price-reference-value{font-size:24px;font-weight:760;letter-spacing:-.035em;margin:14px 0 10px}
+.ed-price-reference-value small{font-size:11px;font-weight:650;color:var(--muted);letter-spacing:0}
+.ed-price-reference-contribution{margin:0 0 12px;font-size:11px;color:var(--muted)}
+.ed-price-reference-card dl{margin:0;display:grid;gap:7px}
+.ed-price-reference-card dl>div{display:grid;grid-template-columns:68px 1fr;gap:8px;align-items:start}
+.ed-price-reference-card dt{font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:#959ba5;font-weight:700}
+.ed-price-reference-card dd{margin:0;font-size:11px;line-height:1.45;color:#454b55;overflow-wrap:anywhere}
+.ed-price-reference-card a{color:var(--ink);text-decoration:underline;text-decoration-color:#c8ccd3;text-underline-offset:2px}
+.ed-price-reference-note{margin:12px 0 0;padding-top:10px;border-top:1px solid #eef0f3;color:var(--muted);font-size:10px;line-height:1.5}
+.ed-price-reference-footnote{margin:16px 0 0;color:#8c929c;font-size:10px;line-height:1.5}
 @media(max-width:720px){
+  .ed-price-dialog{
+    width:100%;
+    max-width:none;
+    max-height:82vh;
+    margin:auto 0 0;
+    border-radius:22px 22px 0 0;
+    border-left:0;border-right:0;border-bottom:0;
+  }
+  .ed-price-dialog-shell{max-height:82vh}
+  .ed-price-dialog-header{padding:18px 18px 15px}
+  .ed-price-dialog-header h2{font-size:24px}
+  .ed-price-reference-body{padding:16px 18px calc(22px + env(safe-area-inset-bottom))}
+  .ed-price-reference-grid{grid-template-columns:1fr}
+  .ed-price-reference-card{padding:14px}
+  .ed-price-reference-value{font-size:22px}
   .ed-header{height:62px;padding:0 16px}
   .ed-brand small{display:none}
   .ed-page{min-height:calc(100vh - 62px);padding:44px 18px 72px}
@@ -231,6 +304,33 @@ button{cursor:pointer}
 .ed-baseline-item{display:flex;align-items:baseline;gap:7px;white-space:nowrap}
 .ed-baseline-item span{font-size:10px;color:var(--muted);font-weight:650}
 .ed-baseline-item strong{font-size:14px;letter-spacing:-.02em}
+.ed-price-reference-trigger{
+  appearance:none;
+  border:0;
+  background:none;
+  color:inherit;
+  font:inherit;
+  padding:5px 7px;
+  margin:-5px -7px;
+  border-radius:9px;
+  cursor:pointer;
+  transition:background .16s ease,box-shadow .16s ease;
+}
+.ed-price-reference-trigger:hover{background:var(--soft)}
+.ed-price-reference-trigger:focus-visible{outline:0;box-shadow:0 0 0 3px rgba(25,31,40,.12)}
+.ed-price-info{
+  width:15px;
+  height:15px;
+  border:1px solid #c7ccd4;
+  border-radius:50%;
+  display:inline-grid;
+  place-items:center;
+  font-size:9px!important;
+  line-height:1;
+  color:#737a85!important;
+  font-weight:800!important;
+  font-family:ui-serif,Georgia,serif;
+}
 .ed-baseline-item:first-child strong{
   min-width:24px;
   text-align:center;
