@@ -49,21 +49,31 @@ class Default(WorkerEntrypoint):
         if method != "POST" or path != "/reference-comparison":
             return _json_response({"error": "Not found"}, status=404)
 
+        stage = "request_json"
         try:
             body = await request.json()
+            stage = "request_fields"
             payload = body.get("payload")
             actual_raw = body.get("actualSpecificPrimaryKwhM2")
             if payload in (None, "") or actual_raw in (None, ""):
                 return _json_response(
-                    {"error": "Missing reference-comparison input."},
+                    {
+                        "error": "Missing reference-comparison input.",
+                        "errorType": "ValidationError",
+                        "stage": stage,
+                    },
                     status=422,
                 )
 
+            stage = "building_parse"
             building = building_from_json(
                 payload if isinstance(payload, str) else json.dumps(payload)
             )
+            stage = "actual_indicator"
             actual_specific = float(actual_raw)
+            stage = "reference_rbpe"
             reference_specific = reference_primary_specific_energy(building)
+            stage = "response"
             difference = actual_specific - reference_specific
             difference_percent = (
                 100.0 * difference / reference_specific
@@ -84,6 +94,10 @@ class Default(WorkerEntrypoint):
             return response
         except Exception as exc:
             return _json_response(
-                {"error": str(exc)},
+                {
+                    "error": str(exc),
+                    "errorType": type(exc).__name__,
+                    "stage": stage,
+                },
                 status=422,
             )
