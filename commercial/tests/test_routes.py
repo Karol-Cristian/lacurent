@@ -890,8 +890,8 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next362-energy-class" in response.text
-    assert "/static/home-lab-next.js?v=next72-heating-power" in response.text
+    assert "/static/home-lab-next.css?v=next363-useful-demand" in response.text
+    assert "/static/home-lab-next.js?v=next73-useful-demand" in response.text
     assert "/static/home-lab-3d.css?v=3d31" in response.text
     assert 'aria-label="Schiță conceptuală a casei"' not in response.text
     assert 'aria-label="Casă cu zone de îmbunătățire"' not in response.text
@@ -1248,6 +1248,14 @@ def test_home_lab_next_calculation_reuses_existing_energy_engine() -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["final_energy_kwh"] > 0
+    assert payload["annual_heating_demand_kwh"] > 0
+    assert payload["annual_cooling_demand_kwh"] >= 0
+    assert payload["heating_demand_specific_kwh_m2"] == pytest.approx(
+        payload["annual_heating_demand_kwh"] / 160
+    )
+    assert payload["cooling_demand_specific_kwh_m2"] == pytest.approx(
+        payload["annual_cooling_demand_kwh"] / 160
+    )
     assert payload["heat_loss_w_k"] > 0
     assert payload["energy_class"]
     assert "annual_cost_lei" in payload
@@ -2617,8 +2625,8 @@ def test_home_lab_issue_359_adaptive_intro_contract() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
     assert response.text.count('class="hln-screen-intro-copy"') == 2
-    assert "/static/home-lab-next.css?v=next362-energy-class" in response.text
-    assert "/static/home-lab-next.js?v=next72-heating-power" in response.text
+    assert "/static/home-lab-next.css?v=next363-useful-demand" in response.text
+    assert "/static/home-lab-next.js?v=next73-useful-demand" in response.text
 
     css = client.get("/static/home-lab-next.css")
     assert css.status_code == 200
@@ -2640,6 +2648,29 @@ def test_home_lab_issue_359_adaptive_intro_contract() -> None:
     assert 'root.addEventListener("pointerdown"' in source
     assert "localStorage.setItem" in source
     assert "introCollapsedScreens" not in source.split("localStorage.setItem", 1)[1].split("));", 1)[0]
+
+
+def test_home_lab_hud_exposes_useful_heating_and_cooling_demand() -> None:
+    response = client.get("/home-lab-classic")
+    assert response.status_code == 200
+    assert 'id="hlnPersistentHeatingDemand"' in response.text
+    assert 'id="hlnPersistentHeatingSpecific"' in response.text
+    assert 'id="hlnPersistentCoolingDemand"' in response.text
+    assert 'id="hlnPersistentCoolingSpecific"' in response.text
+    assert "Necesar încălzire" in response.text
+    assert "Necesar răcire" in response.text
+
+    js = client.get("/static/home-lab-next.js")
+    assert js.status_code == 200
+    assert "result?.annual_heating_demand_kwh" in js.text
+    assert "result?.annual_cooling_demand_kwh" in js.text
+    assert "result?.heating_demand_specific_kwh_m2" in js.text
+    assert "result?.cooling_demand_specific_kwh_m2" in js.text
+
+    css = client.get("/static/home-lab-next.css")
+    assert css.status_code == 200
+    assert ".hln-live-heating-card" in css.text
+    assert ".hln-live-cooling-card" in css.text
 
 
 def test_home_lab_mobile_declutter_contract() -> None:
@@ -3277,7 +3308,7 @@ def test_heating_branch_report_uses_explicit_verdict_labels() -> None:
 def test_home_lab_next_uses_transient_retry_asset_version() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
-    assert "/static/home-lab-next.js?v=next72-heating-power" in response.text
+    assert "/static/home-lab-next.js?v=next73-useful-demand" in response.text
 
 
 
