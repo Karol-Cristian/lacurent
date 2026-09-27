@@ -161,7 +161,7 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'data-page="report"' in page.text
     assert 'data-page="renewables"' in page.text
     assert "/static/home-lab-editorial.css?v=15" in page.text
-    assert "/static/home-lab-editorial.js?v=32" in page.text
+    assert "/static/home-lab-editorial.js?v=33" in page.text
     assert "/static/home-lab-3d.js" not in page.text
     assert 'id="edBaselineClass"' in page.text
     assert 'id="edBaselineCost"' in page.text
@@ -1693,6 +1693,9 @@ def test_editorial_teo_run_has_no_product_discretization_stage() -> None:
     assert "PRODUCT FALLBACK" not in run_section
 
     assert "Optim TEO · specificație inginerească" in source
+    assert "Rezumat economic al optimului TEO" in source
+    assert "CAPEX parametric estimat" in source
+    assert "Intervențiile selectate" not in source
     assert "Discretizare comercială" in source
     assert "reference_lambda_w_mk" in source
     assert "sum_psi_l_w_k" in source
