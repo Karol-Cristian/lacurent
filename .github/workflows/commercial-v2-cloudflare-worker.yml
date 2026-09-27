@@ -165,7 +165,9 @@ jobs:
         working-directory: .wrangler/commercial-v2-worker
         run: |
           python - <<'PY'
+          import hashlib
           import json
+          from pathlib import Path
           import sys
           import urllib.error
           import urllib.parse
@@ -334,10 +336,62 @@ jobs:
           home_html = get("/")
           assert "data-lacurent-landing" in home_html
 
-          location_payload = json.loads(get("/api/location-data"))
-          localities = location_payload.get("localities", [])
+          expected_location_body = Path("public/api/location-data").read_bytes()
+          expected_location_sha = hashlib.sha256(expected_location_body).hexdigest()
+          location_payload = None
+          for location_attempt in range(1, 4):
+              location_request = urllib.request.Request(base + "/api/location-data")
+              with urllib.request.urlopen(location_request, timeout=30) as response:
+                  location_body = response.read()
+                  if response.status != 200:
+                      raise AssertionError(
+                          f"/api/location-data returned HTTP {response.status}"
+                      )
+                  delivery = response.headers.get("X-LaCurent-Location-Delivery")
+                  content_type = response.headers.get("Content-Type", "")
+              if delivery != "cloudflare-static-asset-v1":
+                  raise AssertionError(
+                      "/api/location-data did not bypass Python/ASGI in the real "
+                      f"Worker runtime: delivery={delivery!r}"
+                  )
+              if "application/json" not in content_type.lower():
+                  raise AssertionError(
+                      f"/api/location-data returned unexpected Content-Type {content_type!r}"
+                  )
+              location_sha = hashlib.sha256(location_body).hexdigest()
+              if location_body != expected_location_body:
+                  shared = min(len(location_body), len(expected_location_body))
+                  mismatch = next(
+                      (
+                          index
+                          for index in range(shared)
+                          if location_body[index] != expected_location_body[index]
+                      ),
+                      shared,
+                  )
+                  raise AssertionError(
+                      "Real Worker location payload differs from the built asset: "
+                      f"attempt={location_attempt}, actual_bytes={len(location_body)}, "
+                      f"expected_bytes={len(expected_location_body)}, "
+                      f"first_mismatch_byte={mismatch}, actual_sha256={location_sha}, "
+                      f"expected_sha256={expected_location_sha}"
+                  )
+              location_payload = json.loads(location_body)
+              print(
+                  "/api/location-data real Worker asset",
+                  response.status,
+                  len(location_body),
+                  location_sha,
+                  f"attempt={location_attempt}",
+              )
+
+          localities = (location_payload or {}).get("localities", [])
           if len(localities) != 13622:
               raise AssertionError(f"Expected 13622 localities, got {len(localities)}")
+          if (location_payload or {}).get("climateZones", {}).get("type") != "FeatureCollection":
+              raise AssertionError("Real Worker payload lost climateZones.")
+          if (location_payload or {}).get("romaniaBoundary", {}).get("type") != "FeatureCollection":
+              raise AssertionError("Real Worker payload lost romaniaBoundary.")
 
           form = default_form_values()
           form["dhw_enabled"] = "on"
@@ -589,7 +643,9 @@ jobs:
             sleep 2
           done
           python - <<'PY'
+          import hashlib
           import json
+          from pathlib import Path
           import sys
           import urllib.error
           import urllib.request
@@ -786,7 +842,9 @@ jobs:
             exit 1
           fi
           python - <<'PY'
+          import hashlib
           import json
+          from pathlib import Path
           import sys
           import time
           import urllib.error
@@ -958,14 +1016,82 @@ jobs:
           assert home_status == 200
           assert "data-lacurent-landing" in home_html
 
-          status, _, location_body = open_url(apex + "/api/location-data")
-          if status != 200:
-              raise AssertionError(f"/api/location-data returned HTTP {status}")
-          payload = json.loads(location_body)
-          localities = payload.get("localities", [])
+          expected_location_body = Path("public/api/location-data").read_bytes()
+          expected_location_sha = hashlib.sha256(expected_location_body).hexdigest()
+          payload = None
+          for location_attempt in range(1, 4):
+              location_request = urllib.request.Request(
+                  apex + "/api/location-data",
+                  headers={"User-Agent": "LaCurent-cutover-smoke/1.0"},
+              )
+              with urllib.request.urlopen(location_request, timeout=45) as response:
+                  status = response.status
+                  location_body = response.read()
+                  delivery = response.headers.get("X-LaCurent-Location-Delivery")
+                  content_type = response.headers.get("Content-Type", "")
+              if status != 200:
+                  raise AssertionError(f"/api/location-data returned HTTP {status}")
+              if delivery != "cloudflare-static-asset-v1":
+                  raise AssertionError(
+                      "Production /api/location-data did not use the native Cloudflare "
+                      f"asset path: delivery={delivery!r}"
+                  )
+              if "application/json" not in content_type.lower():
+                  raise AssertionError(
+                      f"/api/location-data returned unexpected Content-Type {content_type!r}"
+                  )
+
+              location_sha = hashlib.sha256(location_body).hexdigest()
+              if location_body != expected_location_body:
+                  shared = min(len(location_body), len(expected_location_body))
+                  mismatch = next(
+                      (
+                          index
+                          for index in range(shared)
+                          if location_body[index] != expected_location_body[index]
+                      ),
+                      shared,
+                  )
+                  actual_context = location_body[max(0, mismatch - 48):mismatch + 96]
+                  expected_context = expected_location_body[
+                      max(0, mismatch - 48):mismatch + 96
+                  ]
+                  raise AssertionError(
+                      "Production HTTP payload differs byte-for-byte from the built "
+                      "location asset: "
+                      f"attempt={location_attempt}, actual_bytes={len(location_body)}, "
+                      f"expected_bytes={len(expected_location_body)}, "
+                      f"first_mismatch_byte={mismatch}, actual_sha256={location_sha}, "
+                      f"expected_sha256={expected_location_sha}, "
+                      f"actual_context={actual_context!r}, "
+                      f"expected_context={expected_context!r}"
+                  )
+              try:
+                  payload = json.loads(location_body)
+              except json.JSONDecodeError as exc:
+                  decoded = location_body.decode("utf-8", errors="replace")
+                  byte_offset = len(decoded[:exc.pos].encode("utf-8"))
+                  raise AssertionError(
+                      "Production /api/location-data is invalid JSON: "
+                      f"char={exc.pos}, byte={byte_offset}, "
+                      f"context={decoded[max(0, exc.pos - 80):exc.pos + 160]!r}"
+                  ) from exc
+              print(
+                  "/api/location-data",
+                  status,
+                  len(payload.get("localities", [])),
+                  f"bytes={len(location_body)}",
+                  f"sha256={location_sha}",
+                  f"attempt={location_attempt}",
+              )
+
+          localities = (payload or {}).get("localities", [])
           if len(localities) != 13622:
               raise AssertionError(f"Expected 13622 localities, got {len(localities)}")
-          print("/api/location-data", status, len(localities))
+          if (payload or {}).get("climateZones", {}).get("type") != "FeatureCollection":
+              raise AssertionError("Production payload lost climateZones.")
+          if (payload or {}).get("romaniaBoundary", {}).get("type") != "FeatureCollection":
+              raise AssertionError("Production payload lost romaniaBoundary.")
 
           status, _, market_cost_body = open_url(apex + "/api/market-cost-basis")
           if status != 200:
