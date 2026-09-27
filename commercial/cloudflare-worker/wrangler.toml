@@ -4,6 +4,13 @@ compatibility_date = "2026-08-29"
 compatibility_flags = ["python_workers"]
 workers_dev = true
 
+# The multi-megabyte location registry is generated at build time under
+# ./public/api/location-data. Static Assets match it before Python/ASGI runs,
+# keeping those bytes outside the Pyodide isolate.
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
 # Keep optimizer requests CPU-bounded in application code. Do not set an
 # explicit Worker CPU limit here: the production account currently uses the
 # Cloudflare Free plan, where an explicit Worker CPU-limit deployment parameter
