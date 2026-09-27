@@ -7,7 +7,7 @@
   <title>Home Lab Editorial — experiment | LaCurent</title>
   <meta name="robots" content="noindex,nofollow">
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="/static/home-lab-editorial.css?v=16">
+  <link rel="stylesheet" href="/static/home-lab-editorial.css?v=17">
   <link rel="stylesheet" href="/static/privacy-consent.css?v=privacy1">
 </head>
 <body>
@@ -33,10 +33,11 @@
 
   <aside class="ed-baseline-bar" aria-live="polite" aria-label="Rezumat energetic curent">
     <div class="ed-baseline-inner">
-      <div class="ed-baseline-item">
+      <button class="ed-baseline-item ed-class-reference-trigger" type="button" id="edClassReferenceOpen" aria-haspopup="dialog" aria-controls="classDialog" title="Vezi pragurile claselor și casa de referință">
         <span>Clasă energetică</span>
         <strong id="edBaselineClass">—</strong>
-      </div>
+        <span class="ed-price-info" aria-hidden="true">i</span>
+      </button>
       <i aria-hidden="true"></i>
       <button class="ed-baseline-item ed-price-reference-trigger" type="button" id="edPriceReferencesOpen" aria-haspopup="dialog" aria-controls="priceDialog" title="Vezi sursele și data prețurilor folosite">
         <span>Cost anual estimat</span>
@@ -592,11 +593,27 @@
         </div>
       </div>
     </dialog>
+
+    <dialog class="ed-price-dialog ed-class-dialog" id="classDialog" aria-labelledby="classDialogTitle">
+      <div class="ed-price-dialog-shell">
+        <header class="ed-price-dialog-header">
+          <div>
+            <p class="ed-eyebrow">Clasă energetică</p>
+            <h2 id="classDialogTitle">Praguri & casa de referință</h2>
+            <p>Clasa afișată este estimată din energia primară specifică anuală. Pragurile și modelul de referință sunt afișate cu sursa și ipotezele folosite de Home Lab.</p>
+          </div>
+          <button type="button" id="closeClassReference" aria-label="Închide informațiile despre clasa energetică">×</button>
+        </header>
+        <div class="ed-class-reference-body" id="edClassReferenceBody">
+          <p class="ed-class-reference-placeholder">Completează localitatea și datele casei. După primul calcul apar aici pragurile exacte, poziția casei tale și parametrii casei de referință folosiți de model.</p>
+        </div>
+      </div>
+    </dialog>
   </main>
 
   {% include "_legal_footer.html" %}
   {% include "_privacy_controls.html" %}
   <script src="/static/privacy-consent.js?v=privacy1"></script>
-  <script src="/static/home-lab-editorial.js?v=35"></script>
+  <script src="/static/home-lab-editorial.js?v=36"></script>
 </body>
 </html>

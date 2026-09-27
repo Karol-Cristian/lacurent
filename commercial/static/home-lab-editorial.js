@@ -29,6 +29,9 @@
   const priceRetrievedOn = $("#edPriceRetrievedOn");
   const priceReferenceFallbackHtml = priceReferenceGrid?.innerHTML || "";
   const priceReferenceFallbackIntro = priceReferenceBody?.querySelector(".ed-price-reference-intro")?.textContent || "";
+  const classDialog = $("#classDialog");
+  const classReferenceOpen = $("#edClassReferenceOpen");
+  const classReferenceBody = $("#edClassReferenceBody");
   const stageEls = Object.fromEntries([...document.querySelectorAll("[data-run-stage]")].map(el => [el.dataset.runStage, el]));
 
   const WALL_STRUCTURE_PRESETS = Object.freeze({
@@ -1825,6 +1828,116 @@
     }).join("");
   }
 
+  function energyClassRangeText(interval) {
+    const lower = interval?.min_exclusive_kwh_m2;
+    const upper = interval?.max_inclusive_kwh_m2;
+    if (lower == null && upper != null) return "EP ≤ " + fmt(upper, 0);
+    if (lower != null && upper == null) return "EP > " + fmt(lower, 0);
+    if (lower != null && upper != null) {
+      return fmt(lower, 0) + " < EP ≤ " + fmt(upper, 0);
+    }
+    return "—";
+  }
+
+  function referenceEnvelopeRow(label, item, fallbackU) {
+    const targetU = item?.target_u_prime_w_m2k ?? fallbackU;
+    const details = [];
+    if (item?.material_label && item?.insulation_cm != null) {
+      details.push(item.material_label + " · " + fmt(item.insulation_cm, 1) + " cm echivalent");
+    } else if (item?.product_description) {
+      details.push(item.product_description);
+    }
+    if (item?.solar_gn != null) {
+      details.push("gₙ " + fmt(item.solar_gn, 2) + (item.solar_climate_zone ? " · zona " + item.solar_climate_zone : ""));
+    }
+    return (
+      '<div class="ed-reference-house-row">' +
+        '<span>' + escapeHtml(label) + '</span>' +
+        '<b>' + (targetU == null ? "—" : escapeHtml(fmt(targetU, 2)) + ' W/m²K') + '</b>' +
+        '<small>' + escapeHtml(details.join(" · ") || "valoare de referință") + '</small>' +
+      '</div>'
+    );
+  }
+
+  function renderClassReference(result = baselineResult) {
+    if (!classReferenceBody) return;
+    const classRef = result?.energy_class_reference;
+    const reference = result?.reference_parameters;
+    if (!classRef || !reference) {
+      classReferenceBody.innerHTML =
+        '<p class="ed-class-reference-placeholder">Completează localitatea și datele casei. După primul calcul apar aici pragurile exacte, poziția casei tale și parametrii casei de referință folosiți de model.</p>';
+      return;
+    }
+
+    const currentClass = String(result.energy_class || "—").trim().toUpperCase();
+    const currentPrimary = Number(result.primary_specific_kwh_m2);
+    const intervals = Array.isArray(classRef.intervals) ? classRef.intervals : [];
+    const thresholdRows = intervals.map(interval => {
+      const label = String(interval?.class || "");
+      const active = label === currentClass ? " is-current" : "";
+      return (
+        '<div class="ed-class-threshold-row' + active + '">' +
+          '<span class="ed-class-chip" data-energy-class="' + escapeHtml(label) + '">' + escapeHtml(label) + '</span>' +
+          '<b>' + escapeHtml(energyClassRangeText(interval)) + '</b>' +
+          (active ? '<em>Casa ta</em>' : '') +
+        '</div>'
+      );
+    }).join("");
+
+    const physical = reference.physical_mapping || {};
+    const u = reference.u_values_w_m2k || {};
+    const wall = referenceEnvelopeRow("Pereți exteriori", physical.wall, u.exterior_wall);
+    const roof = referenceEnvelopeRow("Acoperiș / planșeu", physical.roof, u.roof);
+    const floor = referenceEnvelopeRow("Pardoseală", physical.floor, u.floor);
+    const window = referenceEnvelopeRow("Ferestre", physical.window, u.window);
+    const door = referenceEnvelopeRow("Ușă exterioară", physical.exterior_door, u.exterior_door);
+
+    const referenceComparison = result?.reference?.reference_specific_primary_kwh_m2 != null
+      ? (
+          '<div class="ed-reference-comparison">' +
+            '<small>Energia primară specifică a casei de referință</small>' +
+            '<strong>' + escapeHtml(fmt(result.reference.reference_specific_primary_kwh_m2, 1)) + ' kWh/(m²·an)</strong>' +
+          '</div>'
+        )
+      : "";
+
+    classReferenceBody.innerHTML =
+      '<section class="ed-class-reference-section">' +
+        '<div class="ed-class-current-summary">' +
+          '<div>' +
+            '<span class="ed-class-chip ed-class-chip-large" data-energy-class="' + escapeHtml(currentClass) + '">' + escapeHtml(currentClass) + '</span>' +
+            '<div><small>Casa ta</small><strong>' + (Number.isFinite(currentPrimary) ? escapeHtml(fmt(currentPrimary, 1)) : "—") + ' kWh/(m²·an)</strong></div>' +
+          '</div>' +
+          '<p>Clasificarea folosește energia primară specifică totală. Intervalele sunt deschise la stânga și închise la dreapta.</p>' +
+        '</div>' +
+        '<div class="ed-class-thresholds">' + thresholdRows + '</div>' +
+        '<p class="ed-reference-source"><b>Sursă praguri:</b> ' + escapeHtml(classRef.source || "—") + '</p>' +
+      '</section>' +
+      '<section class="ed-class-reference-section ed-reference-house">' +
+        '<div class="ed-reference-house-heading">' +
+          '<div><p class="ed-eyebrow">Model comparativ</p><h3>Casa de referință</h3></div>' +
+          '<span>Aceeași geometrie și localitate</span>' +
+        '</div>' +
+        '<p class="ed-reference-house-intro">Home Lab păstrează geometria, amplasarea și orientarea casei tale și înlocuiește parametrii tehnici cu valorile de referință de mai jos. Anvelopa este source-backed; parametrii de sisteme sunt ipoteze explicite LaCurent Light.</p>' +
+        referenceComparison +
+        '<div class="ed-reference-envelope-grid">' + wall + roof + floor + window + door + '</div>' +
+        '<div class="ed-reference-systems-grid">' +
+          '<article><small>Ventilație</small><strong>' + escapeHtml(fmt(reference.air_changes_per_hour, 2)) + ' ACH</strong><span>recuperare ' + escapeHtml(fmt(Number(reference.heat_recovery_efficiency || 0) * 100, 0)) + '%</span></article>' +
+          '<article><small>Încălzire</small><strong>' + escapeHtml(reference.heating_system_label || "Centrală în condensare") + '</strong><span>η ' + escapeHtml(fmt(Number(reference.heating_efficiency || 0) * 100, 0)) + '%</span></article>' +
+          '<article><small>Răcire</small><strong>SEER ' + escapeHtml(fmt(reference.cooling_seer, 1)) + '</strong><span>dacă există răcire în casa reală</span></article>' +
+          '<article><small>ACM</small><strong>η ' + escapeHtml(fmt(Number(reference.dhw_efficiency || 0) * 100, 0)) + '%</strong><span>aceiași ocupanți și necesar</span></article>' +
+          '<article><small>Punți termice</small><strong>0 în modelul de referință</strong><span>politica Light curentă</span></article>' +
+          '<article><small>Regenerabile</small><strong>Fără aport implicit</strong><span>politica Light curentă</span></article>' +
+        '</div>' +
+        '<div class="ed-reference-provenance">' +
+          '<p><b>Sursă anvelopă:</b> ' + escapeHtml(reference.envelope_source || "—") + '</p>' +
+          '<p><b>Context:</b> ' + escapeHtml(reference.reference_context || "—") + '</p>' +
+          '<p><b>Sisteme:</b> ' + escapeHtml(reference.systems_source_status || "—") + '</p>' +
+        '</div>' +
+      '</section>' +
+      '<p class="ed-class-reference-footnote">Această afișare explică modelul tehnic folosit de Home Lab și nu reprezintă un Certificat de Performanță Energetică emis legal.</p>';
+  }
+
   function paintBaselineSummary(result, statusText = "Estimare pentru configurația curentă.") {
     if (!result) return;
     const energyClass = String(result.energy_class || "—").trim().toUpperCase() || "—";
@@ -1838,6 +1951,7 @@
     baselineStatus.textContent = statusText;
     baselineBar.classList.remove("is-updating");
     if (priceDialog?.open) renderPriceReferences(result);
+    if (classDialog?.open) renderClassReference(result);
   }
 
   function baselineSummaryReady() {
@@ -3114,6 +3228,16 @@
   $("#closePriceReferences")?.addEventListener("click", () => priceDialog?.close());
   priceDialog?.addEventListener("click", event => {
     if (event.target === priceDialog) priceDialog.close();
+  });
+
+  classReferenceOpen?.addEventListener("click", () => {
+    renderClassReference();
+    if (typeof classDialog?.showModal === "function") classDialog.showModal();
+    else classDialog?.setAttribute("open", "");
+  });
+  $("#closeClassReference")?.addEventListener("click", () => classDialog?.close());
+  classDialog?.addEventListener("click", event => {
+    if (event.target === classDialog) classDialog.close();
   });
 
   form.addEventListener("input", event => {

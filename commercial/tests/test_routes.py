@@ -160,10 +160,13 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'data-page="run"' in page.text
     assert 'data-page="report"' in page.text
     assert 'data-page="renewables"' in page.text
-    assert "/static/home-lab-editorial.css?v=16" in page.text
-    assert "/static/home-lab-editorial.js?v=35" in page.text
+    assert "/static/home-lab-editorial.css?v=17" in page.text
+    assert "/static/home-lab-editorial.js?v=36" in page.text
     assert "/static/home-lab-3d.js" not in page.text
     assert 'id="edBaselineClass"' in page.text
+    assert 'id="edClassReferenceOpen"' in page.text
+    assert 'id="classDialog"' in page.text
+    assert "Praguri & casa de referință" in page.text
     assert 'id="edBaselineCost"' in page.text
     assert 'id="edPriceReferencesOpen"' in page.text
     assert 'id="priceDialog"' in page.text
@@ -273,6 +276,24 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert "finalizeHttpRequests:0" in js.text
     assert 'showPage("done");' in js.text
     assert '$("#openReport").addEventListener("click", () => showPage("report"));' in js.text
+
+
+def test_editorial_energy_class_opens_thresholds_and_reference_house() -> None:
+    js = client.get("/static/home-lab-editorial.js")
+    assert js.status_code == 200
+    source = js.text
+
+    assert "function renderClassReference(" in source
+    assert "energy_class_reference" in source
+    assert "reference_parameters" in source
+    assert "Casa de referință" in source
+    assert "energyClassRangeText" in source
+    assert 'classReferenceOpen?.addEventListener("click"' in source
+    assert "classDialog.showModal()" in source
+    assert "Sursă praguri" in source
+    assert "Sursă anvelopă" in source
+    assert "0 în modelul de referință" in source
+    assert "Fără aport implicit" in source
 
 
 def test_editorial_baseline_cost_opens_exact_price_reference_dialog() -> None:
@@ -1153,6 +1174,17 @@ def test_home_lab_next_calculation_reuses_existing_energy_engine() -> None:
     assert payload["energy_class"]
     assert "annual_cost_lei" in payload
     assert payload["price_retrieved_on"]
+    class_reference = payload["energy_class_reference"]
+    assert class_reference["building_type"] == "residential_individual"
+    assert class_reference["unit"] == "kWh/(m²·an)"
+    assert "tabelul 5.7" in class_reference["source"].lower()
+    assert [row["class"] for row in class_reference["intervals"]] == ["A+", "A", "B", "C", "D", "E", "F", "G"]
+    assert class_reference["intervals"][0]["max_inclusive_kwh_m2"] == 91
+    assert class_reference["intervals"][-1]["min_exclusive_kwh_m2"] == 783
+    assert class_reference["intervals"][-1]["max_inclusive_kwh_m2"] is None
+    assert payload["reference_parameters"]["heating_system_type"] == "condensing_gas_boiler"
+    assert payload["reference_parameters"]["thermal_bridges_policy"] == "zero_reference_thermal_bridges"
+    assert payload["reference_parameters"]["renewables_policy"] == "none_in_light_reference_building"
     assert isinstance(payload["price_reference_rows"], list)
     assert payload["price_reference_rows"]
     for row in payload["price_reference_rows"]:
