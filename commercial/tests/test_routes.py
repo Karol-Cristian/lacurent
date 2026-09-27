@@ -161,7 +161,7 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'data-page="report"' in page.text
     assert 'data-page="renewables"' in page.text
     assert "/static/home-lab-editorial.css?v=15" in page.text
-    assert "/static/home-lab-editorial.js?v=32" in page.text
+    assert "/static/home-lab-editorial.js?v=34" in page.text
     assert "/static/home-lab-3d.js" not in page.text
     assert 'id="edBaselineClass"' in page.text
     assert 'id="edBaselineCost"' in page.text
@@ -256,7 +256,7 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert "function selectLocality(" in js.text
     assert '"/api/home-lab-next/calculate"' in js.text
     assert '"/api/optimization/home-lab/v4/plan"' in js.text
-    assert '"/static/teo-v4-worker.js?v=1"' in js.text
+    assert '"/static/teo-v4-worker.js?v=2"' in js.text
     assert '"/api/optimization/home-lab/v3/verification-plan"' in js.text
     assert '"/api/optimization/home-lab/v3/verify"' in js.text
     # TEO ends at the canonically verified parametric optimum.
@@ -288,6 +288,8 @@ def test_teo_v4_plan_builds_thousands_of_browser_points_without_server_candidate
     assert payload["baselineCanonicalPasses"] == 1
     assert payload["searchPointCount"] >= 2000
     assert payload["lowDiscrepancyPoints"] >= 2000
+    assert payload["searchBounds"]["wall_added_r_m2k_w_max"] > 0
+    assert payload["refinementStrategy"] == "halton_global_plus_two_local_coordinate_rounds"
     assert payload["runBranchIds"]
     kernel = payload["kernel"]
     assert kernel["version"] == "teo-v4-browser-kernel-1"
@@ -298,9 +300,38 @@ def test_teo_v4_plan_builds_thousands_of_browser_points_without_server_candidate
 
     worker = client.get("/static/teo-v4-worker.js")
     assert worker.status_code == 200
-    assert "teo_v4_browser_worker_mc001_kernel" in worker.text
+    assert "teo_v4_halton_plus_local_refinement" in worker.text
     assert "function monthlyBalance(" in worker.text
     assert "function shortlist(" in worker.text
+    assert "function refineBranch(" in worker.text
+    assert "function robustRegretMetricsRows(" in worker.text
+    assert "LOCAL_REFINEMENT_ROUNDS" in worker.text
+
+
+
+def test_teo_v4_worker_flow_is_cheap_and_degrades_without_d1() -> None:
+    started = client.post(
+        "/api/optimization/home-lab/v4/flow/start",
+        json={"runId": "test-flow-no-d1", "plannedVerifications": 3},
+    )
+    assert started.status_code == 200, started.text
+    start_payload = started.json()
+    assert start_payload["ready"] is True
+    assert start_payload["plannedVerifications"] == 3
+    assert start_payload["storage"] == "none"
+
+    status = client.get("/api/optimization/home-lab/v4/flow/test-flow-no-d1")
+    assert status.status_code == 200, status.text
+    status_payload = status.json()
+    assert status_payload["ready"] is True
+    assert status_payload["status"] == "ready"
+
+    finished = client.post(
+        "/api/optimization/home-lab/v4/flow/test-flow-no-d1/finish",
+        json={},
+    )
+    assert finished.status_code == 200, finished.text
+    assert finished.json()["status"] == "complete"
 
 
 def test_privacy_and_terms_pages_expose_required_disclosures() -> None:
@@ -1598,21 +1629,24 @@ def test_editorial_server_compute_budget_caps_only_full_engine_passes() -> None:
     assert js.status_code == 200
     source = js.text
 
-    assert 'name:"cloudflare-low-resource"' in source
-    assert "maxCanonicalPasses:3" in source
-    assert "maxVerifyPasses:1" in source
+    assert 'name:"cloudflare-adaptive-flow"' in source
+    assert "maxCanonicalPasses:5" in source
+    assert "maxVerifyPasses:3" in source
     assert "maxProductPasses:0" in source
     assert "heavyRetries:0" in source
-    assert "cooldownMs:1200" in source
+    assert "cooldownMs:1800" in source
     assert "const verifyTargets = targets.slice(0, verifyLimit)" in source
+    assert "adaptiveVerificationDecisionLocal" in source
+    assert "verifyWithTeoWorkerFlow" in source
+    assert '"/api/optimization/home-lab/v4/flow/start"' in source
     assert "TEO PARAMETRIC" in source
-    assert "Discretizarea comercială este amânată" in source
+    assert "Discretizarea comercială" in source
     assert "commercialRechecks:0" in source
 
     # Deep parametric search remains browser-side and is intentionally not
     # reduced by the server compute profile.
     assert '"/api/optimization/home-lab/v4/plan"' in source
-    assert '"/static/teo-v4-worker.js?v=1"' in source
+    assert '"/static/teo-v4-worker.js?v=2"' in source
 
 
 def test_optimizer_reuses_baseline_bill_and_resets_cross_run_engine_cache() -> None:
@@ -1671,8 +1705,8 @@ def test_editorial_teo_run_has_no_product_discretization_stage() -> None:
     assert js.status_code == 200
     source = js.text
 
-    assert "maxCanonicalPasses:3" in source
-    assert "maxVerifyPasses:1" in source
+    assert "maxCanonicalPasses:5" in source
+    assert "maxVerifyPasses:3" in source
     assert "maxProductPasses:0" in source
     assert "TEO PARAMETRIC" in source
     assert "function engineeringSpecLocal(" in source
@@ -1693,6 +1727,9 @@ def test_editorial_teo_run_has_no_product_discretization_stage() -> None:
     assert "PRODUCT FALLBACK" not in run_section
 
     assert "Optim TEO · specificație inginerească" in source
+    assert "Rezumat economic al optimului TEO" in source
+    assert "CAPEX parametric estimat" in source
+    assert "Intervențiile selectate" not in source
     assert "Discretizare comercială" in source
     assert "reference_lambda_w_mk" in source
     assert "sum_psi_l_w_k" in source
@@ -1768,7 +1805,9 @@ def test_v3_product_is_bounded_and_finalize_is_pure_assembly() -> None:
 def test_worker_memory_guard_and_v3_verification_use_bounded_state() -> None:
     source = Path("commercial/app/main.py").read_text(encoding="utf-8")
     assert "async def collect_python_worker_garbage(" in source
-    assert 'path.startswith(("/static/", "/home-lab-assets/"))' in source
+    assert '"/static/"' in source
+    assert '"/home-lab-assets/"' in source
+    assert '"/api/optimization/home-lab/v4/flow/"' in source
     assert "gc.collect()" in source
 
     verify_section = source.split(

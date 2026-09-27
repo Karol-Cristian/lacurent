@@ -46,12 +46,14 @@
   // 1 BASELINE + 1 PLAN kernel baseline + VERIFY. PRODUCT is a later workflow.
   // Raise maxCanonicalPasses later when the execution environment has more headroom.
   const TEO_SERVER_PROFILE = Object.freeze({
-    name:"cloudflare-low-resource",
-    maxCanonicalPasses:3,
-    maxVerifyPasses:1,
+    name:"cloudflare-adaptive-flow",
+    maxCanonicalPasses:5,
+    minVerifyPasses:1,
+    maxVerifyPasses:3,
     maxProductPasses:0,
     heavyRetries:0,
-    cooldownMs:1200,
+    cooldownMs:1800,
+    flowPollMs:450,
   });
 
   let current = "intro";
@@ -1634,6 +1636,91 @@
     );
   }
 
+  async function startTeoWorkerFlow(runId, plannedVerifications) {
+    return postJson(
+      "/api/optimization/home-lab/v4/flow/start",
+      {runId, plannedVerifications},
+      {stageName:"TEO Worker Flow start", runId, retries:0}
+    );
+  }
+
+  async function teoWorkerFlowStatus(runId) {
+    return requestJsonWithRetry(
+      `/api/optimization/home-lab/v4/flow/${encodeURIComponent(runId)}`,
+      {method:"GET", headers:{"Accept":"application/json"}},
+      {stageName:"TEO Worker Flow status", runId, retries:0}
+    );
+  }
+
+  async function finishTeoWorkerFlow(runId) {
+    try {
+      return await postJson(
+        `/api/optimization/home-lab/v4/flow/${encodeURIComponent(runId)}/finish`,
+        {},
+        {stageName:"TEO Worker Flow finish", runId, retries:0}
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  async function waitForTeoWorkerFlowReady(runId) {
+    for (let probe=0; probe<40; probe++) {
+      const state = await teoWorkerFlowStatus(runId);
+      if (state?.ready) return state;
+      if (state?.status === "complete") return state;
+      const retryAfterMs = Math.max(
+        TEO_SERVER_PROFILE.flowPollMs,
+        Math.min(Number(state?.retryAfterMs || TEO_SERVER_PROFILE.cooldownMs), 2500)
+      );
+      log(
+        `WORKER FLOW · ${state?.status || "așteaptă"} · următorul VERIFY în ~${(retryAfterMs / 1000).toFixed(1)} s.`
+      );
+      await sleep(retryAfterMs);
+    }
+    throw new Error("TEO Worker Flow nu a devenit disponibil în intervalul așteptat.");
+  }
+
+  async function verifyWithTeoWorkerFlow({
+    runId,
+    formPayload,
+    target,
+    baselineAnnualBillLei,
+    ordinal,
+    total,
+  }) {
+    for (let gateAttempt=0; gateAttempt<4; gateAttempt++) {
+      const state = await waitForTeoWorkerFlowReady(runId);
+      if (state?.status === "complete") {
+        throw new Error("TEO Worker Flow a fost închis înaintea verificării planificate.");
+      }
+      try {
+        return await postJson(
+          "/api/optimization/home-lab/v3/verify",
+          {
+            form:formPayload,
+            runId,
+            branchId:target.branchId,
+            candidate:target.candidate,
+            baselineAnnualBillLei,
+          },
+          {stageName:`verify ${ordinal}/${total}`, runId, retries:0}
+        );
+      } catch (error) {
+        if (Number(error?.status || 0) !== 409 || gateAttempt >= 3) throw error;
+        const retryMs = Math.max(
+          TEO_SERVER_PROFILE.flowPollMs,
+          Math.min(
+            Number(error?.payload?.workerFlow?.retryAfterMs || TEO_SERVER_PROFILE.cooldownMs),
+            2500
+          )
+        );
+        await sleep(retryMs);
+      }
+    }
+    throw new Error("TEO Worker Flow nu a putut acorda slot pentru verificare.");
+  }
+
   function makeOptimizerRunId() {
     if (window.crypto?.randomUUID) return window.crypto.randomUUID();
     return `hl-${Date.now().toString(36)}-${Math.floor(performance.now()).toString(36)}`;
@@ -1721,13 +1808,13 @@
     baselineSummaryTimer = window.setTimeout(refreshBaselineSummary, delay);
   }
 
-  function runTeoV4Worker({kernel, searchPoints, branchIds, mode, goals, baselineAnnualBillLei}) {
+  function runTeoV4Worker({kernel, searchPoints, searchBounds, branchIds, mode, goals, baselineAnnualBillLei}) {
     return new Promise((resolve, reject) => {
       if (!("Worker" in window)) {
         reject(new Error("Browserul nu suportă Web Worker pentru TEO V4."));
         return;
       }
-      const worker = new Worker("/static/teo-v4-worker.js?v=1");
+      const worker = new Worker("/static/teo-v4-worker.js?v=2");
       let settled = false;
       const finish = (fn, value) => {
         if (settled) return;
@@ -1745,11 +1832,19 @@
           const total = Number(message.total || 0);
           const branchIndex = Number(message.branchIndex || 0);
           const branchCount = Number(message.branchCount || 0);
-          stage("branches","active",`${completed} / ${total}`);
-          if (completed === total || completed % 1000 === 0) {
+          const phase = String(message.phase || "global");
+          if (phase === "refine") {
+            stage("branches","active",`refine ${completed}/${total}`);
             log(
-              `TEO V4 local · ${completed}/${total} evaluări · ramură ${branchIndex}/${branchCount} · ${Number(message.accepted || 0)} candidați valizi.`
+              `TEO refine local · rundă ${completed}/${total} · ramură ${branchIndex}/${branchCount} · ${Number(message.refinementEvaluations || 0)} evaluări locale suplimentare.`
             );
+          } else {
+            stage("branches","active",`${completed} / ${total}`);
+            if (completed === total || completed % 1000 === 0) {
+              log(
+                `TEO V4 global · ${completed}/${total} evaluări · ramură ${branchIndex}/${branchCount} · ${Number(message.accepted || 0)} candidați valizi.`
+              );
+            }
           }
           return;
         }
@@ -1766,6 +1861,7 @@
         kernel,
         searchPoints,
         branchIds,
+        searchBounds,
         mode,
         goals,
         baselineAnnualBillLei,
@@ -2037,6 +2133,210 @@
     ) / area;
   }
 
+  function verificationErrorEnvelopeLocal(verifiedRows, targets) {
+    const targetById = new Map(
+      (targets || []).map(target => [
+        String(target?.candidate?.candidate_id || ""),
+        target?.candidate || null,
+      ])
+    );
+    let billErrorLei = 0;
+    let loadErrorKw = 0;
+    let capexErrorLei = 0;
+    for (const row of (verifiedRows || [])) {
+      billErrorLei = Math.max(
+        billErrorLei,
+        Math.abs(Number(row?.annualBillDeltaLei || 0))
+      );
+      loadErrorKw = Math.max(
+        loadErrorKw,
+        Math.abs(Number(row?.designLoadDeltaKw || 0))
+      );
+      const source = targetById.get(String(row?.sourceCandidateId || ""));
+      if (source && row?.candidate) {
+        capexErrorLei = Math.max(
+          capexErrorLei,
+          Math.abs(
+            Number(row.candidate.capex_lei || 0)
+            - Number(source.capex_lei || 0)
+          )
+        );
+      }
+    }
+    return {billErrorLei, loadErrorKw, capexErrorLei};
+  }
+
+  function predictedCompetitorCloseLocal({
+    selected,
+    unverifiedTargets,
+    mode,
+    goals,
+    envelope,
+  }) {
+    if (!selected || !unverifiedTargets.length) return false;
+    const billError = Math.max(Number(envelope.billErrorLei || 0), 50);
+    const capexError = Math.max(Number(envelope.capexErrorLei || 0), 250);
+
+    if (mode === "investment_budget") {
+      const budget = Number(goals?.investment_budget_lei || 0);
+      return unverifiedTargets.some(target => {
+        const candidate = target?.candidate || {};
+        return (
+          Number(candidate.capex_lei || 0) <= budget + capexError
+          && Number(candidate.annual_saving_lei || 0)
+            >= Number(selected.annual_saving_lei || 0) - billError
+        );
+      });
+    }
+
+    if (mode === "annual_bill_target") {
+      const targetBill = Number(goals?.annual_bill_target_lei || 0);
+      return unverifiedTargets.some(target => {
+        const candidate = target?.candidate || {};
+        return (
+          Number(candidate.annual_bill_lei || Infinity) <= targetBill + billError
+          && Number(candidate.capex_lei || Infinity)
+            <= Number(selected.capex_lei || 0) + capexError + 500
+        );
+      });
+    }
+
+    if (mode === "max_payback_years") {
+      const limit = Number(goals?.max_payback_years || 0);
+      return unverifiedTargets.some(target => {
+        const candidate = target?.candidate || {};
+        const payback = candidate.payback_years == null
+          ? Infinity
+          : Number(candidate.payback_years);
+        return (
+          payback <= limit + 0.5
+          && Number(candidate.annual_saving_lei || 0)
+            >= Number(selected.annual_saving_lei || 0) - billError
+        );
+      });
+    }
+
+    return unverifiedTargets.some(target => {
+      const candidate = target?.candidate || {};
+      let closeHorizons = 0;
+      for (const years of OPTIMIZER_FINALIZE_HORIZONS) {
+        const exactNet =
+          Number(selected.annual_saving_lei || 0) * years
+          - Number(selected.capex_lei || 0);
+        const predictedNet =
+          Number(candidate.annual_saving_lei || 0) * years
+          - Number(candidate.capex_lei || 0);
+        const uncertainty =
+          years * billError
+          + capexError
+          + Math.max(250, 0.01 * Math.abs(exactNet));
+        if (predictedNet >= exactNet - uncertainty) closeHorizons += 1;
+      }
+      return closeHorizons >= 2;
+    });
+  }
+
+  function adaptiveVerificationDecisionLocal({
+    verifiedRows,
+    targets,
+    mode,
+    goals,
+    maxVerifications,
+  }) {
+    const count = Number(verifiedRows?.length || 0);
+    if (!count) {
+      return {continueVerification:true, reason:"no_verified_candidate"};
+    }
+    if (count >= maxVerifications || count >= targets.length) {
+      return {continueVerification:false, reason:"adaptive_limit_reached"};
+    }
+
+    let selection = null;
+    try {
+      selection = selectOptimizationCandidateLocal(
+        verifiedRows.map(row => row?.candidate).filter(Boolean),
+        mode,
+        goals
+      );
+    } catch (_) {
+      return {
+        continueVerification:true,
+        reason:"no_verified_candidate_satisfies_objective_yet",
+      };
+    }
+
+    const envelope = verificationErrorEnvelopeLocal(verifiedRows, targets);
+    const selected = selection.selected;
+    const billTolerance = Math.max(
+      75,
+      0.01 * Math.max(Number(selected?.annual_bill_lei || 0), 1)
+    );
+    const loadTolerance = Math.max(
+      0.05,
+      0.01 * Math.max(Number(selected?.design_heat_load_kw || 0), 1)
+    );
+    const capexTolerance = Math.max(
+      500,
+      0.015 * Math.max(Number(selected?.capex_lei || 0), 1)
+    );
+    const surrogateStable = (
+      envelope.billErrorLei <= billTolerance
+      && envelope.loadErrorKw <= loadTolerance
+      && envelope.capexErrorLei <= capexTolerance
+    );
+
+    const verifiedSourceIds = new Set(
+      verifiedRows.map(row => String(row?.sourceCandidateId || ""))
+    );
+    const unverifiedTargets = targets.filter(
+      target => !verifiedSourceIds.has(
+        String(target?.candidate?.candidate_id || "")
+      )
+    );
+    const competitorClose = predictedCompetitorCloseLocal({
+      selected,
+      unverifiedTargets,
+      mode,
+      goals,
+      envelope,
+    });
+
+    if (mode === "auto_economic" && count < 2) {
+      return {
+        continueVerification:true,
+        reason:"auto_mode_requires_two_exact_points",
+        surrogateStable,
+        competitorClose,
+        envelope,
+      };
+    }
+    if (!surrogateStable) {
+      return {
+        continueVerification:true,
+        reason:"surrogate_error_requires_more_exact_checks",
+        surrogateStable,
+        competitorClose,
+        envelope,
+      };
+    }
+    if (competitorClose) {
+      return {
+        continueVerification:true,
+        reason:"economic_competitor_inside_uncertainty_band",
+        surrogateStable,
+        competitorClose,
+        envelope,
+      };
+    }
+    return {
+      continueVerification:false,
+      reason:"exact_winner_stable_outside_uncertainty_band",
+      surrogateStable,
+      competitorClose,
+      envelope,
+    };
+  }
+
   function engineeringSpecLocal(candidate, verifiedRow) {
     const config = candidate?.resulting_configuration || {};
     const parameters = candidate?.parameters || {};
@@ -2162,6 +2462,9 @@
     branchFastEvaluations,
     searchPointCount,
     verificationFrontierCount,
+    refinementEvaluations,
+    browserSearchMethod,
+    adaptiveVerification,
     runId,
   }) {
     const verifiedCandidates = (verifiedRows || [])
@@ -2220,7 +2523,8 @@
     const warnings = [
       "TEO produce exclusiv optimul parametric tehnico-economic; produsele comerciale nu participă la alegerea soluției.",
       "Discretizarea în SKU-uri reale este o etapă separată, ulterioară rezultatului TEO.",
-      "Profil temporar Cloudflare low-resource: BASELINE + PLAN kernel + un singur VERIFY canonic; căutarea profundă rămâne în browser.",
+      "TEO Worker Flow serializează verificările canonice și aplică 1–3 VERIFY adaptiv, cu cooldown persistent în D1 între calculele RBPE grele.",
+      "Căutarea TEO combină explorarea globală Halton cu două runde de rafinare locală în jurul zonelor economice/Pareto promițătoare.",
       "λ-urile afișate pentru anvelopă sunt valorile de calcul/reference folosite la transformarea R↔grosime; în această versiune TEO optimizează R și U rezultat, nu λ ca material comercial independent.",
       "Valorile ψ provin din modelul clădirii și sunt raportate inginerește; optimizarea explicită a punților termice va necesita o variabilă TEO separată.",
     ];
@@ -2294,12 +2598,15 @@
         costCatalogVersion:selected?.cost_catalog_version,
         warnings,
         autoHorizonsYears:mode === "auto_economic" ? [...OPTIMIZER_FINALIZE_HORIZONS] : [],
-        executionMode:"browser_finalize_parametric_teo_only",
-        optimizerVersion:"teo-v4-parametric-only",
-        searchMethod:lastPlan?.searchMethod || "teo_v4_browser_worker_mc001_kernel",
+        executionMode:"browser_refine_adaptive_verify_parametric_teo",
+        optimizerVersion:"teo-v4-adaptive-parametric",
+        searchMethod:browserSearchMethod || lastPlan?.searchMethod || "teo_v4_halton_plus_local_refinement",
         representativeEvaluations:Number(lastPlan?.representativeEvaluations || 0),
         branchFastEvaluations:Number(branchFastEvaluations || 0),
+        refinementEvaluations:Number(refinementEvaluations || 0),
         fullEngineVerifications:Number(verifiedRows.length || 0),
+        adaptiveVerificationReason:String(adaptiveVerification?.reason || ""),
+        adaptiveVerificationStable:Boolean(adaptiveVerification && !adaptiveVerification.continueVerification),
         commercialRechecks:0,
         commercialMatches:0,
         commercialRecheckTargetCount:0,
@@ -2342,6 +2649,8 @@
       paintBaselineSummary(baselineResult, "Baseline folosit în optimizare.");
       stage("baseline","done","gata");
       log(`Baseline gata: ${fmt(baselineResult.final_energy_kwh)} kWh/an · necesar ${fmt(baselineResult.design_heat_load_kw,1)} kW.`);
+      log(`WORKER FLOW · pauză ${(TEO_SERVER_PROFILE.cooldownMs / 1000).toFixed(1)} s înainte de PLAN pentru a reduce presiunea cumulată pe Python Worker.`);
+      await sleep(TEO_SERVER_PROFILE.cooldownMs);
 
       stage("plan","active","rulează");
       log("Generez TEO V4: mii de puncte parametrice pentru execuție locală în Web Worker; Python rămâne autoritatea pentru finaliști.");
@@ -2376,6 +2685,7 @@
       const localSearch = await runTeoV4Worker({
         kernel:lastPlan.kernel,
         searchPoints,
+        searchBounds:lastPlan.searchBounds || {},
         branchIds,
         mode:lastPlan.economicMode || formPayload._optimization_mode || "auto_economic",
         goals,
@@ -2388,6 +2698,10 @@
         ? localSearch.branchStats
         : [];
       const branchFastEvaluations = Number(localSearch.fastEvaluations || 0);
+      const refinementEvaluations = Number(localSearch.refinementEvaluations || 0);
+      const browserSearchMethod = String(
+        localSearch.searchMethod || lastPlan.searchMethod || "teo_v4_halton_plus_local_refinement"
+      );
       const localSourceCandidateCount = Number(
         localSearch.sourceCandidateCount || candidateRows.length
       );
@@ -2396,7 +2710,7 @@
       }
       stage("branches","done",`${branchFastEvaluations} evaluări locale`);
       log(
-        `TEO V4 local gata în ${Number(localSearch.calculationTimeMs || 0).toFixed(1)} ms · ${localSourceCandidateCount} candidați valizi · frontiera locală ${Number(localSearch.frontierCount || 0)} · ${candidateRows.length} candidați diverși trimiși la verificare.`
+        `TEO V4 local gata în ${Number(localSearch.calculationTimeMs || 0).toFixed(1)} ms · ${localSourceCandidateCount} candidați valizi · ${refinementEvaluations} evaluări de rafinare · frontiera locală ${Number(localSearch.frontierCount || 0)} · ${candidateRows.length} candidați diverși trimiși la verificare.`
       );
 
       stage("finalize","active","selectează");
@@ -2415,47 +2729,71 @@
 
       const verifiedRows = [];
       let verifyFailures = 0;
-      // Two canonical passes already happened before VERIFY:
-      // 1) visible baseline, 2) PLAN kernel baseline. In temporary low-resource
-      // mode we spend only one more pass on the best canonical finalist.
       const verifyLimit = Math.max(
         1,
         Math.min(targets.length, TEO_SERVER_PROFILE.maxVerifyPasses)
       );
       const verifyTargets = targets.slice(0, verifyLimit);
+      let adaptiveVerification = {
+        continueVerification:true,
+        reason:"not_started",
+      };
+
+      const flowStart = await startTeoWorkerFlow(runId, verifyLimit);
       log(
-        `RESOURCE PROFILE · ${TEO_SERVER_PROFILE.name} · max ${TEO_SERVER_PROFILE.maxCanonicalPasses} canonical passes/run = BASELINE 1 + PLAN 1 + VERIFY ${verifyTargets.length} + PRODUCT ≤ ${TEO_SERVER_PROFILE.maxProductPasses}.`
+        `WORKER FLOW · ${flowStart.storage || "runtime"} · VERIFY adaptiv 1–${verifyLimit} · max ${TEO_SERVER_PROFILE.maxCanonicalPasses} treceri canonice = BASELINE + PLAN + până la ${verifyLimit} VERIFY.`
       );
-      await sleep(TEO_SERVER_PROFILE.cooldownMs);
+
       for (let i = 0; i < verifyTargets.length; i++) {
         const target = verifyTargets[i];
-        log(`VERIFY ${i + 1}/${verifyTargets.length} · ${target.branchId} · un singur calculate() complet.`);
+        log(`VERIFY ${i + 1}/${verifyTargets.length} · ${target.branchId} · RBPE complet într-un slot serializat.`);
         try {
-          const verified = await postJson(
-            "/api/optimization/home-lab/v3/verify",
-            {
-              form:formPayload,
-              branchId:target.branchId,
-              candidate:target.candidate,
-              baselineAnnualBillLei:Number(baselineResult?.annual_cost_lei || 0)
-            },
-            {stageName:`verify ${i + 1}/${verifyTargets.length}`, runId, retries:TEO_SERVER_PROFILE.heavyRetries}
-          );
+          const verified = await verifyWithTeoWorkerFlow({
+            runId,
+            formPayload,
+            target,
+            baselineAnnualBillLei:Number(baselineResult?.annual_cost_lei || 0),
+            ordinal:i + 1,
+            total:verifyTargets.length,
+          });
           verifiedRows.push(verified);
           backendElapsedMs += Number(verified.calculationTimeMs || 0);
+
+          adaptiveVerification = adaptiveVerificationDecisionLocal({
+            verifiedRows,
+            targets,
+            mode:lastPlan.economicMode || formPayload._optimization_mode || "auto_economic",
+            goals,
+            maxVerifications:verifyLimit,
+          });
+          log(
+            `ADAPTIVE VERIFY · ${adaptiveVerification.reason} · exact ${verifiedRows.length}/${verifyLimit}.`
+          );
+          if (!adaptiveVerification.continueVerification) break;
+          if (
+            verified?.workerFlow?.storage === "none"
+            && i + 1 < verifyTargets.length
+          ) {
+            log(
+              `WORKER FLOW · fără D1 persistent; aplic cooldown local de ${(TEO_SERVER_PROFILE.cooldownMs / 1000).toFixed(1)} s înainte de următorul VERIFY.`
+            );
+            await sleep(TEO_SERVER_PROFILE.cooldownMs);
+          }
         } catch (error) {
           verifyFailures += 1;
           log(
-            `VERIFY ${i + 1}/${verifyTargets.length} indisponibil · ${error?.message || String(error)} · fără retry în low-resource mode.`
+            `VERIFY ${i + 1}/${verifyTargets.length} indisponibil · ${error?.message || String(error)} · următorul finalist poate continua după Worker Flow cooldown.`
           );
         }
       }
+      await finishTeoWorkerFlow(runId);
+
       if (!verifiedRows.length) {
-        throw new Error("Verificarea canonică nu a răspuns în modul low-resource. Reîncearcă rularea; căutarea locală nu este promovată ca rezultat verificat.");
+        throw new Error("Nicio verificare RBPE canonică nu a reușit. Căutarea locală nu este promovată ca rezultat verificat.");
       }
 
       log(
-        "TEO PARAMETRIC · verificarea canonică este gata. Discretizarea comercială este amânată pentru o etapă separată."
+        `TEO PARAMETRIC · ${verifiedRows.length} verificări canonice adaptive gata · ${adaptiveVerification.reason}. Discretizarea comercială rămâne separată.`
       );
 
       log("REPORT · selecție finală + asamblare raport direct în browser; 0 request-uri suplimentare către Python Worker.");
@@ -2471,6 +2809,9 @@
         branchFastEvaluations,
         searchPointCount:searchPoints.length,
         verificationFrontierCount:Number(verificationPlan.frontierCount || 0),
+        refinementEvaluations,
+        browserSearchMethod,
+        adaptiveVerification,
         runId,
       });
       stage("finalize","done","gata");
@@ -2507,7 +2848,6 @@
     const opt = optimizationResult.optimization || {};
     const parametric = opt.parametricEvaluation || {};
     const engineering = opt.engineeringSpec || {};
-    const measures = opt.selected || [];
     const baselineBill = baselineResult.annual_cost_lei;
     const finalBill = parametric.annualBillLei ?? scenario.annual_cost_lei;
     const locality = baselineResult.locality || $("#localityInput").value;
@@ -2528,10 +2868,10 @@
       </section>
 
       <section class="ed-report-section">
-        <h2>Ce a găsit optimizerul</h2>
-        <p>${escapeHtml(opt.rationale || "Soluția de mai jos este rezultatul selecției economice și al verificării finale.")}</p>
+        <h2>Rezumat economic al optimului TEO</h2>
+        <p>${escapeHtml(opt.rationale || "Rezultatul de mai jos este optimul parametric verificat; discretizarea comercială nu participă la această selecție.")}</p>
         <div class="ed-report-callout">
-          <small>Investiție estimată</small><br>
+          <small>CAPEX parametric estimat</small><br>
           <strong>${money(opt.capexLei)}</strong>
         </div>
         <div class="ed-metrics">
@@ -2543,19 +2883,13 @@
         ${economicStatusText(opt) ? `<p class="ed-hint"><b>Interpretare economică:</b> ${escapeHtml(economicStatusText(opt))}</p>` : ""}
         ${opt.simpleNetBenefitLeiByHorizon ? `
           <h3>Beneficiu net simplu în timp</h3>
-          <p class="ed-hint">Economie anuală × orizont − CAPEX. Fără finanțare, inflație, mentenanță, înlocuiri sau valoare reziduală; acestea vor aparține modelului lifecycle.</p>
+          <p class="ed-hint">Economie anuală × orizont − CAPEX parametric. Fără finanțare, inflație, mentenanță, înlocuiri sau valoare reziduală; acestea vor aparține modelului lifecycle.</p>
           <div class="ed-metrics">
             ${(opt.economicHorizonsYears || [5,10,15,20,25]).map(years =>
               metric(`${years} ani`, money(opt.simpleNetBenefitLeiByHorizon[String(years)]))
             ).join("")}
           </div>
         ` : ""}
-        <h3>Intervențiile selectate</h3>
-        ${measures.length ? measures.map(row => `
-          <div class="ed-measure">
-            <div><b>${escapeHtml(row.label)}</b><br><span>${escapeHtml(row.note || (fmt(row.parameterValue,2) + " " + (row.parameterUnit || "")))}</span></div>
-            <b>${money(row.capexLei)}</b>
-          </div>`).join("") : "<p>Optimizerul nu a selectat intervenții cu CAPEX pozitiv.</p>"}
       </section>
     `;
 
