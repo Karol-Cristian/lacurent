@@ -2,12 +2,26 @@
  *
  * Deep parametric exploration runs off the Cloudflare Python isolate. Python
  * remains authoritative: only a bounded, diverse shortlist is sent back for
- * canonical verification and commercial product matching.
+ * canonical verification. Commercial product matching is intentionally later.
  */
 "use strict";
 
 const EPS = 1e-9;
 const AUTO_HORIZONS = [5, 10, 15, 20, 25];
+
+const SEARCH_DIMENSIONS = Object.freeze([
+  ["wall_added_r_m2k_w", "wall_added_r_m2k_w_max"],
+  ["roof_added_r_m2k_w", "roof_added_r_m2k_w_max"],
+  ["floor_added_r_m2k_w", "floor_added_r_m2k_w_max"],
+  ["window_replacement_fraction", "window_replacement_fraction_max"],
+  ["ventilation_heat_recovery_efficiency_target", "ventilation_heat_recovery_efficiency_target_max"],
+  ["pv_added_kwp", "pv_added_kwp_max"],
+  ["solar_thermal_added_m2", "solar_thermal_added_m2_max"],
+]);
+const LOCAL_REFINEMENT_ROUNDS = Object.freeze([
+  {seedCount:8, steps:[0.125, 0.0625], pairwiseStep:0.0625},
+  {seedCount:6, steps:[0.03125, 0.015625], pairwiseStep:null},
+]);
 
 function num(value, fallback = 0) {
   const parsed = Number(value);
@@ -596,6 +610,149 @@ function shortlist(rows, mode, goals) {
   return {rows:output, frontierCount:frontier.length};
 }
 
+
+function measureSignature(measures) {
+  return SEARCH_DIMENSIONS
+    .map(([key]) => round(num(measures?.[key]), 7))
+    .concat([round(num(measures?.window_target_u_w_m2k, 0.9), 7)])
+    .join("|");
+}
+
+function normalizedFromMeasures(measures, bounds) {
+  return SEARCH_DIMENSIONS.map(([key, boundKey]) => {
+    const upper = Math.max(num(bounds?.[boundKey]), EPS);
+    return clamp(num(measures?.[key]) / upper, 0, 1);
+  });
+}
+
+function measuresFromNormalized(vector, bounds, template = {}) {
+  const out = {...template};
+  SEARCH_DIMENSIONS.forEach(([key, boundKey], index) => {
+    out[key] = clamp(num(vector[index]), 0, 1) * Math.max(num(bounds?.[boundKey]), 0);
+  });
+  if (out.window_target_u_w_m2k == null) {
+    out.window_target_u_w_m2k = num(bounds?.window_target_u_w_m2k, 0.9);
+  }
+  return out;
+}
+
+function objectiveSeedSorter(mode, goals) {
+  return (left, right) => {
+    const a = left.candidate;
+    const b = right.candidate;
+    if (mode === "investment_budget") {
+      const budget = num(goals?.investment_budget_lei, Infinity);
+      const ap = num(a.capex_lei) > budget + 0.01 ? 1 : 0;
+      const bp = num(b.capex_lei) > budget + 0.01 ? 1 : 0;
+      return ap - bp
+        || num(b.annual_saving_lei) - num(a.annual_saving_lei)
+        || num(a.capex_lei) - num(b.capex_lei);
+    }
+    if (mode === "annual_bill_target") {
+      const target = num(goals?.annual_bill_target_lei, -Infinity);
+      const ap = num(a.annual_bill_lei) > target + 0.01 ? 1 : 0;
+      const bp = num(b.annual_bill_lei) > target + 0.01 ? 1 : 0;
+      return ap - bp
+        || num(a.capex_lei) - num(b.capex_lei)
+        || num(a.annual_bill_lei) - num(b.annual_bill_lei);
+    }
+    if (mode === "max_payback_years") {
+      const limit = num(goals?.max_payback_years, -Infinity);
+      const ap = a.payback_years == null || num(a.payback_years) > limit + 1e-6 ? 1 : 0;
+      const bp = b.payback_years == null || num(b.payback_years) > limit + 1e-6 ? 1 : 0;
+      return ap - bp
+        || num(b.annual_saving_lei) - num(a.annual_saving_lei)
+        || num(a.capex_lei) - num(b.capex_lei);
+    }
+    const aNet = AUTO_HORIZONS.reduce(
+      (sum, years) => sum + num(a.annual_saving_lei) * years - num(a.capex_lei),
+      0
+    );
+    const bNet = AUTO_HORIZONS.reduce(
+      (sum, years) => sum + num(b.annual_saving_lei) * years - num(b.capex_lei),
+      0
+    );
+    return bNet - aNet || num(a.capex_lei) - num(b.capex_lei);
+  };
+}
+
+function refinementSeeds(rows, mode, goals, count) {
+  const chosen = new Map();
+  const frontier = paretoRows(rows);
+  evenlySample(frontier, Math.min(4, count)).forEach(row => {
+    chosen.set(row.candidate.candidate_id, row);
+  });
+  rows.slice()
+    .sort(objectiveSeedSorter(mode, goals))
+    .slice(0, count)
+    .forEach(row => chosen.set(row.candidate.candidate_id, row));
+  return [...chosen.values()].slice(0, count);
+}
+
+function refineBranch({
+  kernel,
+  branch,
+  rows,
+  bounds,
+  mode,
+  goals,
+  seen,
+  roundIndex,
+}) {
+  const cfg = LOCAL_REFINEMENT_ROUNDS[roundIndex];
+  if (!cfg || !bounds || !rows.length) return [];
+  const seeds = refinementSeeds(rows, mode, goals, cfg.seedCount);
+  const generated = [];
+  let ordinal = 0;
+
+  const tryVector = (vector, template, label) => {
+    const measures = measuresFromNormalized(vector, bounds, template);
+    const signature = measureSignature(measures);
+    if (seen.has(signature)) return;
+    seen.add(signature);
+    const row = evaluate(
+      kernel,
+      branch,
+      measures,
+      0,
+      `V4R-${roundIndex + 1}-${branch.branch_id}-${label}-${++ordinal}`
+    );
+    if (row) generated.push(row);
+  };
+
+  for (const seed of seeds) {
+    const origin = normalizedFromMeasures(seed.candidate.parameters || {}, bounds);
+    for (const step of cfg.steps) {
+      for (let dim=0; dim<SEARCH_DIMENSIONS.length; dim++) {
+        for (const direction of [-1, 1]) {
+          const vector = origin.slice();
+          vector[dim] = clamp(vector[dim] + direction * step, 0, 1);
+          tryVector(vector, seed.candidate.parameters || {}, `d${dim}`);
+        }
+      }
+    }
+  }
+
+  if (cfg.pairwiseStep) {
+    for (const seed of seeds.slice(0, 3)) {
+      const origin = normalizedFromMeasures(seed.candidate.parameters || {}, bounds);
+      for (let left=0; left<SEARCH_DIMENSIONS.length; left++) {
+        for (let right=left + 1; right<SEARCH_DIMENSIONS.length; right++) {
+          for (const leftDirection of [-1, 1]) {
+            for (const rightDirection of [-1, 1]) {
+              const vector = origin.slice();
+              vector[left] = clamp(vector[left] + leftDirection * cfg.pairwiseStep, 0, 1);
+              vector[right] = clamp(vector[right] + rightDirection * cfg.pairwiseStep, 0, 1);
+              tryVector(vector, seed.candidate.parameters || {}, `p${left}-${right}`);
+            }
+          }
+        }
+      }
+    }
+  }
+  return generated;
+}
+
 self.onmessage = event => {
   const data = event.data || {};
   if (data.type !== "run") return;
@@ -604,36 +761,46 @@ self.onmessage = event => {
     const kernel = data.kernel || {};
     const searchPoints = Array.isArray(data.searchPoints) ? data.searchPoints : [];
     const branchIds = Array.isArray(data.branchIds) ? data.branchIds : [];
+    const searchBounds = data.searchBounds || {};
     const baselineBill = num(data.baselineAnnualBillLei);
     const branches = new Map((kernel.branches || []).map(branch => [branch.branch_id, branch]));
     const allRows = [];
     const branchStats = [];
     let total = 0;
-    const expected = searchPoints.length * branchIds.length;
+    let globalEvaluations = 0;
+    let refinementEvaluations = 0;
+    const expectedGlobal = searchPoints.length * branchIds.length;
 
     for (let b=0;b<branchIds.length;b++) {
       const branchId = branchIds[b];
       const branch = branches.get(branchId);
       if (!branch) continue;
+
+      const branchRows = [];
+      const seen = new Set(searchPoints.map(measureSignature));
       let accepted = 0;
+
       for (let i=0;i<searchPoints.length;i++) {
         const row = evaluate(
           kernel,
           branch,
           searchPoints[i],
           baselineBill,
-          `V4-${b + 1}-${i + 1}`
+          `V4-G-${b + 1}-${i + 1}`
         );
         total += 1;
+        globalEvaluations += 1;
         if (row) {
           allRows.push(row);
+          branchRows.push(row);
           accepted += 1;
         }
-        if (total % 250 === 0 || total === expected) {
+        if (globalEvaluations % 250 === 0 || globalEvaluations === expectedGlobal) {
           self.postMessage({
             type:"progress",
-            completed:total,
-            total:expected,
+            phase:"global",
+            completed:globalEvaluations,
+            total:expectedGlobal,
             branchId,
             branchIndex:b + 1,
             branchCount:branchIds.length,
@@ -641,9 +808,54 @@ self.onmessage = event => {
           });
         }
       }
+
+      for (let roundIndex=0; roundIndex<LOCAL_REFINEMENT_ROUNDS.length; roundIndex++) {
+        const refined = refineBranch({
+          kernel,
+          branch,
+          rows:branchRows,
+          bounds:searchBounds,
+          mode:data.mode || "auto_economic",
+          goals:data.goals || {},
+          seen,
+          roundIndex,
+        });
+        refinementEvaluations += refined.length;
+        total += refined.length;
+        refined.forEach(row => {
+          // Re-evaluate with the real baseline bill because refineBranch uses
+          // baselineBill=0 only to create physical/economic geometry cheaply.
+          const exactFast = evaluate(
+            kernel,
+            branch,
+            row.candidate.parameters,
+            baselineBill,
+            row.candidate.candidate_id
+          );
+          if (exactFast) {
+            allRows.push(exactFast);
+            branchRows.push(exactFast);
+            accepted += 1;
+          }
+        });
+        self.postMessage({
+          type:"progress",
+          phase:"refine",
+          completed:roundIndex + 1,
+          total:LOCAL_REFINEMENT_ROUNDS.length,
+          branchId,
+          branchIndex:b + 1,
+          branchCount:branchIds.length,
+          accepted:allRows.length,
+          refinementEvaluations,
+        });
+      }
+
       branchStats.push({
         branchId,
-        evaluatedCandidates:searchPoints.length,
+        evaluatedCandidates:searchPoints.length + refinementEvaluations,
+        globalEvaluations:searchPoints.length,
+        refinementEvaluations,
         acceptedCandidates:accepted,
         feasibleCandidates:accepted,
       });
@@ -657,8 +869,11 @@ self.onmessage = event => {
       frontierCount:reduced.frontierCount,
       branchStats,
       fastEvaluations:total,
+      globalEvaluations,
+      refinementEvaluations,
+      refinementRounds:LOCAL_REFINEMENT_ROUNDS.length,
       calculationTimeMs:round(performance.now() - started, 1),
-      searchMethod:"teo_v4_browser_worker_mc001_kernel",
+      searchMethod:"teo_v4_halton_plus_local_refinement",
     });
   } catch (error) {
     self.postMessage({
