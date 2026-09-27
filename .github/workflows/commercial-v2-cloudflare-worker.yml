@@ -587,6 +587,7 @@ jobs:
           python - <<'PY'
           import json
           import sys
+          import urllib.error
           import urllib.request
 
           sys.path.insert(0, "src")
@@ -607,10 +608,16 @@ jobs:
               data=body,
               headers={"Content-Type": "application/json"},
           )
-          with urllib.request.urlopen(request, timeout=30) as response:
-              payload = json.loads(response.read().decode("utf-8"))
-              if response.status != 200:
-                  raise AssertionError(response.status)
+          try:
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  payload = json.loads(response.read().decode("utf-8"))
+                  if response.status != 200:
+                      raise AssertionError(response.status)
+          except urllib.error.HTTPError as exc:
+              detail = exc.read().decode("utf-8", errors="replace")
+              raise AssertionError(
+                  f"Reference RBPE local smoke HTTP {exc.code}: {detail}"
+              ) from exc
           if payload.get("calculationMode") != "dedicated_reference_rbpe_worker":
               raise AssertionError(payload)
           if float(payload.get("referenceSpecificPrimaryKwhM2") or 0) <= 0:
