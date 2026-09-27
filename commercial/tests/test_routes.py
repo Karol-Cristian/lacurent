@@ -1574,6 +1574,8 @@ def test_editorial_product_stage_is_bounded_and_fails_soft() -> None:
     assert "await sleep(900)" in source
     assert "PRODUCT FALLBACK" in source
     assert "productFailureCount:productFailures" in source
+    assert "branchPlan:Array.isArray(lastPlan.branches)" in source
+    assert '{stageName:"finalize V3", runId, retries:0}' in source
 
     # Product retries must not use the generic aggressive retry path anymore.
     product_section = source.split(
@@ -1604,7 +1606,7 @@ def test_v3_finalize_can_fall_back_to_canonical_verified_candidates() -> None:
     assert "commercialRecheckFailures" in section
 
 
-def test_v3_product_and_finalize_do_not_load_complete_heating_marketplace() -> None:
+def test_v3_product_is_bounded_and_finalize_is_pure_assembly() -> None:
     source = Path("commercial/app/main.py").read_text(encoding="utf-8")
 
     product_section = source.split(
@@ -1615,6 +1617,10 @@ def test_v3_product_and_finalize_do_not_load_complete_heating_marketplace() -> N
         1,
     )[0]
     assert "_optimizer_heating_commercial_branch_catalog(" in product_section
+    assert "required_power_kw" in product_section
+    assert "return_result=True" in product_section
+    assert '"scenario": scenario' in product_section
+    assert '"catalogStats": heating_catalog.get("catalog_stats")' in product_section
     assert "_optimizer_heating_catalog(request)" not in product_section
 
     finalize_section = source.split(
@@ -1624,9 +1630,27 @@ def test_v3_product_and_finalize_do_not_load_complete_heating_marketplace() -> N
         '@app.post("/api/optimization/home-lab/v2/plan")',
         1,
     )[0]
-    assert "_optimizer_heating_catalog_summary(request)" in finalize_section
-    assert "_optimizer_heating_commercial_branch_catalog(" in finalize_section
+    assert "_optimizer_heating_catalog_summary(request)" not in finalize_section
+    assert "_optimizer_heating_commercial_branch_catalog(" not in finalize_section
     assert "_optimizer_heating_catalog(request)" not in finalize_section
+    assert "calculate(" not in finalize_section
+    assert "precomputed_scenario=precomputed_scenario" in finalize_section
+    assert '"finalizeRecalculations": 0' in finalize_section
+    assert '"finalizeCatalogReads": 0' in finalize_section
+
+    store = Path("commercial/app/heating_catalog_store.py").read_text(
+        encoding="utf-8"
+    )
+    bounded_section = store.split(
+        "async def read_heating_commercial_candidate_catalog_from_d1",
+        1,
+    )[1].split(
+        "async def read_heating_commercial_branch_catalog_from_d1",
+        1,
+    )[0]
+    assert bounded_section.count("LIMIT ?") == 3
+    assert bounded_section.count("WHERE product_id IN") == 2
+    assert "COMMERCIAL_FINALIST_MAX_PRODUCTS" in bounded_section
 
 
 def test_worker_memory_guard_and_v3_verification_use_bounded_state() -> None:
