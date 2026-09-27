@@ -1432,6 +1432,20 @@ def _primary_specific_energy_scalar(building: BuildingInput) -> float:
     )
 
 
+def reference_primary_specific_energy(building: BuildingInput) -> float:
+    """Return the exact RBPE reference-building primary-energy indicator.
+
+    This intentionally runs only the scalar reference chain, so callers can
+    schedule the reference comparison in a separate HTTP request instead of
+    spending two complete RBPE passes inside one Cloudflare request budget.
+    """
+    from .reference import build_reference_input
+
+    value = _primary_specific_energy_scalar(build_reference_input(building))
+    gc.collect()
+    return float(value)
+
+
 def calculate(building: BuildingInput, *, include_reference: bool = True) -> CalculationResult:
     reference_specific: float | None = None
     if include_reference:

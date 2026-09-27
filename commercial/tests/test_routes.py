@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from commercial.app.engine import demo_building, dhw_energy
+from commercial.app.engine import calculate, demo_building, dhw_energy
 from commercial.app.main import app, build_input_from_form
 from commercial.app.pricing import _firewood_reference
 from commercial.app.simulation_facts import FACT_SCENARIOS, _build_fact
@@ -670,6 +670,9 @@ def test_form_calculation_renders_romanian_results_and_costs() -> None:
     assert "Cere o evaluare tehnică" in response.text
     assert 'href="/"' not in response.text
     assert "Trace" not in response.text
+    assert 'data-reference-comparison' in response.text
+    assert '/static/reference-comparison.js?v=1' in response.text
+    assert "Se calculează…" in response.text
 
 
 def test_certificate_renders_romanian_printable_report_with_costs() -> None:
@@ -684,6 +687,33 @@ def test_certificate_renders_romanian_printable_report_with_costs() -> None:
     assert "Cost estimat al serviciilor energetice modelate" in response.text
     assert "nu reprezintă un Certificat de Performanță Energetică" in response.text
     assert "lei/an" in response.text
+    assert 'data-reference-comparison' in response.text
+    assert '/static/reference-comparison.js?v=1' in response.text
+
+
+def test_reference_comparison_api_matches_canonical_engine_reference() -> None:
+    building = demo_building()
+    canonical = calculate(building)
+    assert canonical.reference is not None
+
+    response = client.post(
+        "/api/reference-comparison",
+        json={
+            "payload": building.model_dump_json(),
+            "actualSpecificPrimaryKwhM2": canonical.primary_energy.specific_kwh_m2,
+        },
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["calculationMode"] == "separate_reference_rbpe_request"
+    assert payload["referenceSpecificPrimaryKwhM2"] == pytest.approx(
+        canonical.reference.reference_specific_primary_kwh_m2,
+        abs=1e-3,
+    )
+    assert payload["differencePercent"] == pytest.approx(
+        canonical.reference.difference_percent,
+        abs=0.1,
+    )
 
 
 def test_official_price_registry_endpoint_is_available() -> None:
@@ -2827,6 +2857,35 @@ def test_partner_embed_lab_calculation_returns_live_metrics() -> None:
     assert payload["reference_parameters"]["u_values_w_m2k"]["exterior_wall"] > 0
 
 
+def test_html_calculation_routes_run_one_rbpe_pass_per_request() -> None:
+    source = Path("commercial/app/main.py").read_text(encoding="utf-8")
+
+    calculate_section = source.split(
+        "async def render_calculation_from_form",
+        1,
+    )[1].split(
+        '@app.post("/api/reference-comparison")',
+        1,
+    )[0]
+    assert "calculate(building, include_reference=False)" in calculate_section
+    assert "result = calculate(building)" not in calculate_section
+
+    demo_section = source.split(
+        "async def demo(request: Request)",
+        1,
+    )[1].split(
+        '@app.post("/certificate"',
+        1,
+    )[0]
+    assert "calculate(demo_building(), include_reference=False)" in demo_section
+
+    certificate_section = source.split(
+        "async def certificate(request: Request)",
+        1,
+    )[1]
+    assert "calculate(building, include_reference=False)" in certificate_section
+
+
 def test_public_then_partner_calculation_sequence_stays_healthy() -> None:
     data = demo_form_data()
     public = client.post("/calculate", data=data)
@@ -2849,6 +2908,7 @@ def test_partner_embed_calculation_keeps_partner_cta_and_shared_engine() -> None
     assert 'href="mailto:karol@lacurent.com?subject=Evaluare%20tehnica%20locuinta"' in response.text
     assert 'href="/embed/demo-store"' in response.text
     assert "embed-runtime.js" in response.text
+    assert 'data-reference-comparison' in response.text
 
 
 def test_unknown_partner_embed_returns_404() -> None:
