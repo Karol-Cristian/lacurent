@@ -1674,18 +1674,49 @@ def commercialize_heating_finalist(
     original_building: BuildingInput,
     heating_catalog: dict[str, Any] | None = None,
     branch_id: str | None = None,
-) -> tuple[CandidateEvaluationV1, HeatingPlanningOptionV1 | None, list[str]]:
+    return_result: bool = False,
+) -> (
+    tuple[CandidateEvaluationV1, HeatingPlanningOptionV1 | None, list[str]]
+    | tuple[
+        CandidateEvaluationV1,
+        HeatingPlanningOptionV1 | None,
+        list[str],
+        Any | None,
+    ]
+):
     """Match one raw economic finalist to a real generator and recalculate once.
 
-    This is deliberately outside the raw search loop. The expensive
-    manufacturer-specific performance check therefore runs at most for the
-    finalist instead of once for every Halton/axis/refinement point.
+    PRODUCT can request the already-computed engine result as a fourth return
+    value. That lets the API serialize the final scenario in the same request
+    without running calculate() again during FINALIZE.
     """
 
-    if branch_id == "keep-current-heating":
-        return candidate, None, [
-            "Păstrează sistemul actual: finalistul nu necesită achiziția unui generator nou."
+    def _finish(
+        finalized: CandidateEvaluationV1,
+        product: HeatingPlanningOptionV1 | None,
+        warnings: list[str],
+        engine_result: Any | None = None,
+    ) -> (
+        tuple[CandidateEvaluationV1, HeatingPlanningOptionV1 | None, list[str]]
+        | tuple[
+            CandidateEvaluationV1,
+            HeatingPlanningOptionV1 | None,
+            list[str],
+            Any | None,
         ]
+    ):
+        if return_result:
+            return finalized, product, warnings, engine_result
+        return finalized, product, warnings
+
+    if branch_id == "keep-current-heating":
+        return _finish(
+            candidate,
+            None,
+            [
+                "Păstrează sistemul actual: finalistul nu necesită achiziția unui generator nou."
+            ],
+        )
     catalog_technology_ids = {
         item.id
         for item in heating_technologies(
@@ -1697,16 +1728,20 @@ def commercialize_heating_finalist(
         branch_id in SUPPLEMENTAL_TECHNICAL_HEATING_BRANCHES
         and branch_id not in catalog_technology_ids
     ):
-        return candidate, None, [
-            (
-                f"{SUPPLEMENTAL_TECHNICAL_HEATING_BRANCHES[branch_id]['label']}: "
-                "ramură tehnică fără catalog comercial source-backed; nu se inventează un produs finalist."
-            )
-        ]
+        return _finish(
+            candidate,
+            None,
+            [
+                (
+                    f"{SUPPLEMENTAL_TECHNICAL_HEATING_BRANCHES[branch_id]['label']}: "
+                    "ramură tehnică fără catalog comercial source-backed; nu se inventează un produs finalist."
+                )
+            ],
+        )
 
     technology_id = branch_id or _technology_id_from_candidate(candidate)
     if technology_id is None or candidate.resulting_configuration is None:
-        return candidate, None, []
+        return _finish(candidate, None, [])
 
     technology = next(
         (
@@ -1721,15 +1756,23 @@ def commercialize_heating_finalist(
         None,
     )
     if technology is None:
-        return candidate, None, [
-            f"{technology_id}: nu există încă un catalog comercial pentru discretizarea finalistului."
-        ]
+        return _finish(
+            candidate,
+            None,
+            [
+                f"{technology_id}: nu există încă un catalog comercial pentru discretizarea finalistului."
+            ],
+        )
 
     required_power_kw = _required_generator_power_kw(candidate)
     if required_power_kw is None:
-        return candidate, None, [
-            f"{technology.label}: necesarul de putere nu este disponibil pentru selecția produsului."
-        ]
+        return _finish(
+            candidate,
+            None,
+            [
+                f"{technology.label}: necesarul de putere nu este disponibil pentru selecția produsului."
+            ],
+        )
 
     raw_building = candidate.resulting_configuration
     sized = _select_sized_product(
@@ -1738,14 +1781,18 @@ def commercialize_heating_finalist(
         required_power_kw,
     )
     if sized is None:
-        return candidate, None, [
-            (
-                f"{technology.label}: niciun produs verificabil din catalog nu acoperă "
-                f"necesarul final recalculat de {required_power_kw:.2f} kW la condiția "
-                "de proiect a clădirii. Pentru pompele de căldură nu se extrapolează "
-                "capacitatea dincolo de curba publicată."
-            )
-        ]
+        return _finish(
+            candidate,
+            None,
+            [
+                (
+                    f"{technology.label}: niciun produs verificabil din catalog nu acoperă "
+                    f"necesarul final recalculat de {required_power_kw:.2f} kW la condiția "
+                    "de proiect a clădirii. Pentru pompele de căldură nu se extrapolează "
+                    "capacitatea dincolo de curba publicată."
+                )
+            ],
+        )
     product, available_design_capacity_kw, capacity_basis = sized
     building_data = model_to_dict(raw_building)
     product_heating = HeatingInput(
@@ -1768,7 +1815,11 @@ def commercialize_heating_finalist(
             f"using {capacity_basis}."
         )
     ]
-    if "unverified" in capacity_basis or "unavailable" in capacity_basis or "missing" in capacity_basis:
+    if (
+        "unverified" in capacity_basis
+        or "unavailable" in capacity_basis
+        or "missing" in capacity_basis
+    ):
         product_assumptions.append(
             "Generator capacity is not source-verified at the exact design operating point; "
             "catalog rated output is used only as a provisional fallback."
@@ -1789,9 +1840,13 @@ def commercialize_heating_finalist(
     result = calculate(product_building, include_reference=False)
     priced = estimate_energy_cost(result)
     if not priced.get("complete"):
-        return candidate, None, [
-            f"{product.label}: factura anuală nu a putut fi evaluată după discretizare."
-        ]
+        return _finish(
+            candidate,
+            None,
+            [
+                f"{product.label}: factura anuală nu a putut fi evaluată după discretizare."
+            ],
+        )
 
     lines = [
         line
@@ -1883,8 +1938,12 @@ def commercialize_heating_finalist(
             ],
         }
     )
-    return CandidateEvaluationV1(**data), product, product_assumptions
-
+    return _finish(
+        CandidateEvaluationV1(**data),
+        product,
+        product_assumptions,
+        result,
+    )
 
 def _branch_request(
     request: OptimizationRequestV1,
