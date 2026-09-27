@@ -17,6 +17,12 @@ binding = "DB"
 database_name = "lacurent-db"
 database_id = "91b70c8a-3c11-4fe0-81ed-e3b64a075118"
 
+
+[[services]]
+binding = "REFERENCE_RBPE"
+service = "lacurent-reference-rbpe"
+remote = true
+
 [[routes]]
 pattern = "lacurent.com"
 custom_domain = true
