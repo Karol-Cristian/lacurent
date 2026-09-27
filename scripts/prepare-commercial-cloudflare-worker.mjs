@@ -2,6 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { buildLocationPayload } from "./build-location-payload.mjs";
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "..");
 const commercialRoot = path.join(repoRoot, "commercial");
@@ -70,6 +72,15 @@ copyDirectory(path.join(commercialRoot, "templates"), path.join(srcDir, "templat
 fs.copyFileSync(path.join(configRoot, "worker.py"), path.join(srcDir, "worker.py"));
 fs.copyFileSync(path.join(configRoot, "pyproject.toml"), path.join(outputDir, "pyproject.toml"));
 
+const publicDir = path.join(outputDir, "public");
+const locationDataManifest = buildLocationPayload({
+  registryPath: path.join(commercialRoot, "data", "localities.json"),
+  climateZonesPath: path.join(commercialRoot, "data", "winter-climate-zones.geojson"),
+  romaniaBoundaryPath: path.join(commercialRoot, "data", "romania-boundary.geojson"),
+  outputPath: path.join(publicDir, "api", "location-data"),
+  headersPath: path.join(publicDir, "_headers"),
+});
+
 const wranglerTemplate = fs.readFileSync(path.join(configRoot, "wrangler.toml"), "utf8");
 fs.writeFileSync(
   path.join(outputDir, "wrangler.toml"),
@@ -90,4 +101,5 @@ console.log(JSON.stringify({
   bytes: stats.bytes,
   includesRequirementsTxt: fs.existsSync(path.join(outputDir, "requirements.txt")),
   includesUvicornServer: false,
+  locationData: locationDataManifest,
 }, null, 2));
