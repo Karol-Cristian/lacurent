@@ -1955,6 +1955,15 @@ def test_reference_engine_pass_stays_scalar_before_evaluated_graph_allocation() 
     assert "_boundary_assumptions(" not in scalar_section
 
 
+def test_reference_worker_bundles_rbpe_data_files() -> None:
+    config = Path("commercial/reference-worker/wrangler.toml").read_text(
+        encoding="utf-8"
+    )
+    assert 'type = "Text"' in config
+    assert '"**/*.json"' in config
+    assert '"**/*.geojson"' in config
+
+
 def test_worker_memory_guard_and_v3_verification_use_bounded_state() -> None:
     source = Path("commercial/app/main.py").read_text(encoding="utf-8")
     assert "async def collect_python_worker_garbage(" in source
