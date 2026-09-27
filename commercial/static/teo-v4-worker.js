@@ -577,6 +577,21 @@ function shortlist(rows, mode, goals) {
     }, 24);
   }
 
+  if (mode === "auto_economic") {
+    const regretPool = frontier.length ? frontier : rows;
+    const regretMetrics = robustRegretMetricsRows(regretPool);
+    addTop(selected, regretPool, (a,b) => {
+      const am = regretMetrics.get(String(a.candidate.candidate_id));
+      const bm = regretMetrics.get(String(b.candidate.candidate_id));
+      return (
+        num(am?.worstRelative, Infinity) - num(bm?.worstRelative, Infinity)
+        || num(am?.meanRelative, Infinity) - num(bm?.meanRelative, Infinity)
+        || num(bm?.net20, -Infinity) - num(am?.net20, -Infinity)
+        || num(a.candidate.capex_lei) - num(b.candidate.capex_lei)
+      );
+    }, 64);
+  }
+
   const branchIds = [...new Set(rows.map(row => row.branchId))];
   for (const branchId of branchIds) {
     const branchRows = rows.filter(row => row.branchId === branchId);
@@ -636,6 +651,50 @@ function measuresFromNormalized(vector, bounds, template = {}) {
   return out;
 }
 
+function robustRegretMetricsRows(rows) {
+  const unique = [...new Map(
+    (rows || []).map(row => [String(row?.candidate?.candidate_id || ""), row])
+  ).values()].filter(row => row?.candidate);
+  const net = new Map();
+  for (const row of unique) {
+    const candidate = row.candidate;
+    const id = String(candidate.candidate_id);
+    const saving = num(candidate.annual_saving_lei);
+    const capex = num(candidate.capex_lei);
+    const byHorizon = {};
+    for (const horizon of AUTO_HORIZONS) {
+      byHorizon[horizon] = saving * horizon - capex;
+    }
+    net.set(id, byHorizon);
+  }
+
+  const best = {};
+  for (const horizon of AUTO_HORIZONS) {
+    best[horizon] = unique.length
+      ? Math.max(...unique.map(row => num(net.get(String(row.candidate.candidate_id))?.[horizon], -Infinity)))
+      : 0;
+  }
+
+  const metrics = new Map();
+  for (const row of unique) {
+    const id = String(row.candidate.candidate_id);
+    const relatives = [];
+    for (const horizon of AUTO_HORIZONS) {
+      const value = num(net.get(id)?.[horizon]);
+      const regret = num(best[horizon]) - value;
+      relatives.push(regret / Math.max(Math.abs(num(best[horizon])), 1));
+    }
+    metrics.set(id, {
+      worstRelative:relatives.length ? Math.max(...relatives) : Infinity,
+      meanRelative:relatives.length
+        ? relatives.reduce((sum, value) => sum + value, 0) / relatives.length
+        : Infinity,
+      net20:num(net.get(id)?.[20]),
+    });
+  }
+  return metrics;
+}
+
 function objectiveSeedSorter(mode, goals) {
   return (left, right) => {
     const a = left.candidate;
@@ -689,10 +748,28 @@ function refinementSeeds(rows, mode, goals, count) {
   evenlySample(frontier, Math.min(4, count)).forEach(row => {
     chosen.set(row.candidate.candidate_id, row);
   });
-  rows.slice()
-    .sort(objectiveSeedSorter(mode, goals))
-    .slice(0, count)
-    .forEach(row => chosen.set(row.candidate.candidate_id, row));
+
+  let ranked = rows.slice();
+  if (mode === "auto_economic") {
+    const pool = frontier.length ? frontier : rows;
+    const metrics = robustRegretMetricsRows(pool);
+    ranked = pool.slice().sort((left, right) => {
+      const lm = metrics.get(String(left.candidate.candidate_id));
+      const rm = metrics.get(String(right.candidate.candidate_id));
+      return (
+        num(lm?.worstRelative, Infinity) - num(rm?.worstRelative, Infinity)
+        || num(lm?.meanRelative, Infinity) - num(rm?.meanRelative, Infinity)
+        || num(rm?.net20, -Infinity) - num(lm?.net20, -Infinity)
+        || num(left.candidate.capex_lei) - num(right.candidate.capex_lei)
+      );
+    });
+  } else {
+    ranked.sort(objectiveSeedSorter(mode, goals));
+  }
+
+  ranked.slice(0, count).forEach(row => {
+    chosen.set(row.candidate.candidate_id, row);
+  });
   return [...chosen.values()].slice(0, count);
 }
 
