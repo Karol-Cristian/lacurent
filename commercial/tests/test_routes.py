@@ -1891,7 +1891,7 @@ def test_v3_product_is_bounded_and_finalize_is_pure_assembly() -> None:
     assert "COMMERCIAL_FINALIST_MAX_PRODUCTS" in bounded_section
 
 
-def test_reference_engine_pass_is_completed_before_evaluated_graph_allocation() -> None:
+def test_reference_engine_pass_stays_scalar_before_evaluated_graph_allocation() -> None:
     source = Path("commercial/app/engine.py").read_text(encoding="utf-8")
     section = source.split(
         "def calculate(building: BuildingInput, *, include_reference: bool = True)",
@@ -1900,14 +1900,27 @@ def test_reference_engine_pass_is_completed_before_evaluated_graph_allocation() 
         "def demo_building()",
         1,
     )[0]
-    reference_index = section.index("reference_result = calculate(")
-    release_index = section.index("del reference_result")
+    reference_index = section.index(
+        "reference_specific = _primary_specific_energy_scalar("
+    )
     actual_graph_index = section.index(
         "transmission, envelope_contributions, bridge_contributions = "
         "transmission_heat_transfer_components(building)"
     )
-    assert reference_index < release_index < actual_graph_index
+    assert reference_index < actual_graph_index
+    assert "reference_result = calculate(" not in section
     assert "gc.collect()" in section
+
+    scalar_section = source.split(
+        "def _primary_specific_energy_scalar(",
+        1,
+    )[1].split(
+        "def calculate(building: BuildingInput, *, include_reference: bool = True)",
+        1,
+    )[0]
+    assert "CalculationResult(" not in scalar_section
+    assert "envelope_geometry(" not in scalar_section
+    assert "_boundary_assumptions(" not in scalar_section
 
 
 def test_worker_memory_guard_and_v3_verification_use_bounded_state() -> None:
