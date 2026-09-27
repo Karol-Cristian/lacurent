@@ -160,11 +160,16 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'data-page="run"' in page.text
     assert 'data-page="report"' in page.text
     assert 'data-page="renewables"' in page.text
-    assert "/static/home-lab-editorial.css?v=15" in page.text
-    assert "/static/home-lab-editorial.js?v=34" in page.text
+    assert "/static/home-lab-editorial.css?v=16" in page.text
+    assert "/static/home-lab-editorial.js?v=35" in page.text
     assert "/static/home-lab-3d.js" not in page.text
     assert 'id="edBaselineClass"' in page.text
     assert 'id="edBaselineCost"' in page.text
+    assert 'id="edPriceReferencesOpen"' in page.text
+    assert 'id="priceDialog"' in page.text
+    assert 'id="edPriceReferenceGrid"' in page.text
+    assert "Referințele de preț" in page.text
+    assert "Prețuri de referință, nu cotații live" in page.text
     assert 'class="ed-baseline-bar"' in page.text
     assert 'id="edLocalitySuggestions"' in page.text
     assert 'id="edLocationMap"' in page.text
@@ -268,6 +273,20 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert "finalizeHttpRequests:0" in js.text
     assert 'showPage("done");' in js.text
     assert '$("#openReport").addEventListener("click", () => showPage("report"));' in js.text
+
+
+def test_editorial_baseline_cost_opens_exact_price_reference_dialog() -> None:
+    js = client.get("/static/home-lab-editorial.js")
+    assert js.status_code == 200
+    source = js.text
+
+    assert "function renderPriceReferences(" in source
+    assert "price_reference_rows" in source
+    assert "price_retrieved_on" in source
+    assert "Mai jos sunt exact referințele folosite" in source
+    assert 'priceReferenceOpen?.addEventListener("click"' in source
+    assert "priceDialog.showModal()" in source
+    assert "Contribuție în estimare" in source
 
 
 def test_teo_v4_plan_builds_thousands_of_browser_points_without_server_candidate_evaluations() -> None:
@@ -1133,6 +1152,15 @@ def test_home_lab_next_calculation_reuses_existing_energy_engine() -> None:
     assert payload["heat_loss_w_k"] > 0
     assert payload["energy_class"]
     assert "annual_cost_lei" in payload
+    assert payload["price_retrieved_on"]
+    assert isinstance(payload["price_reference_rows"], list)
+    assert payload["price_reference_rows"]
+    for row in payload["price_reference_rows"]:
+        assert row["label"]
+        assert row["source_name"]
+        assert str(row["source_url"]).startswith("http")
+        assert row["unit_price_lei_per_kwh"] is not None
+        assert row["price_status"] in {"current", "stale", "not_yet_valid"}
     assert payload["reference_parameters"]["u_values_w_m2k"]["exterior_wall"] == pytest.approx(0.25)
     assert payload["reference_parameters"]["u_values_w_m2k"]["roof"] == pytest.approx(0.15)
     assert payload["reference_parameters"]["u_values_w_m2k"]["floor"] == pytest.approx(0.20)
