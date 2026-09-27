@@ -3189,10 +3189,6 @@ async def home_lab_optimization_v3_verify_api(request: Request) -> JSONResponse:
         )
         if not branch_id or not isinstance(candidate_raw, dict):
             raise ValueError("Lipsește finalistul V3 pentru verificare.")
-        if baseline_annual_bill_lei is None:
-            raise ValueError(
-                "Lipsește factura baseline pentru verificarea V3 memory-safe."
-            )
 
         _, _, optimization_request = _home_lab_optimization_request_from_form(form)
         cost_catalog = await _optimizer_cost_catalog(request)
