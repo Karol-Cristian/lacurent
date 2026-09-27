@@ -82,16 +82,23 @@
     </section>
     {% endif %}
 
-    <section class="certificate-comparison">
+    <section
+      class="certificate-comparison"
+      data-reference-comparison
+      data-reference-url="/api/reference-comparison"
+      data-actual-specific="{{ result.primary_energy.specific_kwh_m2 }}"
+    >
       <h2>Comparație cu clădirea de referință</h2>
+      <input type="hidden" data-reference-payload value="{{ payload }}">
       <div>
         <span>Clădire evaluată</span>
-        <strong>{{ result.reference.actual_specific_primary_kwh_m2|fmt("kWh/m²/an", 1) }}</strong>
+        <strong>{{ result.primary_energy.specific_kwh_m2|fmt("kWh/m²/an", 1) }}</strong>
         <span>Clădire de referință</span>
-        <strong>{{ result.reference.reference_specific_primary_kwh_m2|fmt("kWh/m²/an", 1) }}</strong>
+        <strong data-reference-value>Se calculează…</strong>
         <span>Diferență</span>
-        <strong>{{ result.reference.difference_percent|fmt("%", 1) }}</strong>
+        <strong data-reference-delta>—</strong>
       </div>
+      <p><small data-reference-status>Calcul separat RBPE în curs.</small></p>
     </section>
 
     <section>
@@ -134,5 +141,6 @@
     </footer>
   </main>
   <script src="{{ url_for('static', path='app.js') }}?v=v2eng3"></script>
+  <script src="/static/reference-comparison.js?v=1" defer></script>
 </body>
 </html>
