@@ -29,7 +29,38 @@ def _json_response(payload: dict, *, status: int = 200) -> Response:
     )
 
 
+def _reference_comparison_payload(payload, actual_raw) -> dict:
+    if payload in (None, "") or actual_raw in (None, ""):
+        raise ValueError("Missing reference-comparison input.")
+
+    building = building_from_json(
+        payload if isinstance(payload, str) else json.dumps(payload)
+    )
+    actual_specific = float(actual_raw)
+    reference_specific = reference_primary_specific_energy(building)
+    difference = actual_specific - reference_specific
+    difference_percent = (
+        100.0 * difference / reference_specific
+        if reference_specific
+        else 0.0
+    )
+    result = {
+        "actualSpecificPrimaryKwhM2": round(actual_specific, 3),
+        "referenceSpecificPrimaryKwhM2": round(reference_specific, 3),
+        "differenceKwhM2": round(difference, 2),
+        "differencePercent": round(difference_percent, 1),
+        "calculationMode": "dedicated_reference_rbpe_worker",
+    }
+    del building
+    gc.collect()
+    return result
+
+
 class Default(WorkerEntrypoint):
+    async def reference_comparison(self, payload, actual_specific):
+        """Private Worker RPC entrypoint used by the main LaCurent service."""
+        return _reference_comparison_payload(payload, actual_specific)
+
     async def fetch(self, request):
         path = urlparse(request.url).path
         method = str(request.method).upper()
@@ -51,37 +82,12 @@ class Default(WorkerEntrypoint):
 
         try:
             body = await request.json()
-            payload = body.get("payload")
-            actual_raw = body.get("actualSpecificPrimaryKwhM2")
-            if payload in (None, "") or actual_raw in (None, ""):
-                return _json_response(
-                    {"error": "Missing reference-comparison input."},
-                    status=422,
+            return _json_response(
+                _reference_comparison_payload(
+                    body.get("payload"),
+                    body.get("actualSpecificPrimaryKwhM2"),
                 )
-
-            building = building_from_json(
-                payload if isinstance(payload, str) else json.dumps(payload)
             )
-            actual_specific = float(actual_raw)
-            reference_specific = reference_primary_specific_energy(building)
-            difference = actual_specific - reference_specific
-            difference_percent = (
-                100.0 * difference / reference_specific
-                if reference_specific
-                else 0.0
-            )
-            response = _json_response(
-                {
-                    "actualSpecificPrimaryKwhM2": round(actual_specific, 3),
-                    "referenceSpecificPrimaryKwhM2": round(reference_specific, 3),
-                    "differenceKwhM2": round(difference, 2),
-                    "differencePercent": round(difference_percent, 1),
-                    "calculationMode": "dedicated_reference_rbpe_worker",
-                }
-            )
-            del building
-            gc.collect()
-            return response
         except Exception as exc:
             return _json_response(
                 {
