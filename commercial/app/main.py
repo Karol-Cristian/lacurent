@@ -1465,6 +1465,25 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
             )
         return payload
 
+    class_registry = method["energy_class_thresholds"][building_type]
+    class_limits = [
+        float(value)
+        for value in class_registry["total_primary_kwh_m2"]
+    ]
+    class_labels = ["A+", "A", "B", "C", "D", "E", "F", "G"]
+    class_intervals: list[dict[str, Any]] = []
+    lower_limit: float | None = None
+    for index, class_label in enumerate(class_labels):
+        upper_limit = class_limits[index] if index < len(class_limits) else None
+        class_intervals.append(
+            {
+                "class": class_label,
+                "min_exclusive_kwh_m2": lower_limit,
+                "max_inclusive_kwh_m2": upper_limit,
+            }
+        )
+        lower_limit = upper_limit
+
     annual_fuel_use: dict[str, Any] | None = None
     for row in cost.get("rows", []):
         if str(row.get("carrier") or "") != "biomass":
@@ -1578,6 +1597,14 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
             if reference is not None
             else None
         ),
+        "energy_class_reference": {
+            "building_type": building_type,
+            "indicator": "total_primary_energy",
+            "unit": "kWh/(m²·an)",
+            "source": class_registry.get("source"),
+            "interval_semantics": "open_left_closed_right",
+            "intervals": class_intervals,
+        },
         "reference_parameters": {
             "u_values_w_m2k": {
                 key: float(value)
@@ -1593,6 +1620,11 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
             "heating_efficiency": float(reference_rules["heating_efficiency"]),
             "cooling_seer": float(reference_rules["cooling_seer"]),
             "dhw_efficiency": float(reference_rules["dhw_efficiency"]),
+            "heating_system_type": "condensing_gas_boiler",
+            "heating_system_label": "Centrală în condensare pe gaz",
+            "geometry_policy": "same_geometry_locality_orientation_as_real_building",
+            "thermal_bridges_policy": "zero_reference_thermal_bridges",
+            "renewables_policy": "none_in_light_reference_building",
         },
         "price_references_current": bool(cost.get("price_references_current")),
         "price_retrieved_on": cost.get("retrieved_on"),
