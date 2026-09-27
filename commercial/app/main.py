@@ -187,7 +187,13 @@ async def collect_python_worker_garbage(request: Request, call_next: Any) -> Any
     try:
         return await call_next(request)
     finally:
-        if not path.startswith(("/static/", "/home-lab-assets/")):
+        if not path.startswith(
+            (
+                "/static/",
+                "/home-lab-assets/",
+                "/api/optimization/home-lab/v4/flow/",
+            )
+        ):
             gc.collect()
 
 
