@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gc
 import hashlib
 import json
 from typing import Literal
@@ -258,6 +259,15 @@ def build_wall_insulation_scenario(
         raise ValueError("Baseline house has no modeled exterior-wall U-value.")
 
     house_state = build_house_state(baseline, baseline_result)
+    baseline_snapshot = house_state.calculation
+    affected_area = float(baseline_result.envelope_geometry.net_wall_area_m2)
+
+    # The scenario response only needs the compact baseline snapshot and a few
+    # scalar geometry values. Release the full baseline RBPE graph before the
+    # renovated graph is allocated; holding both simultaneously caused a large
+    # peak in long-lived Cloudflare Python isolates.
+    del baseline_result
+    gc.collect()
 
     thickness_m = float(added_insulation_thickness_mm) / 1000.0
     added_r = thickness_m / float(insulation_lambda_w_mk)
@@ -267,6 +277,9 @@ def build_wall_insulation_scenario(
     proposed_wall_u = scenario_result.envelope_u_values.wall_u_value_w_m2k
     if proposed_wall_u is None:
         raise ValueError("Scenario did not produce an exterior-wall U-value.")
+    scenario_snapshot = _snapshot(scenario_result)
+    del scenario_result
+    gc.collect()
 
     measure_payload = {
         "house_id": house_state.house_id,
@@ -302,9 +315,6 @@ def build_wall_insulation_scenario(
             "No commercial waste factor, package rounding, anchors, adhesive, mesh, finish or labour is included.",
         ],
     )
-
-    baseline_snapshot = house_state.calculation
-    scenario_snapshot = _snapshot(scenario_result)
 
     annual_cost_delta = _optional_metric_delta(
         baseline_snapshot.annual_cost_lei,
@@ -376,7 +386,6 @@ def build_wall_insulation_scenario(
         delta_vs_baseline=delta,
     )
 
-    affected_area = float(baseline_result.envelope_geometry.net_wall_area_m2)
     requirement = TechnicalRequirementV1(
         requirement_id=_stable_id(
             "REQ-WALL",
