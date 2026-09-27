@@ -698,23 +698,26 @@ function refineBranch({
   goals,
   seen,
   roundIndex,
+  baselineBill,
 }) {
   const cfg = LOCAL_REFINEMENT_ROUNDS[roundIndex];
-  if (!cfg || !bounds || !rows.length) return [];
+  if (!cfg || !bounds || !rows.length) return {rows:[], attempts:0};
   const seeds = refinementSeeds(rows, mode, goals, cfg.seedCount);
   const generated = [];
   let ordinal = 0;
+  let attempts = 0;
 
   const tryVector = (vector, template, label) => {
     const measures = measuresFromNormalized(vector, bounds, template);
     const signature = measureSignature(measures);
     if (seen.has(signature)) return;
     seen.add(signature);
+    attempts += 1;
     const row = evaluate(
       kernel,
       branch,
       measures,
-      0,
+      baselineBill,
       `V4R-${roundIndex + 1}-${branch.branch_id}-${label}-${++ordinal}`
     );
     if (row) generated.push(row);
@@ -750,7 +753,7 @@ function refineBranch({
       }
     }
   }
-  return generated;
+  return {rows:generated, attempts};
 }
 
 self.onmessage = event => {
@@ -809,6 +812,7 @@ self.onmessage = event => {
         }
       }
 
+      let branchRefinementEvaluations = 0;
       for (let roundIndex=0; roundIndex<LOCAL_REFINEMENT_ROUNDS.length; roundIndex++) {
         const refined = refineBranch({
           kernel,
@@ -819,24 +823,15 @@ self.onmessage = event => {
           goals:data.goals || {},
           seen,
           roundIndex,
+          baselineBill,
         });
-        refinementEvaluations += refined.length;
-        total += refined.length;
-        refined.forEach(row => {
-          // Re-evaluate with the real baseline bill because refineBranch uses
-          // baselineBill=0 only to create physical/economic geometry cheaply.
-          const exactFast = evaluate(
-            kernel,
-            branch,
-            row.candidate.parameters,
-            baselineBill,
-            row.candidate.candidate_id
-          );
-          if (exactFast) {
-            allRows.push(exactFast);
-            branchRows.push(exactFast);
-            accepted += 1;
-          }
+        branchRefinementEvaluations += refined.attempts;
+        refinementEvaluations += refined.attempts;
+        total += refined.attempts;
+        refined.rows.forEach(row => {
+          allRows.push(row);
+          branchRows.push(row);
+          accepted += 1;
         });
         self.postMessage({
           type:"progress",
@@ -853,9 +848,9 @@ self.onmessage = event => {
 
       branchStats.push({
         branchId,
-        evaluatedCandidates:searchPoints.length + refinementEvaluations,
+        evaluatedCandidates:searchPoints.length + branchRefinementEvaluations,
         globalEvaluations:searchPoints.length,
-        refinementEvaluations,
+        refinementEvaluations:branchRefinementEvaluations,
         acceptedCandidates:accepted,
         feasibleCandidates:accepted,
       });
