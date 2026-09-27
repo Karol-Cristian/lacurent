@@ -361,6 +361,25 @@ def test_home_lab_local_persistence_and_analytics_are_consent_gated() -> None:
     assert "if (!autosaveAllowed()) return false;" in autosave_js.text
 
 
+def test_landing_uses_compact_heating_summary_not_full_catalog() -> None:
+    source = Path("commercial/app/main.py").read_text(encoding="utf-8")
+    section = source.split(
+        'async def index(request: Request) -> HTMLResponse:',
+        1,
+    )[1].split(
+        '@app.get("/produse"',
+        1,
+    )[0]
+    assert "_optimizer_heating_catalog_summary(request)" in section
+    assert "_optimizer_heating_catalog(request)" not in section
+
+    store = Path("commercial/app/heating_catalog_store.py").read_text(
+        encoding="utf-8"
+    )
+    assert "_heating_catalog_cached_payload" not in store
+    assert "request-scoped" in store
+
+
 def test_company_home_is_commercial_landing() -> None:
     response = client.get("/")
     assert response.status_code == 200

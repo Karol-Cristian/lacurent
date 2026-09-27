@@ -15,8 +15,9 @@ HEATING_PARAMETRIC_NODE_TOTAL = 1000
 D1_BATCH_SIZE = 100
 
 _heating_catalog_lock = asyncio.Lock()
-_heating_catalog_cached_payload: dict[str, Any] | None = None
-_heating_catalog_cache_expires_at = 0.0
+# Full product/performance/catalog payloads are request-scoped. Retaining them
+# in a long-lived Pyodide Worker isolate duplicates D1 data as Python objects
+# and was enough to push subsequent unrelated requests into 1101/503 failures.
 _heating_catalog_retry_after = 0.0
 
 _heating_catalog_summary_lock = asyncio.Lock()
@@ -1195,26 +1196,21 @@ async def _read_heating_catalog_d1(db: Any) -> dict[str, Any]:
 
 
 async def cached_heating_catalog_from_d1(db: Any) -> dict[str, Any] | None:
-    global _heating_catalog_cached_payload
-    global _heating_catalog_cache_expires_at
+    """Read the complete catalog without retaining it across Worker requests.
+
+    The public name is preserved for callers, but the payload is deliberately
+    request-scoped. The lightweight technology summary and tiny branch catalogs
+    keep their own bounded caches.
+    """
+
     global _heating_catalog_retry_after
 
     now = time.monotonic()
-    if (
-        _heating_catalog_cached_payload is not None
-        and now < _heating_catalog_cache_expires_at
-    ):
-        return _heating_catalog_cached_payload
     if now < _heating_catalog_retry_after:
         return None
 
     async with _heating_catalog_lock:
         now = time.monotonic()
-        if (
-            _heating_catalog_cached_payload is not None
-            and now < _heating_catalog_cache_expires_at
-        ):
-            return _heating_catalog_cached_payload
         if now < _heating_catalog_retry_after:
             return None
         try:
@@ -1223,11 +1219,11 @@ async def cached_heating_catalog_from_d1(db: Any) -> dict[str, Any] | None:
             if not payload.get("options"):
                 raise ValueError("D1 heating product catalog is empty.")
         except Exception:
-            _heating_catalog_retry_after = time.monotonic() + HEATING_CATALOG_RETRY_SECONDS
+            _heating_catalog_retry_after = (
+                time.monotonic() + HEATING_CATALOG_RETRY_SECONDS
+            )
             return None
 
-        _heating_catalog_cached_payload = payload
-        _heating_catalog_cache_expires_at = time.monotonic() + HEATING_CATALOG_CACHE_SECONDS
         _heating_catalog_retry_after = 0.0
         return payload
 
