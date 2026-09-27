@@ -533,19 +533,42 @@ function addTop(set, rows, sorter, count) {
 }
 
 function paretoRows(rows) {
+  const EPS_PARETO = 1e-9;
   const sorted = rows.slice().sort((a,b) =>
     num(a.candidate.capex_lei) - num(b.candidate.capex_lei) ||
-    num(a.candidate.annual_bill_lei) - num(b.candidate.annual_bill_lei)
+    num(a.candidate.annual_bill_lei) - num(b.candidate.annual_bill_lei) ||
+    String(a.candidate.candidate_id || "").localeCompare(String(b.candidate.candidate_id || ""))
   );
   const frontier = [];
-  let bestBill = Infinity;
-  for (const row of sorted) {
-    const bill = num(row.candidate.annual_bill_lei, Infinity);
-    if (bill < bestBill - 0.01) {
-      frontier.push(row);
-      bestBill = bill;
+  let bestBillFromLowerCapex = Infinity;
+  let index = 0;
+
+  while (index < sorted.length) {
+    const groupCapex = num(sorted[index].candidate.capex_lei, Infinity);
+    let end = index + 1;
+    while (
+      end < sorted.length
+      && Math.abs(num(sorted[end].candidate.capex_lei, Infinity) - groupCapex) <= EPS_PARETO
+    ) {
+      end += 1;
     }
+
+    const group = sorted.slice(index, end);
+    const groupBestBill = Math.min(
+      ...group.map(row => num(row.candidate.annual_bill_lei, Infinity))
+    );
+    for (const row of group) {
+      const bill = num(row.candidate.annual_bill_lei, Infinity);
+      const dominatedWithinSameCapex = bill > groupBestBill + EPS_PARETO;
+      const dominatedByLowerCapex = bestBillFromLowerCapex <= bill + EPS_PARETO;
+      if (!dominatedWithinSameCapex && !dominatedByLowerCapex) {
+        frontier.push(row);
+      }
+    }
+    bestBillFromLowerCapex = Math.min(bestBillFromLowerCapex, groupBestBill);
+    index = end;
   }
+
   return frontier;
 }
 
@@ -625,6 +648,92 @@ function shortlist(rows, mode, goals) {
   return {rows:output, frontierCount:frontier.length};
 }
 
+
+function verificationPlanRows(rows, mode, goals, minCount = 4, maxCount = 8) {
+  const uniqueRows = [...new Map(
+    (rows || [])
+      .filter(row => row?.candidate?.candidate_id)
+      .map(row => [String(row.candidate.candidate_id), row])
+  ).values()];
+  if (!uniqueRows.length) {
+    return {rows:[], frontierCount:0, requestedCount:0};
+  }
+
+  const frontier = paretoRows(uniqueRows);
+  let ranked = [];
+
+  if (mode === "investment_budget") {
+    const budget = num(goals?.investment_budget_lei, 0);
+    const feasible = uniqueRows.filter(
+      row => num(row.candidate.capex_lei) <= budget + 1e-6
+    );
+    ranked = (feasible.length ? feasible : uniqueRows).slice().sort((a,b) =>
+      num(b.candidate.annual_saving_lei) - num(a.candidate.annual_saving_lei)
+      || num(a.candidate.capex_lei) - num(b.candidate.capex_lei)
+      || num(a.candidate.annual_bill_lei) - num(b.candidate.annual_bill_lei)
+    );
+  } else if (mode === "annual_bill_target") {
+    const target = num(goals?.annual_bill_target_lei, 0);
+    const feasible = uniqueRows.filter(
+      row => num(row.candidate.annual_bill_lei) <= target + 1e-6
+    );
+    ranked = (feasible.length ? feasible : uniqueRows).slice().sort((a,b) =>
+      num(a.candidate.capex_lei) - num(b.candidate.capex_lei)
+      || num(a.candidate.annual_bill_lei) - num(b.candidate.annual_bill_lei)
+      || num(b.candidate.annual_saving_lei) - num(a.candidate.annual_saving_lei)
+    );
+  } else if (mode === "max_payback_years") {
+    const limit = num(goals?.max_payback_years, 0);
+    const feasible = uniqueRows.filter(row =>
+      row.candidate.payback_years != null
+      && num(row.candidate.payback_years) <= limit + 1e-6
+      && num(row.candidate.annual_saving_lei) > 0
+    );
+    ranked = (feasible.length ? feasible : uniqueRows).slice().sort((a,b) =>
+      num(b.candidate.annual_saving_lei) - num(a.candidate.annual_saving_lei)
+      || num(a.candidate.capex_lei) - num(b.candidate.capex_lei)
+      || num(a.candidate.payback_years, Infinity) - num(b.candidate.payback_years, Infinity)
+    );
+  } else {
+    const pool = frontier.length ? frontier : uniqueRows;
+    const metrics = robustRegretMetricsRows(pool);
+    ranked = pool.slice().sort((a,b) => {
+      const am = metrics.get(String(a.candidate.candidate_id));
+      const bm = metrics.get(String(b.candidate.candidate_id));
+      const anet20 = num(a.candidate.annual_saving_lei) * 20 - num(a.candidate.capex_lei);
+      const bnet20 = num(b.candidate.annual_saving_lei) * 20 - num(b.candidate.capex_lei);
+      return (
+        num(am?.worstRelative, Infinity) - num(bm?.worstRelative, Infinity)
+        || num(am?.meanRelative, Infinity) - num(bm?.meanRelative, Infinity)
+        || bnet20 - anet20
+        || num(a.candidate.capex_lei) - num(b.candidate.capex_lei)
+      );
+    });
+  }
+
+  const requestedCount = Math.min(
+    maxCount,
+    Math.max(
+      minCount,
+      Math.min(maxCount, frontier.length + 2)
+    )
+  );
+  const ordered = [...ranked, ...frontier];
+  const selected = [];
+  const seen = new Set();
+  for (const row of ordered) {
+    const id = String(row?.candidate?.candidate_id || "");
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    selected.push(row);
+    if (selected.length >= requestedCount) break;
+  }
+  return {
+    rows:selected,
+    frontierCount:frontier.length,
+    requestedCount:selected.length,
+  };
+}
 
 function measureSignature(measures) {
   return SEARCH_DIMENSIONS
@@ -1031,11 +1140,21 @@ self.onmessage = event => {
     }
 
     const reduced = shortlist(allRows, data.mode || "auto_economic", data.goals || {});
+    const verificationPlan = verificationPlanRows(
+      reduced.rows,
+      data.mode || "auto_economic",
+      data.goals || {},
+      4,
+      8
+    );
     self.postMessage({
       type:"done",
       candidateRows:reduced.rows,
+      verificationRows:verificationPlan.rows,
+      verificationCount:verificationPlan.requestedCount,
+      verificationStrategy:"browser_rank_plus_pareto_v4",
       sourceCandidateCount:allRows.length,
-      frontierCount:reduced.frontierCount,
+      frontierCount:verificationPlan.frontierCount,
       branchStats,
       fastEvaluations:total,
       globalEvaluations,
