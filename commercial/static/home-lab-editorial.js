@@ -2234,7 +2234,10 @@
       baselineResult = await postForm(
         "/api/home-lab-next/calculate",
         baseFormData(),
-        {stageName:"baseline", runId, retries:1}
+        // A Cloudflare 500/1101 at baseline can mean the current Python
+        // isolate is already resource-exhausted. Immediate retry against the
+        // same isolate only raises peak pressure and hides the first failure.
+        {stageName:"baseline", runId, retries:0}
       );
       paintBaselineSummary(baselineResult, "Baseline folosit în optimizare.");
       stage("baseline","done","gata");
@@ -2319,7 +2322,8 @@
           {
             form:formPayload,
             branchId:target.branchId,
-            candidate:target.candidate
+            candidate:target.candidate,
+            baselineAnnualBillLei:Number(baselineResult?.annual_cost_lei || 0)
           },
           {stageName:`verify ${i + 1}/${targets.length}`, runId, retries:2}
         );
