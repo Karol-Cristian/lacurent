@@ -32,6 +32,7 @@ from .optimization import (
     OptimizationSelectionRequestV1,
     evaluate_parametric_candidate,
     compact_refinement_candidate,
+    clear_baseline_evaluation_cache,
     parametric_phase_candidate_descriptors,
     pareto_frontier,
     refinement_seed_from_compact,
@@ -1587,6 +1588,12 @@ async def render_calculation_from_form(
         values[key] = _checked(form, key)
     extra = page_context or {}
     try:
+        # A completed optimizer run must not leave a cached full
+        # CalculationResult resident while the next baseline allocates another
+        # full engine graph. Clear legacy optimizer baseline state before every
+        # ordinary Home Lab calculation to cap cross-run peak memory.
+        clear_baseline_evaluation_cache()
+        gc.collect()
         building = build_input_from_form(form)
         result = calculate(building)
     except Exception as exc:
@@ -3169,8 +3176,18 @@ async def home_lab_optimization_v3_verify_api(request: Request) -> JSONResponse:
         form = dict(raw.get("form") or {})
         branch_id = str(raw.get("branchId") or "").strip()
         candidate_raw = raw.get("candidate")
+        baseline_bill_raw = raw.get("baselineAnnualBillLei")
+        baseline_annual_bill_lei = (
+            None
+            if baseline_bill_raw in (None, "")
+            else float(baseline_bill_raw)
+        )
         if not branch_id or not isinstance(candidate_raw, dict):
             raise ValueError("Lipsește finalistul V3 pentru verificare.")
+        if baseline_annual_bill_lei is None:
+            raise ValueError(
+                "Lipsește factura baseline pentru verificarea V3 memory-safe."
+            )
 
         _, _, optimization_request = _home_lab_optimization_request_from_form(form)
         cost_catalog = await _optimizer_cost_catalog(request)
@@ -3186,6 +3203,7 @@ async def home_lab_optimization_v3_verify_api(request: Request) -> JSONResponse:
             branch_id=branch_id,
             catalog=cost_catalog,
             heating_catalog=heating_catalog,
+            baseline_annual_bill_lei=baseline_annual_bill_lei,
         )
         elapsed_ms = round((time.perf_counter() - started) * 1000.0, 1)
         return JSONResponse(
@@ -3311,6 +3329,7 @@ async def home_lab_optimization_v3_product_api(request: Request) -> JSONResponse
         del heating_catalog
         del optimization_request
         del payload
+        clear_baseline_evaluation_cache()
         gc.collect()
         return response
     except Exception as exc:
