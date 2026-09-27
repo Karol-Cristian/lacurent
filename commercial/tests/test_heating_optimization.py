@@ -853,10 +853,8 @@ def test_keep_current_finalist_never_selects_a_new_generator_product() -> None:
 
 
 
-def test_air_air_quantity_is_derived_from_single_unit_design_capacity() -> None:
+def test_air_air_does_not_multiply_monosplits_to_close_design_load_gap() -> None:
     baseline_payload = model_to_dict(demo_building())
-    # Use the browser-selected climate token carried by Home Lab so this
-    # regression exercises the normative Zone III winter design temperature.
     baseline_payload["locality"] = "@lc|cluj_napoca|III|-18|Cluj-Napoca"
     baseline = BuildingInput(**baseline_payload)
     technology = next(
@@ -865,20 +863,27 @@ def test_air_air_quantity_is_derived_from_single_unit_design_capacity() -> None:
         if item.id == "heat-pump-air-air"
     )
 
-    sized = _select_sized_product(
+    # No single source-backed unit in the current bounded catalog covers this
+    # load at -18 °C. The optimizer must leave topology unresolved instead of
+    # silently converting the 35A monosplit into 2x or 3x units.
+    assert _select_sized_product(
         baseline,
         technology,
         4.76,
-    )
+    ) is None
 
+    # A load that one verified unit can cover still selects exactly one unit.
+    sized = _select_sized_product(
+        baseline,
+        technology,
+        2.2,
+    )
     assert sized is not None
     assert sized.product.id == "hp-aa-daikin-perfera-35a9"
-    assert sized.quantity == 2
-    assert sized.aggregate_rated_power_kw == pytest.approx(8.0)
-    assert sized.available_design_capacity_kw >= 4.76
-    assert sized.available_design_capacity_kw < 5.1
-    assert "x2_identical_monosplits" in sized.capacity_basis
-    assert sized.installed_capex_lei == pytest.approx(2 * 7845.32)
+    assert sized.quantity == 1
+    assert sized.aggregate_rated_power_kw == pytest.approx(4.0)
+    assert sized.available_design_capacity_kw >= 2.2
+    assert sized.installed_capex_lei == pytest.approx(7845.32)
 
 
 def test_air_air_dynamic_quantity_profile_reports_aggregate_design_capacity() -> None:
