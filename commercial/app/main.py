@@ -1596,6 +1596,31 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
         },
         "price_references_current": bool(cost.get("price_references_current")),
         "price_retrieved_on": cost.get("retrieved_on"),
+        "price_reference_rows": [
+            {
+                "carrier": str(row.get("carrier") or ""),
+                "label": str(row.get("label") or ""),
+                "final_kwh": float(row.get("final_kwh") or 0.0),
+                "unit_price_lei_per_kwh": (
+                    float(row["unit_price_lei_per_kwh"])
+                    if row.get("unit_price_lei_per_kwh") is not None
+                    else None
+                ),
+                "annual_cost_lei": (
+                    float(row["annual_cost_lei"])
+                    if row.get("annual_cost_lei") is not None
+                    else None
+                ),
+                "price_status": str(row.get("price_status") or ""),
+                "basis": row.get("basis"),
+                "source_name": row.get("source_name"),
+                "source_url": row.get("source_url"),
+                "valid_from": row.get("valid_from"),
+                "valid_until": row.get("valid_until"),
+                "note": row.get("note"),
+            }
+            for row in cost.get("rows", [])
+        ],
         "methodology_version": str(result.methodology_version),
         "methodology_scope": method.get("scope"),
         "methodology_source": method.get("monthly_method", {}).get("source"),
@@ -2670,6 +2695,7 @@ async def home_lab_editorial(request: Request) -> HTMLResponse:
         {
             "request": request,
             **calculator_context(),
+            "energy_overview": home_lab_price_overview(),
         },
     )
 
