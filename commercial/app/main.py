@@ -2496,6 +2496,38 @@ def _assert_optimizer_economics_complete(candidate: CandidateEvaluationV1) -> No
             )
 
 
+def _optimizer_candidate_scenario_snapshot(
+    candidate: CandidateEvaluationV1,
+    form: dict[str, Any],
+) -> dict[str, Any]:
+    """Build a no-recalculation scenario for fail-soft reporting.
+
+    Canonical verification already produced these authoritative scalar metrics.
+    The snapshot intentionally omits monthly/fuel details that would require a
+    second engine pass.
+    """
+
+    return {
+        "locality": str(
+            form.get("locality")
+            or form.get("locality_id")
+            or ""
+        ),
+        "annual_cost_lei": float(candidate.annual_bill_lei),
+        "final_energy_kwh": float(candidate.final_energy_kwh),
+        "primary_specific_kwh_m2": float(
+            candidate.primary_specific_kwh_m2
+        ),
+        "co2_total_kg": float(candidate.co2_total_kg),
+        "co2_specific_kg_m2": float(candidate.co2_specific_kg_m2),
+        "energy_class": candidate.energy_class,
+        "design_heat_load_kw": candidate.design_heat_load_kw,
+        "annual_fuel_use": {},
+        "assumptions": list(candidate.assumptions),
+        "scenario_detail": "canonical_scalar_snapshot_no_recalculation",
+    }
+
+
 def _home_lab_optimizer_success_payload(
     *,
     mode: OptimizationMode,
@@ -2622,7 +2654,7 @@ def _home_lab_optimizer_success_payload(
                 "technologyId": next(
                     (
                         product.technology_id
-                        for product in heating_planning_options()
+                        for product in heating_planning_options(heating_catalog)
                         if product.id == line.product_id
                     ),
                     None,
