@@ -658,6 +658,40 @@ def apply_heating_technology(
     return BuildingInput(**payload)
 
 
+def apply_parametric_heating_technology(
+    building: BuildingInput,
+    technology: HeatingTechnologyV2,
+) -> BuildingInput:
+    """Apply technology topology without borrowing one SKU's heat-pump SCOP.
+
+    TEO optimizes a continuous technology branch before commercial
+    discretization. A minimum-power representative SKU is useful for topology
+    and carrier metadata, but its declared SCOP must not become the performance
+    of every design load on the branch. Heat-pump branches therefore use the
+    technology-level LaCurent Light performance model during parametric search
+    and canonical VERIFY. Product-specific COP/SCOP remains a downstream
+    finalist/commercial calculation.
+    """
+
+    product = technology.representative
+    payload = model_to_dict(building)
+    is_heat_pump = product.system_type == HeatingSystemType.heat_pump
+    payload["heating"] = model_to_dict(
+        HeatingInput(
+            system_type=product.system_type,
+            carrier=product.carrier,
+            efficiency=product.efficiency,
+            scop=None if is_heat_pump else product.scop,
+            details=HeatingSystemDetails(
+                **_heating_details_for_product(building, product)
+            ),
+            cost_profile=product.cost_profile,
+        )
+    )
+    payload["dhw"] = _dhw_for_product(building, product)
+    return BuildingInput(**payload)
+
+
 def _supplemental_branch_eligible(
     building: BuildingInput,
     branch_id: str,
