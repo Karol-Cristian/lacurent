@@ -1901,6 +1901,11 @@
           );
           commercialRows.push(commercial);
           backendElapsedMs += Number(commercial.calculationTimeMs || 0);
+          const loadedProducts = Number(commercial.catalogStats?.loaded_products || 0);
+          const candidateLimit = Number(commercial.catalogStats?.candidate_limit || 0);
+          log(
+            `PRODUCT ${i + 1}/${productTargets.length} gata · D1→Worker ${loadedProducts}${candidateLimit ? "/" + candidateLimit : ""} produse candidate.`
+          );
         } catch (error) {
           productFailures += 1;
           log(
@@ -1931,6 +1936,7 @@
           commercialRows,
           verifiedRows,
           branchStats,
+          branchPlan:Array.isArray(lastPlan.branches) ? lastPlan.branches : [],
           representativeEvaluations:lastPlan.representativeEvaluations || 0,
           branchFastEvaluations,
           priorCalculationTimeMs:backendElapsedMs,
@@ -1941,7 +1947,9 @@
           productTargetCount:productTargets.length,
           productFailureCount:productFailures
         },
-        {stageName:"finalize V3", runId, retries:2}
+        // FINALIZE performs only selection + JSON assembly. Retrying a server
+        // failure on a stressed isolate can turn one failure into 500/1101.
+        {stageName:"finalize V3", runId, retries:0}
       );
       stage("finalize","done","gata");
       const opt = optimizationResult.optimization || {};
