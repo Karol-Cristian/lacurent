@@ -165,24 +165,29 @@
     </div>
   </div>
 
-  <aside class="panel">
+  <aside
+    class="panel"
+    data-reference-comparison
+    data-reference-url="/api/reference-comparison"
+    data-actual-specific="{{ result.primary_energy.specific_kwh_m2 }}"
+  >
     <div class="panel-title">
       <h2>Comparație cu clădirea de referință</h2>
-      <p>Aceeași geometrie, parametri de referință, același motor de calcul.</p>
+      <p>Aceeași geometrie, parametri de referință, același motor de calcul. Comparația se rulează separat pentru stabilitate.</p>
     </div>
+    <input type="hidden" data-reference-payload value="{{ payload }}">
     <div class="comparison">
       <div>
         <span>Clădire evaluată</span>
-        <strong>{{ result.reference.actual_specific_primary_kwh_m2|fmt("kWh/m²/an", 1) }}</strong>
+        <strong>{{ result.primary_energy.specific_kwh_m2|fmt("kWh/m²/an", 1) }}</strong>
       </div>
       <div>
         <span>Clădire de referință</span>
-        <strong>{{ result.reference.reference_specific_primary_kwh_m2|fmt("kWh/m²/an", 1) }}</strong>
+        <strong data-reference-value>Se calculează…</strong>
       </div>
-      <div class="delta {% if result.reference.difference_percent <= 0 %}good{% endif %}">
-        {{ result.reference.difference_percent|fmt("%", 1) }}
-      </div>
+      <div class="delta" data-reference-delta>—</div>
     </div>
+    <p class="hint" data-reference-status>Calcul separat RBPE în curs.</p>
   </aside>
 </section>
 
