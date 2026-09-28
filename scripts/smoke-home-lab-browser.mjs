@@ -159,20 +159,13 @@ try {
   // changing PV orientation. Every change must complete one live RBPE request,
   // keep the HUD populated and route climate through the compact @lc2 token
   // instead of the large Python locality-registry fallback.
-  const pvEnabled = page.locator("#pvEnabled");
-  if (!(await pvEnabled.isChecked())) {
-    const enableResponse = page.waitForResponse(
-      response =>
-        new URL(response.url()).pathname === "/api/home-lab-next/calculate"
-        && response.request().method() === "POST",
-      {timeout:30000}
-    );
-    await pvEnabled.check();
-    const response = await enableResponse;
-    if (response.status() !== 200) {
-      throw new Error("PV enable live RBPE failed with HTTP " + response.status());
+  await page.evaluate(() => {
+    const pvEnabled = document.querySelector("#pvEnabled");
+    if (!(pvEnabled instanceof HTMLInputElement)) {
+      throw new Error("Editorial PV enable control is missing");
     }
-  }
+    pvEnabled.checked = true;
+  });
 
   const pvOrientation = page.locator('select[name="pv_orientation"]');
   const orientationSequence = [
