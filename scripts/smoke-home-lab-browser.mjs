@@ -154,6 +154,68 @@ try {
   await expectVisible('[data-page="systems"].is-active');
   await page.locator('[data-page="systems"] [data-next]').click();
   await expectVisible('[data-page="renewables"].is-active');
+
+  // Regression for the production 1101 sequence reported when repeatedly
+  // changing PV orientation. Every change must complete one live RBPE request,
+  // keep the HUD populated and route climate through the compact @lc2 token
+  // instead of the large Python locality-registry fallback.
+  await page.evaluate(() => {
+    const pvEnabled = document.querySelector("#pvEnabled");
+    if (!(pvEnabled instanceof HTMLInputElement)) {
+      throw new Error("Editorial PV enable control is missing");
+    }
+    pvEnabled.checked = true;
+    pvEnabled.dispatchEvent(new Event("change", {bubbles:true}));
+  });
+
+  const pvOrientation = page.locator('select[name="pv_orientation"]');
+  const orientationSequence = [
+    "south_west","west","north_west","north",
+    "north_east","east","south_east","south"
+  ];
+  for (const orientation of orientationSequence) {
+    const responsePromise = page.waitForResponse(
+      response =>
+        new URL(response.url()).pathname === "/api/home-lab-next/calculate"
+        && response.request().method() === "POST"
+        && (
+          new URLSearchParams(response.request().postData() || "").get("pv_orientation") === orientation
+          || (response.request().postData() || "").includes(
+            'name="pv_orientation"\r\n\r\n' + orientation + "\r\n"
+          )
+        ),
+      {timeout:30000}
+    );
+    await pvOrientation.selectOption(orientation);
+    const response = await responsePromise;
+    if (response.status() !== 200) {
+      throw new Error(
+        "Repeated PV orientation live RBPE failed for " + orientation +
+        " with HTTP " + response.status()
+      );
+    }
+    const payload = await response.json();
+    if (payload.renewables?.pv?.orientation !== orientation) {
+      throw new Error("PV response orientation mismatch for " + orientation);
+    }
+    const postData = response.request().postData() || "";
+    if (!postData.includes("%40lc2%7C") && !postData.includes("@lc2|")) {
+      throw new Error(
+        "PV orientation request did not use the compact climate token: " +
+        postData.slice(0, 1200)
+      );
+    }
+    await page.waitForFunction(
+      () => {
+        const cls = String(document.querySelector("#edBaselineClass")?.textContent || "").trim();
+        const cost = String(document.querySelector("#edBaselineCost")?.textContent || "").trim();
+        return cls && cls !== "—" && cost && cost !== "—";
+      },
+      null,
+      {timeout:30000}
+    );
+  }
+
   await page.locator('[data-page="renewables"] [data-next]').click();
   await expectVisible('[data-page="goal"].is-active');
 
