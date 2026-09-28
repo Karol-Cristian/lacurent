@@ -1,0 +1,32 @@
+name = "lacurent-teo-router"
+main = "worker.mjs"
+compatibility_date = "2026-09-28"
+workers_dev = false
+
+[[services]]
+binding = "TEO_A"
+service = "lacurent-teo-shard-a"
+remote = true
+
+[[services]]
+binding = "TEO_B"
+service = "lacurent-teo-shard-b"
+remote = true
+
+[[services]]
+binding = "TEO_C"
+service = "lacurent-teo-shard-c"
+remote = true
+
+[[services]]
+binding = "TEO_D"
+service = "lacurent-teo-shard-d"
+remote = true
+
+[[routes]]
+pattern = "lacurent.com/api/optimization/home-lab/v3/*"
+zone_name = "lacurent.com"
+
+[[routes]]
+pattern = "lacurent.com/api/optimization/home-lab/v4/*"
+zone_name = "lacurent.com"

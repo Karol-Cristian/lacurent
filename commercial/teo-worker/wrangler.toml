@@ -1,0 +1,20 @@
+name = "lacurent-teo-private"
+main = "src/worker.py"
+compatibility_date = "2026-09-28"
+compatibility_flags = ["python_workers"]
+workers_dev = false
+
+[[d1_databases]]
+binding = "DB"
+database_name = "lacurent-db"
+database_id = "91b70c8a-3c11-4fe0-81ed-e3b64a075118"
+
+[[services]]
+binding = "REFERENCE_RBPE"
+service = "lacurent-rbpe-router"
+remote = true
+
+[[rules]]
+type = "Text"
+globs = ["**/*.html", "**/*.css", "**/*.js", "**/*.json", "**/*.geojson", "**/*.svg"]
+fallthrough = true
