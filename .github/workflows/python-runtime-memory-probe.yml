@@ -37,9 +37,19 @@ jobs:
               'compatibility_flags = ["python_workers"]',
               'compatibility_flags = ["python_workers", "enable_weak_ref"]',
           )
-          # Probe must never attach production routes/custom domains.
-          parts = text.split("\n[[routes]]")
-          text = parts[0].rstrip() + "\n"
+          # Probe must never attach production routes/custom domains, but
+          # keep later [[rules]] blocks so templates/static files are bundled.
+          kept = []
+          skip_route = False
+          for line in text.splitlines():
+              if line.strip() == "[[routes]]":
+                  skip_route = True
+                  continue
+              if skip_route and line.startswith("[[") and line.strip() != "[[routes]]":
+                  skip_route = False
+              if not skip_route:
+                  kept.append(line)
+          text = "\n".join(kept).rstrip() + "\n"
           p.write_text(text)
           print(text)
 
