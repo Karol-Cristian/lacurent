@@ -2778,6 +2778,23 @@ async def home_lab_classic(request: Request) -> HTMLResponse:
     )
 
 
+def _private_rbpe_http_request(payload: str) -> Any:
+    """Build the internal Cloudflare Request lazily inside the Worker runtime."""
+    from js import Request as JsRequest
+
+    return JsRequest.new(
+        "https://rbpe.internal/calculate-home-lab",
+        {
+            "method": "POST",
+            "headers": {
+                "content-type": "application/json",
+                "accept": "application/json",
+            },
+            "body": json.dumps({"payload": payload}),
+        },
+    )
+
+
 async def _canonical_home_lab_result(
     request: Request,
     building: BuildingInput,
@@ -2803,19 +2820,7 @@ async def _canonical_home_lab_result(
         # route below is stress-tested against the private Python Worker and
         # avoids the extra RPC object-lifecycle pressure observed under long
         # sequences of live recalculations.
-        from js import Request as JsRequest
-
-        inner = JsRequest.new(
-            "https://rbpe.internal/calculate-home-lab",
-            {
-                "method": "POST",
-                "headers": {
-                    "content-type": "application/json",
-                    "accept": "application/json",
-                },
-                "body": json.dumps({"payload": payload}),
-            },
-        )
+        inner = _private_rbpe_http_request(payload)
         response = await service.fetch(inner)
         raw_json = await response.text()
         if int(response.status) != 200:
