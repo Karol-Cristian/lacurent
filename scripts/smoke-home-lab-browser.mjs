@@ -249,7 +249,19 @@ try {
   await expectVisible("#hlnPersistentClass");
   await expectVisible("#hlnPersistentCost");
   await expectVisible("#hlnPersistentEnergy");
+  await expectVisible("#hlnPersistentHeatingDemand");
+  await expectVisible("#hlnPersistentCoolingDemand");
   await expectVisible("#hlnStatus");
+
+  await page.waitForFunction(
+    () => {
+      const heating = String(document.querySelector("#hlnPersistentHeatingDemand")?.textContent || "");
+      const cooling = String(document.querySelector("#hlnPersistentCoolingDemand")?.textContent || "");
+      return /kWh\/an/.test(heating) && /kWh\/an/.test(cooling);
+    },
+    null,
+    {timeout:30000}
+  );
 
   const privacyFirstUse = page.locator("[data-lacurent-first-use-consent]");
   if (await privacyFirstUse.isVisible()) {
@@ -1074,8 +1086,13 @@ try {
     const summary = document.querySelector(".hln-live-summary");
     const status = document.querySelector("#hlnStatus");
     const quickOverlay = document.querySelector("#hlnQuickEditOverlay");
-    const metrics = ["#hlnPersistentClass", "#hlnPersistentCost", "#hlnPersistentEnergy"]
-      .map(selector => document.querySelector(selector));
+    const metrics = [
+      "#hlnPersistentClass",
+      "#hlnPersistentCost",
+      "#hlnPersistentEnergy",
+      "#hlnPersistentHeatingDemand",
+      "#hlnPersistentCoolingDemand"
+    ].map(selector => document.querySelector(selector));
     if (!(stack instanceof HTMLElement) ||
         !(strip instanceof HTMLElement) ||
         !(summary instanceof HTMLElement) ||
