@@ -1048,7 +1048,7 @@ def test_home_lab_energy_strip_labels_references_and_sen_source() -> None:
     assert 'href="https://www.transelectrica.ro/web/tel/sistemul-energetic-national"' in response.text
     assert "Referință" in response.text
     assert 'class="hln-price-status' in response.text
-    assert "/static/home-lab-3d.js?v=3d55" in response.text
+    assert "/static/home-lab-3d.js?v=3d56" in response.text
     assert 'id="hlnLiveConfigurator"' in response.text
     assert 'data-hln-smart-config="nzeb"' in response.text
     assert 'data-hln-smart-config="economic-auto"' in response.text
@@ -2837,7 +2837,7 @@ def test_home_lab_3d_reflects_selected_house_systems() -> None:
     assert "detail.pvKwp" in response.text
     assert "detail.solarThermalArea" in response.text
     assert "async createSingleSolarThermalLayer()" in response.text
-    assert 'url: "https://cdn.3dassets.dev/assets/2969/v1/model.glb"' in response.text
+    assert 'url: "/static/assets/solar-thermal-roof-collector.glb"' in response.text
     assert 'source: "https://3dassets.dev/assets/off-grid-power-and-controls-roof-solar-panel-197e7d81"' in response.text
     assert 'label: "Fondital VLC 25 flat-plate solar thermal collector"' in response.text
     assert "const SOLAR_THERMAL_ANCHOR = [-0.02, 0.78, 0.08]" in response.text
@@ -3652,3 +3652,12 @@ def test_cloudflare_free_plan_worker_config_has_no_cpu_limit() -> None:
     )
     assert "[limits]" not in config
     assert "cpu_ms" not in config
+
+
+def test_home_lab_solar_thermal_glb_asset_is_bundled() -> None:
+    import struct
+    response = client.get("/static/assets/solar-thermal-roof-collector.glb")
+    assert response.status_code == 200
+    magic, version, length = struct.unpack("<4sII", response.content[:12])
+    assert (magic, version) == (b"glTF", 2)
+    assert length == len(response.content)

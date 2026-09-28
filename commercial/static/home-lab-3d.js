@@ -29,7 +29,8 @@ const HOUSE_MODEL_SOURCE = HOUSE_MODEL.source;
 
 const SOLAR_THERMAL_MODEL = {
   label: "Roof-mounted flat-plate collector base",
-  url: "https://cdn.3dassets.dev/assets/2969/v1/model.glb",
+  url: "/static/assets/solar-thermal-roof-collector.glb",
+  upstreamUrl: "https://cdn.3dassets.dev/assets/2969/v1/model.glb",
   source: "https://3dassets.dev/assets/off-grid-power-and-controls-roof-solar-panel-197e7d81",
   license: "CC0-1.0",
 };
