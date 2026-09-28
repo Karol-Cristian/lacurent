@@ -10,8 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
-      CLOUDFLARE_API_TOKEN: \${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: \${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
     steps:
       - uses: actions/checkout@v4
@@ -117,7 +117,7 @@ jobs:
 
       - name: Wait for web Worker
         env:
-          PROBE_URL: https://lacurent-commercial-rbpe-e2e-\${{ github.run_id }}.lemnarukarol.workers.dev
+          PROBE_URL: https://lacurent-commercial-rbpe-e2e-${{ github.run_id }}.lemnarukarol.workers.dev
         run: |
           for attempt in $(seq 1 90); do
             if curl -fsS "$PROBE_URL/health"; then
@@ -129,7 +129,7 @@ jobs:
 
       - name: Run 500 end-to-end Home Lab recalculations
         env:
-          PROBE_URL: https://lacurent-commercial-rbpe-e2e-\${{ github.run_id }}.lemnarukarol.workers.dev
+          PROBE_URL: https://lacurent-commercial-rbpe-e2e-${{ github.run_id }}.lemnarukarol.workers.dev
         run: |
           node <<'JS'
           const baseUrl = process.env.PROBE_URL;
