@@ -8,6 +8,7 @@ const baseBuilding = JSON.parse(fs.readFileSync(payloadPath, "utf8"));
 const orientations = ["south","south_west","west","north_west","north","north_east","east","south_east"];
 const cycles = Number(process.env.RBPE_CYCLES || 12);
 const delayMs = Number(process.env.RBPE_DELAY_MS || 100);
+const details = /^(1|true|yes)$/i.test(String(process.env.RBPE_DETAILS || ""));
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 let count = 0;
@@ -32,7 +33,7 @@ for (let cycle = 0; cycle < cycles; cycle += 1) {
         "Content-Type":"application/json",
         "User-Agent":"LaCurent-RBPE-Stress/1.0",
       },
-      body:JSON.stringify({payload:building}),
+      body:JSON.stringify({payload:building, details}),
     });
     const elapsed = performance.now() - started;
     const text = await response.text();
@@ -44,14 +45,22 @@ for (let cycle = 0; cycle < cycles; cycle += 1) {
       energy_class:data?.energy_class ?? null,
       annual_cost_lei:data?.annual_cost_lei ?? null,
       monthly_rows:Array.isArray(data?.monthly) ? data.monthly.length : 0,
+      details,
     }));
     if (!response.ok || !data?.energy_class || data?.annual_cost_lei == null) {
       console.error("RBPE_STRESS_FAILURE_BODY", text.slice(0, 1200));
       process.exit(1);
     }
-    if (!Array.isArray(data.monthly) || data.monthly.length !== 12) {
+    if (details && (!Array.isArray(data.monthly) || data.monthly.length !== 12)) {
       console.error("RBPE_STRESS_INVALID_MONTHLY", text.slice(0, 1200));
       process.exit(2);
+    }
+    if (!details && [
+      "monthly","monthly_costs","heat_loss_breakdown",
+      "reference_parameters","energy_class_reference","price_reference_rows"
+    ].some(key => Object.prototype.hasOwnProperty.call(data, key))) {
+      console.error("RBPE_STRESS_HEAVY_LIVE_PAYLOAD", text.slice(0, 1200));
+      process.exit(3);
     }
     await sleep(delayMs);
   }
