@@ -1344,6 +1344,43 @@ def test_photovoltaic_generation_uses_zone_orientation_and_reduces_grid_electric
     assert len(south.renewables.monthly) == 12
 
 
+def test_pv_household_electricity_is_economic_only_and_does_not_change_mc001_energy() -> None:
+    base_pv = {
+        "enabled": True,
+        "installed_power_kwp": 3.0,
+        "orientation": "south",
+        "tilt_degrees": 30,
+        "performance_ratio": 0.82,
+    }
+    common = {
+        "heating": {"system_type": "heat_pump", "scop": 3.2, "carrier": "electricity"},
+    }
+
+    regulated_only = calculate(
+        simple_building(
+            **common,
+            renewables={"pv": {**base_pv, "household_electricity_kwh_year": 0}},
+        ),
+        include_reference=False,
+    )
+    with_household = calculate(
+        simple_building(
+            **common,
+            renewables={"pv": {**base_pv, "household_electricity_kwh_year": 6000}},
+        ),
+        include_reference=False,
+    )
+
+    assert with_household.renewables.pv.household_self_consumed_kwh > 0
+    assert (
+        with_household.renewables.pv.regulated_self_consumed_kwh
+        == regulated_only.renewables.pv.regulated_self_consumed_kwh
+    )
+    assert with_household.final_energy_by_carrier == regulated_only.final_energy_by_carrier
+    assert with_household.primary_energy == regulated_only.primary_energy
+    assert with_household.energy_class == regulated_only.energy_class
+
+
 def test_photovoltaic_resource_changes_with_climate_station() -> None:
     renewables = {
         "pv": {
