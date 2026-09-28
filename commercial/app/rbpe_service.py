@@ -5,16 +5,25 @@ import json
 from typing import Any
 
 from .engine import calculate
-from .models import building_from_json, model_to_dict
+from .models import building_from_json, model_to_dict, model_to_json
 
 
 def calculate_home_lab_result_payload(payload: str | dict[str, Any]) -> dict[str, Any]:
-    """Run one canonical Home Lab RBPE pass and return a transport-safe result.
+    """Local/test helper returning the canonical CalculationResult as a dict."""
+    encoded = calculate_home_lab_result_json(payload)
+    return json.loads(encoded)
 
-    This function deliberately stops at CalculationResult serialization. Pricing,
-    HUD/report shaping and other web concerns remain in the main application.
-    Keeping the heavy calculate() graph inside the dedicated Python Worker gives
-    the web Worker a separate Cloudflare isolate/memory budget.
+
+def calculate_home_lab_result_json(payload: str | dict[str, Any]) -> str:
+    """Run one canonical RBPE pass and serialize exactly once.
+
+    The dedicated Worker uses Pydantic v1. Building a transport dict via
+    model_to_dict() would perform result.json() -> json.loads(), after which RPC
+    serialization performed another json.dumps(). That temporarily materialized
+    multiple full result graphs in the 128 MB Pyodide isolate.
+
+    Returning the model JSON directly keeps the canonical calculation identical
+    while bounding transient allocation at the Worker boundary.
     """
     if payload in (None, ""):
         raise ValueError("Missing Home Lab RBPE input.")
@@ -23,23 +32,9 @@ def calculate_home_lab_result_payload(payload: str | dict[str, Any]) -> dict[str
         payload if isinstance(payload, str) else json.dumps(payload)
     )
     result = calculate(building, include_reference=False)
-    transport = model_to_dict(result)
+    encoded = model_to_json(result)
 
     del result
     del building
-    gc.collect()
-    return transport
-
-
-def calculate_home_lab_result_json(payload: str | dict[str, Any]) -> str:
-    """Serialize the canonical result before crossing the Worker RPC boundary.
-
-    Nested Python objects transferred directly through cross-Worker RPC create a
-    large Pyodide/V8 proxy graph in the caller. A JSON string is a primitive
-    transport value and keeps that bridge memory bounded.
-    """
-    transport = calculate_home_lab_result_payload(payload)
-    encoded = json.dumps(transport, ensure_ascii=False, separators=(",", ":"))
-    del transport
     gc.collect()
     return encoded
