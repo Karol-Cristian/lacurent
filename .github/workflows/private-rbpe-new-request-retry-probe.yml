@@ -148,19 +148,23 @@ jobs:
                   lastError = error;
                   const failures = (failureCounts.get(key) || 0) + 1;
                   failureCounts.set(key, failures);
-                  disabledUntil.set(key, Date.now() + 12000);
+                  disabledUntil.set(key, Date.now() + 5000);
                 }
               }
 
-              // If every shard is cooling down, try the one whose cooldown
-              // expires first. This avoids returning 503 just because all four
-              // breakers overlap by a few milliseconds.
-              if (attempted.length === 0) {
-                const key = [...shardNames].sort(
-                  (a,b) => (disabledUntil.get(a)||0) - (disabledUntil.get(b)||0)
-                )[0];
+              // Recovery pass: after all immediately healthy shards failed,
+              // wait briefly for the earliest breaker(s) to reopen. A downstream
+              // 1102 kills that Python invocation; giving Cloudflare a few
+              // seconds lets a fresh isolate serve the next attempt without
+              // surfacing the transient failure to Home Lab.
+              const recoveryDeadline = Date.now() + 8000;
+              const recoveryOrder = [...shardNames].sort(
+                (a,b) => (disabledUntil.get(a)||0) - (disabledUntil.get(b)||0)
+              );
+              for (const key of recoveryOrder) {
                 const waitMs = Math.max(0, (disabledUntil.get(key)||0) - Date.now());
-                if (waitMs > 0 && waitMs <= 15000) {
+                if (Date.now() + waitMs > recoveryDeadline) break;
+                if (waitMs > 0) {
                   await new Promise(resolve => setTimeout(resolve, waitMs));
                 }
                 try {
@@ -178,7 +182,7 @@ jobs:
                   });
                 } catch (error) {
                   lastError = error;
-                  disabledUntil.set(key, Date.now() + 12000);
+                  disabledUntil.set(key, Date.now() + 5000);
                 }
               }
 
@@ -272,7 +276,7 @@ jobs:
               console.error(raw.slice(0,1500));
               process.exit(1);
             }
-            await new Promise(resolve => setTimeout(resolve, 40));
+            await new Promise(resolve => setTimeout(resolve, 350));
           }
 
           console.log(JSON.stringify({
