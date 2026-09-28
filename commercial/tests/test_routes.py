@@ -1426,9 +1426,11 @@ def test_canonical_home_lab_result_uses_private_service_binding() -> None:
         def __init__(self) -> None:
             self.calls = 0
 
-        async def calculate_home_lab(self, payload):
+        async def calculate_home_lab_json(self, payload):
+            import json
+
             self.calls += 1
-            return calculate_home_lab_result_payload(payload)
+            return json.dumps(calculate_home_lab_result_payload(payload))
 
     service = PrivateRbpe()
     request = Request(
