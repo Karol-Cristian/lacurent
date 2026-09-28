@@ -6,7 +6,8 @@ from urllib.parse import urlparse
 
 from workers import Response, WorkerEntrypoint
 
-from app.engine import reference_primary_specific_energy
+from app.engine import calculate, reference_primary_specific_energy
+from app.home_lab_payload import embed_lab_result_payload
 from app.models import building_from_json
 
 
@@ -56,10 +57,31 @@ def _reference_comparison_payload(payload, actual_raw) -> dict:
     return result
 
 
+
+def _live_calculation_payload(payload) -> dict:
+    if payload in (None, ""):
+        raise ValueError("Missing live calculation input.")
+
+    building = building_from_json(
+        payload if isinstance(payload, str) else json.dumps(payload)
+    )
+    result = calculate(building, include_reference=False)
+    response = embed_lab_result_payload(result)
+    response["calculation_execution"] = "dedicated_live_rbpe_worker"
+    del result
+    del building
+    gc.collect()
+    return response
+
+
 class Default(WorkerEntrypoint):
     async def reference_comparison(self, payload, actual_specific):
         """Private Worker RPC entrypoint used by the main LaCurent service."""
         return _reference_comparison_payload(payload, actual_specific)
+
+    async def live_calculation(self, payload):
+        """Canonical Home Lab RBPE pass in the isolated Python Worker."""
+        return _live_calculation_payload(payload)
 
     async def fetch(self, request):
         path = urlparse(request.url).path
@@ -76,6 +98,16 @@ class Default(WorkerEntrypoint):
                     "executionMode": "dedicated_python_worker",
                 }
             )
+
+        if method == "POST" and path == "/live-calculation":
+            try:
+                body = await request.json()
+                return _json_response(_live_calculation_payload(body.get("payload")))
+            except Exception as exc:
+                return _json_response(
+                    {"error": str(exc), "errorType": type(exc).__name__},
+                    status=422,
+                )
 
         if method != "POST" or path != "/reference-comparison":
             return _json_response({"error": "Not found"}, status=404)
