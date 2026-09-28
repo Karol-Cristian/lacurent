@@ -1849,6 +1849,38 @@ def test_home_lab_next_calculates_pv_and_solar_thermal_from_solar_resource() -> 
     assert payload["gross_service_final_energy_kwh"] >= payload["final_energy_kwh"]
 
 
+def test_home_lab_next_solar_thermal_orientation_and_tilt_change_output() -> None:
+    base = demo_form_data()
+    base.update(
+        {
+            "solar_thermal_enabled": "on",
+            "solar_thermal_collector_area_m2": "2",
+            "solar_thermal_orientation": "south",
+            "solar_thermal_tilt_degrees": "45",
+            "solar_thermal_system_efficiency": "0.45",
+        }
+    )
+    south = client.post("/api/home-lab-next/calculate", data=base)
+    assert south.status_code == 200
+    south_payload = south.json()
+
+    north_data = dict(base)
+    north_data.update(
+        {
+            "solar_thermal_orientation": "north",
+            "solar_thermal_tilt_degrees": "90",
+        }
+    )
+    north = client.post("/api/home-lab-next/calculate", data=north_data)
+    assert north.status_code == 200
+    north_payload = north.json()
+
+    south_solar = south_payload["renewables"]["solar_thermal"]
+    north_solar = north_payload["renewables"]["solar_thermal"]
+    assert south_solar["annual_plane_hsol_kwh_m2"] > north_solar["annual_plane_hsol_kwh_m2"]
+    assert south_solar["annual_available_kwh"] > north_solar["annual_available_kwh"]
+
+
 def test_editorial_finalization_runs_in_browser_after_parametric_verify() -> None:
     js = client.get("/static/home-lab-editorial.js")
     assert js.status_code == 200
