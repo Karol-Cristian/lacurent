@@ -652,7 +652,7 @@ jobs:
 
           sys.path.insert(0, "src")
           from app.engine import calculate, demo_building
-          from app.home_lab_payload import embed_lab_result_payload
+          from app.home_lab_payload import embed_lab_result_payload, home_lab_live_payload
           from app.models import model_to_json
 
           building = demo_building()
@@ -686,7 +686,7 @@ jobs:
           print("Reference RBPE local smoke", payload)
 
           canonical_result = calculate(building, include_reference=False)
-          expected_live = embed_lab_result_payload(canonical_result)
+          expected_live = home_lab_live_payload(canonical_result)
           live_body = json.dumps({
               "payload": model_to_json(building),
           }).encode("utf-8")
@@ -722,14 +722,49 @@ jobs:
                       f"Dedicated live RBPE mismatch for {key}: "
                       f"{live_payload.get(key)!r} != {expected_live.get(key)!r}"
                   )
-          if live_payload.get("monthly") != expected_live.get("monthly"):
-              raise AssertionError("Dedicated live RBPE monthly payload changed.")
-          if live_payload.get("heat_loss_breakdown") != expected_live.get("heat_loss_breakdown"):
-              raise AssertionError("Dedicated live RBPE loss payload changed.")
-          print("Live RBPE local smoke", {
+          for heavy_key in (
+              "monthly",
+              "monthly_costs",
+              "heat_loss_breakdown",
+              "reference_parameters",
+              "energy_class_reference",
+              "price_reference_rows",
+          ):
+              if heavy_key in live_payload:
+                  raise AssertionError(
+                      f"Dedicated live RBPE unexpectedly returned {heavy_key}."
+                  )
+          print("Live RBPE compact smoke", {
               "energy_class": live_payload.get("energy_class"),
               "final_energy_kwh": live_payload.get("final_energy_kwh"),
               "annual_cost_lei": live_payload.get("annual_cost_lei"),
+          })
+
+          expected_details = embed_lab_result_payload(canonical_result)
+          details_body = json.dumps({
+              "payload": model_to_json(building),
+              "details": True,
+          }).encode("utf-8")
+          details_request = urllib.request.Request(
+              "http://127.0.0.1:8791/live-calculation",
+              data=details_body,
+              headers={"Content-Type": "application/json"},
+          )
+          try:
+              with urllib.request.urlopen(details_request, timeout=30) as response:
+                  details_payload = json.loads(response.read().decode("utf-8"))
+                  if response.status != 200:
+                      raise AssertionError(response.status)
+          except urllib.error.HTTPError as exc:
+              detail = exc.read().decode("utf-8", errors="replace")
+              raise AssertionError(
+                  f"Live RBPE details smoke HTTP {exc.code}: {detail}"
+              ) from exc
+          if details_payload != expected_details:
+              raise AssertionError("Dedicated live RBPE full-detail payload changed.")
+          print("Live RBPE detail smoke", {
+              "monthly_rows": len(details_payload.get("monthly") or []),
+              "price_rows": len(details_payload.get("price_reference_rows") or []),
           })
           PY
           kill "$(cat reference-worker-dev.pid)" || true
