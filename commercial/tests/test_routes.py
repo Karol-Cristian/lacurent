@@ -854,6 +854,12 @@ def test_private_teo_topology_is_sharded_and_route_isolated() -> None:
     assert "serverErrors.length" in soak
     assert "TEO final report is non-deterministic" in soak
 
+    worker_pyproject = Path("commercial/cloudflare-worker/pyproject.toml").read_text(
+        encoding="utf-8"
+    )
+    assert '"pydantic>=2.12,<3"' in worker_pyproject
+    assert '"pydantic>=1.10,<2"' not in worker_pyproject
+
 
 def test_official_price_registry_endpoint_is_available() -> None:
     response = client.get("/api/energy-prices")
