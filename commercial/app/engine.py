@@ -712,28 +712,30 @@ def monthly_energy_balance(
         q_h_ht = q_h_tr_excl_ground + q_h_ground + q_h_ve
         useful_heating = _monthly_heating_need(q_h_ht, total_gains, a_h)
 
-        useful_cooling = 0.0
-        if building.cooling.enabled:
-            q_c_tr_excl_ground = (
-                h_excluding_ground
-                * (building.cooling.setpoint_c - outdoor)
-                * hours
-                / 1000
-            )
-            q_c_ground = (
-                transmission.hg_w_k
-                * (building.cooling.setpoint_c - annual_outdoor)
-                * hours
-                / 1000
-            )
-            q_c_ve = (
-                h_ve_w_k
-                * (building.cooling.setpoint_c - outdoor)
-                * hours
-                / 1000
-            )
-            q_c_ht = q_c_tr_excl_ground + q_c_ground + q_c_ve
-            useful_cooling = _monthly_cooling_need(q_c_ht, total_gains, a_c, a_c_red)
+        # Cooling demand is a property of the building, climate and comfort
+        # setpoint, not of whether active cooling equipment is installed.
+        # Equipment availability is applied later by cooling_final_energy(),
+        # which keeps final cooling energy at zero when cooling.enabled is false.
+        q_c_tr_excl_ground = (
+            h_excluding_ground
+            * (building.cooling.setpoint_c - outdoor)
+            * hours
+            / 1000
+        )
+        q_c_ground = (
+            transmission.hg_w_k
+            * (building.cooling.setpoint_c - annual_outdoor)
+            * hours
+            / 1000
+        )
+        q_c_ve = (
+            h_ve_w_k
+            * (building.cooling.setpoint_c - outdoor)
+            * hours
+            / 1000
+        )
+        q_c_ht = q_c_tr_excl_ground + q_c_ground + q_c_ve
+        useful_cooling = _monthly_cooling_need(q_c_ht, total_gains, a_c, a_c_red)
 
         monthly.append({
             "month": month["id"],
@@ -1134,9 +1136,14 @@ def _renewable_resource_rows(building: BuildingInput, climate: dict) -> tuple[li
         rows.append(
             {
                 "month": month["id"],
+                "days": days,
                 "pv_plane_hsol_kwh_m2": pv_hsol,
                 "pv_generation_kwh": pv_generation,
                 "pv_self_consumed_kwh": 0.0,
+                "pv_regulated_self_consumed_kwh": 0.0,
+                "pv_household_self_consumed_kwh": 0.0,
+                "household_electricity_load_kwh": 0.0,
+                "household_grid_import_kwh": 0.0,
                 "pv_exported_kwh": pv_generation,
                 "solar_thermal_plane_hsol_kwh_m2": thermal_hsol,
                 "solar_thermal_available_kwh": thermal_available,
@@ -1173,28 +1180,58 @@ def renewable_energy_result(
     dhw_ratio = _service_final_per_useful(dhw)
 
     annual_heating_useful = sum(float(row["useful_heating_kwh"]) for row in monthly_balance)
+    household_annual_kwh = float(pv.household_electricity_kwh_year or 0.0)
+    renewable_days = sum(float(row.get("days") or 0.0) for row in renewable_rows) or 365.0
 
     for balance, renewable in zip(monthly_balance, renewable_rows):
-        electric_load = 0.0
+        regulated_electric_load = 0.0
         if heating_auxiliary_kwh_year > 0:
             if annual_heating_useful > 0:
-                electric_load += heating_auxiliary_kwh_year * float(balance["useful_heating_kwh"]) / annual_heating_useful
+                regulated_electric_load += heating_auxiliary_kwh_year * float(balance["useful_heating_kwh"]) / annual_heating_useful
             else:
-                electric_load += heating_auxiliary_kwh_year / max(len(monthly_balance), 1)
+                regulated_electric_load += heating_auxiliary_kwh_year / max(len(monthly_balance), 1)
         if heating.carrier == Carrier.electricity:
-            electric_load += float(balance["useful_heating_kwh"]) * heating_ratio
+            regulated_electric_load += float(balance["useful_heating_kwh"]) * heating_ratio
         if cooling.carrier == Carrier.electricity:
-            electric_load += float(balance["useful_cooling_kwh"]) * cooling_ratio
+            regulated_electric_load += float(balance["useful_cooling_kwh"]) * cooling_ratio
         if dhw.carrier == Carrier.electricity:
-            electric_load += float(renewable["dhw_backup_useful_kwh"]) * dhw_ratio
+            regulated_electric_load += float(renewable["dhw_backup_useful_kwh"]) * dhw_ratio
 
+        household_load = (
+            household_annual_kwh
+            * float(renewable.get("days") or 0.0)
+            / renewable_days
+        )
         generation = float(renewable["pv_generation_kwh"])
-        self_consumed = min(generation, electric_load) if pv.enabled else 0.0
+        if pv.enabled:
+            # Keep MC001-regulated energy separate from the optional household
+            # demand used only for economics. Regulated services get the first
+            # monthly PV allocation; the remainder can offset household demand.
+            regulated_self = min(generation, regulated_electric_load)
+            remaining_generation = max(generation - regulated_self, 0.0)
+            household_self = min(remaining_generation, household_load)
+        else:
+            regulated_self = 0.0
+            household_self = 0.0
+        self_consumed = regulated_self + household_self
+        renewable["pv_regulated_self_consumed_kwh"] = regulated_self
+        renewable["pv_household_self_consumed_kwh"] = household_self
         renewable["pv_self_consumed_kwh"] = self_consumed
+        renewable["household_electricity_load_kwh"] = household_load
+        renewable["household_grid_import_kwh"] = max(household_load - household_self, 0.0)
         renewable["pv_exported_kwh"] = max(generation - self_consumed, 0.0)
 
     pv_generation = sum(float(row["pv_generation_kwh"]) for row in renewable_rows)
     pv_self_consumed = sum(float(row["pv_self_consumed_kwh"]) for row in renewable_rows)
+    pv_regulated_self_consumed = sum(
+        float(row["pv_regulated_self_consumed_kwh"]) for row in renewable_rows
+    )
+    pv_household_self_consumed = sum(
+        float(row["pv_household_self_consumed_kwh"]) for row in renewable_rows
+    )
+    household_grid_import = sum(
+        float(row["household_grid_import_kwh"]) for row in renewable_rows
+    )
     pv_exported = sum(float(row["pv_exported_kwh"]) for row in renewable_rows)
     pv_plane_hsol = sum(float(row["pv_plane_hsol_kwh_m2"]) for row in renewable_rows)
 
@@ -1216,7 +1253,12 @@ def renewable_energy_result(
             annual_plane_hsol_kwh_m2=_round(pv_plane_hsol),
             annual_generation_kwh=_round(pv_generation),
             self_consumed_kwh=_round(pv_self_consumed),
+            regulated_self_consumed_kwh=_round(pv_regulated_self_consumed),
+            household_self_consumed_kwh=_round(pv_household_self_consumed),
+            household_electricity_kwh_year=_round(household_annual_kwh),
+            household_grid_import_kwh=_round(household_grid_import),
             exported_kwh=_round(pv_exported),
+            export_credit_lei_per_kwh=_round(pv.export_credit_lei_per_kwh, 4),
             self_consumption_percent=_round(
                 100.0 * pv_self_consumed / pv_generation if pv_generation else 0.0,
                 1,
@@ -1242,6 +1284,10 @@ def renewable_energy_result(
                 pv_plane_hsol_kwh_m2=_round(row["pv_plane_hsol_kwh_m2"]),
                 pv_generation_kwh=_round(row["pv_generation_kwh"]),
                 pv_self_consumed_kwh=_round(row["pv_self_consumed_kwh"]),
+                pv_regulated_self_consumed_kwh=_round(row["pv_regulated_self_consumed_kwh"]),
+                pv_household_self_consumed_kwh=_round(row["pv_household_self_consumed_kwh"]),
+                household_electricity_load_kwh=_round(row["household_electricity_load_kwh"]),
+                household_grid_import_kwh=_round(row["household_grid_import_kwh"]),
                 pv_exported_kwh=_round(row["pv_exported_kwh"]),
                 solar_thermal_plane_hsol_kwh_m2=_round(row["solar_thermal_plane_hsol_kwh_m2"]),
                 solar_thermal_available_kwh=_round(row["solar_thermal_available_kwh"]),
@@ -1261,7 +1307,7 @@ def net_final_energy_by_carrier(
     if renewables.pv.enabled:
         electricity = float(totals.get(Carrier.electricity.value, 0.0))
         totals[Carrier.electricity.value] = max(
-            electricity - float(renewables.pv.self_consumed_kwh),
+            electricity - float(renewables.pv.regulated_self_consumed_kwh),
             0.0,
         )
     return {
@@ -1430,6 +1476,20 @@ def _primary_specific_energy_scalar(building: BuildingInput) -> float:
             building.heated_floor_area_m2,
         ).specific_kwh_m2
     )
+
+
+def reference_primary_specific_energy(building: BuildingInput) -> float:
+    """Return the exact RBPE reference-building primary-energy indicator.
+
+    This intentionally runs only the scalar reference chain, so callers can
+    schedule the reference comparison in a separate HTTP request instead of
+    spending two complete RBPE passes inside one Cloudflare request budget.
+    """
+    from .reference import build_reference_input
+
+    value = _primary_specific_energy_scalar(build_reference_input(building))
+    gc.collect()
+    return float(value)
 
 
 def calculate(building: BuildingInput, *, include_reference: bool = True) -> CalculationResult:

@@ -8,7 +8,7 @@
   <meta name="description" content="Modelează casa, compară îmbunătățiri și vezi instant impactul asupra energiei, costului și necesarului termic.">
   {% if not embed_mode %}<link rel="canonical" href="https://lacurent.com/home-lab-next">{% endif %}
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="/static/home-lab-next.css?v=next362-energy-class">
+  <link rel="stylesheet" href="/static/home-lab-next.css?v=next363-useful-demand">
   <link rel="stylesheet" href="/static/home-lab-3d.css?v=3d31">
   <link rel="stylesheet" href="/static/privacy-consent.css?v=privacy1">
 </head>
@@ -94,9 +94,25 @@
           <article class="hln-live-energy-card">
             <span class="hln-live-icon"><svg><use href="#hln-i-bolt"></use></svg></span>
             <span class="hln-live-value">
-              <small>Energie anuală</small>
+              <small>Energie finală anuală</small>
               <strong id="hlnPersistentEnergy">—</strong>
               <em class="hln-live-delta" id="hlnPersistentEnergyDelta">Baseline Casa mea</em>
+            </span>
+          </article>
+          <article class="hln-live-heating-card">
+            <span class="hln-live-icon"><svg><use href="#hln-i-flame"></use></svg></span>
+            <span class="hln-live-value">
+              <small>Necesar util încălzire</small>
+              <strong id="hlnPersistentHeatingDemand">—</strong>
+              <em id="hlnPersistentHeatingSpecific">energie utilă</em>
+            </span>
+          </article>
+          <article class="hln-live-cooling-card">
+            <span class="hln-live-icon"><svg><use href="#hln-i-air"></use></svg></span>
+            <span class="hln-live-value">
+              <small>Necesar util răcire</small>
+              <strong id="hlnPersistentCoolingDemand">—</strong>
+              <em id="hlnPersistentCoolingSpecific">energie utilă</em>
             </span>
           </article>
         </div>
@@ -696,6 +712,7 @@
                 <select id="hlnScenarioPvOrientation"><option value="south">Sud</option><option value="south_west">Sud-vest</option><option value="west">Vest</option><option value="north_west">Nord-vest</option><option value="north">Nord</option><option value="north_east">Nord-est</option><option value="east">Est</option><option value="south_east">Sud-est</option></select>
               </label>
               <label>Înclinare <div class="hln-inline-input"><input id="hlnScenarioPvTilt" type="number" min="0" max="90" step="5"><span>°</span></div></label>
+              <small id="hlnScenarioPvLive">Producția se recalculează din Hsol, orientare și înclinare.</small>
               <small>Light Engine interpolează lunar între Hsol orizontal și Hsol vertical pe orientarea aleasă; surplusul PV este raportat separat.</small>
             </div>
 
@@ -706,6 +723,7 @@
                 <select id="hlnScenarioSolarThermalOrientation"><option value="south">Sud</option><option value="south_west">Sud-vest</option><option value="west">Vest</option><option value="north_west">Nord-vest</option><option value="north">Nord</option><option value="north_east">Nord-est</option><option value="east">Est</option><option value="south_east">Sud-est</option></select>
               </label>
               <label>Înclinare <div class="hln-inline-input"><input id="hlnScenarioSolarThermalTilt" type="number" min="0" max="90" step="5"><span>°</span></div></label>
+              <small id="hlnScenarioSolarThermalLive">Energia solară termică se recalculează din Hsol, orientare și înclinare.</small>
               <small>Energia termică este limitată lunar la necesarul de ACM; nu se presupune stocare între luni.</small>
             </div>
           </div>
@@ -1195,12 +1213,17 @@
             <select id="hlnHomePvOrientation"><option value="south">Sud</option><option value="south_west">Sud-vest</option><option value="west">Vest</option><option value="north_west">Nord-vest</option><option value="north">Nord</option><option value="north_east">Nord-est</option><option value="east">Est</option><option value="south_east">Sud-est</option></select>
           </label>
           <label>Înclinare PV <div class="hln-inline-input"><input id="hlnHomePvTilt" type="number" min="0" max="90" step="5" value="30"><span>°</span></div></label>
+          <label>Consum electric casnic anual <div class="hln-inline-input"><input id="hlnHomePvHouseholdKwh" type="number" min="0" max="100000" step="100" value="0"><span>kWh/an</span></div></label>
+          <label>Compensare export PV <div class="hln-inline-input"><input id="hlnHomePvExportCredit" type="number" min="0" max="10" step="0.01" value="0"><span>lei/kWh</span></div></label>
+          <small id="hlnHomePvLive">Activează PV pentru a vedea producția calculată din orientare și înclinare.</small>
+          <small>Consum casnic și compensarea exportului sunt folosite numai economic; nu intră în energia primară sau clasa MC001. 0 = fără ipoteză.</small>
           <label><input id="hlnHomeSolarThermalEnabled" type="checkbox"> Panouri solare termice existente</label>
           <label>Suprafață solar termic <div class="hln-inline-input"><input id="hlnHomeSolarThermalArea" type="number" min="1" max="30" step="0.5" value="4"><span>m²</span></div></label>
           <label>Orientare solar termic
             <select id="hlnHomeSolarThermalOrientation"><option value="south">Sud</option><option value="south_west">Sud-vest</option><option value="west">Vest</option><option value="north_west">Nord-vest</option><option value="north">Nord</option><option value="north_east">Nord-est</option><option value="east">Est</option><option value="south_east">Sud-est</option></select>
           </label>
           <label>Înclinare solar termic <div class="hln-inline-input"><input id="hlnHomeSolarThermalTilt" type="number" min="0" max="90" step="5" value="45"><span>°</span></div></label>
+          <small id="hlnHomeSolarThermalLive">Activează solarul termic pentru a vedea efectul orientării și înclinării.</small>
 
         </section>
       </div>
@@ -1309,6 +1332,8 @@
       <input name="pv_orientation" value="south">
       <input name="pv_tilt_degrees" value="30">
       <input name="pv_performance_ratio" value="0.82">
+      <input name="pv_household_electricity_kwh_year" value="0">
+      <input name="pv_export_credit_lei_per_kwh" value="0">
       <input name="solar_thermal_enabled" value="">
       <input name="solar_thermal_collector_area_m2" value="4.0">
       <input name="solar_thermal_orientation" value="south">
@@ -1330,7 +1355,7 @@
     }
   </script>
   <script type="module" src="/static/home-lab-3d.js?v=3d55"></script>
-  <script src="/static/home-lab-next.js?v=next72-heating-power"></script>
+  <script src="/static/home-lab-next.js?v=next73-useful-demand"></script>
   {% if embed_mode %}<script src="/static/embed-runtime.js?v=embed2"></script>{% endif %}
 </body>
 </html>

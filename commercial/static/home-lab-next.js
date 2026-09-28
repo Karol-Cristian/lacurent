@@ -196,6 +196,8 @@
     pvKwp: 5,
     pvOrientation: "south",
     pvTilt: 30,
+    pvHouseholdKwhYear: 0,
+    pvExportCreditLeiPerKwh: 0,
     solarThermalEnabled: false,
     solarThermalArea: 4,
     solarThermalOrientation: "south",
@@ -752,6 +754,8 @@
       pvEnabled: Boolean(state.pvEnabled),
       pvKwp: Number(state.pvKwp || 0),
       pvTilt: Number(state.pvTilt || 0),
+      pvHouseholdKwhYear: Number(state.pvHouseholdKwhYear || 0),
+      pvExportCreditLeiPerKwh: Number(state.pvExportCreditLeiPerKwh || 0),
       solarThermalEnabled: Boolean(state.solarThermalEnabled),
       solarThermalArea: Number(state.solarThermalArea || 0),
       solarThermalTilt: Number(state.solarThermalTilt || 0),
@@ -1355,6 +1359,8 @@
     formSet("pv_orientation", state.pvOrientation);
     formSet("pv_tilt_degrees", state.pvTilt);
     formSet("pv_performance_ratio", 0.82);
+    formSet("pv_household_electricity_kwh_year", state.pvHouseholdKwhYear || 0);
+    formSet("pv_export_credit_lei_per_kwh", state.pvExportCreditLeiPerKwh || 0);
     formSet("solar_thermal_enabled", state.solarThermalEnabled ? "on" : "");
     formSet("solar_thermal_collector_area_m2", state.solarThermalArea);
     formSet("solar_thermal_orientation", state.solarThermalOrientation);
@@ -1440,6 +1446,8 @@
       "#hlnPersistentClass",
       "#hlnPersistentCost",
       "#hlnPersistentEnergy",
+      "#hlnPersistentHeatingDemand",
+      "#hlnPersistentCoolingDemand",
       "#hlnPersistentCostDelta",
       "#hlnPersistentEnergyDelta",
     ];
@@ -4606,6 +4614,19 @@
       result?.annual_cost_lei == null ? "—" : `${fmt(result.annual_cost_lei)} lei/an`;
     $("#hlnPersistentEnergy").textContent =
       result?.final_energy_kwh == null ? "—" : `${fmt(result.final_energy_kwh)} kWh/an`;
+
+    const heatingDemand = Number(result?.annual_heating_demand_kwh);
+    const coolingDemand = Number(result?.annual_cooling_demand_kwh);
+    const heatingSpecific = Number(result?.heating_demand_specific_kwh_m2);
+    const coolingSpecific = Number(result?.cooling_demand_specific_kwh_m2);
+    $("#hlnPersistentHeatingDemand").textContent =
+      Number.isFinite(heatingDemand) ? `${fmt(heatingDemand)} kWh/an` : "—";
+    $("#hlnPersistentCoolingDemand").textContent =
+      Number.isFinite(coolingDemand) ? `${fmt(coolingDemand)} kWh/an` : "—";
+    $("#hlnPersistentHeatingSpecific").textContent =
+      Number.isFinite(heatingSpecific) ? `${fmt(heatingSpecific,1)} kWh/m²·an · energie utilă` : "energie utilă";
+    $("#hlnPersistentCoolingSpecific").textContent =
+      Number.isFinite(coolingSpecific) ? `${fmt(coolingSpecific,1)} kWh/m²·an · energie utilă` : "energie utilă";
     if (summary) summary.dataset.energyClass = energyClass;
 
     const classContext = $("#hlnPersistentClassContext");
@@ -4757,6 +4778,21 @@
       ? [state.pvEnabled ? `${renewableOrientationLabel(state.pvOrientation)} · ${fmt(state.pvTilt)}°` : null,
          state.solarThermalEnabled ? `solar termic ${renewableOrientationLabel(state.solarThermalOrientation)}` : null].filter(Boolean).join(" · ")
       : "PV · solar termic";
+
+    const homePvLive = $("#hlnHomePvLive");
+    const homePv = homeResult?.renewables?.pv;
+    if (homePvLive) {
+      homePvLive.textContent = state.pvEnabled && homePv?.enabled
+        ? `Producție ${fmt(homePv.annual_generation_kwh)} kWh/an · autoconsum ${fmt(homePv.self_consumed_kwh)} · export ${fmt(homePv.exported_kwh)} kWh/an`
+        : "Activează PV pentru a vedea producția calculată din orientare și înclinare.";
+    }
+    const homeSolarLive = $("#hlnHomeSolarThermalLive");
+    const homeSolar = homeResult?.renewables?.solar_thermal;
+    if (homeSolarLive) {
+      homeSolarLive.textContent = state.solarThermalEnabled && homeSolar?.enabled
+        ? `Resursă plan ${fmt(homeSolar.annual_plane_hsol_kwh_m2)} kWh/m²·an · ACM solar ${fmt(homeSolar.used_for_dhw_kwh)} kWh/an`
+        : "Activează solarul termic pentru a vedea efectul orientării și înclinării.";
+    }
   }
 
   function measureSummary(type) {
@@ -5119,9 +5155,23 @@
     $("#hlnScenarioPvKwp").value = scenarioState.pvKwp;
     $("#hlnScenarioPvOrientation").value = scenarioState.pvOrientation;
     $("#hlnScenarioPvTilt").value = scenarioState.pvTilt;
+    const scenarioPvLive = $("#hlnScenarioPvLive");
+    const scenarioPv = scenarioResult?.renewables?.pv;
+    if (scenarioPvLive) {
+      scenarioPvLive.textContent = scenarioState.pvEnabled && scenarioPv?.enabled
+        ? `Producție ${fmt(scenarioPv.annual_generation_kwh)} kWh/an · autoconsum ${fmt(scenarioPv.self_consumed_kwh)} · export ${fmt(scenarioPv.exported_kwh)} kWh/an`
+        : "Producția se recalculează din Hsol, orientare și înclinare.";
+    }
     $("#hlnScenarioSolarThermalArea").value = scenarioState.solarThermalArea;
     $("#hlnScenarioSolarThermalOrientation").value = scenarioState.solarThermalOrientation;
     $("#hlnScenarioSolarThermalTilt").value = scenarioState.solarThermalTilt;
+    const scenarioSolarLive = $("#hlnScenarioSolarThermalLive");
+    const scenarioSolar = scenarioResult?.renewables?.solar_thermal;
+    if (scenarioSolarLive) {
+      scenarioSolarLive.textContent = scenarioState.solarThermalEnabled && scenarioSolar?.enabled
+        ? `Resursă plan ${fmt(scenarioSolar.annual_plane_hsol_kwh_m2)} kWh/m²·an · disponibil ${fmt(scenarioSolar.annual_available_kwh)} · folosit ACM ${fmt(scenarioSolar.used_for_dhw_kwh)} kWh/an`
+        : "Energia solară termică se recalculează din Hsol, orientare și înclinare.";
+    }
   }
 
   function renderScenario() {
@@ -6190,6 +6240,8 @@
     $("#hlnHomePvKwp").value = homeState.pvKwp;
     $("#hlnHomePvOrientation").value = homeState.pvOrientation;
     $("#hlnHomePvTilt").value = homeState.pvTilt;
+    $("#hlnHomePvHouseholdKwh").value = Number(homeState.pvHouseholdKwhYear || 0);
+    $("#hlnHomePvExportCredit").value = Number(homeState.pvExportCreditLeiPerKwh || 0);
     $("#hlnHomeSolarThermalEnabled").checked = Boolean(homeState.solarThermalEnabled);
     $("#hlnHomeSolarThermalArea").value = homeState.solarThermalArea;
     $("#hlnHomeSolarThermalOrientation").value = homeState.solarThermalOrientation;
@@ -6257,6 +6309,8 @@
     homeState.pvKwp = Number($("#hlnHomePvKwp").value);
     homeState.pvOrientation = $("#hlnHomePvOrientation").value;
     homeState.pvTilt = Number($("#hlnHomePvTilt").value);
+    homeState.pvHouseholdKwhYear = Math.max(0, Number($("#hlnHomePvHouseholdKwh").value) || 0);
+    homeState.pvExportCreditLeiPerKwh = Math.max(0, Number($("#hlnHomePvExportCredit").value) || 0);
     homeState.solarThermalEnabled = $("#hlnHomeSolarThermalEnabled").checked;
     homeState.solarThermalArea = Number($("#hlnHomeSolarThermalArea").value);
     homeState.solarThermalOrientation = $("#hlnHomeSolarThermalOrientation").value;
@@ -6791,7 +6845,7 @@
     if (event.target === editor && editor.dataset.hlnEditorMode !== "technical") closeEditor();
   });
 
-  ["#hlnBuildingType","#hlnConstructionYear","#hlnArea","#hlnHeight","#hlnTemperature","#hlnOccupants","#hlnHomeWallStructure","#hlnHomeWallStructureThickness","#hlnHomeWallInsulationMaterial","#hlnHomeTopBoundary","#hlnHomeFloorBoundary","#hlnHomeRoofInsulationMaterial","#hlnHomeFloorInsulationMaterial","#hlnHomeWallIns","#hlnHomeRoofIns","#hlnHomeFloorIns","#hlnHomeWindows","#hlnHomeGlazing","#hlnOrientation","#hlnHomeHeating","#hlnHomeHeatPumpSource","#hlnHomeHeatingEmitter","#hlnHomeHeatingDistribution","#hlnHomeHeatingStorage","#hlnHomeHeatingControl","#hlnHomeDhwSystem","#hlnHomeVentilation","#hlnHomeCooling","#hlnHomePvEnabled","#hlnHomePvKwp","#hlnHomePvOrientation","#hlnHomePvTilt","#hlnHomeSolarThermalEnabled","#hlnHomeSolarThermalArea","#hlnHomeSolarThermalOrientation","#hlnHomeSolarThermalTilt"]
+  ["#hlnBuildingType","#hlnConstructionYear","#hlnArea","#hlnHeight","#hlnTemperature","#hlnOccupants","#hlnHomeWallStructure","#hlnHomeWallStructureThickness","#hlnHomeWallInsulationMaterial","#hlnHomeTopBoundary","#hlnHomeFloorBoundary","#hlnHomeRoofInsulationMaterial","#hlnHomeFloorInsulationMaterial","#hlnHomeWallIns","#hlnHomeRoofIns","#hlnHomeFloorIns","#hlnHomeWindows","#hlnHomeGlazing","#hlnOrientation","#hlnHomeHeating","#hlnHomeHeatPumpSource","#hlnHomeHeatingEmitter","#hlnHomeHeatingDistribution","#hlnHomeHeatingStorage","#hlnHomeHeatingControl","#hlnHomeDhwSystem","#hlnHomeVentilation","#hlnHomeCooling","#hlnHomePvEnabled","#hlnHomePvKwp","#hlnHomePvOrientation","#hlnHomePvTilt","#hlnHomePvHouseholdKwh","#hlnHomePvExportCredit","#hlnHomeSolarThermalEnabled","#hlnHomeSolarThermalArea","#hlnHomeSolarThermalOrientation","#hlnHomeSolarThermalTilt"]
     .forEach(selector => {
       const node = $(selector);
       if (node) node.addEventListener("change", updateHomeFromEditors);

@@ -4,6 +4,7 @@ import json
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 
@@ -228,6 +229,8 @@ def _climate_from_station(
     station: dict[str, Any],
     *,
     locality_name: str | None = None,
+    locality_id: str | None = None,
+    county: str | None = None,
     climate_zone: str | None = None,
     winter_design_temperature_c: float | None = None,
     resolution: str = "exact",
@@ -238,10 +241,11 @@ def _climate_from_station(
         "station": station["name"],
         "station_id": station["id"],
         "selected_locality": {
-            "id": station.get("source_locality_id") or station.get("locality_id") or station["id"],
-            "siruta": station.get("source_locality_id"),
+            "id": locality_id or station.get("source_locality_id") or station.get("locality_id") or station["id"],
+            "siruta": locality_id or station.get("source_locality_id"),
             "name": selected_name,
-            "county": station.get("county"),
+            "display_name": selected_name,
+            "county": county if county is not None else station.get("county"),
             "uat_name": None,
             "locality_type": None,
             "lon": station.get("lon"),
@@ -260,12 +264,56 @@ def _climate_from_station(
 
 
 def _resolve_browser_climate_token(value: str) -> dict[str, Any] | None:
+    # V2 format:
+    # @lc2|<station-short-id>|<zone>|<design-temp>|<locality-id>|<locality-name>|<county>
+    # The browser already has these fields from /api/location-data. Carrying
+    # them in a compact token lets live RBPE requests preserve the user's actual
+    # locality/county without parsing and caching the ~6.5 MB locality registry.
+    raw = str(value or "")
+    if raw.startswith("@lc2|"):
+        parts = raw.split("|", 6)
+        if len(parts) != 7:
+            return None
+        (
+            _,
+            station_key,
+            zone,
+            temperature_text,
+            locality_id,
+            locality_name,
+            county,
+        ) = parts
+        station_id = (
+            station_key
+            if station_key.startswith("mc001_6_2013_")
+            else f"mc001_6_2013_{station_key}"
+        )
+        station = _station_index().get(station_id)
+        if not station:
+            raise ValueError(
+                "Stația climatică selectată nu este disponibilă în setul MC001 LaCurent."
+            )
+        try:
+            winter_temperature = (
+                float(temperature_text) if temperature_text else None
+            )
+        except ValueError:
+            winter_temperature = None
+        return _climate_from_station(
+            station,
+            locality_name=unquote(locality_name) or station["name"],
+            locality_id=unquote(locality_id) or None,
+            county=unquote(county) or None,
+            climate_zone=zone or None,
+            winter_design_temperature_c=winter_temperature,
+            resolution="browser-selected",
+        )
+
+    # Backward-compatible V1 token used by Home Lab classic.
     # Format: @lc|<station-short-id>|<zone>|<design-temp>|<locality-name>
-    # It contains only data already selected from the official map payload in
-    # the browser. The station itself is revalidated against climate.json.
-    if not str(value or "").startswith("@lc|"):
+    if not raw.startswith("@lc|"):
         return None
-    parts = str(value).split("|", 4)
+    parts = raw.split("|", 4)
     if len(parts) != 5:
         return None
     _, station_key, zone, temperature_text, locality_name = parts

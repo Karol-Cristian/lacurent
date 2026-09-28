@@ -6,8 +6,9 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from commercial.app.engine import demo_building, dhw_energy
+from commercial.app.engine import calculate, demo_building, dhw_energy
 from commercial.app.main import app, build_input_from_form
+from commercial.app import methodology as methodology_module
 from commercial.app.pricing import _firewood_reference
 from commercial.app.simulation_facts import FACT_SCENARIOS, _build_fact
 
@@ -161,7 +162,7 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'data-page="report"' in page.text
     assert 'data-page="renewables"' in page.text
     assert "/static/home-lab-editorial.css?v=17" in page.text
-    assert "/static/home-lab-editorial.js?v=39" in page.text
+    assert "/static/home-lab-editorial.js?v=40" in page.text
     assert "/static/home-lab-3d.js" not in page.text
     assert 'id="edBaselineClass"' in page.text
     assert 'id="edClassReferenceOpen"' in page.text
@@ -277,6 +278,9 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert '"/api/optimization/home-lab/v4/plan"' in js.text
     assert '"/static/teo-v4-worker.js?v=4"' in js.text
     assert '"/api/optimization/home-lab/v3/verify"' in js.text
+    assert "function climateTokenForSelectedLocality()" in js.text
+    assert "return `@lc2|" in js.text
+    assert 'data.set("locality_id", climateTokenForSelectedLocality())' in js.text
     # TEO ends at the canonically verified parametric optimum.
     # Product/SKU matching is intentionally a later workflow.
     assert '"/api/optimization/home-lab/v3/product"' not in js.text
@@ -286,6 +290,27 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert "finalizeHttpRequests:0" in js.text
     assert 'showPage("done");' in js.text
     assert '$("#openReport").addEventListener("click", () => showPage("report"));' in js.text
+
+
+def test_compact_browser_climate_token_preserves_selected_locality_without_registry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_large_registry() -> None:
+        raise AssertionError("compact climate token must not load the locality registry")
+
+    monkeypatch.setattr(methodology_module, "_locality_indexes", fail_large_registry)
+
+    climate = methodology_module.resolve_climate(
+        "@lc2|alba_iulia|III|-18|siruta-123|Ora%C8%99%20Test|Satu%20Mare"
+    )
+
+    assert climate["station_id"] == "mc001_6_2013_alba_iulia"
+    assert climate["climate_zone"] == "III"
+    assert climate["winter_design_temperature_c"] == -18
+    assert climate["station_resolution"] == "browser-selected"
+    assert climate["selected_locality"]["id"] == "siruta-123"
+    assert climate["selected_locality"]["name"] == "Oraș Test"
+    assert climate["selected_locality"]["county"] == "Satu Mare"
 
 
 def test_editorial_energy_class_opens_thresholds_and_reference_house() -> None:
@@ -670,6 +695,11 @@ def test_form_calculation_renders_romanian_results_and_costs() -> None:
     assert "Cere o evaluare tehnică" in response.text
     assert 'href="/"' not in response.text
     assert "Trace" not in response.text
+    assert 'data-reference-comparison' in response.text
+    assert '/static/reference-comparison.js?v=1' in response.text
+    assert 'data-reference-url="/api/reference-comparison"' in response.text
+    assert "workers.dev" not in response.text
+    assert "Se calculează…" in response.text
 
 
 def test_certificate_renders_romanian_printable_report_with_costs() -> None:
@@ -684,6 +714,81 @@ def test_certificate_renders_romanian_printable_report_with_costs() -> None:
     assert "Cost estimat al serviciilor energetice modelate" in response.text
     assert "nu reprezintă un Certificat de Performanță Energetică" in response.text
     assert "lei/an" in response.text
+    assert 'data-reference-comparison' in response.text
+    assert '/static/reference-comparison.js?v=1' in response.text
+
+
+def test_reference_comparison_api_local_fallback_matches_canonical_reference() -> None:
+    building = demo_building()
+    canonical = calculate(building)
+    assert canonical.reference is not None
+
+    response = client.post(
+        "/api/reference-comparison",
+        json={
+            "payload": building.model_dump_json(),
+            "actualSpecificPrimaryKwhM2": canonical.primary_energy.specific_kwh_m2,
+        },
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["calculationMode"] == "local_reference_rbpe_fallback"
+    assert payload["referenceSpecificPrimaryKwhM2"] == pytest.approx(
+        canonical.reference.reference_specific_primary_kwh_m2,
+        abs=1e-3,
+    )
+    assert payload["differencePercent"] == pytest.approx(
+        canonical.reference.difference_percent,
+        abs=0.1,
+    )
+
+
+def test_private_rbpe_topology_is_minimal_sharded_and_service_bound() -> None:
+    worker = Path("commercial/reference-worker/worker.py").read_text(encoding="utf-8")
+    shard_wrangler = Path("commercial/reference-worker/wrangler.toml").read_text(
+        encoding="utf-8"
+    )
+    router = Path("commercial/rbpe-router/worker.mjs").read_text(encoding="utf-8")
+    router_wrangler = Path("commercial/rbpe-router/wrangler.toml").read_text(
+        encoding="utf-8"
+    )
+    gateway = Path("commercial/calc-gateway/worker.mjs").read_text(encoding="utf-8")
+    gateway_wrangler = Path("commercial/calc-gateway/wrangler.toml").read_text(
+        encoding="utf-8"
+    )
+    main_wrangler = Path("commercial/cloudflare-worker/wrangler.toml").read_text(
+        encoding="utf-8"
+    )
+    prepare = Path("scripts/prepare-reference-cloudflare-worker.mjs").read_text(
+        encoding="utf-8"
+    )
+
+    assert "from app.engine import reference_primary_specific_energy" in worker
+    assert "from app.main import" not in worker
+    assert "from fastapi" not in worker.lower()
+    assert "import fastapi" not in worker.lower()
+    assert "async def reference_comparison(" in worker
+    assert "async def calculate_home_lab_form_api_json(" in worker
+    assert 'compatibility_flags = ["python_workers", "enable_weak_ref"]' in shard_wrangler
+    assert 'workers_dev = false' in shard_wrangler
+    assert "lacurent-reference-rbpe" in shard_wrangler
+
+    for binding in ("RBPE_A", "RBPE_B", "RBPE_C", "RBPE_D"):
+        assert f'binding = "{binding}"' in router_wrangler
+    for suffix in ("a", "b", "c", "d"):
+        assert f'service = "lacurent-rbpe-shard-{suffix}"' in router_wrangler
+    assert "calculate_home_lab_form_api_json" in router
+    assert "disabledUntil" in router
+
+    assert 'binding = "RBPE_ROUTER"' in gateway_wrangler
+    assert 'service = "lacurent-rbpe-router"' in gateway_wrangler
+    assert 'pattern = "lacurent.com/api/home-lab-next/calculate*"' in gateway_wrangler
+    assert "calculate_home_lab_form_api_json" in gateway
+    assert '"x-lacurent-calc": "private-rbpe-sharded"' in gateway
+
+    assert 'binding = "REFERENCE_RBPE"' in main_wrangler
+    assert 'service = "lacurent-rbpe-router"' in main_wrangler
+    assert ".wrangler/reference-rbpe-worker" in prepare
 
 
 def test_official_price_registry_endpoint_is_available() -> None:
@@ -838,8 +943,8 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'class="hln-impact-panel"' in response.text
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
-    assert "/static/home-lab-next.css?v=next362-energy-class" in response.text
-    assert "/static/home-lab-next.js?v=next72-heating-power" in response.text
+    assert "/static/home-lab-next.css?v=next363-useful-demand" in response.text
+    assert "/static/home-lab-next.js?v=next73-useful-demand" in response.text
     assert "/static/home-lab-3d.css?v=3d31" in response.text
     assert 'aria-label="Schiță conceptuală a casei"' not in response.text
     assert 'aria-label="Casă cu zone de îmbunătățire"' not in response.text
@@ -1196,6 +1301,14 @@ def test_home_lab_next_calculation_reuses_existing_energy_engine() -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["final_energy_kwh"] > 0
+    assert payload["annual_heating_demand_kwh"] > 0
+    assert payload["annual_cooling_demand_kwh"] >= 0
+    assert payload["heating_demand_specific_kwh_m2"] == pytest.approx(
+        payload["annual_heating_demand_kwh"] / 160
+    )
+    assert payload["cooling_demand_specific_kwh_m2"] == pytest.approx(
+        payload["annual_cooling_demand_kwh"] / 160
+    )
     assert payload["heat_loss_w_k"] > 0
     assert payload["energy_class"]
     assert "annual_cost_lei" in payload
@@ -1315,6 +1428,93 @@ def test_form_maps_heated_attic_roof_to_direct_exterior_and_heated_floor_to_zero
     assert floor.boundary_correction_factor == 0.0
 
 
+def test_extracted_home_lab_form_parser_matches_web_parser() -> None:
+    from commercial.app.home_lab_form import build_input_from_form as isolated_parser
+    from commercial.app.models import model_to_dict
+
+    cases = []
+
+    base = demo_form_data()
+    cases.append(base)
+
+    heat_pump = _simple_home_lab_dhw_form("heat_pump")
+    heat_pump.update(
+        {
+            "heating_chain_enabled": "on",
+            "heating_generator_type": "heat_pump_air_water",
+            "heating_emitter_type": "underfloor",
+            "heating_distribution_type": "underfloor",
+            "pv_enabled": "on",
+            "pv_installed_power_kwp": "8.5",
+            "pv_orientation": "south_west",
+        }
+    )
+    cases.append(heat_pump)
+
+    apartment = demo_form_data()
+    apartment.update(
+        {
+            "building_type": "residential_collective",
+            "apartment_area_m2": "73.5",
+            "apartment_height_m": "2.65",
+            "apartment_exterior_wall_length_m": "11.2",
+            "apartment_window_area_m2": "9.8",
+            "apartment_top_exposed": "on",
+            "building_length_m": "",
+            "building_width_m": "",
+            "heated_levels": "",
+            "heating_choice": "electric_resistance",
+            "expert_heating_override": "",
+        }
+    )
+    cases.append(apartment)
+
+    for form in cases:
+        assert model_to_dict(isolated_parser(dict(form))) == model_to_dict(
+            build_input_from_form(dict(form))
+        )
+
+
+def test_private_rbpe_transport_matches_canonical_calculation_exactly() -> None:
+    from commercial.app.models import CalculationResult, model_to_dict, model_to_json
+    from commercial.app.rbpe_service import calculate_home_lab_result_payload
+
+    building = build_input_from_form(demo_form_data())
+    direct = calculate(building, include_reference=False)
+    transported = CalculationResult(
+        **calculate_home_lab_result_payload(model_to_json(building))
+    )
+
+    assert model_to_dict(transported) == model_to_dict(direct)
+
+
+def test_private_rbpe_raw_form_payload_matches_existing_live_api() -> None:
+    import json
+    import urllib.parse
+
+    from commercial.app.rbpe_service import calculate_home_lab_form_api_json
+
+    form = demo_form_data()
+    encoded = urllib.parse.urlencode(form)
+    private_payload = json.loads(calculate_home_lab_form_api_json(encoded))
+
+    response = client.post("/api/home-lab-next/calculate", data=form)
+    assert response.status_code == 200
+    assert private_payload == response.json()
+
+
+def test_live_calculation_route_does_not_run_canonical_engine_in_web_worker() -> None:
+    source = Path("commercial/app/main.py").read_text(encoding="utf-8")
+    section = source.split("async def home_lab_next_calculation", 1)[1].split(
+        '@app.post("/api/home-lab-next/calculate")',
+        1,
+    )[0]
+
+    assert "await service.calculate_home_lab_api_json(" in section
+    assert "calculate(building, include_reference=False)" not in section
+    assert "CalculationResult(" not in section
+
+
 def test_home_lab_next_can_skip_redundant_reference_for_live_scenarios() -> None:
     data = demo_form_data()
     data["_skip_reference"] = "1"
@@ -1328,6 +1528,26 @@ def test_home_lab_next_can_skip_redundant_reference_for_live_scenarios() -> None
     # Methodological reference parameters remain available to the UI from the
     # registry even when the expensive reference-building calculation is skipped.
     assert payload["reference_parameters"]["u_values_w_m2k"]["exterior_wall"] > 0
+
+
+def test_home_lab_next_exposes_useful_heating_and_cooling_demand_for_hud() -> None:
+    response = client.post("/api/home-lab-next/calculate", data=demo_form_data())
+
+    assert response.status_code == 200
+    payload = response.json()
+
+    heating = float(payload["annual_heating_demand_kwh"])
+    cooling = float(payload["annual_cooling_demand_kwh"])
+    area = float(payload["heated_floor_area_m2"]) if "heated_floor_area_m2" in payload else None
+    monthly_heating = sum(float(row["useful_heating_kwh"]) for row in payload["monthly"])
+    monthly_cooling = sum(float(row["useful_cooling_kwh"]) for row in payload["monthly"])
+
+    assert heating > 0
+    assert cooling >= 0
+    assert heating == pytest.approx(monthly_heating, abs=0.01)
+    assert cooling == pytest.approx(monthly_cooling, abs=0.01)
+    assert float(payload["heating_demand_specific_kwh_m2"]) > 0
+    assert float(payload["cooling_demand_specific_kwh_m2"]) >= 0
 
 
 def test_home_lab_next_optimizer_candidate_returns_compact_metrics_only() -> None:
@@ -1398,6 +1618,110 @@ def test_home_lab_next_direct_electric_heating_pv_changes_live_result() -> None:
     assert with_payload["renewables"]["pv"]["self_consumed_kwh"] > 0
     assert with_payload["final_energy_kwh"] < without_payload["final_energy_kwh"]
     assert with_payload["annual_cost_lei"] < without_payload["annual_cost_lei"]
+
+
+def test_home_lab_next_pv_orientation_and_tilt_change_live_generation_and_cost() -> None:
+    base = demo_form_data()
+    base.update(
+        {
+            "building_length_m": "10",
+            "building_width_m": "8",
+            "heated_levels": "2",
+            "average_height_m": "2.7",
+            "house_window_area_m2": "20",
+            "heating_choice": "electric_resistance",
+            "expert_heating_override": "",
+            "cooling_enabled": "",
+            "pv_enabled": "on",
+            "pv_installed_power_kwp": "5",
+            "pv_orientation": "south",
+            "pv_tilt_degrees": "30",
+            "pv_performance_ratio": "0.82",
+            "pv_household_electricity_kwh_year": "0",
+            "pv_export_credit_lei_per_kwh": "0",
+        }
+    )
+    south = client.post("/api/home-lab-next/calculate", data=base)
+    assert south.status_code == 200
+    south_payload = south.json()
+
+    north_data = dict(base)
+    north_data.update({"pv_orientation": "north", "pv_tilt_degrees": "90"})
+    north = client.post("/api/home-lab-next/calculate", data=north_data)
+    assert north.status_code == 200
+    north_payload = north.json()
+
+    assert (
+        south_payload["renewables"]["pv"]["annual_generation_kwh"]
+        > north_payload["renewables"]["pv"]["annual_generation_kwh"]
+    )
+    assert south_payload["annual_cost_lei"] < north_payload["annual_cost_lei"]
+    assert south_payload["final_energy_kwh"] < north_payload["final_energy_kwh"]
+
+
+def test_home_lab_next_household_pv_economics_do_not_change_mc001_class() -> None:
+    base = demo_form_data()
+    base.update(
+        {
+            "heating_choice": "wood_stove",
+            "expert_heating_override": "",
+            "cooling_enabled": "",
+            "pv_enabled": "on",
+            "pv_installed_power_kwp": "3",
+            "pv_orientation": "south",
+            "pv_tilt_degrees": "30",
+            "pv_performance_ratio": "0.82",
+            "pv_household_electricity_kwh_year": "12000",
+            "pv_export_credit_lei_per_kwh": "0",
+        }
+    )
+    south = client.post("/api/home-lab-next/calculate", data=base)
+    assert south.status_code == 200
+    south_payload = south.json()
+
+    north_data = dict(base)
+    north_data.update({"pv_orientation": "north", "pv_tilt_degrees": "90"})
+    north = client.post("/api/home-lab-next/calculate", data=north_data)
+    assert north.status_code == 200
+    north_payload = north.json()
+
+    assert south_payload["energy_class"] == north_payload["energy_class"]
+    assert south_payload["primary_specific_kwh_m2"] == north_payload["primary_specific_kwh_m2"]
+    assert south_payload["annual_cost_lei"] < north_payload["annual_cost_lei"]
+    assert south_payload["pv_economics"]["scope"] == "economic_only_not_mc001_regulated_energy"
+    assert south_payload["renewables"]["pv"]["household_self_consumed_kwh"] > 0
+
+
+def test_home_lab_next_explicit_pv_export_credit_changes_economics_only() -> None:
+    base = demo_form_data()
+    base.update(
+        {
+            "heating_choice": "wood_stove",
+            "expert_heating_override": "",
+            "cooling_enabled": "",
+            "pv_enabled": "on",
+            "pv_installed_power_kwp": "5",
+            "pv_orientation": "south",
+            "pv_tilt_degrees": "30",
+            "pv_performance_ratio": "0.82",
+            "pv_household_electricity_kwh_year": "0",
+            "pv_export_credit_lei_per_kwh": "0",
+        }
+    )
+    no_credit = client.post("/api/home-lab-next/calculate", data=base)
+    assert no_credit.status_code == 200
+    no_credit_payload = no_credit.json()
+
+    credit_data = dict(base)
+    credit_data["pv_export_credit_lei_per_kwh"] = "0.30"
+    with_credit = client.post("/api/home-lab-next/calculate", data=credit_data)
+    assert with_credit.status_code == 200
+    credit_payload = with_credit.json()
+
+    assert credit_payload["energy_class"] == no_credit_payload["energy_class"]
+    assert credit_payload["primary_specific_kwh_m2"] == no_credit_payload["primary_specific_kwh_m2"]
+    assert credit_payload["annual_cost_lei"] < no_credit_payload["annual_cost_lei"]
+    assert credit_payload["pv_economics"]["export_credit_lei"] > 0
 
 
 def test_home_lab_next_normalizes_stale_wood_stove_chain() -> None:
@@ -1685,6 +2009,38 @@ def test_home_lab_next_calculates_pv_and_solar_thermal_from_solar_resource() -> 
     assert payload["gross_service_final_energy_kwh"] >= payload["final_energy_kwh"]
 
 
+def test_home_lab_next_solar_thermal_orientation_and_tilt_change_output() -> None:
+    base = demo_form_data()
+    base.update(
+        {
+            "solar_thermal_enabled": "on",
+            "solar_thermal_collector_area_m2": "2",
+            "solar_thermal_orientation": "south",
+            "solar_thermal_tilt_degrees": "45",
+            "solar_thermal_system_efficiency": "0.45",
+        }
+    )
+    south = client.post("/api/home-lab-next/calculate", data=base)
+    assert south.status_code == 200
+    south_payload = south.json()
+
+    north_data = dict(base)
+    north_data.update(
+        {
+            "solar_thermal_orientation": "north",
+            "solar_thermal_tilt_degrees": "90",
+        }
+    )
+    north = client.post("/api/home-lab-next/calculate", data=north_data)
+    assert north.status_code == 200
+    north_payload = north.json()
+
+    south_solar = south_payload["renewables"]["solar_thermal"]
+    north_solar = north_payload["renewables"]["solar_thermal"]
+    assert south_solar["annual_plane_hsol_kwh_m2"] > north_solar["annual_plane_hsol_kwh_m2"]
+    assert south_solar["annual_available_kwh"] > north_solar["annual_available_kwh"]
+
+
 def test_editorial_finalization_runs_in_browser_after_parametric_verify() -> None:
     js = client.get("/static/home-lab-editorial.js")
     assert js.status_code == 200
@@ -1751,7 +2107,8 @@ def test_optimizer_reuses_baseline_bill_and_resets_cross_run_engine_cache() -> N
         1,
     )[0]
     assert "clear_baseline_evaluation_cache()" in calculate_section
-    assert "gc.collect()" in calculate_section
+    assert "await service.calculate_home_lab_api_json(" in calculate_section
+    assert "calculate(building, include_reference=False)" not in calculate_section
 
     verify_section = main_source.split(
         "async def home_lab_optimization_v3_verify_api",
@@ -1923,6 +2280,15 @@ def test_reference_engine_pass_stays_scalar_before_evaluated_graph_allocation() 
     assert "_boundary_assumptions(" not in scalar_section
 
 
+def test_reference_worker_bundles_rbpe_data_files() -> None:
+    config = Path("commercial/reference-worker/wrangler.toml").read_text(
+        encoding="utf-8"
+    )
+    assert 'type = "Text"' in config
+    assert '"**/*.json"' in config
+    assert '"**/*.geojson"' in config
+
+
 def test_worker_memory_guard_and_v3_verification_use_bounded_state() -> None:
     source = Path("commercial/app/main.py").read_text(encoding="utf-8")
     assert "async def collect_python_worker_garbage(" in source
@@ -1957,12 +2323,23 @@ def test_worker_memory_guard_and_v3_verification_use_bounded_state() -> None:
 
 
 def test_home_lab_next_calculation_is_single_pass_without_reference_engine_recursion() -> None:
-    source = Path("commercial/app/main.py").read_text(encoding="utf-8")
-    section = source.split("async def home_lab_next_calculation", 1)[1].split(
+    web_source = Path("commercial/app/main.py").read_text(encoding="utf-8")
+    web_section = web_source.split("async def home_lab_next_calculation", 1)[1].split(
         '@app.post("/api/home-lab-next/calculate")', 1
     )[0]
-    assert "calculate(building, include_reference=False)" in section
-    assert "include_reference=not (skip_reference or optimizer_candidate)" not in section
+    rbpe_source = Path("commercial/app/rbpe_service.py").read_text(encoding="utf-8")
+    engine_section = rbpe_source.split(
+        "def _calculate_home_lab_api_json_from_building",
+        1,
+    )[1].split(
+        "def calculate_home_lab_api_json",
+        1,
+    )[0]
+
+    assert "calculate(building, include_reference=False)" not in web_section
+    assert "await service.calculate_home_lab_api_json(" in web_section
+    assert engine_section.count("calculate(building, include_reference=False)") == 1
+    assert "include_reference=True" not in engine_section
 
 
 def test_home_lab_next_optimizer_uses_compact_cached_candidates() -> None:
@@ -2570,8 +2947,8 @@ def test_home_lab_issue_359_adaptive_intro_contract() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
     assert response.text.count('class="hln-screen-intro-copy"') == 2
-    assert "/static/home-lab-next.css?v=next362-energy-class" in response.text
-    assert "/static/home-lab-next.js?v=next72-heating-power" in response.text
+    assert "/static/home-lab-next.css?v=next363-useful-demand" in response.text
+    assert "/static/home-lab-next.js?v=next73-useful-demand" in response.text
 
     css = client.get("/static/home-lab-next.css")
     assert css.status_code == 200
@@ -2593,6 +2970,29 @@ def test_home_lab_issue_359_adaptive_intro_contract() -> None:
     assert 'root.addEventListener("pointerdown"' in source
     assert "localStorage.setItem" in source
     assert "introCollapsedScreens" not in source.split("localStorage.setItem", 1)[1].split("));", 1)[0]
+
+
+def test_home_lab_hud_exposes_useful_heating_and_cooling_demand() -> None:
+    response = client.get("/home-lab-classic")
+    assert response.status_code == 200
+    assert 'id="hlnPersistentHeatingDemand"' in response.text
+    assert 'id="hlnPersistentHeatingSpecific"' in response.text
+    assert 'id="hlnPersistentCoolingDemand"' in response.text
+    assert 'id="hlnPersistentCoolingSpecific"' in response.text
+    assert "Necesar util încălzire" in response.text
+    assert "Necesar util răcire" in response.text
+
+    js = client.get("/static/home-lab-next.js")
+    assert js.status_code == 200
+    assert "result?.annual_heating_demand_kwh" in js.text
+    assert "result?.annual_cooling_demand_kwh" in js.text
+    assert "result?.heating_demand_specific_kwh_m2" in js.text
+    assert "result?.cooling_demand_specific_kwh_m2" in js.text
+
+    css = client.get("/static/home-lab-next.css")
+    assert css.status_code == 200
+    assert ".hln-live-heating-card" in css.text
+    assert ".hln-live-cooling-card" in css.text
 
 
 def test_home_lab_mobile_declutter_contract() -> None:
@@ -2841,6 +3241,35 @@ def test_partner_embed_lab_calculation_returns_live_metrics() -> None:
     assert payload["reference_parameters"]["u_values_w_m2k"]["exterior_wall"] > 0
 
 
+def test_html_calculation_routes_run_one_rbpe_pass_per_request() -> None:
+    source = Path("commercial/app/main.py").read_text(encoding="utf-8")
+
+    calculate_section = source.split(
+        "async def render_calculation_from_form",
+        1,
+    )[1].split(
+        '@app.post("/api/reference-comparison")',
+        1,
+    )[0]
+    assert "calculate(building, include_reference=False)" in calculate_section
+    assert "result = calculate(building)" not in calculate_section
+
+    demo_section = source.split(
+        "async def demo(request: Request)",
+        1,
+    )[1].split(
+        '@app.post("/certificate"',
+        1,
+    )[0]
+    assert "calculate(demo_building(), include_reference=False)" in demo_section
+
+    certificate_section = source.split(
+        "async def certificate(request: Request)",
+        1,
+    )[1]
+    assert "calculate(building, include_reference=False)" in certificate_section
+
+
 def test_public_then_partner_calculation_sequence_stays_healthy() -> None:
     data = demo_form_data()
     public = client.post("/calculate", data=data)
@@ -2863,6 +3292,7 @@ def test_partner_embed_calculation_keeps_partner_cta_and_shared_engine() -> None
     assert 'href="mailto:karol@lacurent.com?subject=Evaluare%20tehnica%20locuinta"' in response.text
     assert 'href="/embed/demo-store"' in response.text
     assert "embed-runtime.js" in response.text
+    assert 'data-reference-comparison' in response.text
 
 
 def test_unknown_partner_embed_returns_404() -> None:
@@ -3200,7 +3630,7 @@ def test_heating_branch_report_uses_explicit_verdict_labels() -> None:
 def test_home_lab_next_uses_transient_retry_asset_version() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
-    assert "/static/home-lab-next.js?v=next72-heating-power" in response.text
+    assert "/static/home-lab-next.js?v=next73-useful-demand" in response.text
 
 
 

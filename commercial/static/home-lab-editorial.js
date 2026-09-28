@@ -1411,6 +1411,24 @@
     scheduleEditorialDraftSave();
   }
 
+  function climateTokenForSelectedLocality() {
+    const rawId = String($("#localityId")?.value || "").trim();
+    const selected = localityMap.get(rawId);
+    if (!selected) return rawId || String($("#localityInput")?.value || "");
+
+    const stationId = String(selected.stationId || "");
+    const zone = String(selected.climateZone || "");
+    if (!stationId || !zone) return rawId || String(selected.name || "");
+
+    const shortStationId = stationId.replace(/^mc001_6_2013_/, "");
+    const temperature = Number.isFinite(Number(selected.winterDesignTemperatureC))
+      ? String(Number(selected.winterDesignTemperatureC))
+      : "";
+    const encode = value => encodeURIComponent(String(value ?? ""));
+
+    return `@lc2|${shortStationId}|${zone}|${temperature}|${encode(selected.id)}|${encode(selected.name)}|${encode(selected.county || "")}`;
+  }
+
   function nearestMapLocalities(event, limit = 5) {
     const svg = event.target.closest("svg.ed-location-map-svg");
     if (!svg || !locationProjection) return [];
@@ -1595,6 +1613,11 @@
     form.querySelectorAll("[data-decimal-input][name]").forEach(input => {
       data.set(input.name, decimalForForm(input.value));
     });
+    // Keep the raw locality ID in the form/local draft for UI restoration, but
+    // never send it through the live RBPE path. The compact browser token keeps
+    // the selected MC001 station/zone/locality/county without forcing Python to
+    // parse and cache the ~6.5 MB Romanian locality registry on every isolate.
+    data.set("locality_id", climateTokenForSelectedLocality());
     return data;
   }
 
