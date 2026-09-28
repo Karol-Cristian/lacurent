@@ -99,7 +99,12 @@ jobs:
               'service = "lacurent-rbpe-router"',
               f'service = "lacurent-rbpe-router-e2e-{run_id}"',
           )
-          text = text.split("\n[[routes]]", 1)[0].rstrip() + "\n"
+          if "\n[[routes]]" in text:
+              head = text.split("\n[[routes]]", 1)[0].rstrip()
+              rules = ""
+              if "\n[[rules]]" in text:
+                  rules = "\n[[rules]]" + text.split("\n[[rules]]", 1)[1]
+              text = head + "\n" + rules.lstrip("\n")
           p.write_text(text)
           print(text)
           PY
