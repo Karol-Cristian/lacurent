@@ -1,0 +1,37 @@
+name: PV Worker Analytics Probe
+
+on:
+  push:
+    branches:
+      - codex/pv-orientation-regression
+
+jobs:
+  query-worker-metrics:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query Cloudflare Worker invocation metrics around reproduced failure
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/query.json <<'JSON'
+          {
+            "query": "query GetWorkersAnalytics($accountTag: string, $datetimeStart: string, $datetimeEnd: string, $scriptName: string) { viewer { accounts(filter: {accountTag: $accountTag}) { workersInvocationsAdaptive(limit: 100, filter: {scriptName: $scriptName, datetime_geq: $datetimeStart, datetime_leq: $datetimeEnd}) { sum { requests errors } quantiles { cpuTimeP50 cpuTimeP99 memoryUsageBytesP50 memoryUsageBytesP99 } dimensions { datetime scriptName status } } } } }",
+            "variables": {
+              "accountTag": "__ACCOUNT__",
+              "datetimeStart": "2026-09-28T09:08:30.000Z",
+              "datetimeEnd": "2026-09-28T09:10:30.000Z",
+              "scriptName": "lacurent-commercial-v2"
+            }
+          }
+          JSON
+          python - <<'PY'
+          import json, os
+          p="/tmp/query.json"
+          d=json.load(open(p))
+          d["variables"]["accountTag"]=os.environ["CLOUDFLARE_ACCOUNT_ID"]
+          json.dump(d, open(p,"w"))
+          PY
+          curl --fail-with-body --silent             https://api.cloudflare.com/client/v4/graphql             --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             --header "Accept: application/json"             --header "Content-Type: application/json"             --data @/tmp/query.json | jq .
