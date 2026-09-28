@@ -1,0 +1,105 @@
+name: RBPE Production 403 Probe
+
+on:
+  push:
+    branches:
+      - codex/rbpe-prod-403-probe
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Probe production calculation route
+        run: |
+          node <<'JS'
+          const url = "https://lacurent.com/api/home-lab-next/calculate";
+          const base = {
+            project_name:"RBPE 403 probe",
+            locality_id:"@lc2|alba_iulia|III|-18|siruta-probe|Probe%20Locality|Alba",
+            locality:"Probe Locality",
+            heated_floor_area_m2:"160",
+            heated_volume_m3:"432",
+            indoor_design_temperature_c:"20",
+            building_type:"residential_individual",
+            construction_year:"2004",
+            wall_area_m2:"168",
+            wall_u_value:"0.42",
+            roof_area_m2:"92",
+            roof_u_value:"0.24",
+            floor_area_m2:"80",
+            floor_u_value:"0.36",
+            floor_boundary_type:"ground",
+            ground_exposed_perimeter_m:"36",
+            ground_wall_thickness_m:"0.30",
+            ground_conductivity_w_mk:"2.0",
+            window_area_m2:"24",
+            window_u_value:"1.35",
+            door_area_m2:"3.2",
+            door_u_value:"1.7",
+            thermal_bridge_length_m:"42",
+            thermal_bridge_psi_w_mk:"0.05",
+            air_changes_per_hour:"0.5",
+            infiltration_air_changes_per_hour:"0.15",
+            heat_recovery_efficiency:"0",
+            heating_system_type:"condensing_gas_boiler",
+            heating_efficiency:"0.94",
+            heating_carrier:"natural_gas",
+            dhw_enabled:"on",
+            dhw_occupants:"4",
+            dhw_litres_per_person_day_at_60c:"50",
+            dhw_efficiency:"0.86",
+            dhw_carrier:"natural_gas",
+            pv_enabled:"on",
+            pv_installed_power_kwp:"5",
+            pv_orientation:"south",
+            pv_tilt_degrees:"30",
+            pv_performance_ratio:"0.82"
+          };
+          const body = new URLSearchParams(base);
+
+          const variants = [
+            ["default", {}],
+            ["browser-ua", {
+              "user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/140 Safari/537.36",
+              "accept":"application/json,text/plain,*/*"
+            }],
+            ["browser-full", {
+              "user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/140 Safari/537.36",
+              "accept":"application/json,text/plain,*/*",
+              "origin":"https://lacurent.com",
+              "referer":"https://lacurent.com/home-lab-next"
+            }]
+          ];
+
+          for (const [name, extra] of variants) {
+            const response = await fetch(url, {
+              method:"POST",
+              headers:{
+                "content-type":"application/x-www-form-urlencoded;charset=UTF-8",
+                ...extra
+              },
+              body
+            });
+            const raw = await response.text();
+            console.log("VARIANT", name);
+            console.log(JSON.stringify({
+              status:response.status,
+              statusText:response.statusText,
+              headers:Object.fromEntries(response.headers.entries()),
+              body:raw.slice(0,2000)
+            }, null, 2));
+          }
+
+          const health = await fetch("https://lacurent.com/health", {
+            headers:{"user-agent":"Mozilla/5.0"}
+          });
+          console.log("HEALTH", health.status, (await health.text()).slice(0,500));
+          const page = await fetch("https://lacurent.com/home-lab-next", {
+            headers:{"user-agent":"Mozilla/5.0"}
+          });
+          console.log("HOME", page.status, (await page.text()).slice(0,200));
+          JS
