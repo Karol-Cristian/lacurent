@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 from workers import Response, WorkerEntrypoint
 
 from app.engine import calculate, reference_primary_specific_energy
-from app.home_lab_payload import embed_lab_result_payload
+from app.home_lab_payload import embed_lab_result_payload, home_lab_live_payload
 from app.models import building_from_json
 
 
@@ -58,7 +58,7 @@ def _reference_comparison_payload(payload, actual_raw) -> dict:
 
 
 
-def _live_calculation_payload(payload) -> dict:
+def _live_calculation_payload(payload, *, details: bool = False) -> dict:
     if payload in (None, ""):
         raise ValueError("Missing live calculation input.")
 
@@ -66,7 +66,11 @@ def _live_calculation_payload(payload) -> dict:
         payload if isinstance(payload, str) else json.dumps(payload)
     )
     result = calculate(building, include_reference=False)
-    response = embed_lab_result_payload(result)
+    response = (
+        embed_lab_result_payload(result)
+        if details
+        else home_lab_live_payload(result)
+    )
     del result
     del building
     gc.collect()
@@ -78,9 +82,9 @@ class Default(WorkerEntrypoint):
         """Private Worker RPC entrypoint used by the main LaCurent service."""
         return _reference_comparison_payload(payload, actual_specific)
 
-    async def live_calculation(self, payload):
+    async def live_calculation(self, payload, details=False):
         """Canonical Home Lab RBPE pass in the isolated Python Worker."""
-        return _live_calculation_payload(payload)
+        return _live_calculation_payload(payload, details=bool(details))
 
     async def fetch(self, request):
         path = urlparse(request.url).path
@@ -101,7 +105,12 @@ class Default(WorkerEntrypoint):
         if method == "POST" and path == "/live-calculation":
             try:
                 body = await request.json()
-                return _json_response(_live_calculation_payload(body.get("payload")))
+                return _json_response(
+                    _live_calculation_payload(
+                        body.get("payload"),
+                        details=bool(body.get("details")),
+                    )
+                )
             except Exception as exc:
                 return _json_response(
                     {"error": str(exc), "errorType": type(exc).__name__},
