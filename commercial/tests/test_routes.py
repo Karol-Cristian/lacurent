@@ -857,8 +857,12 @@ def test_private_teo_topology_is_sharded_and_route_isolated() -> None:
     worker_pyproject = Path("commercial/cloudflare-worker/pyproject.toml").read_text(
         encoding="utf-8"
     )
-    assert '"pydantic>=2.12,<3"' in worker_pyproject
-    assert '"pydantic>=1.10,<2"' not in worker_pyproject
+    # Cloudflare Pyodide 0.28.x does not provide the native pydantic-core wheel
+    # required by Pydantic 2. Keep the Worker on Pydantic 1 and pin FastAPI to
+    # the last compatibility series instead of allowing an incompatible latest.
+    assert '"fastapi>=0.115,<0.116"' in worker_pyproject
+    assert '"pydantic>=1.10,<2"' in worker_pyproject
+    assert '"fastapi>=0.115,<1"' not in worker_pyproject
 
 
 def test_official_price_registry_endpoint_is_available() -> None:
