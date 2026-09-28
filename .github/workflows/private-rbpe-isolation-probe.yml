@@ -8,7 +8,7 @@ on:
 jobs:
   private-rbpe-probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -31,66 +31,41 @@ jobs:
           python - <<'PY' > /tmp/building.json
           from commercial.app.main import build_input_from_form
           from commercial.app.models import model_to_json
-
           form = {
-              "project_name": "Private RBPE stress",
-              "locality_id": "@lc2|alba_iulia|III|-18|siruta-stress|Stress%20Locality|Alba",
-              "locality": "Stress Locality",
-              "heated_floor_area_m2": "160",
-              "heated_volume_m3": "432",
-              "indoor_design_temperature_c": "20",
-              "building_type": "residential_individual",
-              "construction_year": "2004",
-              "wall_area_m2": "168",
-              "wall_u_value": "0.42",
-              "roof_area_m2": "92",
-              "roof_u_value": "0.24",
-              "floor_area_m2": "80",
-              "floor_u_value": "0.36",
-              "floor_boundary_type": "ground",
-              "ground_exposed_perimeter_m": "36",
-              "ground_wall_thickness_m": "0.30",
-              "ground_conductivity_w_mk": "2.0",
-              "window_area_m2": "24",
-              "window_u_value": "1.35",
-              "door_area_m2": "3.2",
-              "door_u_value": "1.7",
-              "thermal_bridge_length_m": "42",
-              "thermal_bridge_psi_w_mk": "0.05",
-              "air_changes_per_hour": "0.5",
-              "infiltration_air_changes_per_hour": "0.15",
-              "heat_recovery_efficiency": "0",
-              "heating_system_type": "condensing_gas_boiler",
-              "heating_efficiency": "0.94",
-              "heating_carrier": "natural_gas",
-              "dhw_enabled": "on",
-              "dhw_occupants": "4",
-              "dhw_litres_per_person_day_at_60c": "50",
-              "dhw_efficiency": "0.86",
-              "dhw_carrier": "natural_gas",
-              "pv_enabled": "on",
-              "pv_installed_power_kwp": "5",
-              "pv_orientation": "south",
-              "pv_tilt_degrees": "30",
-              "pv_performance_ratio": "0.82",
+              "project_name":"Private RBPE stress",
+              "locality_id":"@lc2|alba_iulia|III|-18|siruta-stress|Stress%20Locality|Alba",
+              "locality":"Stress Locality",
+              "heated_floor_area_m2":"160","heated_volume_m3":"432",
+              "indoor_design_temperature_c":"20","building_type":"residential_individual",
+              "construction_year":"2004","wall_area_m2":"168","wall_u_value":"0.42",
+              "roof_area_m2":"92","roof_u_value":"0.24","floor_area_m2":"80",
+              "floor_u_value":"0.36","floor_boundary_type":"ground",
+              "ground_exposed_perimeter_m":"36","ground_wall_thickness_m":"0.30",
+              "ground_conductivity_w_mk":"2.0","window_area_m2":"24",
+              "window_u_value":"1.35","door_area_m2":"3.2","door_u_value":"1.7",
+              "thermal_bridge_length_m":"42","thermal_bridge_psi_w_mk":"0.05",
+              "air_changes_per_hour":"0.5","infiltration_air_changes_per_hour":"0.15",
+              "heat_recovery_efficiency":"0","heating_system_type":"condensing_gas_boiler",
+              "heating_efficiency":"0.94","heating_carrier":"natural_gas",
+              "dhw_enabled":"on","dhw_occupants":"4",
+              "dhw_litres_per_person_day_at_60c":"50","dhw_efficiency":"0.86",
+              "dhw_carrier":"natural_gas","pv_enabled":"on",
+              "pv_installed_power_kwp":"5","pv_orientation":"south",
+              "pv_tilt_degrees":"30","pv_performance_ratio":"0.82",
           }
           print(model_to_json(build_input_from_form(form)))
           PY
 
-      - name: Prepare and deploy direct RBPE probe
+      - name: Deploy private RBPE service probe
         run: |
           node scripts/prepare-reference-cloudflare-worker.mjs
           python - <<'PY'
           from pathlib import Path
           p = Path(".wrangler/reference-rbpe-worker/wrangler.toml")
-          text = p.read_text().replace(
+          p.write_text(p.read_text().replace(
               'name = "lacurent-reference-rbpe"',
               'name = "lacurent-rbpe-live-probe"',
-          ).replace(
-              'workers_dev = false',
-              'workers_dev = true',
-          )
-          p.write_text(text)
+          ))
           PY
           cd .wrangler/reference-rbpe-worker
           npm install --save-dev wrangler@latest
@@ -100,36 +75,110 @@ jobs:
           export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
           uvx --from workers-py pywrangler sync --force
           uvx --from workers-py pywrangler deploy
+          sleep 15
 
-      - name: Wait for direct RBPE probe
+      - name: Deploy minimal retry proxy
+        run: |
+          mkdir -p .wrangler/rbpe-retry-proxy
+          cat > .wrangler/rbpe-retry-proxy/worker.py <<'PY'
+          import asyncio
+          import json
+          from workers import Response, WorkerEntrypoint
+
+          class Default(WorkerEntrypoint):
+              async def fetch(self, request):
+                  payload = await request.text()
+                  last_error = None
+                  for attempt in range(2):
+                      try:
+                          result_json = await self.env.RBPE.calculate_home_lab_json(payload)
+                          return Response(
+                              str(result_json),
+                              headers={
+                                  "content-type":"application/json",
+                                  "x-rbpe-attempt":str(attempt + 1),
+                              },
+                          )
+                      except Exception as exc:
+                          last_error = exc
+                          if attempt == 0:
+                              await asyncio.sleep(0.05)
+                  return Response(
+                      json.dumps({
+                          "error":"private RBPE unavailable after recycle retry",
+                          "errorType":type(last_error).__name__ if last_error else "unknown",
+                      }),
+                      status=503,
+                      headers={"content-type":"application/json","x-rbpe-attempt":"2"},
+                  )
+          PY
+          cat > .wrangler/rbpe-retry-proxy/pyproject.toml <<'TOML'
+          [project]
+          name = "lacurent-rbpe-retry-proxy"
+          version = "0.1.0"
+          requires-python = ">=3.13"
+          dependencies = []
+
+          [dependency-groups]
+          dev = ["workers-py", "workers-runtime-sdk"]
+
+          [tool.pywrangler]
+          allow-build = false
+          TOML
+          cat > .wrangler/rbpe-retry-proxy/wrangler.toml <<'TOML'
+          name = "lacurent-rbpe-retry-proxy"
+          main = "worker.py"
+          compatibility_date = "2026-09-27"
+          compatibility_flags = ["python_workers", "enable_weak_ref"]
+          workers_dev = true
+
+          [[services]]
+          binding = "RBPE"
+          service = "lacurent-rbpe-live-probe"
+          remote = true
+          TOML
+          cd .wrangler/rbpe-retry-proxy
+          npm install --save-dev wrangler@latest
+          mkdir -p .bin
+          printf '#!/usr/bin/env bash\nexec npx wrangler "$@"\n' > .bin/wrangler
+          chmod +x .bin/wrangler
+          export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
+          uvx --from workers-py pywrangler sync --force
+          uvx --from workers-py pywrangler deploy
+          sleep 15
+
+      - name: Wait for retry proxy
         run: |
           for attempt in $(seq 1 60); do
-            if curl -fsS https://lacurent-rbpe-live-probe.lemnarukarol.workers.dev/health; then
+            status="$(curl -sS -o /tmp/probe.json -w '%{http_code}' -X POST \
+              --data-binary @/tmp/building.json \
+              https://lacurent-rbpe-retry-proxy.lemnarukarol.workers.dev/ || true)"
+            if [ "$status" = "200" ]; then
+              cat /tmp/probe.json
               exit 0
             fi
             sleep 2
           done
+          cat /tmp/probe.json || true
           exit 1
 
-      - name: Run 96 direct serial RBPE calculations
+      - name: Run 240 serial calls through recycle retry
         run: |
           node <<'JS'
           const fs = await import("node:fs");
           const payload = fs.readFileSync("/tmp/building.json", "utf8").trim();
-          const url = "https://lacurent-rbpe-live-probe.lemnarukarol.workers.dev/calculate-home-lab";
-          for (let i = 0; i < 96; i++) {
+          const url = "https://lacurent-rbpe-retry-proxy.lemnarukarol.workers.dev/";
+          let retries = 0;
+          for (let i = 0; i < 240; i++) {
             const started = performance.now();
-            const response = await fetch(url, {
-              method:"POST",
-              headers:{"content-type":"application/json","accept":"application/json"},
-              body:JSON.stringify({payload})
-            });
+            const response = await fetch(url, {method:"POST", body:payload});
             const raw = await response.text();
             let body = null;
             try { body = JSON.parse(raw); } catch (_) {}
+            const attempt = Number(response.headers.get("x-rbpe-attempt") || "0");
+            if (attempt > 1) retries += 1;
             console.log(JSON.stringify({
-              count:i+1,
-              status:response.status,
+              count:i+1,status:response.status,attempt,
               elapsed_ms:Math.round(performance.now()-started),
               energy_class:body?.energy_class ?? null,
               final_energy_kwh:body?.total_final_energy_kwh ?? null
@@ -138,17 +187,15 @@ jobs:
               console.error(raw.slice(0,1500));
               process.exit(1);
             }
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise(resolve => setTimeout(resolve, 75));
           }
+          console.log(JSON.stringify({status:"stress-complete",requests:240,recycle_retries:retries}));
           JS
 
-      - name: Final health
+      - name: Delete probe Workers
         if: always()
         run: |
-          curl -i https://lacurent-rbpe-live-probe.lemnarukarol.workers.dev/health || true
-
-      - name: Delete probe Worker
-        if: always()
-        run: |
-          cd .wrangler/reference-rbpe-worker
+          cd .wrangler/rbpe-retry-proxy
+          npx wrangler delete --name lacurent-rbpe-retry-proxy --force || true
+          cd ../reference-rbpe-worker
           npx wrangler delete --name lacurent-rbpe-live-probe --force || true
