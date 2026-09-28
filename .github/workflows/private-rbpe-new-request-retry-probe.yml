@@ -1,4 +1,4 @@
-name: Private RBPE Shard Router Probe
+name: Private RBPE GC Probe
 
 on:
   push:
@@ -33,7 +33,7 @@ jobs:
           from commercial.app.main import build_input_from_form
           from commercial.app.models import model_to_json
           form = {
-              "project_name":"Private RBPE shard stress",
+              "project_name":"Private RBPE GC stress",
               "locality_id":"@lc2|alba_iulia|III|-18|siruta-stress|Stress%20Locality|Alba",
               "locality":"Stress Locality",
               "heated_floor_area_m2":"160","heated_volume_m3":"432",
@@ -57,9 +57,19 @@ jobs:
           print(model_to_json(build_input_from_form(form)))
           PY
 
-      - name: Prepare private RBPE bundle
+      - name: Deploy one private RBPE probe
         run: |
           node scripts/prepare-reference-cloudflare-worker.mjs
+          python - <<'PY'
+          from pathlib import Path
+          import os
+          p=Path(".wrangler/reference-rbpe-worker/wrangler.toml")
+          text=p.read_text().replace(
+              'name = "lacurent-reference-rbpe"',
+              f'name = "lacurent-rbpe-gc-{os.environ["GITHUB_RUN_ID"]}"',
+          )
+          p.write_text(text)
+          PY
           cd .wrangler/reference-rbpe-worker
           npm install --save-dev wrangler@latest
           mkdir -p .bin
@@ -67,193 +77,77 @@ jobs:
           chmod +x .bin/wrangler
           export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
           uvx --from workers-py pywrangler sync --force
+          uvx --from workers-py pywrangler deploy
 
-      - name: Deploy four private RBPE shards
+      - name: Deploy unique HTTP proxy
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          p=Path(".wrangler/reference-rbpe-worker/wrangler.toml")
-          original=p.read_text()
-          Path("/tmp/rbpe-wrangler-template.toml").write_text(original)
-          PY
-          cd .wrangler/reference-rbpe-worker
-          export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
-          for suffix in a b c d; do
-            python - "$suffix" <<'PY'
-          from pathlib import Path
-          import sys
-          suffix=sys.argv[1]
-          template=Path("/tmp/rbpe-wrangler-template.toml").read_text()
-          Path("wrangler.toml").write_text(
-              template.replace(
-                  'name = "lacurent-reference-rbpe"',
-                  f'name = "lacurent-rbpe-live-{suffix}-{__import__("os").environ["GITHUB_RUN_ID"]}"',
-              )
-          )
-          PY
-            uvx --from workers-py pywrangler deploy
-          done
-
-      - name: Deploy private shard router
-        run: |
-          mkdir -p .wrangler/rbpe-shard-router
-          cat > .wrangler/rbpe-shard-router/worker.mjs <<'JS'
-          const shardNames = ["RBPE_A","RBPE_B","RBPE_C","RBPE_D"];
-          let cursor = 0;
-          const disabledUntil = new Map();
-          const failureCounts = new Map();
-
-          async function callShard(env, key, payload) {
-            const request = new Request("https://rbpe.internal/calculate-home-lab", {
-              method: "POST",
-              headers: {
-                "content-type": "application/json",
-                "accept": "application/json"
-              },
-              body: JSON.stringify({payload})
-            });
-            const response = await env[key].fetch(request);
-            const raw = await response.text();
-            if (response.status >= 500) {
-              throw new Error("downstream_http_" + response.status);
-            }
-            return {response, raw};
-          }
-
+          mkdir -p .wrangler/rbpe-gc-proxy
+          cat > .wrangler/rbpe-gc-proxy/worker.mjs <<'JS'
           export default {
             async fetch(request, env) {
               const payload = await request.text();
-              const now = Date.now();
-              const start = cursor++ % shardNames.length;
-              const attempted = [];
-              let lastError = null;
-
-              // First pass respects circuit-breaker cooldown.
-              for (let offset = 0; offset < shardNames.length; offset++) {
-                const key = shardNames[(start + offset) % shardNames.length];
-                if ((disabledUntil.get(key) || 0) > now) continue;
-                attempted.push(key);
-                try {
-                  const {response, raw} = await callShard(env, key, payload);
-                  failureCounts.set(key, 0);
-                  return new Response(raw, {
-                    status: response.status,
-                    headers: {
-                      "content-type": response.headers.get("content-type") || "application/json",
-                      "cache-control": "no-store",
-                      "x-rbpe-shard": key
-                    }
-                  });
-                } catch (error) {
-                  lastError = error;
-                  const failures = (failureCounts.get(key) || 0) + 1;
-                  failureCounts.set(key, failures);
-                  disabledUntil.set(key, Date.now() + 5000);
-                }
+              try {
+                const inner = new Request("https://rbpe.internal/calculate-home-lab", {
+                  method: "POST",
+                  headers: {"content-type":"application/json","accept":"application/json"},
+                  body: JSON.stringify({payload})
+                });
+                const response = await env.RBPE.fetch(inner);
+                return new Response(response.body, {
+                  status: response.status,
+                  headers: {
+                    "content-type": response.headers.get("content-type") || "application/json",
+                    "cache-control":"no-store"
+                  }
+                });
+              } catch (error) {
+                return Response.json({
+                  error:"private_rbpe_binding_failure",
+                  errorType:error?.name || "Error",
+                  detail:String(error?.message || error || "")
+                }, {status:503});
               }
-
-              // Recovery pass: after all immediately healthy shards failed,
-              // wait briefly for the earliest breaker(s) to reopen. A downstream
-              // 1102 kills that Python invocation; giving Cloudflare a few
-              // seconds lets a fresh isolate serve the next attempt without
-              // surfacing the transient failure to Home Lab.
-              const recoveryDeadline = Date.now() + 8000;
-              const recoveryOrder = [...shardNames].sort(
-                (a,b) => (disabledUntil.get(a)||0) - (disabledUntil.get(b)||0)
-              );
-              for (const key of recoveryOrder) {
-                const waitMs = Math.max(0, (disabledUntil.get(key)||0) - Date.now());
-                if (Date.now() + waitMs > recoveryDeadline) break;
-                if (waitMs > 0) {
-                  await new Promise(resolve => setTimeout(resolve, waitMs));
-                }
-                try {
-                  const {response, raw} = await callShard(env, key, payload);
-                  disabledUntil.delete(key);
-                  failureCounts.set(key, 0);
-                  return new Response(raw, {
-                    status: response.status,
-                    headers: {
-                      "content-type": response.headers.get("content-type") || "application/json",
-                      "cache-control": "no-store",
-                      "x-rbpe-shard": key,
-                      "x-rbpe-recovered": "1"
-                    }
-                  });
-                } catch (error) {
-                  lastError = error;
-                  disabledUntil.set(key, Date.now() + 5000);
-                }
-              }
-
-              return Response.json({
-                error:"private_rbpe_all_shards_unavailable",
-                attempted,
-                errorType:lastError?.name || "Error",
-                detail:String(lastError?.message || lastError || "")
-              }, {status:503, headers:{"cache-control":"no-store"}});
             }
           };
           JS
-
-          cat > .wrangler/rbpe-shard-router/wrangler.toml <<TOML
-          name = "lacurent-rbpe-router-${GITHUB_RUN_ID}"
+          cat > .wrangler/rbpe-gc-proxy/wrangler.toml <<TOML
+          name = "lacurent-rbpe-gc-proxy-${GITHUB_RUN_ID}"
           main = "worker.mjs"
           compatibility_date = "2026-09-27"
           workers_dev = true
 
           [[services]]
-          binding = "RBPE_A"
-          service = "lacurent-rbpe-live-a-${GITHUB_RUN_ID}"
-          remote = true
-
-          [[services]]
-          binding = "RBPE_B"
-          service = "lacurent-rbpe-live-b-${GITHUB_RUN_ID}"
-          remote = true
-
-          [[services]]
-          binding = "RBPE_C"
-          service = "lacurent-rbpe-live-c-${GITHUB_RUN_ID}"
-          remote = true
-
-          [[services]]
-          binding = "RBPE_D"
-          service = "lacurent-rbpe-live-d-${GITHUB_RUN_ID}"
+          binding = "RBPE"
+          service = "lacurent-rbpe-gc-${GITHUB_RUN_ID}"
           remote = true
           TOML
-
-          cd .wrangler/rbpe-shard-router
+          cd .wrangler/rbpe-gc-proxy
           npm install --save-dev wrangler@latest
           npx wrangler deploy
 
-      - name: Wait for router
+      - name: Wait for probe
         run: |
+          url="https://lacurent-rbpe-gc-proxy-${GITHUB_RUN_ID}.lemnarukarol.workers.dev/"
           for attempt in $(seq 1 90); do
-            code="$(curl -sS -o /tmp/router-result.json -w '%{http_code}' -X POST \
-              --data-binary @/tmp/building.json \
-              https://lacurent-rbpe-router-${GITHUB_RUN_ID}.lemnarukarol.workers.dev/ || true)"
+            code="$(curl -sS -o /tmp/result.json -w '%{http_code}' -X POST --data-binary @/tmp/building.json "$url" || true)"
             if [ "$code" = "200" ]; then
-              cat /tmp/router-result.json
+              cat /tmp/result.json
               exit 0
             fi
             sleep 2
           done
-          cat /tmp/router-result.json || true
+          cat /tmp/result.json || true
           exit 1
 
-      - name: Run 500 serial calculations through sharded router
+      - name: Run 500 serial calculations on one private isolate service
         env:
-          ROUTER_URL: https://lacurent-rbpe-router-${{ github.run_id }}.lemnarukarol.workers.dev/
+          PROBE_URL: https://lacurent-rbpe-gc-proxy-${{ github.run_id }}.lemnarukarol.workers.dev/
         run: |
           node <<'JS'
           const fs = await import("node:fs");
           const payload = fs.readFileSync("/tmp/building.json","utf8").trim();
-          const url = process.env.ROUTER_URL;
-          const counts = {};
-          let recovered = 0;
-          let maxMs = 0;
-
+          const url = process.env.PROBE_URL;
+          let maxMs=0;
           for (let i=0;i<500;i++) {
             const started=performance.now();
             const response=await fetch(url,{method:"POST",body:payload});
@@ -261,15 +155,10 @@ jobs:
             let body=null;
             try { body=JSON.parse(raw); } catch {}
             const elapsed=Math.round(performance.now()-started);
-            maxMs=Math.max(maxMs, elapsed);
-            const shard=response.headers.get("x-rbpe-shard") || "none";
-            counts[shard]=(counts[shard]||0)+1;
-            if (response.headers.get("x-rbpe-recovered") === "1") recovered += 1;
-
-            if ((i+1) % 25 === 0 || !response.ok) {
+            maxMs=Math.max(maxMs,elapsed);
+            if ((i+1)%25===0 || !response.ok) {
               console.log(JSON.stringify({
-                count:i+1,status:response.status,elapsed_ms:elapsed,
-                shard,recovered,counts,
+                count:i+1,status:response.status,elapsed_ms:elapsed,max_ms:maxMs,
                 energy_class:body?.energy_class ?? null,
                 final_energy_kwh:body?.total_final_energy_kwh ?? null
               }));
@@ -278,24 +167,49 @@ jobs:
               console.error(raw.slice(0,1500));
               process.exit(1);
             }
-            await new Promise(resolve => setTimeout(resolve, 350));
+            await new Promise(resolve=>setTimeout(resolve,350));
           }
-
-          console.log(JSON.stringify({
-            status:"stress-complete",
-            logical_requests:500,
-            counts,
-            recovered,
-            max_elapsed_ms:maxMs
-          }));
+          console.log(JSON.stringify({status:"stress-complete",logical_requests:500,max_elapsed_ms:maxMs}));
           JS
+
+      - name: Query probe metrics
+        if: always()
+        run: |
+          sleep 8
+          python - <<'PY' > /tmp/query.json
+          import json, os
+          from datetime import datetime, timezone, timedelta
+          now=datetime.now(timezone.utc)
+          print(json.dumps({
+            "query": """query GetWorkersAnalytics($accountTag: string, $datetimeStart: string, $datetimeEnd: string) {
+              viewer { accounts(filter: {accountTag: $accountTag}) {
+                workersInvocationsAdaptive(limit: 1000, filter: {
+                  datetime_geq: $datetimeStart, datetime_leq: $datetimeEnd
+                }) {
+                  sum { requests errors }
+                  quantiles { cpuTimeP50 cpuTimeP99 memoryUsageBytesP50 memoryUsageBytesP99 }
+                  dimensions { datetime scriptName status }
+                }
+              } }
+            }""",
+            "variables":{
+              "accountTag":os.environ["CLOUDFLARE_ACCOUNT_ID"],
+              "datetimeStart":(now-timedelta(minutes=12)).isoformat(timespec="milliseconds").replace("+00:00","Z"),
+              "datetimeEnd":now.isoformat(timespec="milliseconds").replace("+00:00","Z")
+            }
+          }))
+          PY
+          curl --fail-with-body --silent https://api.cloudflare.com/client/v4/graphql \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data @/tmp/query.json | jq --arg run "$GITHUB_RUN_ID" \
+            '.data.viewer.accounts[0].workersInvocationsAdaptive
+             | map(select(.dimensions.scriptName == ("lacurent-rbpe-gc-" + $run)))'
 
       - name: Delete probes
         if: always()
         run: |
-          cd .wrangler/rbpe-shard-router
-          npx wrangler delete --name "lacurent-rbpe-router-${GITHUB_RUN_ID}" --force || true
+          cd .wrangler/rbpe-gc-proxy
+          npx wrangler delete --name "lacurent-rbpe-gc-proxy-${GITHUB_RUN_ID}" --force || true
           cd ../reference-rbpe-worker
-          for suffix in a b c d; do
-            npx wrangler delete --name "lacurent-rbpe-live-$suffix-${GITHUB_RUN_ID}" --force || true
-          done
+          npx wrangler delete --name "lacurent-rbpe-gc-${GITHUB_RUN_ID}" --force || true
