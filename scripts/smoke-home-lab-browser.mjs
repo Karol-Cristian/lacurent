@@ -165,6 +165,7 @@ try {
       throw new Error("Editorial PV enable control is missing");
     }
     pvEnabled.checked = true;
+    pvEnabled.dispatchEvent(new Event("change", {bubbles:true}));
   });
 
   const pvOrientation = page.locator('select[name="pv_orientation"]');
@@ -177,7 +178,12 @@ try {
       response =>
         new URL(response.url()).pathname === "/api/home-lab-next/calculate"
         && response.request().method() === "POST"
-        && new URLSearchParams(response.request().postData() || "").get("pv_orientation") === orientation,
+        && (
+          new URLSearchParams(response.request().postData() || "").get("pv_orientation") === orientation
+          || (response.request().postData() || "").includes(
+            'name="pv_orientation"\r\n\r\n' + orientation + "\r\n"
+          )
+        ),
       {timeout:30000}
     );
     await pvOrientation.selectOption(orientation);
