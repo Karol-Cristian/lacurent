@@ -1400,6 +1400,53 @@ def test_form_maps_heated_attic_roof_to_direct_exterior_and_heated_floor_to_zero
     assert floor.boundary_correction_factor == 0.0
 
 
+def test_extracted_home_lab_form_parser_matches_web_parser() -> None:
+    from commercial.app.home_lab_form import build_input_from_form as isolated_parser
+    from commercial.app.models import model_to_dict
+
+    cases = []
+
+    base = demo_form_data()
+    cases.append(base)
+
+    heat_pump = _simple_home_lab_dhw_form("heat_pump")
+    heat_pump.update(
+        {
+            "heating_chain_enabled": "on",
+            "heating_generator_type": "heat_pump_air_water",
+            "heating_emitter_type": "underfloor",
+            "heating_distribution_type": "underfloor",
+            "pv_enabled": "on",
+            "pv_installed_power_kwp": "8.5",
+            "pv_orientation": "south_west",
+        }
+    )
+    cases.append(heat_pump)
+
+    apartment = demo_form_data()
+    apartment.update(
+        {
+            "building_type": "residential_collective",
+            "apartment_area_m2": "73.5",
+            "apartment_height_m": "2.65",
+            "apartment_exterior_wall_length_m": "11.2",
+            "apartment_window_area_m2": "9.8",
+            "apartment_top_exposed": "on",
+            "building_length_m": "",
+            "building_width_m": "",
+            "heated_levels": "",
+            "heating_choice": "electric_resistance",
+            "expert_heating_override": "",
+        }
+    )
+    cases.append(apartment)
+
+    for form in cases:
+        assert model_to_dict(isolated_parser(dict(form))) == model_to_dict(
+            build_input_from_form(dict(form))
+        )
+
+
 def test_private_rbpe_transport_matches_canonical_calculation_exactly() -> None:
     from commercial.app.models import CalculationResult, model_to_dict, model_to_json
     from commercial.app.rbpe_service import calculate_home_lab_result_payload
