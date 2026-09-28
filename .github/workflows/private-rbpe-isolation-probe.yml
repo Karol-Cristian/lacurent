@@ -55,8 +55,12 @@ jobs:
               'service = "lacurent-reference-rbpe"',
               'service = "lacurent-rbpe-live-probe"',
           )
-          # Probe is workers.dev only; never attach production domains.
-          text = text.split("\n[[routes]]", 1)[0].rstrip() + "\n"
+          # Probe is workers.dev only; never attach production domains. Keep
+          # the text-module rules because FastAPI mounts static/templates from
+          # the packaged Python filesystem at import time.
+          before_routes = text.split("\n[[routes]]", 1)[0].rstrip()
+          rules = "\n[[rules]]" + text.split("\n[[rules]]", 1)[1]
+          text = before_routes + "\n" + rules.lstrip("\n")
           p.write_text(text)
           print(text)
           PY
