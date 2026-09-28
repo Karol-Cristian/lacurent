@@ -4627,6 +4627,32 @@
       Number.isFinite(heatingSpecific) ? `${fmt(heatingSpecific,1)} kWh/m²·an · energie utilă` : "energie utilă";
     $("#hlnPersistentCoolingSpecific").textContent =
       Number.isFinite(coolingSpecific) ? `${fmt(coolingSpecific,1)} kWh/m²·an · energie utilă` : "energie utilă";
+
+    const primaryTotal = Number(result?.primary_energy_kwh);
+    const primarySpecific = Number(result?.primary_specific_kwh_m2);
+    const detailHeating = $("#hlnEnergyDetailHeating");
+    const detailCooling = $("#hlnEnergyDetailCooling");
+    const detailFinal = $("#hlnEnergyDetailFinal");
+    const detailPrimary = $("#hlnEnergyDetailPrimary");
+    const detailHeatingSpecific = $("#hlnEnergyDetailHeatingSpecific");
+    const detailCoolingSpecific = $("#hlnEnergyDetailCoolingSpecific");
+    const detailPrimarySpecific = $("#hlnEnergyDetailPrimarySpecific");
+    if (detailHeating) detailHeating.textContent =
+      Number.isFinite(heatingDemand) ? `${fmt(heatingDemand)} kWh/an` : "—";
+    if (detailCooling) detailCooling.textContent =
+      Number.isFinite(coolingDemand) ? `${fmt(coolingDemand)} kWh/an` : "—";
+    if (detailFinal) detailFinal.textContent =
+      result?.final_energy_kwh == null ? "—" : `${fmt(result.final_energy_kwh)} kWh/an`;
+    if (detailPrimary) detailPrimary.textContent =
+      Number.isFinite(primaryTotal) ? `${fmt(primaryTotal)} kWh/an` : "—";
+    if (detailHeatingSpecific) detailHeatingSpecific.textContent =
+      Number.isFinite(heatingSpecific) ? `${fmt(heatingSpecific,1)} kWh/m²·an · energie utilă` : "energie utilă";
+    if (detailCoolingSpecific) detailCoolingSpecific.textContent =
+      Number.isFinite(coolingSpecific) ? `${fmt(coolingSpecific,1)} kWh/m²·an · energie utilă` : "energie utilă";
+    if (detailPrimarySpecific) detailPrimarySpecific.textContent =
+      Number.isFinite(primarySpecific)
+        ? `${fmt(primarySpecific,1)} kWh/m²·an · indicator clasă energetică`
+        : "indicator pentru clasa energetică";
     if (summary) summary.dataset.energyClass = energyClass;
 
     const classContext = $("#hlnPersistentClassContext");
@@ -6828,6 +6854,25 @@
   }, {passive:true});
   root.addEventListener("keydown", event => {
     if (event.key === "Enter" || event.key === " ") collapseAdaptiveIntroFor(event.target);
+  });
+
+  const openEnergyDetails = () => {
+    const details = root.querySelector(".hln-energy-prices");
+    if (!details) return;
+    details.open = true;
+    window.requestAnimationFrame(() => {
+      details.scrollIntoView({behavior:"smooth", block:"nearest"});
+      syncPersistentStackHeight();
+    });
+  };
+  root.querySelectorAll("[data-hln-open-energy-details]").forEach(node => {
+    node.addEventListener("click", openEnergyDetails);
+    node.addEventListener("keydown", event => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openEnergyDetails();
+      }
+    });
   });
 
   root.querySelectorAll("[data-hln-editor-open]").forEach(button => button.addEventListener("click", () => {
