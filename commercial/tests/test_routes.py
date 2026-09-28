@@ -1390,6 +1390,26 @@ def test_home_lab_next_can_skip_redundant_reference_for_live_scenarios() -> None
     assert payload["reference_parameters"]["u_values_w_m2k"]["exterior_wall"] > 0
 
 
+def test_home_lab_next_exposes_useful_heating_and_cooling_demand_for_hud() -> None:
+    response = client.post("/api/home-lab-next/calculate", data=demo_form_data())
+
+    assert response.status_code == 200
+    payload = response.json()
+
+    heating = float(payload["annual_heating_demand_kwh"])
+    cooling = float(payload["annual_cooling_demand_kwh"])
+    area = float(payload["heated_floor_area_m2"]) if "heated_floor_area_m2" in payload else None
+    monthly_heating = sum(float(row["useful_heating_kwh"]) for row in payload["monthly"])
+    monthly_cooling = sum(float(row["useful_cooling_kwh"]) for row in payload["monthly"])
+
+    assert heating > 0
+    assert cooling >= 0
+    assert heating == pytest.approx(monthly_heating, abs=0.01)
+    assert cooling == pytest.approx(monthly_cooling, abs=0.01)
+    assert float(payload["heating_demand_specific_kwh_m2"]) > 0
+    assert float(payload["cooling_demand_specific_kwh_m2"]) >= 0
+
+
 def test_home_lab_next_optimizer_candidate_returns_compact_metrics_only() -> None:
     data = demo_form_data()
     data["_skip_reference"] = "1"
