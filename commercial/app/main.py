@@ -19,7 +19,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from .engine import calculate, demo_building, design_heat_load_breakdown, reference_primary_specific_energy
 from .error_page import render_error_html
 from .home_lab_images import HOME_LAB_IMAGE_BYTES
-from .home_lab_payload import embed_lab_result_payload
+from .home_lab_payload import embed_lab_result_payload, home_lab_live_payload
 from .methodology import climate_data, methodology, resolve_locality
 from .models import BuildingInput, building_from_json, model_to_dict, model_to_json
 from .optimization import (
@@ -2440,7 +2440,7 @@ async def home_lab_classic(request: Request) -> HTMLResponse:
     )
 
 
-async def home_lab_next_calculation(request: Request) -> JSONResponse:
+async def home_lab_next_calculation(request: Request, *, details: bool = False) -> JSONResponse:
     form = dict(await request.form())
     # Retain compatibility with older scenario/optimizer callers. Reference
     # calculation is already excluded from the canonical live RBPE pass.
@@ -2466,7 +2466,7 @@ async def home_lab_next_calculation(request: Request) -> JSONResponse:
             # Heavy canonical RBPE runs in the dedicated Python isolate. The
             # public FastAPI/Jinja Worker only builds the validated BuildingInput
             # and forwards it through the existing private service binding.
-            payload = await service.live_calculation(model_to_json(building))
+            payload = await service.live_calculation(model_to_json(building), details)
             if hasattr(payload, "to_py"):
                 payload = payload.to_py()
             if not isinstance(payload, dict):
@@ -2507,12 +2507,21 @@ async def home_lab_next_calculation(request: Request) -> JSONResponse:
         return JSONResponse({"error": user_error(exc)}, status_code=422)
     if optimizer_candidate:
         return JSONResponse(optimizer_candidate_payload(result))
-    return JSONResponse(embed_lab_result_payload(result))
+    return JSONResponse(
+        embed_lab_result_payload(result)
+        if details
+        else home_lab_live_payload(result)
+    )
 
 
 @app.post("/api/home-lab-next/calculate")
 async def home_lab_next_calculate_api(request: Request) -> JSONResponse:
-    return await home_lab_next_calculation(request)
+    return await home_lab_next_calculation(request, details=False)
+
+
+@app.post("/api/home-lab-next/calculate-details")
+async def home_lab_next_calculate_details_api(request: Request) -> JSONResponse:
+    return await home_lab_next_calculation(request, details=True)
 
 
 def _home_lab_optimizer_label(mode: OptimizationMode, form: dict[str, Any]) -> str:
