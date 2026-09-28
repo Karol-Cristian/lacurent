@@ -5,6 +5,10 @@ on:
     branches:
       - codex/dedicated-live-rbpe-worker
 
+concurrency:
+  group: dedicated-live-rbpe-probe
+  cancel-in-progress: true
+
 jobs:
   probe:
     runs-on: ubuntu-latest
