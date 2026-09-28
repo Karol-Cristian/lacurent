@@ -66,6 +66,59 @@ jobs:
           done
           exit 1
 
+      - name: Prepare and deploy JS RPC caller
+        run: |
+          mkdir -p /tmp/rbpe-rpc-caller/src
+          cat > /tmp/rbpe-rpc-caller/wrangler.toml <<'TOML'
+          name = "lacurent-rbpe-rpc-caller"
+          main = "src/index.js"
+          compatibility_date = "2026-09-27"
+          workers_dev = true
+
+          [[services]]
+          binding = "RBPE"
+          service = "lacurent-live-rbpe-probe"
+          remote = true
+          TOML
+          cat > /tmp/rbpe-rpc-caller/src/index.js <<'JS'
+          export default {
+            async fetch(request, env) {
+              const url = new URL(request.url);
+              if (url.pathname === "/health") {
+                return Response.json({status:"ok"});
+              }
+              if (request.method !== "POST" || url.pathname !== "/calculate") {
+                return new Response("Not found", {status:404});
+              }
+              try {
+                const body = await request.json();
+                const result = await env.RBPE.live_calculation(
+                  JSON.stringify(body.payload),
+                  Boolean(body.details)
+                );
+                return Response.json(result);
+              } catch (error) {
+                return Response.json(
+                  {error:String(error?.stack || error)},
+                  {status:500}
+                );
+              }
+            }
+          };
+          JS
+          cd /tmp/rbpe-rpc-caller
+          npx wrangler@latest deploy
+
+      - name: Wait for RPC caller health
+        run: |
+          for attempt in $(seq 1 45); do
+            if curl -fsS https://lacurent-rbpe-rpc-caller.lemnarukarol.workers.dev/health; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
+
       - name: Generate canonical building payload
         run: |
           python - <<'PY'
@@ -79,20 +132,22 @@ jobs:
 
       - name: Stress compact live RBPE 1000 times
         env:
-          RBPE_BASE_URL: https://lacurent-live-rbpe-probe.lemnarukarol.workers.dev
+          RBPE_BASE_URL: https://lacurent-rbpe-rpc-caller.lemnarukarol.workers.dev
           RBPE_BUILDING_FILE: /tmp/rbpe-building.json
           RBPE_CYCLES: "125"
           RBPE_DELAY_MS: "10"
           RBPE_DETAILS: "false"
+          RBPE_PATH: /calculate
         run: node scripts/stress-dedicated-live-rbpe.mjs
 
       - name: Verify full details remain available
         env:
-          RBPE_BASE_URL: https://lacurent-live-rbpe-probe.lemnarukarol.workers.dev
+          RBPE_BASE_URL: https://lacurent-rbpe-rpc-caller.lemnarukarol.workers.dev
           RBPE_BUILDING_FILE: /tmp/rbpe-building.json
           RBPE_CYCLES: "1"
           RBPE_DELAY_MS: "50"
           RBPE_DETAILS: "true"
+          RBPE_PATH: /calculate
         run: node scripts/stress-dedicated-live-rbpe.mjs
 
       - name: Query probe memory after stress
@@ -114,6 +169,12 @@ jobs:
           }))
           PY
           curl --fail-with-body --silent             https://api.cloudflare.com/client/v4/graphql             --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             --header "Content-Type: application/json"             --data @/tmp/query.json | jq .
+
+      - name: Delete RPC caller
+        if: always()
+        run: |
+          cd /tmp/rbpe-rpc-caller 2>/dev/null || exit 0
+          npx wrangler@latest delete --name lacurent-rbpe-rpc-caller --force || true
 
       - name: Delete probe
         if: always()
