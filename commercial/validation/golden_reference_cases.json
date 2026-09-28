@@ -1,0 +1,491 @@
+{
+  "schema": "lacurent_commercial_golden_reference_v1",
+  "description": "20 controlled Romanian-climate reference cases for the LaCurent Light commercial engine.",
+  "source_policy": {
+    "climate_input": "commercial/data/climate.json (MC001/6-2013 monthly station data)",
+    "formulas": "Independent validation implementation in commercial/validation/golden_reference.py; it does not import commercial.app.engine.",
+    "indicators": "Primary-energy factors and CO2 factors locked to MC001-2022 Tables 5.17/5.18 values already source-traced in the repository. Energy-class thresholds locked to MC001-2022 Tables 5.7/5.8.",
+    "scope": "Controlled Light subset: explicit U-values/boundary factors, monthly heating/cooling balance, flat seasonal heating performance, SEER cooling, simple DHW performance, no PV/solar-thermal."
+  },
+  "tolerances": {
+    "annual_heating_demand_kwh": {
+      "absolute": 0.1,
+      "relative": 0.00005
+    },
+    "annual_cooling_demand_kwh": {
+      "absolute": 0.1,
+      "relative": 0.00005
+    },
+    "primary_energy_total_kwh": {
+      "absolute": 0.5,
+      "relative": 0.0001
+    },
+    "primary_energy_specific_kwh_m2": {
+      "absolute": 0.05,
+      "relative": 0.0005
+    },
+    "co2_total_kg": {
+      "absolute": 0.2,
+      "relative": 0.0002
+    },
+    "co2_specific_kg_m2": {
+      "absolute": 0.02,
+      "relative": 0.001
+    },
+    "energy_class": {
+      "exact": true
+    }
+  },
+  "building_profiles": {
+    "detached_old": {
+      "building_type": "residential_individual",
+      "construction_year": 1978,
+      "heated_floor_area_m2": 140,
+      "heated_volume_m3": 378,
+      "indoor_design_temperature_c": 20,
+      "internal_gains_w_m2": 2.4,
+      "solar_gains_kwh_m2_month": 3,
+      "occupants": 4,
+      "envelope": [
+        {
+          "name": "Walls",
+          "type": "exterior_wall",
+          "area_m2": 180,
+          "u_value_w_m2k": 1.1,
+          "boundary_type": "outside_air"
+        },
+        {
+          "name": "Roof",
+          "type": "roof",
+          "area_m2": 90,
+          "u_value_w_m2k": 0.8,
+          "boundary_type": "outside_air"
+        },
+        {
+          "name": "Ground floor",
+          "type": "floor",
+          "area_m2": 90,
+          "u_value_w_m2k": 0.75,
+          "boundary_type": "ground",
+          "boundary_correction_factor": 0.65
+        },
+        {
+          "name": "Windows",
+          "type": "window",
+          "area_m2": 24,
+          "u_value_w_m2k": 2.8,
+          "boundary_type": "outside_air"
+        },
+        {
+          "name": "Door",
+          "type": "exterior_door",
+          "area_m2": 3,
+          "u_value_w_m2k": 2.5,
+          "boundary_type": "outside_air"
+        }
+      ],
+      "thermal_bridges": [
+        {
+          "name": "Exterior bridges",
+          "length_m": 70,
+          "psi_w_mk": 0.12,
+          "component": "Hd"
+        },
+        {
+          "name": "Ground perimeter",
+          "length_m": 38,
+          "psi_w_mk": 0.05,
+          "component": "Hg"
+        }
+      ],
+      "ventilation": {
+        "air_changes_per_hour": 0.65,
+        "heat_recovery_efficiency": 0
+      }
+    },
+    "detached_renovated": {
+      "building_type": "residential_individual",
+      "construction_year": 2008,
+      "heated_floor_area_m2": 140,
+      "heated_volume_m3": 378,
+      "indoor_design_temperature_c": 20,
+      "internal_gains_w_m2": 2.4,
+      "solar_gains_kwh_m2_month": 3,
+      "occupants": 4,
+      "envelope": [
+        {
+          "name": "Walls",
+          "type": "exterior_wall",
+          "area_m2": 170,
+          "u_value_w_m2k": 0.3,
+          "boundary_type": "outside_air"
+        },
+        {
+          "name": "Roof",
+          "type": "roof",
+          "area_m2": 90,
+          "u_value_w_m2k": 0.18,
+          "boundary_type": "outside_air"
+        },
+        {
+          "name": "Ground floor",
+          "type": "floor",
+          "area_m2": 90,
+          "u_value_w_m2k": 0.3,
+          "boundary_type": "ground",
+          "boundary_correction_factor": 0.65
+        },
+        {
+          "name": "Windows",
+          "type": "window",
+          "area_m2": 24,
+          "u_value_w_m2k": 1.1,
+          "boundary_type": "outside_air"
+        },
+        {
+          "name": "Door",
+          "type": "exterior_door",
+          "area_m2": 3,
+          "u_value_w_m2k": 1.3,
+          "boundary_type": "outside_air"
+        }
+      ],
+      "thermal_bridges": [
+        {
+          "name": "Exterior bridges",
+          "length_m": 60,
+          "psi_w_mk": 0.05,
+          "component": "Hd"
+        },
+        {
+          "name": "Ground perimeter",
+          "length_m": 36,
+          "psi_w_mk": 0.03,
+          "component": "Hg"
+        }
+      ],
+      "ventilation": {
+        "air_changes_per_hour": 0.45,
+        "heat_recovery_efficiency": 0.5
+      }
+    },
+    "collective_old": {
+      "building_type": "residential_collective",
+      "construction_year": 1985,
+      "heated_floor_area_m2": 82,
+      "heated_volume_m3": 221.4,
+      "indoor_design_temperature_c": 20,
+      "internal_gains_w_m2": 3.1,
+      "solar_gains_kwh_m2_month": 3,
+      "occupants": 3,
+      "envelope": [
+        {
+          "name": "Exterior walls",
+          "type": "exterior_wall",
+          "area_m2": 70,
+          "u_value_w_m2k": 1.2,
+          "boundary_type": "outside_air"
+        },
+        {
+          "name": "Top slab",
+          "type": "roof",
+          "area_m2": 82,
+          "u_value_w_m2k": 0.9,
+          "boundary_type": "outside_air"
+        },
+        {
+          "name": "Floor to heated apartment",
+          "type": "floor",
+          "area_m2": 82,
+          "u_value_w_m2k": 0.8,
+          "boundary_type": "adjacent_heated_space"
+        },
+        {
+          "name": "Windows",
+          "type": "window",
+          "area_m2": 14,
+          "u_value_w_m2k": 2.9,
+          "boundary_type": "outside_air"
+        },
+        {
+          "name": "Balcony door",
+          "type": "exterior_door",
+          "area_m2": 1.5,
+          "u_value_w_m2k": 2.5,
+          "boundary_type": "outside_air"
+        }
+      ],
+      "thermal_bridges": [
+        {
+          "name": "Facade bridges",
+          "length_m": 30,
+          "psi_w_mk": 0.12,
+          "component": "Hd"
+        }
+      ],
+      "ventilation": {
+        "air_changes_per_hour": 0.6,
+        "heat_recovery_efficiency": 0
+      }
+    },
+    "collective_renovated": {
+      "building_type": "residential_collective",
+      "construction_year": 2016,
+      "heated_floor_area_m2": 82,
+      "heated_volume_m3": 221.4,
+      "indoor_design_temperature_c": 20,
+      "internal_gains_w_m2": 3.1,
+      "solar_gains_kwh_m2_month": 3,
+      "occupants": 3,
+      "envelope": [
+        {
+          "name": "Exterior walls",
+          "type": "exterior_wall",
+          "area_m2": 65,
+          "u_value_w_m2k": 0.35,
+          "boundary_type": "outside_air"
+        },
+        {
+          "name": "Top slab",
+          "type": "roof",
+          "area_m2": 82,
+          "u_value_w_m2k": 0.18,
+          "boundary_type": "outside_air"
+        },
+        {
+          "name": "Floor to heated apartment",
+          "type": "floor",
+          "area_m2": 82,
+          "u_value_w_m2k": 0.5,
+          "boundary_type": "adjacent_heated_space"
+        },
+        {
+          "name": "Windows",
+          "type": "window",
+          "area_m2": 14,
+          "u_value_w_m2k": 1.1,
+          "boundary_type": "outside_air"
+        },
+        {
+          "name": "Balcony door",
+          "type": "exterior_door",
+          "area_m2": 1.5,
+          "u_value_w_m2k": 1.3,
+          "boundary_type": "outside_air"
+        }
+      ],
+      "thermal_bridges": [
+        {
+          "name": "Facade bridges",
+          "length_m": 25,
+          "psi_w_mk": 0.05,
+          "component": "Hd"
+        }
+      ],
+      "ventilation": {
+        "air_changes_per_hour": 0.45,
+        "heat_recovery_efficiency": 0.6
+      }
+    }
+  },
+  "system_profiles": {
+    "condensing_gas": {
+      "heating": {
+        "system_type": "condensing_gas_boiler",
+        "carrier": "natural_gas",
+        "efficiency": 0.94
+      },
+      "cooling": {
+        "enabled": true,
+        "seer": 3.6,
+        "setpoint_c": 26
+      },
+      "dhw": {
+        "enabled": true,
+        "system_type": "custom",
+        "carrier": "natural_gas",
+        "efficiency": 0.88,
+        "cop": null
+      }
+    },
+    "heat_pump": {
+      "heating": {
+        "system_type": "heat_pump",
+        "carrier": "electricity",
+        "scop": 3.2
+      },
+      "cooling": {
+        "enabled": true,
+        "seer": 4.2,
+        "setpoint_c": 26
+      },
+      "dhw": {
+        "enabled": true,
+        "system_type": "custom",
+        "carrier": "electricity",
+        "efficiency": null,
+        "cop": 2.4
+      }
+    },
+    "direct_electric": {
+      "heating": {
+        "system_type": "electric_resistance",
+        "carrier": "electricity",
+        "efficiency": 1
+      },
+      "cooling": {
+        "enabled": true,
+        "seer": 3.6,
+        "setpoint_c": 26
+      },
+      "dhw": {
+        "enabled": true,
+        "system_type": "custom",
+        "carrier": "electricity",
+        "efficiency": 0.98,
+        "cop": null
+      }
+    },
+    "district_heat": {
+      "heating": {
+        "system_type": "district_heat",
+        "carrier": "district_heat",
+        "efficiency": 0.95
+      },
+      "cooling": {
+        "enabled": true,
+        "seer": 3.6,
+        "setpoint_c": 26
+      },
+      "dhw": {
+        "enabled": true,
+        "system_type": "custom",
+        "carrier": "district_heat",
+        "efficiency": 0.95,
+        "cop": null
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "GR-001",
+      "climate_station": "Miercurea Ciuc",
+      "building_profile": "detached_old",
+      "system_profile": "condensing_gas"
+    },
+    {
+      "id": "GR-002",
+      "climate_station": "Miercurea Ciuc",
+      "building_profile": "detached_renovated",
+      "system_profile": "heat_pump"
+    },
+    {
+      "id": "GR-003",
+      "climate_station": "Miercurea Ciuc",
+      "building_profile": "collective_old",
+      "system_profile": "district_heat"
+    },
+    {
+      "id": "GR-004",
+      "climate_station": "Miercurea Ciuc",
+      "building_profile": "collective_renovated",
+      "system_profile": "direct_electric"
+    },
+    {
+      "id": "GR-005",
+      "climate_station": "Cluj-Napoca",
+      "building_profile": "detached_old",
+      "system_profile": "heat_pump"
+    },
+    {
+      "id": "GR-006",
+      "climate_station": "Cluj-Napoca",
+      "building_profile": "detached_renovated",
+      "system_profile": "district_heat"
+    },
+    {
+      "id": "GR-007",
+      "climate_station": "Cluj-Napoca",
+      "building_profile": "collective_old",
+      "system_profile": "direct_electric"
+    },
+    {
+      "id": "GR-008",
+      "climate_station": "Cluj-Napoca",
+      "building_profile": "collective_renovated",
+      "system_profile": "condensing_gas"
+    },
+    {
+      "id": "GR-009",
+      "climate_station": "Iași",
+      "building_profile": "detached_old",
+      "system_profile": "district_heat"
+    },
+    {
+      "id": "GR-010",
+      "climate_station": "Iași",
+      "building_profile": "detached_renovated",
+      "system_profile": "direct_electric"
+    },
+    {
+      "id": "GR-011",
+      "climate_station": "Iași",
+      "building_profile": "collective_old",
+      "system_profile": "condensing_gas"
+    },
+    {
+      "id": "GR-012",
+      "climate_station": "Iași",
+      "building_profile": "collective_renovated",
+      "system_profile": "heat_pump"
+    },
+    {
+      "id": "GR-013",
+      "climate_station": "București",
+      "building_profile": "detached_old",
+      "system_profile": "direct_electric"
+    },
+    {
+      "id": "GR-014",
+      "climate_station": "București",
+      "building_profile": "detached_renovated",
+      "system_profile": "condensing_gas"
+    },
+    {
+      "id": "GR-015",
+      "climate_station": "București",
+      "building_profile": "collective_old",
+      "system_profile": "heat_pump"
+    },
+    {
+      "id": "GR-016",
+      "climate_station": "București",
+      "building_profile": "collective_renovated",
+      "system_profile": "district_heat"
+    },
+    {
+      "id": "GR-017",
+      "climate_station": "Constanța",
+      "building_profile": "detached_old",
+      "system_profile": "condensing_gas"
+    },
+    {
+      "id": "GR-018",
+      "climate_station": "Constanța",
+      "building_profile": "detached_renovated",
+      "system_profile": "heat_pump"
+    },
+    {
+      "id": "GR-019",
+      "climate_station": "Constanța",
+      "building_profile": "collective_old",
+      "system_profile": "district_heat"
+    },
+    {
+      "id": "GR-020",
+      "climate_station": "Constanța",
+      "building_profile": "collective_renovated",
+      "system_profile": "direct_electric"
+    }
+  ]
+}

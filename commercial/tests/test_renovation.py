@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import math
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from commercial.app import renovation as renovation_module
 from commercial.app.engine import calculate, demo_building
 from commercial.app.main import app
 from commercial.app.models import BuildingInput, model_to_dict
@@ -11,6 +13,57 @@ from commercial.app.renovation import build_wall_insulation_scenario
 
 
 client = TestClient(app)
+
+
+def test_wall_scenario_releases_baseline_graph_before_scenario_graph() -> None:
+    source = Path("commercial/app/renovation.py").read_text(encoding="utf-8")
+    section = source.split(
+        "def build_wall_insulation_scenario(",
+        1,
+    )[1].split(
+        "return WallInsulationScenarioBundleV1(",
+        1,
+    )[0]
+
+    baseline_index = section.index(
+        "baseline_result = calculate(baseline, include_reference=False)"
+    )
+    snapshot_index = section.index(
+        "baseline_snapshot = house_state.calculation"
+    )
+    release_index = section.index("del baseline_result")
+    scenario_index = section.index(
+        "scenario_result = calculate(scenario_building, include_reference=False)"
+    )
+    scenario_release_index = section.index("del scenario_result")
+
+    assert (
+        baseline_index
+        < snapshot_index
+        < release_index
+        < scenario_index
+        < scenario_release_index
+    )
+    assert section.count("gc.collect()") >= 2
+
+
+def test_wall_scenario_skips_unused_reference_recalculations(monkeypatch) -> None:
+    real_calculate = renovation_module.calculate
+    include_reference_flags: list[bool] = []
+
+    def recorded_calculate(*args, **kwargs):
+        include_reference_flags.append(kwargs.get("include_reference", True))
+        return real_calculate(*args, **kwargs)
+
+    monkeypatch.setattr(renovation_module, "calculate", recorded_calculate)
+
+    renovation_module.build_wall_insulation_scenario(
+        demo_building(),
+        added_insulation_thickness_mm=100,
+        insulation_lambda_w_mk=0.040,
+    )
+
+    assert include_reference_flags == [False, False]
 
 
 def test_engine_exposes_commercial_envelope_geometry_and_u_values() -> None:

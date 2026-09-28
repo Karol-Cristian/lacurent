@@ -11,10 +11,15 @@
   const SKIP_TYPES = new Set(["button", "submit", "reset", "file", "image"]);
   let saveTimer = null;
 
+  function autosaveAllowed() {
+    return window.LaCurentPrivacy?.allowsLocalAutosave?.() === true;
+  }
   function storageGet() {
+    if (!autosaveAllowed()) return null;
     try { return window.localStorage.getItem(STORAGE_KEY); } catch { return null; }
   }
   function storageSet(value) {
+    if (!autosaveAllowed()) return false;
     try { window.localStorage.setItem(STORAGE_KEY, value); return true; } catch { return false; }
   }
   function storageRemove() {
@@ -91,14 +96,23 @@
 
   function updateCopy() {
     const english = currentLanguage() === "en";
-    title.textContent = english ? "Automatic save is on. " : "Salvarea automată este activă. ";
-    copy.textContent = english ? "Your calculator data stays in this browser for 30 days." : "Datele calculatorului rămân în acest browser timp de 30 de zile.";
+    const enabled = autosaveAllowed();
+    title.textContent = enabled
+      ? (english ? "Automatic save is on. " : "Salvarea automată este activă. ")
+      : (english ? "Automatic save is off. " : "Salvarea automată este oprită. ");
+    copy.textContent = enabled
+      ? (english ? "Your calculator data stays in this browser for 30 days." : "Datele calculatorului rămân în acest browser timp de 30 de zile.")
+      : (english ? "You can enable local saving from Privacy settings." : "Poți activa salvarea locală din Setări confidențialitate.");
     clearButton.textContent = english ? "Clear saved data" : "Șterge datele salvate";
   }
   function setStatus(ro, en = ro) {
     status.textContent = currentLanguage() === "en" ? en : ro;
   }
   function saveDraft() {
+    if (!autosaveAllowed()) {
+      setStatus("Salvarea locală este oprită.", "Local saving is off.");
+      return false;
+    }
     if (storageSet(JSON.stringify(snapshot()))) {
       setStatus("Salvat automat.", "Saved automatically.");
       return true;
@@ -107,14 +121,20 @@
     return false;
   }
   function scheduleSave() {
+    if (!autosaveAllowed()) return;
     window.clearTimeout(saveTimer);
     saveTimer = window.setTimeout(saveDraft, 180);
   }
 
   updateCopy();
-  const draft = validDraft(storageGet());
-  if (draft && restoreDraft(draft)) setStatus("Datele salvate au fost restaurate.", "Saved data was restored.");
-  else setStatus("Modificările se salvează automat.", "Changes are saved automatically.");
+  const draft = autosaveAllowed() ? validDraft(storageGet()) : null;
+  if (draft && restoreDraft(draft)) {
+    setStatus("Datele salvate au fost restaurate.", "Saved data was restored.");
+  } else if (autosaveAllowed()) {
+    setStatus("Modificările se salvează automat.", "Changes are saved automatically.");
+  } else {
+    setStatus("Poți continua fără salvare locală.", "You can continue without local saving.");
+  }
 
   form.addEventListener("input", scheduleSave, true);
   form.addEventListener("change", scheduleSave, true);
@@ -135,8 +155,15 @@
     if (!event.target.closest?.("[data-site-language]")) return;
     window.setTimeout(() => {
       updateCopy();
-      setStatus("Modificările se salvează automat.", "Changes are saved automatically.");
+      if (autosaveAllowed()) setStatus("Modificările se salvează automat.", "Changes are saved automatically.");
+      else setStatus("Poți continua fără salvare locală.", "You can continue without local saving.");
     }, 0);
+  });
+
+  window.addEventListener("lacurent:privacy-change", () => {
+    updateCopy();
+    if (autosaveAllowed()) setStatus("Salvarea locală este activă.", "Local saving is on.");
+    else setStatus("Salvarea locală este oprită.", "Local saving is off.");
   });
 
   window.__lacurentCalculatorDraft = { save: saveDraft, clear: storageRemove, storageKey: STORAGE_KEY };

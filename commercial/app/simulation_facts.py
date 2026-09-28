@@ -13,6 +13,12 @@ from .models import BuildingInput
 
 FACT_AI_MODEL = "@cf/google/gemma-4-26b-a4b-it"
 
+# Known-invalid/obsolete public facts stay blocked even if an old row is ever
+# present in D1. A retired fact may only return through a new reviewed slug.
+RETIRED_FACT_SLUGS = frozenset({
+    "podul-trebuie-izolat-intotdeauna-primul",
+})
+
 FACTS_CREATE_SQL = """
 CREATE TABLE IF NOT EXISTS simulation_facts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -120,65 +126,6 @@ def _change_percent(before: float, after: float) -> float:
     if before == 0:
         return 0.0
     return 100.0 * (after - before) / before
-
-
-def _featured_roof_first_fact() -> dict[str, Any]:
-    """A compact, indexable fact calculated from the same U×A envelope physics used by the engine.
-
-    The example intentionally compares the same added insulation on two envelope
-    elements. It demonstrates why "roof first" is a heuristic, not a universal rule.
-    """
-    wall_area = 100.0
-    roof_area = 65.0
-    wall_u_before = 0.42
-    roof_u_before = 0.24
-    added_insulation_m = 0.10
-    insulation_lambda = 0.040
-    added_r = added_insulation_m / insulation_lambda
-
-    wall_u_after = 1.0 / ((1.0 / wall_u_before) + added_r)
-    roof_u_after = 1.0 / ((1.0 / roof_u_before) + added_r)
-    wall_delta_h = wall_area * (wall_u_before - wall_u_after)
-    roof_delta_h = roof_area * (roof_u_before - roof_u_after)
-    ratio = wall_delta_h / roof_delta_h
-
-    return {
-        "fact_kind": "comparison",
-        "slug": "podul-trebuie-izolat-intotdeauna-primul",
-        "title": "Podul trebuie izolat întotdeauna primul? Nu.",
-        "search_question": "„Căldura se ridică, deci podul trebuie izolat primul.” Este mereu adevărat?",
-        "claim": (
-            f"Nu. În exemplul calculat cu {wall_area:.0f} m² de pereți și {roof_area:.0f} m² de tavan, "
-            f"aceeași izolație suplimentară de 10 cm reduce pierderea prin pereți de aproximativ "
-            f"{ratio:.1f} ori mai mult."
-        ),
-        "context": (
-            "Motivul este simplu: pierderea depinde de suprafață și de cât de slab este elementul înainte de intervenție. "
-            "Regula utilă este A × ΔU, nu «podul primul». În alte case rezultatul se poate inversa."
-        ),
-        "locality": "Exemplu calculat",
-        "scenario_id": "walls-vs-roof-extra-10cm",
-        "scenario_label": "aceeași izolație suplimentară de 10 cm, λ 0,040 W/mK",
-        "metric_label": "reducerea coeficientului de pierdere",
-        "metric_unit": "W/K",
-        "baseline_value": wall_delta_h,
-        "scenario_value": roof_delta_h,
-        "change_percent": (ratio - 1.0) * 100.0,
-        "methodology_version": "H = U × A · R = d / λ",
-        "ai_model": None,
-        "generated_at": "2026-09-22T19:20:00+00:00",
-        "published_at": "2026-09-22T19:20:00+00:00",
-        "comparison_ratio": ratio,
-        "comparison_left_label": "Pereți",
-        "comparison_right_label": "Pod / tavan",
-        "comparison_left_area_m2": wall_area,
-        "comparison_right_area_m2": roof_area,
-        "comparison_left_u_before": wall_u_before,
-        "comparison_right_u_before": roof_u_before,
-        "comparison_left_u_after": wall_u_after,
-        "comparison_right_u_after": roof_u_after,
-        "metrics": {},
-    }
 
 
 def _apply_scenario(payload: dict[str, Any], scenario_id: str) -> None:
@@ -480,9 +427,8 @@ def _public_fact(row: dict[str, Any]) -> dict[str, Any]:
 
 
 async def list_published_simulation_facts(db: Any, limit: int = 60) -> list[dict[str, Any]]:
-    featured = _featured_roof_first_fact()
     if db is None:
-        return [featured][:limit]
+        return []
     try:
         await ensure_simulation_facts_schema(db)
         result = await db.prepare(
@@ -500,17 +446,16 @@ async def list_published_simulation_facts(db: Any, limit: int = 60) -> list[dict
         ).bind(int(max(1, min(limit, 100)))).run()
         dynamic = [_public_fact(row) for row in _d1_rows(result)]
     except Exception:
-        # The curated calculated fact must remain public even if D1 is
-        # temporarily unavailable or its schema cannot be initialized.
         dynamic = []
-    dynamic = [item for item in dynamic if item.get("slug") != featured["slug"]]
-    return [featured, *dynamic][:limit]
+    return [
+        item for item in dynamic
+        if str(item.get("slug") or "") not in RETIRED_FACT_SLUGS
+    ][:limit]
 
 
 async def get_published_simulation_fact(db: Any, slug: str) -> dict[str, Any] | None:
-    featured = _featured_roof_first_fact()
-    if slug == featured["slug"]:
-        return featured
+    if slug in RETIRED_FACT_SLUGS:
+        return None
     if db is None:
         return None
     await ensure_simulation_facts_schema(db)

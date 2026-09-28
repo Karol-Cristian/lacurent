@@ -2,7 +2,8 @@
 <html lang="ro">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <script src="/static/no-zoom.js?v=2" defer></script>
   <title>{% block title %}LaCurent{% endblock %}</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
   <link rel="shortcut icon" href="/static/favicon.svg?v=3">
@@ -11,6 +12,7 @@
   <link rel="stylesheet" href="{{ url_for('static', path='cost-details.css') }}?v=cost1">
   <link rel="stylesheet" href="{{ url_for('static', path='language-switch.css') }}?v=lang2">
   <link rel="stylesheet" href="{{ url_for('static', path='scenario-cockpit.css') }}?v=cockpit3">
+  <link rel="stylesheet" href="{{ url_for('static', path='privacy-consent.css') }}?v=privacy1">
   {% if embed_lab_mode %}<link rel="stylesheet" href="{{ url_for('static', path='embed-house-lab.css') }}?v=lab17">{% endif %}
 </head>
 <body{% if embed_mode %} class="embed-body" data-embed-partner="{{ partner.id }}" style="--partner-accent: {{ partner.accent }}"{% endif %}>
@@ -66,7 +68,11 @@
     </main>
   </div>
 
-  <script src="{{ url_for('static', path='calculator-autosave.js') }}?v=draft1"></script>
+  {% if not embed_mode %}{% include "_legal_footer.html" %}{% endif %}
+  {% include "_privacy_controls.html" %}
+
+  <script src="{{ url_for('static', path='privacy-consent.js') }}?v=privacy1"></script>
+  <script src="{{ url_for('static', path='calculator-autosave.js') }}?v=draft2"></script>
   <script src="{{ url_for('static', path='app.js') }}?v=v2eng3"></script>
   <script src="{{ url_for('static', path='energy-ui.js') }}?v=energy3"></script>
   <script src="{{ url_for('static', path='climate-submit-token.js') }}?v=climate1"></script>

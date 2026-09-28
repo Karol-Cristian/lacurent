@@ -1,0 +1,313 @@
+from __future__ import annotations
+
+import json
+
+from fastapi.testclient import TestClient
+
+from commercial.app.main import app, default_form_values
+
+
+client = TestClient(app)
+
+
+def _form_payload() -> dict[str, str]:
+    values = default_form_values()
+    payload: dict[str, str] = {}
+    for key, value in values.items():
+        if value is None:
+            payload[key] = ""
+        elif value is True:
+            payload[key] = "on"
+        elif value is False:
+            payload[key] = ""
+        else:
+            payload[key] = str(value)
+    return payload
+
+
+def _run_sharded(payload: dict[str, str]) -> tuple[dict, dict]:
+    plan_response = client.post("/api/optimization/home-lab/plan", data=payload)
+    assert plan_response.status_code == 200
+    plan = plan_response.json()
+    assert plan["searchPhases"] == ["axis", "halton", "refine"]
+    assert plan["evaluationsPerPhase"] == 12
+    assert plan["microBatchSize"] == 1
+    assert plan["phaseOffsets"] == list(range(12))
+    assert plan["evaluationsPerBranch"] == 36
+    assert plan["initialConcurrentBranchRequests"] == 1
+    assert plan["maxConcurrentBranchRequests"] == 2
+    assert plan["cleanWavesBeforeRampUp"] == 2
+    assert plan["branchMaxAttempts"] == 3
+    assert plan["branchStartStaggerMs"] == 140
+    assert plan["runBranchIds"]
+    branch_ids = {item["branch_id"] for item in plan["branches"]}
+    assert "heat-pump-air-air" in branch_ids
+    assert "heat-pump-ground-water" in branch_ids
+    air_air = next(item for item in plan["branches"] if item["branch_id"] == "heat-pump-air-air")
+    ground = next(item for item in plan["branches"] if item["branch_id"] == "heat-pump-ground-water")
+    assert air_air["economic_eligible"] is True
+    assert air_air["commercialization_mode"] == "raw_parametric_then_product_match"
+    assert float(air_air["min_product_power_kw"]) == 4.0
+    assert float(air_air["max_product_power_kw"]) == 21.6
+    assert ground["economic_eligible"] is False
+    assert "heat-pump-air-air" in plan["runBranchIds"]
+    assert set(plan["technicalPreviewBranchIds"]) >= {
+        "heat-pump-ground-water",
+    }
+    assert "heat-pump-air-air" not in plan["technicalPreviewBranchIds"]
+    assert "heat-pump-ground-water" not in plan["runBranchIds"]
+
+    results = [
+        {
+            "branch": branch,
+            "selection": {"selected": None},
+            "candidates": [],
+            "candidateCount": 0,
+            "parametricEvaluations": 0,
+            "calculationTimeMs": 0,
+            "warnings": [],
+        }
+        for branch in plan["branches"]
+        if (not branch["eligible"]) or (branch.get("economic_eligible") is False)
+    ]
+
+    for branch_id in plan["runBranchIds"]:
+        prior_candidates: list[dict] = []
+        for phase in plan["searchPhases"]:
+            fixed_seed = list(prior_candidates) if phase == "refine" else []
+            phase_summaries: list[dict] = []
+            for phase_offset in plan["phaseOffsets"]:
+                response = client.post(
+                    "/api/optimization/home-lab/branch",
+                    json={
+                        "form": dict(payload),
+                        "branchId": branch_id,
+                        "searchPhase": phase,
+                        "phaseOffset": phase_offset,
+                        "priorCandidates": fixed_seed,
+                    },
+                )
+                assert response.status_code == 200
+                body = response.json()
+                assert body["branch"]["branch_id"] == branch_id
+                assert body["searchPhase"] == phase
+                assert body["phaseOffset"] == phase_offset
+                assert 0 <= body["parametricEvaluations"] <= plan["microBatchSize"] + 1
+                assert isinstance(body["candidates"], list)
+                assert isinstance(body["calculationStages"], list)
+                if body["candidates"]:
+                    stages = {item["stage"] for item in body["calculationStages"]}
+                    assert {
+                        "ANVELOPĂ",
+                        "VENTILAȚIE",
+                        "ÎNCĂLZIRE",
+                        "REGENERABILE",
+                        "BILANȚ",
+                        "ECONOMIC",
+                    } <= stages
+                results.append(body)
+                assert isinstance(body["candidateSummaries"], list)
+                assert all("resulting_configuration" not in item for item in body["candidateSummaries"])
+                phase_summaries.extend(body["candidateSummaries"])
+            prior_candidates.extend(phase_summaries)
+
+        assert len(prior_candidates) >= 18
+
+    finalize_response = client.post(
+        "/api/optimization/home-lab/finalize",
+        json={
+            "form": dict(payload),
+            "branchResults": results,
+        },
+    )
+    assert finalize_response.status_code in {200, 422}
+    return plan, finalize_response.json()
+
+
+def test_home_lab_auto_optimizer_runs_phased_and_returns_traceability() -> None:
+    payload = _form_payload()
+    payload["_optimization_mode"] = "auto_economic"
+
+    plan, body = _run_sharded(payload)
+
+    assert "error" not in body
+    assert body["scenario"]["annual_cost_lei"] is not None
+    meta = body["optimization"]
+    assert meta["kind"] == "parametric_economic"
+    assert meta["economicMode"] == "auto_economic"
+    assert meta["executionMode"] == "sharded_by_heating_branch"
+    assert meta["parametricEvaluations"] >= 36
+    assert meta["heatingBranchEvaluations"] >= 0
+    assert len(meta["heatingBranches"]) == len(plan["branches"])
+    assert meta["feasibleCandidates"] >= 1
+    assert meta["paretoSolutions"] >= 1
+    assert meta["paretoScope"] == "raw_all_then_bounded_commercial_recheck"
+    assert isinstance(meta["rawSolution"], dict)
+    assert "ventilation_heat_recovery_efficiency_target" in meta["rawSolution"]
+    assert isinstance(meta["commercialEvaluation"], dict)
+    assert "commercialReady" in meta
+    assert "commercialMessage" in meta
+    assert "selectedHeating" in meta
+    assert isinstance(meta["technicalHeatingAlternatives"], list)
+    preview_ids = {
+        item["branchId"] for item in meta["technicalHeatingAlternatives"]
+    }
+    assert "heat-pump-ground-water" in preview_ids
+    assert "heat-pump-air-air" not in preview_ids
+    assert any(
+        item["branch_id"] == "heat-pump-air-air"
+        and item["economic_eligible"] is True
+        for item in meta["heatingBranches"]
+    )
+    assert all(item["costKnown"] is False for item in meta["technicalHeatingAlternatives"])
+
+
+def test_home_lab_bill_target_phased_mode_preserves_constraint() -> None:
+    payload = _form_payload()
+    payload["_optimization_mode"] = "annual_bill_target"
+    payload["_annual_bill_target_lei"] = "6000"
+
+    _, body = _run_sharded(payload)
+
+    if "error" not in body:
+        assert body["optimization"]["economicMode"] == "annual_bill_target"
+        assert body["optimization"]["rawEvaluation"]["annualBillLei"] <= 6000 + 0.01
+    else:
+        assert "solu" in body["error"].lower() or "ramur" in body["error"].lower()
+
+
+def test_branch_endpoint_rejects_old_unphased_client() -> None:
+    payload = _form_payload()
+    payload["_optimization_mode"] = "auto_economic"
+    payload["_heating_branch_id"] = "keep-current-heating"
+
+    response = client.post("/api/optimization/home-lab/branch", data=payload)
+
+    assert response.status_code == 409
+    body = response.json()
+    assert body["requiresPhasedExecution"] is True
+    assert "Reîncarcă pagina" in body["error"]
+
+
+def test_legacy_monolithic_optimizer_refuses_multi_branch_execution() -> None:
+    payload = _form_payload()
+    payload["_optimization_mode"] = "auto_economic"
+
+    response = client.post("/api/optimization/home-lab", data=payload)
+
+    assert response.status_code == 409
+    body = response.json()
+    assert body["requiresShardedExecution"] is True
+    assert len(body["runBranchIds"]) > 1
+    assert "Reîncarcă pagina" in body["error"]
+
+
+def test_refinement_payload_is_compact_and_seedable() -> None:
+    payload = _form_payload()
+    payload["_optimization_mode"] = "auto_economic"
+
+    summaries: list[dict] = []
+    for phase in ("axis", "halton"):
+        for phase_offset in range(12):
+            response = client.post(
+                "/api/optimization/home-lab/branch",
+                json={
+                    "form": dict(payload),
+                    "branchId": "electric-boiler",
+                    "searchPhase": phase,
+                    "phaseOffset": phase_offset,
+                    "priorCandidates": [],
+                },
+            )
+            assert response.status_code == 200
+            body = response.json()
+            assert isinstance(body["candidateSummaries"], list)
+            for item in body["candidateSummaries"]:
+                assert set(item) == {
+                    "candidate_id",
+                    "parameters",
+                    "capex_lei",
+                    "annual_bill_lei",
+                    "annual_saving_lei",
+                    "payback_years",
+                }
+                assert "resulting_configuration" not in item
+            summaries.extend(body["candidateSummaries"])
+
+    encoded = json.dumps(summaries)
+    assert len(encoded) < 50000
+
+    refine = client.post(
+        "/api/optimization/home-lab/branch",
+        json={
+            "form": dict(payload),
+            "branchId": "electric-boiler",
+            "searchPhase": "refine",
+            "phaseOffset": 0,
+            "priorCandidates": summaries,
+        },
+    )
+    assert refine.status_code == 200
+    assert refine.json()["searchPhase"] == "refine"
+
+
+def test_phase_candidate_trace_matches_executed_axis_parameters() -> None:
+    payload = _form_payload()
+    payload["_optimization_mode"] = "auto_economic"
+    branch_id = "heat-pump-air-water"
+
+    preview = client.post(
+        "/api/optimization/home-lab/phase-candidates",
+        json={
+            "form": dict(payload),
+            "branchId": branch_id,
+            "searchPhase": "axis",
+            "phaseOffsets": [3],
+            "priorCandidates": [],
+        },
+    )
+    assert preview.status_code == 200
+    preview_body = preview.json()
+    assert preview_body["branchId"] == branch_id
+    assert preview_body["searchPhase"] == "axis"
+    assert len(preview_body["candidates"]) == 1
+    descriptor = preview_body["candidates"][0]
+    assert descriptor["candidate_id"].startswith("OPT-")
+    assert descriptor["phase_offset"] == 3
+    assert isinstance(descriptor["parameters"], dict)
+
+    executed = client.post(
+        "/api/optimization/home-lab/branch",
+        json={
+            "form": dict(payload),
+            "branchId": branch_id,
+            "searchPhase": "axis",
+            "phaseOffset": 3,
+            "priorCandidates": [],
+        },
+    )
+    assert executed.status_code == 200
+    executed_body = executed.json()
+    summaries = executed_body["candidateSummaries"]
+    if summaries:
+        assert summaries[0]["parameters"] == descriptor["parameters"]
+
+
+def test_phase_candidate_trace_is_deterministic() -> None:
+    payload = _form_payload()
+    payload["_optimization_mode"] = "auto_economic"
+    request_body = {
+        "form": dict(payload),
+        "branchId": "condensing-gas",
+        "searchPhase": "halton",
+        "phaseOffsets": [0, 1, 2, 3],
+        "priorCandidates": [],
+    }
+
+    first = client.post("/api/optimization/home-lab/phase-candidates", json=request_body)
+    second = client.post("/api/optimization/home-lab/phase-candidates", json=request_body)
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json()["candidates"] == second.json()["candidates"]
+    assert len(first.json()["candidates"]) == 4

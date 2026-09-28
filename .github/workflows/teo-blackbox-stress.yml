@@ -1,0 +1,72 @@
+name: TEO Blackbox 1000
+
+on:
+  pull_request:
+    branches:
+      - codex/commercial-v2-cloudflare-python
+
+jobs:
+  blackbox:
+    if: github.head_ref == 'lemnaru-karol/teo-blackbox-1000'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Install application dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r commercial/requirements.txt
+
+      - name: Start black-box server
+        run: |
+          python -m uvicorn app.main:app --app-dir commercial --host 127.0.0.1 --port 8765 > /tmp/teo-blackbox-uvicorn.log 2>&1 &
+          echo $! > /tmp/teo-blackbox-uvicorn.pid
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8765/health | grep -q '"status":"ok"'; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/teo-blackbox-uvicorn.log
+          exit 1
+
+      - name: Run 1000-case TEO black-box campaign
+        env:
+          TEO_BLACKBOX_BASE_URL: http://127.0.0.1:8765
+          TEO_BLACKBOX_VERIFY_CASES: "1000"
+          TEO_BLACKBOX_METAMORPHIC_CASES: "250"
+          TEO_BLACKBOX_GROUP_SIZE: "50"
+          TEO_BLACKBOX_SEED: "20260927"
+          TEO_BLACKBOX_REPORT: teo-blackbox-report.json
+        run: |
+          python commercial/stress/teo_blackbox_1000.py
+
+      - name: Stop black-box server
+        if: always()
+        run: |
+          if [ -f /tmp/teo-blackbox-uvicorn.pid ]; then
+            kill "$(cat /tmp/teo-blackbox-uvicorn.pid)" || true
+          fi
+
+      - name: Upload black-box evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: teo-blackbox-1000-report
+          path: |
+            teo-blackbox-report.json
+            /tmp/teo-blackbox-uvicorn.log
+          if-no-files-found: warn

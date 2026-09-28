@@ -28,21 +28,21 @@
     "ground": {
       "model": "ISO 13370 slab-on-ground steady-state U-value for uninsulated/all-over insulated slabs without explicit edge-insulation correction",
       "source": "ISO 13370:2017; MC001-2022 §2.3.3 delegates ground-contact heat transfer to ISO 13370 / C107",
-      "default_ground_conductivity_w_mk": 2.0,
+      "default_ground_conductivity_w_mk": 2,
       "default_ground_conductivity_basis": "LaCurent Light fallback for unknown soil; user/expert input can override",
-      "default_wall_thickness_m": 0.30,
+      "default_wall_thickness_m": 0.3,
       "monthly_temperature_model": "annual_exterior_temperature",
       "limitations": "Annual steady-state ground coupling only. Seasonal periodic ground term/bm and explicit edge-insulation psi correction are not yet included."
     },
     "unheated_attic": {
-      "default_correction_factor": 1.0,
+      "default_correction_factor": 1,
       "factor_confidence": "conservative",
       "factor_source": "Conservative no-buffer-credit fallback. MC001 bztu must be explicit/source-backed or derived from an explicit adjacent-zone heat balance before any reduction below 1 is credited.",
       "monthly_temperature_model": "monthly_exterior_temperature_with_bztu",
       "explicit_balance_source": "MC001-2022 relations for Hztu;e, Hztu;tot and bztu; implemented only when exterior-zone and conditioned-zone heat-transfer inputs are explicit"
     },
     "unheated_basement": {
-      "default_correction_factor": 1.0,
+      "default_correction_factor": 1,
       "factor_confidence": "conservative",
       "factor_source": "Conservative no-buffer-credit fallback. No unheated-basement temperature benefit is credited without an explicit/source-backed bztu or adjacent-zone heat balance.",
       "monthly_temperature_model": "monthly_exterior_temperature_with_bztu",
@@ -51,7 +51,37 @@
   },
   "dhw": {
     "litres_per_person_day_at_60c": 50,
-    "kwh_per_litre_10_to_60c": 0.05814
+    "kwh_per_litre_10_to_60c": 0.05814,
+    "system_defaults": {
+      "gas_boiler": {
+        "carrier": "natural_gas",
+        "efficiency": 0.88,
+        "source": "src/features/energy/physics/registries/dhwSystemPresets.registry.ts",
+        "confidence": "low",
+        "status": "Existing LaCurent internal DHW estimate"
+      },
+      "electric_boiler": {
+        "carrier": "electricity",
+        "efficiency": 0.98,
+        "source": "src/features/energy/physics/registries/dhwSystemPresets.registry.ts",
+        "confidence": "low",
+        "status": "Existing LaCurent internal DHW estimate"
+      },
+      "heat_pump_water_heater": {
+        "carrier": "electricity",
+        "cop": 2.4,
+        "source": "src/features/energy/physics/registries/dhwSystemPresets.registry.ts",
+        "confidence": "low",
+        "status": "Existing LaCurent internal DHW COP estimate"
+      },
+      "district_heat": {
+        "carrier": "district_heat",
+        "efficiency": 0.95,
+        "source": "commercial/data/methodology.json heating_system_defaults",
+        "confidence": "low",
+        "status": "LaCurent simplified delivered-energy assumption"
+      }
+    }
   },
   "heating_system_defaults": {
     "gas_boiler": {
@@ -422,7 +452,7 @@
     "Raportul comercial LaCurent este o estimare tehnică bazată pe o implementare simplificată a structurii Mc 001-2022 și nu reprezintă un Certificat de Performanță Energetică emis legal în România.",
     "Valorile sezoniere implicite ale sistemelor de încălzire sunt ipoteze comerciale LaCurent centralizate în registrul metodologic și pot fi suprascrise în setările avansate; nu sunt prezentate ca randamente universale pentru toate echipamentele reale.",
     "Producția fotovoltaică Light folosește iradierea lunară pe planul panoului derivată exclusiv din valorile Hsol sursă ale setului existent: pentru înclinări 0-90° se interpolează liniar între planul orizontal și planul vertical al orientării selectate. Este o aproximație LaCurent Light, nu un model orar de transpoziție POA.",
-    "Autoconsumul fotovoltaic este limitat lunar la consumul electric al serviciilor modelate de LaCurent (încălzire, răcire și ACM). Excedentul este raportat ca export și nu primește credit implicit de cost, CO₂ sau energie primară.",
+    "Autoconsumul fotovoltaic este calculat lunar separat pentru serviciile energetice reglementate și pentru consumul electric casnic introdus explicit de utilizator. Consumul casnic este folosit numai în analiza economică și nu modifică energia finală/primară sau clasa energetică MC001. Excedentul este raportat ca export; primește credit economic numai dacă utilizatorul introduce explicit o rată de compensare, fără credit implicit de CO₂ sau energie primară.",
     "Solarul termic Light folosește aceeași iradiere lunară pe plan înclinat și un randament global explicit; energia utilă este limitată lunar la necesarul de ACM, fără modelarea stratificării rezervorului, a pierderilor de conducte sau a stocării inter-lunare."
   ],
   "solar": {
@@ -587,5 +617,22 @@
       }
     },
     "note": "Tabelul 2.10b este folosit ca guardrail energetic/CO₂ pentru proiectele marcate explicit drept renovare majoră. Cerințele complete aplicabile proiectului trebuie verificate separat."
+  },
+  "design_heat_load_light": {
+    "basis": "space_heating_design_load_at_locality_winter_design_temperature",
+    "status": "LaCurent Light equipment-sizing basis; not a full room-by-room EN 12831 implementation.",
+    "gains_credit": "none",
+    "exterior_paths": "Hd + Hu + Ha at winter_design_temperature_c",
+    "ground_path": "Hg uses annual exterior temperature as current Light Engine ground-temperature approximation",
+    "ventilation_path": "controlled ventilation uses heat recovery; explicit infiltration bypasses heat recovery",
+    "oversizing_margin_fraction": 0,
+    "dhw_sizing": "separate_from_space_heating_load",
+    "heat_pump_product_check": "use source-backed available heating capacity at design outdoor/flow condition when published; do not extrapolate beyond published capacity map",
+    "limitations": [
+      "Room-by-room loads and intermittent reheating capacity are not modeled.",
+      "If infiltration is unknown, the explicit additional infiltration input remains zero; users may provide an engineering/measured ACH override.",
+      "DHW storage/reheat power is not added to the space-heating load.",
+      "Ground-source heat-pump source-side design capacity still requires source-side data not present in the current catalog schema."
+    ]
   }
 }

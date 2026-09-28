@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+import gc
 import math
 
 from .methodology import (
@@ -315,12 +316,32 @@ def transmission_heat_transfer(building: BuildingInput) -> tuple[float, list[Con
     return components.htr_w_k, envelope, bridges
 
 
-def ventilation_heat_transfer(building: BuildingInput) -> float:
-    """MC001 Hve helper: Hve = 0.34 * qv_m3h * (1 - eta_hr). Units: W/K."""
+def ventilation_heat_transfer_components(building: BuildingInput) -> dict[str, float]:
+    """Return controlled-ventilation and uncontrolled-infiltration heat-transfer coefficients.
 
-    airflow_m3h = building.ventilation.air_changes_per_hour * building.heated_volume_m3
-    recovery_factor = 1 - building.ventilation.heat_recovery_efficiency
-    return _round(0.34 * airflow_m3h * recovery_factor)
+    Heat recovery is credited only to the intentional ventilation stream.
+    Infiltration bypasses heat recovery by definition in this Light Engine model.
+    """
+
+    volume = float(building.heated_volume_m3)
+    ventilation_airflow_m3h = float(building.ventilation.air_changes_per_hour) * volume
+    infiltration_airflow_m3h = (
+        float(building.ventilation.infiltration_air_changes_per_hour) * volume
+    )
+    recovery_factor = 1 - float(building.ventilation.heat_recovery_efficiency)
+    ventilation_w_k = 0.34 * ventilation_airflow_m3h * recovery_factor
+    infiltration_w_k = 0.34 * infiltration_airflow_m3h
+    return {
+        "ventilation_w_k": _round(ventilation_w_k),
+        "infiltration_w_k": _round(infiltration_w_k),
+        "total_w_k": _round(ventilation_w_k + infiltration_w_k),
+    }
+
+
+def ventilation_heat_transfer(building: BuildingInput) -> float:
+    """Total Hve used by the energy balance, including explicit infiltration."""
+
+    return ventilation_heat_transfer_components(building)["total_w_k"]
 
 
 def _monthly_utilization_parameter(building: BuildingInput, total_h_w_k: float, mode: str) -> float:
@@ -341,7 +362,19 @@ def _heating_gain_utilization_factor(gamma_h: float, a_h: float) -> float:
 
     if abs(gamma_h - 1.0) <= GAMMA_EQUALITY_TOLERANCE:
         return a_h / (a_h + 1.0)
-    return (1.0 - gamma_h**a_h) / (1.0 - gamma_h ** (a_h + 1.0))
+    if gamma_h == 0:
+        return 1.0
+    # Algebraically identical to (1-gamma**a)/(1-gamma**(a+1)).
+    # Negative exponents avoid overflow for high thermal time constants;
+    # expm1 avoids subtracting nearly equal numbers when gamma is near 1.
+    log_gamma = math.log(gamma_h)
+    if gamma_h > 1:
+        return (
+            math.expm1(-a_h * log_gamma)
+            / math.expm1(-(a_h + 1.0) * log_gamma)
+            / gamma_h
+        )
+    return math.expm1(a_h * log_gamma) / math.expm1((a_h + 1.0) * log_gamma)
 
 
 def _monthly_heating_need(q_h_ht_kwh: float, q_h_gn_kwh: float, a_h: float) -> float:
@@ -367,7 +400,8 @@ def _cooling_heat_transfer_utilization_factor(gamma_c: float, a_c: float) -> flo
         return 1.0
     if abs(gamma_c - 1.0) <= GAMMA_EQUALITY_TOLERANCE:
         return a_c / (a_c + 1.0)
-    return (1.0 - gamma_c ** (-a_c)) / (1.0 - gamma_c ** (-(a_c + 1.0)))
+    # The cooling expression is the heating expression with reciprocal gamma.
+    return _heating_gain_utilization_factor(1.0 / gamma_c, a_c)
 
 
 def _monthly_cooling_need(
@@ -545,6 +579,72 @@ def _annual_outdoor_temperature_c(climate: dict) -> float:
     return sum(float(month["temperature_c"]) * float(month["days"]) for month in months) / total_days
 
 
+def design_heat_load_breakdown(
+    building: BuildingInput,
+    transmission: TransmissionComponentsResult,
+    h_ve_w_k: float,
+    climate: dict | None = None,
+) -> dict[str, float | None]:
+    """Design space-heating load at the locality winter design temperature.
+
+    Exterior transmission (Hd/Hu/Ha), ventilation and infiltration use the
+    normative winter design temperature. Ground coupling (Hg) follows the same
+    annual-ground-temperature approximation used by the current Light Engine,
+    so the floor is not exposed to the outdoor design-air temperature.
+    Internal/solar gains are intentionally not credited for generator sizing.
+    """
+
+    climate = climate or resolve_climate(building.locality)
+    design_outdoor = climate.get("winter_design_temperature_c")
+    if design_outdoor is None:
+        return {
+            "total_kw": None,
+            "design_outdoor_temperature_c": None,
+            "indoor_temperature_c": float(building.indoor_design_temperature_c),
+            "delta_t_outdoor_k": None,
+            "ground_reference_temperature_c": None,
+            "delta_t_ground_k": None,
+            "exterior_transmission_kw": None,
+            "ground_transmission_kw": None,
+            "ventilation_kw": None,
+            "infiltration_kw": None,
+            "ventilation_infiltration_kw": None,
+        }
+
+    indoor = float(building.indoor_design_temperature_c)
+    design_outdoor = float(design_outdoor)
+    annual_outdoor = float(_annual_outdoor_temperature_c(climate))
+    delta_t_outdoor = max(indoor - design_outdoor, 0.0)
+    delta_t_ground = max(indoor - annual_outdoor, 0.0)
+
+    exterior_h_w_k = (
+        float(transmission.hd_w_k)
+        + float(transmission.hu_w_k)
+        + float(transmission.ha_w_k)
+    )
+    exterior_kw = exterior_h_w_k * delta_t_outdoor / 1000.0
+    ground_kw = float(transmission.hg_w_k) * delta_t_ground / 1000.0
+    airflow = ventilation_heat_transfer_components(building)
+    ventilation_kw = float(airflow["ventilation_w_k"]) * delta_t_outdoor / 1000.0
+    infiltration_kw = float(airflow["infiltration_w_k"]) * delta_t_outdoor / 1000.0
+    airflow_total_kw = float(h_ve_w_k) * delta_t_outdoor / 1000.0
+    total_kw = exterior_kw + ground_kw + airflow_total_kw
+
+    return {
+        "total_kw": _round(total_kw, 4),
+        "design_outdoor_temperature_c": design_outdoor,
+        "indoor_temperature_c": indoor,
+        "delta_t_outdoor_k": _round(delta_t_outdoor, 3),
+        "ground_reference_temperature_c": _round(annual_outdoor, 3),
+        "delta_t_ground_k": _round(delta_t_ground, 3),
+        "exterior_transmission_kw": _round(exterior_kw, 4),
+        "ground_transmission_kw": _round(ground_kw, 4),
+        "ventilation_kw": _round(ventilation_kw, 4),
+        "infiltration_kw": _round(infiltration_kw, 4),
+        "ventilation_infiltration_kw": _round(airflow_total_kw, 4),
+    }
+
+
 def monthly_energy_balance(
     building: BuildingInput,
     transmission: TransmissionComponentsResult,
@@ -612,28 +712,30 @@ def monthly_energy_balance(
         q_h_ht = q_h_tr_excl_ground + q_h_ground + q_h_ve
         useful_heating = _monthly_heating_need(q_h_ht, total_gains, a_h)
 
-        useful_cooling = 0.0
-        if building.cooling.enabled:
-            q_c_tr_excl_ground = (
-                h_excluding_ground
-                * (building.cooling.setpoint_c - outdoor)
-                * hours
-                / 1000
-            )
-            q_c_ground = (
-                transmission.hg_w_k
-                * (building.cooling.setpoint_c - annual_outdoor)
-                * hours
-                / 1000
-            )
-            q_c_ve = (
-                h_ve_w_k
-                * (building.cooling.setpoint_c - outdoor)
-                * hours
-                / 1000
-            )
-            q_c_ht = q_c_tr_excl_ground + q_c_ground + q_c_ve
-            useful_cooling = _monthly_cooling_need(q_c_ht, total_gains, a_c, a_c_red)
+        # Cooling demand is a property of the building, climate and comfort
+        # setpoint, not of whether active cooling equipment is installed.
+        # Equipment availability is applied later by cooling_final_energy(),
+        # which keeps final cooling energy at zero when cooling.enabled is false.
+        q_c_tr_excl_ground = (
+            h_excluding_ground
+            * (building.cooling.setpoint_c - outdoor)
+            * hours
+            / 1000
+        )
+        q_c_ground = (
+            transmission.hg_w_k
+            * (building.cooling.setpoint_c - annual_outdoor)
+            * hours
+            / 1000
+        )
+        q_c_ve = (
+            h_ve_w_k
+            * (building.cooling.setpoint_c - outdoor)
+            * hours
+            / 1000
+        )
+        q_c_ht = q_c_tr_excl_ground + q_c_ground + q_c_ve
+        useful_cooling = _monthly_cooling_need(q_c_ht, total_gains, a_c, a_c_red)
 
         monthly.append({
             "month": month["id"],
@@ -957,9 +1059,14 @@ def dhw_energy(building: BuildingInput, useful_kwh: float | None = None) -> Ener
         if useful_kwh is None
         else max(float(useful_kwh), 0.0)
     )
+    performance = (
+        float(building.dhw.cop)
+        if building.dhw.cop is not None
+        else float(building.dhw.efficiency or 1.0)
+    )
     return EnergyServiceResult(
         useful_kwh=_round(useful),
-        final_kwh=_round(useful / building.dhw.efficiency),
+        final_kwh=_round(useful / performance),
         carrier=building.dhw.carrier,
     )
 
@@ -1029,9 +1136,14 @@ def _renewable_resource_rows(building: BuildingInput, climate: dict) -> tuple[li
         rows.append(
             {
                 "month": month["id"],
+                "days": days,
                 "pv_plane_hsol_kwh_m2": pv_hsol,
                 "pv_generation_kwh": pv_generation,
                 "pv_self_consumed_kwh": 0.0,
+                "pv_regulated_self_consumed_kwh": 0.0,
+                "pv_household_self_consumed_kwh": 0.0,
+                "household_electricity_load_kwh": 0.0,
+                "household_grid_import_kwh": 0.0,
                 "pv_exported_kwh": pv_generation,
                 "solar_thermal_plane_hsol_kwh_m2": thermal_hsol,
                 "solar_thermal_available_kwh": thermal_available,
@@ -1068,28 +1180,58 @@ def renewable_energy_result(
     dhw_ratio = _service_final_per_useful(dhw)
 
     annual_heating_useful = sum(float(row["useful_heating_kwh"]) for row in monthly_balance)
+    household_annual_kwh = float(pv.household_electricity_kwh_year or 0.0)
+    renewable_days = sum(float(row.get("days") or 0.0) for row in renewable_rows) or 365.0
 
     for balance, renewable in zip(monthly_balance, renewable_rows):
-        electric_load = 0.0
+        regulated_electric_load = 0.0
         if heating_auxiliary_kwh_year > 0:
             if annual_heating_useful > 0:
-                electric_load += heating_auxiliary_kwh_year * float(balance["useful_heating_kwh"]) / annual_heating_useful
+                regulated_electric_load += heating_auxiliary_kwh_year * float(balance["useful_heating_kwh"]) / annual_heating_useful
             else:
-                electric_load += heating_auxiliary_kwh_year / max(len(monthly_balance), 1)
+                regulated_electric_load += heating_auxiliary_kwh_year / max(len(monthly_balance), 1)
         if heating.carrier == Carrier.electricity:
-            electric_load += float(balance["useful_heating_kwh"]) * heating_ratio
+            regulated_electric_load += float(balance["useful_heating_kwh"]) * heating_ratio
         if cooling.carrier == Carrier.electricity:
-            electric_load += float(balance["useful_cooling_kwh"]) * cooling_ratio
+            regulated_electric_load += float(balance["useful_cooling_kwh"]) * cooling_ratio
         if dhw.carrier == Carrier.electricity:
-            electric_load += float(renewable["dhw_backup_useful_kwh"]) * dhw_ratio
+            regulated_electric_load += float(renewable["dhw_backup_useful_kwh"]) * dhw_ratio
 
+        household_load = (
+            household_annual_kwh
+            * float(renewable.get("days") or 0.0)
+            / renewable_days
+        )
         generation = float(renewable["pv_generation_kwh"])
-        self_consumed = min(generation, electric_load) if pv.enabled else 0.0
+        if pv.enabled:
+            # Keep MC001-regulated energy separate from the optional household
+            # demand used only for economics. Regulated services get the first
+            # monthly PV allocation; the remainder can offset household demand.
+            regulated_self = min(generation, regulated_electric_load)
+            remaining_generation = max(generation - regulated_self, 0.0)
+            household_self = min(remaining_generation, household_load)
+        else:
+            regulated_self = 0.0
+            household_self = 0.0
+        self_consumed = regulated_self + household_self
+        renewable["pv_regulated_self_consumed_kwh"] = regulated_self
+        renewable["pv_household_self_consumed_kwh"] = household_self
         renewable["pv_self_consumed_kwh"] = self_consumed
+        renewable["household_electricity_load_kwh"] = household_load
+        renewable["household_grid_import_kwh"] = max(household_load - household_self, 0.0)
         renewable["pv_exported_kwh"] = max(generation - self_consumed, 0.0)
 
     pv_generation = sum(float(row["pv_generation_kwh"]) for row in renewable_rows)
     pv_self_consumed = sum(float(row["pv_self_consumed_kwh"]) for row in renewable_rows)
+    pv_regulated_self_consumed = sum(
+        float(row["pv_regulated_self_consumed_kwh"]) for row in renewable_rows
+    )
+    pv_household_self_consumed = sum(
+        float(row["pv_household_self_consumed_kwh"]) for row in renewable_rows
+    )
+    household_grid_import = sum(
+        float(row["household_grid_import_kwh"]) for row in renewable_rows
+    )
     pv_exported = sum(float(row["pv_exported_kwh"]) for row in renewable_rows)
     pv_plane_hsol = sum(float(row["pv_plane_hsol_kwh_m2"]) for row in renewable_rows)
 
@@ -1111,7 +1253,12 @@ def renewable_energy_result(
             annual_plane_hsol_kwh_m2=_round(pv_plane_hsol),
             annual_generation_kwh=_round(pv_generation),
             self_consumed_kwh=_round(pv_self_consumed),
+            regulated_self_consumed_kwh=_round(pv_regulated_self_consumed),
+            household_self_consumed_kwh=_round(pv_household_self_consumed),
+            household_electricity_kwh_year=_round(household_annual_kwh),
+            household_grid_import_kwh=_round(household_grid_import),
             exported_kwh=_round(pv_exported),
+            export_credit_lei_per_kwh=_round(pv.export_credit_lei_per_kwh, 4),
             self_consumption_percent=_round(
                 100.0 * pv_self_consumed / pv_generation if pv_generation else 0.0,
                 1,
@@ -1137,6 +1284,10 @@ def renewable_energy_result(
                 pv_plane_hsol_kwh_m2=_round(row["pv_plane_hsol_kwh_m2"]),
                 pv_generation_kwh=_round(row["pv_generation_kwh"]),
                 pv_self_consumed_kwh=_round(row["pv_self_consumed_kwh"]),
+                pv_regulated_self_consumed_kwh=_round(row["pv_regulated_self_consumed_kwh"]),
+                pv_household_self_consumed_kwh=_round(row["pv_household_self_consumed_kwh"]),
+                household_electricity_load_kwh=_round(row["household_electricity_load_kwh"]),
+                household_grid_import_kwh=_round(row["household_grid_import_kwh"]),
                 pv_exported_kwh=_round(row["pv_exported_kwh"]),
                 solar_thermal_plane_hsol_kwh_m2=_round(row["solar_thermal_plane_hsol_kwh_m2"]),
                 solar_thermal_available_kwh=_round(row["solar_thermal_available_kwh"]),
@@ -1156,7 +1307,7 @@ def net_final_energy_by_carrier(
     if renewables.pv.enabled:
         electricity = float(totals.get(Carrier.electricity.value, 0.0))
         totals[Carrier.electricity.value] = max(
-            electricity - float(renewables.pv.self_consumed_kwh),
+            electricity - float(renewables.pv.regulated_self_consumed_kwh),
             0.0,
         )
     return {
@@ -1256,7 +1407,107 @@ def _boundary_assumptions(building: BuildingInput) -> list[str]:
     return assumptions
 
 
+def _primary_specific_energy_scalar(building: BuildingInput) -> float:
+    """Run the RBPE energy chain without constructing a report result graph.
+
+    Reference comparison needs only specific primary energy. Reusing the same
+    physical functions here avoids allocating a second CalculationResult with
+    monthly/report/envelope objects in a constrained Python Worker isolate.
+    """
+
+    transmission, _envelope_rows, _bridge_rows = (
+        transmission_heat_transfer_components(building)
+    )
+    h_ve = ventilation_heat_transfer(building)
+    climate = resolve_climate(building.locality)
+    monthly = monthly_energy_balance(building, transmission, h_ve)
+    annual_heating = sum(
+        row["useful_heating_kwh"]
+        for row in monthly
+    )
+    annual_cooling = sum(
+        row["useful_cooling_kwh"]
+        for row in monthly
+    )
+
+    renewable_rows, pv_pr, thermal_efficiency = _renewable_resource_rows(
+        building,
+        climate,
+    )
+    heating, heating_system = heating_system_performance(
+        building,
+        annual_heating,
+    )
+    cooling = cooling_final_energy(building, annual_cooling)
+    dhw_backup_useful = sum(
+        float(row["dhw_backup_useful_kwh"])
+        for row in renewable_rows
+    )
+    dhw = dhw_energy(building, dhw_backup_useful)
+    renewables = renewable_energy_result(
+        building,
+        climate,
+        monthly,
+        heating,
+        cooling,
+        dhw,
+        renewable_rows,
+        pv_pr,
+        thermal_efficiency,
+        heating_auxiliary_kwh_year=(
+            heating_system.auxiliary_electricity_kwh
+        ),
+    )
+    gross_by_carrier = final_energy_by_carrier(
+        heating,
+        cooling,
+        dhw,
+        additional_electricity_kwh=(
+            heating_system.auxiliary_electricity_kwh
+        ),
+    )
+    by_carrier = net_final_energy_by_carrier(
+        gross_by_carrier,
+        renewables,
+    )
+    return float(
+        primary_energy(
+            by_carrier,
+            building.heated_floor_area_m2,
+        ).specific_kwh_m2
+    )
+
+
+def reference_primary_specific_energy(building: BuildingInput) -> float:
+    """Return the exact RBPE reference-building primary-energy indicator.
+
+    This intentionally runs only the scalar reference chain, so callers can
+    schedule the reference comparison in a separate HTTP request instead of
+    spending two complete RBPE passes inside one Cloudflare request budget.
+    """
+    from .reference import build_reference_input
+
+    value = _primary_specific_energy_scalar(build_reference_input(building))
+    gc.collect()
+    return float(value)
+
+
 def calculate(building: BuildingInput, *, include_reference: bool = True) -> CalculationResult:
+    reference_specific: float | None = None
+    if include_reference:
+        # Compute the reference building before allocating the evaluated
+        # building's complete monthly/report graph. Previously the evaluated
+        # graph stayed live while a second full RBPE graph was built for the
+        # reference building, doubling peak memory in long-lived Cloudflare
+        # Python isolates. The calculation itself is unchanged; only allocation
+        # order changes.
+        from .reference import build_reference_input
+
+        reference_specific = _primary_specific_energy_scalar(
+            build_reference_input(building)
+        )
+        gc.collect()
+
     transmission, envelope_contributions, bridge_contributions = transmission_heat_transfer_components(building)
     h_tr = transmission.htr_w_k
     h_ve = ventilation_heat_transfer(building)
@@ -1301,17 +1552,18 @@ def calculate(building: BuildingInput, *, include_reference: bool = True) -> Cal
     energy_class = classify_energy(building, primary.specific_kwh_m2)
 
     comparison = None
-    if include_reference:
-        from .reference import build_reference_input
-
-        reference_result = calculate(build_reference_input(building), include_reference=False)
-        reference_specific = reference_result.primary_energy.specific_kwh_m2
+    if reference_specific is not None:
         diff = primary.specific_kwh_m2 - reference_specific
         comparison = ComparisonResult(
             actual_specific_primary_kwh_m2=primary.specific_kwh_m2,
             reference_specific_primary_kwh_m2=reference_specific,
             difference_kwh_m2=_round(diff, 2),
-            difference_percent=_round(100 * diff / reference_specific if reference_specific else 0, 1),
+            difference_percent=_round(
+                100 * diff / reference_specific
+                if reference_specific
+                else 0,
+                1,
+            ),
         )
 
     return CalculationResult(

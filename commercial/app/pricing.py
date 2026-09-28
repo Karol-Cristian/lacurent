@@ -212,17 +212,60 @@ def _service_cost_rows(result: Any, county: str | None) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for service in ("heating", "cooling", "dhw"):
         final_kwh = float(result.final_energy_by_service.get(service, 0) or 0)
+        auxiliary_electricity_kwh = (
+            float(result.heating_system.auxiliary_electricity_kwh)
+            if service == "heating"
+            else 0.0
+        )
+        main_carrier_final_kwh = (
+            float(result.heating.final_kwh)
+            if service == "heating"
+            else final_kwh
+        )
         carrier, profile = carriers[service]
         reference, note, carrier_label = _reference_for(carrier, county, profile)
         unit_price = float(reference["unit_price_lei_per_kwh"]) if reference else None
-        annual_cost = final_kwh * unit_price if unit_price is not None else None
+        auxiliary_reference = (
+            _electricity_reference(county)
+            if auxiliary_electricity_kwh > 0
+            else None
+        )
+        auxiliary_unit_price = (
+            float(auxiliary_reference["unit_price_lei_per_kwh"])
+            if auxiliary_reference
+            else None
+        )
+        main_cost = (
+            main_carrier_final_kwh * unit_price
+            if unit_price is not None
+            else None
+        )
+        auxiliary_cost = (
+            auxiliary_electricity_kwh * auxiliary_unit_price
+            if auxiliary_unit_price is not None
+            else 0.0
+        )
+        annual_cost = (
+            main_cost + auxiliary_cost
+            if main_cost is not None
+            else None
+        )
+        effective_unit_price = (
+            annual_cost / final_kwh
+            if annual_cost is not None and final_kwh > 0
+            else unit_price
+        )
         row = {
             "service": service,
             "label": SERVICE_LABELS[service],
             "carrier": carrier,
             "carrier_label": carrier_label,
             "final_kwh": final_kwh,
+            "main_carrier_final_kwh": main_carrier_final_kwh,
+            "auxiliary_electricity_kwh": auxiliary_electricity_kwh,
             "unit_price_lei_per_kwh": unit_price,
+            "auxiliary_electricity_unit_price_lei_per_kwh": auxiliary_unit_price,
+            "effective_unit_price_lei_per_kwh": effective_unit_price,
             "annual_cost_lei": annual_cost,
             "allocated_delivery_cost_lei": 0.0,
             "priced": reference is not None,
@@ -236,17 +279,17 @@ def _service_cost_rows(result: Any, county: str | None) -> list[dict[str, Any]]:
     groups: dict[str, list[dict[str, Any]]] = {}
     for row in rows:
         group = row.get("delivery_cost_group")
-        if group and row["final_kwh"] > 0:
+        if group and row["main_carrier_final_kwh"] > 0:
             groups.setdefault(str(group), []).append(row)
 
     for group_rows in groups.values():
-        total_kwh = sum(float(row["final_kwh"]) for row in group_rows)
+        total_kwh = sum(float(row["main_carrier_final_kwh"]) for row in group_rows)
         if total_kwh <= 0:
             continue
         delivery = _delivery_cost(group_rows[0], total_kwh)
         delivery_cost = float(delivery["delivery_cost_lei"])
         for row in group_rows:
-            allocation = delivery_cost * float(row["final_kwh"]) / total_kwh
+            allocation = delivery_cost * float(row["main_carrier_final_kwh"]) / total_kwh
             row["allocated_delivery_cost_lei"] = allocation
             row["delivery_batches"] = int(delivery["delivery_batches"])
             row["delivery_cost_lei"] = delivery_cost
@@ -260,11 +303,27 @@ def _monthly_cost_rows(
     county: str | None,
 ) -> list[dict[str, Any]]:
     service_map = {row["service"]: row for row in service_rows}
-    pv_monthly = {
-        str(row.month): float(row.pv_self_consumed_kwh)
+    renewable_monthly = {
+        str(row.month): row
         for row in getattr(getattr(result, "renewables", None), "monthly", [])
     }
-    electricity_reference = _electricity_reference(county) if pv_monthly else None
+    pv_monthly = {
+        month: float(getattr(row, "pv_regulated_self_consumed_kwh", 0.0))
+        for month, row in renewable_monthly.items()
+    }
+    household_import_monthly = {
+        month: float(getattr(row, "household_grid_import_kwh", 0.0))
+        for month, row in renewable_monthly.items()
+    }
+    pv_export_monthly = {
+        month: float(getattr(row, "pv_exported_kwh", 0.0))
+        for month, row in renewable_monthly.items()
+    }
+    pv_result = getattr(getattr(result, "renewables", None), "pv", None)
+    export_credit_rate = float(
+        getattr(pv_result, "export_credit_lei_per_kwh", 0.0) or 0.0
+    )
+    electricity_reference = _electricity_reference(county) if renewable_monthly else None
     electricity_price = (
         float(electricity_reference["unit_price_lei_per_kwh"])
         if electricity_reference
@@ -300,7 +359,7 @@ def _monthly_cost_rows(
         priced_total = 0.0
         complete = True
         for service, final_kwh in service_final.items():
-            unit_price = service_map[service]["unit_price_lei_per_kwh"]
+            unit_price = service_map[service]["effective_unit_price_lei_per_kwh"]
             if unit_price is None and final_kwh > 0.0001:
                 service_costs[service] = None
                 complete = False
@@ -314,9 +373,19 @@ def _monthly_cost_rows(
                     cost += allocated_delivery * final_kwh / annual_service_kwh
                 service_costs[service] = cost
                 priced_total += cost
-        pv_offset_kwh = min(float(pv_monthly.get(month, 0.0)), sum(service_final.values()))
+        pv_offset_kwh = max(float(pv_monthly.get(month, 0.0)), 0.0)
         pv_offset_lei = pv_offset_kwh * electricity_price
-        priced_total = max(priced_total - pv_offset_lei, 0.0)
+        household_import_kwh = max(float(household_import_monthly.get(month, 0.0)), 0.0)
+        household_cost_lei = household_import_kwh * electricity_price
+        pv_export_kwh = max(float(pv_export_monthly.get(month, 0.0)), 0.0)
+        pv_export_credit_lei = pv_export_kwh * export_credit_rate
+        priced_total = max(
+            priced_total
+            - pv_offset_lei
+            + household_cost_lei
+            - pv_export_credit_lei,
+            0.0,
+        )
         rows.append(
             {
                 "month": month,
@@ -324,6 +393,10 @@ def _monthly_cost_rows(
                 "cost_lei_by_service": service_costs,
                 "pv_self_consumed_kwh": pv_offset_kwh,
                 "pv_cost_offset_lei": pv_offset_lei,
+                "household_grid_import_kwh": household_import_kwh,
+                "household_electricity_cost_lei": household_cost_lei,
+                "pv_exported_kwh": pv_export_kwh,
+                "pv_export_credit_lei": pv_export_credit_lei,
                 "priced_total_lei": priced_total,
                 "complete": complete,
             }
@@ -370,6 +443,39 @@ def estimate_energy_cost(result: Any) -> dict[str, Any]:
 
     service_rows = _service_cost_rows(result, county)
     monthly_rows = _monthly_cost_rows(result, service_rows, county)
+
+    pv_result = getattr(getattr(result, "renewables", None), "pv", None)
+    household_electricity_kwh_year = float(
+        getattr(pv_result, "household_electricity_kwh_year", 0.0) or 0.0
+    )
+    household_grid_import_kwh = float(
+        getattr(pv_result, "household_grid_import_kwh", 0.0) or 0.0
+    )
+    pv_exported_kwh = float(
+        getattr(pv_result, "exported_kwh", 0.0) or 0.0
+    )
+    pv_export_credit_rate = float(
+        getattr(pv_result, "export_credit_lei_per_kwh", 0.0) or 0.0
+    )
+    electricity_reference = (
+        _electricity_reference(county)
+        if household_grid_import_kwh > 0
+        else None
+    )
+    household_unit_price = (
+        float(electricity_reference["unit_price_lei_per_kwh"])
+        if electricity_reference is not None
+        else 0.0
+    )
+    household_electricity_cost_lei = (
+        household_grid_import_kwh * household_unit_price
+    )
+    pv_export_credit_lei = pv_exported_kwh * pv_export_credit_rate
+    priced_total = max(
+        priced_total + household_electricity_cost_lei - pv_export_credit_lei,
+        0.0,
+    )
+
     service_unpriced = [
         row["unpriced_note"]
         for row in service_rows
@@ -389,6 +495,16 @@ def estimate_energy_cost(result: Any) -> dict[str, Any]:
         "monthly_rows": monthly_rows,
         "priced_total_lei": priced_total,
         "average_monthly_priced_lei": priced_total / 12,
+        "pv_economics": {
+            "household_electricity_kwh_year": household_electricity_kwh_year,
+            "household_grid_import_kwh": household_grid_import_kwh,
+            "household_unit_price_lei_per_kwh": household_unit_price,
+            "household_electricity_cost_lei": household_electricity_cost_lei,
+            "pv_exported_kwh": pv_exported_kwh,
+            "export_credit_lei_per_kwh": pv_export_credit_rate,
+            "export_credit_lei": pv_export_credit_lei,
+            "scope": "economic_only_not_mc001_regulated_energy",
+        },
         "complete": not unpriced,
         "price_references_current": price_references_current,
         "commercially_current": not unpriced and price_references_current,
@@ -402,3 +518,31 @@ def estimate_energy_cost(result: Any) -> dict[str, Any]:
             "Factura reală depinde de contract, furnizor, operator, taxe, categoria de consum, sezon și condițiile locale."
         ),
     }
+
+
+def home_lab_price_overview(*, today: date | None = None) -> dict[str, Any]:
+    """Display saved market references, never imply a live or universal tariff."""
+    data = energy_prices()
+    def number(value: float, digits: int = 2) -> str:
+        return f"{value:.{digits}f}".replace(".", ",")
+
+    electricity = list(data["electricity"]["operator_prices_lei_per_kwh"].values())
+    definitions = [
+        ("electricity", "Curent", f"{number(min(electricity))}–{number(max(electricity))}", "lei/kWh"),
+        ("natural_gas", "Gaz", number(data["natural_gas"]["reference_price_lei_per_kwh"], 3), "lei/kWh"),
+        ("firewood", "Lemn", number(data["firewood"]["reference_price_lei_per_package"], 0), "lei/palet 0,8 m³"),
+        ("pellets", "Peleți", number(data["pellets"]["price_lei_per_15kg_bag"]), "lei/sac 15 kg"),
+    ]
+    labels = {"current": "Referință", "stale": "Ofertă expirată", "not_yet_valid": "Ofertă viitoare"}
+    rows = []
+    for key, label, value, unit in definitions:
+        reference = data[key]
+        status = _price_reference_status(reference, today=today)
+        rows.append({
+            "key": key, "label": label, "value": value, "unit": unit,
+            "status": status, "status_label": labels[status],
+            "source_name": reference["source_name"], "source_url": reference["source_url"],
+            "note": reference["note"], "valid_until": reference.get("valid_until"),
+            "valid_from": reference.get("valid_from"),
+        })
+    return {"retrieved_on": data["retrieved_on"], "rows": rows}

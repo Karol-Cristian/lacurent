@@ -1,0 +1,31 @@
+    <aside class="hln-energy-strip" aria-label="Prețuri energie și sistemul energetic">
+      <details class="hln-energy-prices">
+        <summary>
+          <span class="hln-energy-title">Prețuri & energie</span>
+          <span class="hln-energy-preview">
+            {% for item in energy_overview.rows %}
+            <span><span>{{ item.label }}</span> <strong>{{ item.value }}</strong> <small>{{ item.unit }}</small>{% if item.status != 'current' %} <em>{{ item.status_label }}</em>{% endif %}</span>
+            {% endfor %}
+          </span>
+          <span class="hln-energy-reference">Referințe <span aria-hidden="true">⌄</span></span>
+        </summary>
+        <div class="hln-energy-details">
+          <p>Prețuri de referință, nu cotații live. Date salvate la <time datetime="{{ energy_overview.retrieved_on }}">{{ energy_overview.retrieved_on }}</time>. Costul casei folosește localitatea și ipotezele calculatorului; oferta ta poate fi diferită.</p>
+          <div class="hln-energy-cards">
+            {% for item in energy_overview.rows %}
+            <article>
+              <header><strong>{{ item.label }}</strong><span class="hln-price-status{% if item.status != 'current' %} is-stale{% endif %}">{{ item.status_label }}</span></header>
+              <p class="hln-energy-price">{{ item.value }} <small>{{ item.unit }}</small></p>
+              <a href="{{ item.source_url }}" target="_blank" rel="noopener noreferrer">{{ item.source_name }} <span aria-hidden="true">↗</span></a>
+              {% if item.valid_until %}<p class="hln-energy-validity">Valabilitate ofertă: {% if item.valid_from %}{{ item.valid_from }} – {% endif %}{{ item.valid_until }}</p>{% endif %}
+              <p>{{ item.note }}</p>
+            </article>
+            {% endfor %}
+          </div>
+        </div>
+      </details>
+      <a class="hln-energy-sen" href="https://www.transelectrica.ro/web/tel/sistemul-energetic-national" target="_blank" rel="noopener noreferrer" aria-label="Producția electrică a României pe site-ul Transelectrica, într-o filă nouă">
+        <svg aria-hidden="true"><use href="#hln-i-bolt"></use></svg>
+        <span>Producție RO <small>Vezi SEN · Transelectrica</small></span><span aria-hidden="true">↗</span>
+      </a>
+    </aside>

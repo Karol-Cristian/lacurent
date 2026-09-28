@@ -232,7 +232,20 @@ class ThermalBridge(BaseModel):
 
 
 class VentilationInput(BaseModel):
-    air_changes_per_hour: float = Field(ge=0, le=5)
+    air_changes_per_hour: float = Field(
+        ge=0,
+        le=5,
+        description="Intentional/natural ventilation air-change rate used by the Light Engine.",
+    )
+    infiltration_air_changes_per_hour: float = Field(
+        default=0,
+        ge=0,
+        le=5,
+        description=(
+            "Additional uncontrolled infiltration air-change rate. "
+            "Heat recovery is not credited against this component."
+        ),
+    )
     heat_recovery_efficiency: float = Field(default=0, ge=0, lt=1)
 
 
@@ -282,12 +295,36 @@ class CoolingInput(BaseModel):
     setpoint_c: float = Field(default=26, ge=20, le=30)
 
 
+class DhwSystemType(str, Enum):
+    same_as_heating = "same_as_heating"
+    electric_boiler = "electric_boiler"
+    gas_boiler = "gas_boiler"
+    heat_pump_water_heater = "heat_pump_water_heater"
+    district_heat = "district_heat"
+    biomass_boiler = "biomass_boiler"
+    custom = "custom"
+
+
 class DhwInput(BaseModel):
     enabled: bool = True
     occupants: int = Field(default=3, ge=0, le=30)
     litres_per_person_day_at_60c: float | None = Field(default=None, gt=0)
-    efficiency: float = Field(default=0.85, gt=0, le=1)
+    system_type: DhwSystemType = DhwSystemType.custom
+    efficiency: float | None = Field(default=0.85, gt=0, le=1)
+    cop: float | None = Field(default=None, gt=1, le=10)
     carrier: Carrier = Carrier.natural_gas
+
+    @root_validator(skip_on_failure=True)
+    def validate_performance(cls, values: dict) -> dict:
+        if not values.get("enabled"):
+            return values
+        efficiency = values.get("efficiency")
+        cop = values.get("cop")
+        if efficiency is None and cop is None:
+            raise ValueError("Domestic hot water requires either an efficiency or a COP.")
+        if efficiency is not None and cop is not None:
+            raise ValueError("Domestic hot water must use either efficiency or COP, not both.")
+        return values
 
 
 SolarOrientation = Literal[
@@ -355,6 +392,11 @@ class PhotovoltaicInput(BaseModel):
     orientation: SolarOrientation = "south"
     tilt_degrees: float = Field(default=30, ge=0, le=90)
     performance_ratio: float | None = Field(default=None, gt=0, le=1)
+    # Economic-only electricity demand used for PV self-consumption. It is kept
+    # separate from MC001 regulated final energy / primary-energy classification.
+    household_electricity_kwh_year: float = Field(default=0, ge=0, le=100000)
+    # Explicit prosumer compensation assumption. Zero means no export credit.
+    export_credit_lei_per_kwh: float = Field(default=0, ge=0, le=10)
 
     @root_validator(skip_on_failure=True)
     def validate_enabled_system(cls, values: dict) -> dict:
@@ -537,7 +579,12 @@ class MonthlyRenewableBalance(BaseModel):
     month: str
     pv_plane_hsol_kwh_m2: float = 0
     pv_generation_kwh: float = 0
+    # Total economic self-consumption = regulated services + household demand.
     pv_self_consumed_kwh: float = 0
+    pv_regulated_self_consumed_kwh: float = 0
+    pv_household_self_consumed_kwh: float = 0
+    household_electricity_load_kwh: float = 0
+    household_grid_import_kwh: float = 0
     pv_exported_kwh: float = 0
     solar_thermal_plane_hsol_kwh_m2: float = 0
     solar_thermal_available_kwh: float = 0
@@ -553,7 +600,12 @@ class PhotovoltaicResult(BaseModel):
     annual_plane_hsol_kwh_m2: float = 0
     annual_generation_kwh: float = 0
     self_consumed_kwh: float = 0
+    regulated_self_consumed_kwh: float = 0
+    household_self_consumed_kwh: float = 0
+    household_electricity_kwh_year: float = 0
+    household_grid_import_kwh: float = 0
     exported_kwh: float = 0
+    export_credit_lei_per_kwh: float = 0
     self_consumption_percent: float = 0
 
 

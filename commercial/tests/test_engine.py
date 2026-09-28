@@ -8,9 +8,11 @@ from commercial.app.engine import (
     _cooling_heat_transfer_utilization_factor,
     _monthly_cooling_need,
     _monthly_utilization_parameter,
+    _primary_specific_energy_scalar,
     calculate,
     co2_emissions,
     demo_building,
+    design_heat_load_breakdown,
     final_energy_by_carrier,
     heating_final_energy,
     heating_system_performance,
@@ -19,6 +21,7 @@ from commercial.app.engine import (
     transmission_heat_transfer,
     transmission_heat_transfer_components,
     ventilation_heat_transfer,
+    ventilation_heat_transfer_components,
 )
 from commercial.app.methodology import climate_data, methodology, resolve_monthly_hsol, resolve_monthly_plane_hsol
 from commercial.app.models import BuildingInput, EnergyServiceResult
@@ -421,6 +424,61 @@ def test_ventilation_coefficient_uses_air_change_volume_and_recovery() -> None:
     building = simple_building()
 
     assert_close(ventilation_heat_transfer(building), 40.8)
+
+
+def test_explicit_infiltration_bypasses_heat_recovery() -> None:
+    building = simple_building(
+        ventilation={
+            "air_changes_per_hour": 0.5,
+            "infiltration_air_changes_per_hour": 0.2,
+            "heat_recovery_efficiency": 0.8,
+        }
+    )
+
+    parts = ventilation_heat_transfer_components(building)
+
+    assert_close(parts["ventilation_w_k"], 0.34 * 0.5 * 300 * 0.2)
+    assert_close(parts["infiltration_w_k"], 0.34 * 0.2 * 300)
+    assert_close(
+        ventilation_heat_transfer(building),
+        parts["ventilation_w_k"] + parts["infiltration_w_k"],
+    )
+
+
+def test_design_heat_load_keeps_ground_on_ground_temperature_path() -> None:
+    building = simple_building(
+        envelope=[
+            {
+                "name": "Wall",
+                "type": "exterior_wall",
+                "area_m2": 100,
+                "u_value_w_m2k": 0.4,
+            },
+            {
+                "name": "Ground floor",
+                "type": "floor",
+                "area_m2": 80,
+                "u_value_w_m2k": 0.3,
+                "boundary_type": "ground",
+                "boundary_correction_factor": 1.0,
+            },
+        ],
+        thermal_bridges=[],
+    )
+    result = calculate(building, include_reference=False)
+    load = design_heat_load_breakdown(
+        result.input,
+        result.transmission_components,
+        result.h_ve_w_k,
+        result.climate,
+    )
+
+    assert load["total_kw"] is not None
+    assert load["ground_transmission_kw"] > 0
+    naive_all_at_outdoor = (
+        float(result.transmission_components.htr_w_k) + float(result.h_ve_w_k)
+    ) * float(load["delta_t_outdoor_k"]) / 1000.0
+    assert float(load["total_kw"]) < naive_all_at_outdoor
 
 
 def test_heating_final_energy_uses_efficiency() -> None:
@@ -882,6 +940,68 @@ def test_cooling_seer_changes_final_energy_not_useful_demand() -> None:
     assert_close(seer_3.cooling.final_kwh / 2, seer_6.cooling.final_kwh, tolerance=1e-3)
 
 
+def test_cooling_demand_exists_without_installed_cooling_equipment() -> None:
+    active = calculate(
+        simple_building(
+            solar_gains_kwh_m2_month=4.0,
+            cooling={"enabled": True, "seer": 3.5, "setpoint_c": 24},
+        ),
+        include_reference=False,
+    )
+    no_equipment = calculate(
+        simple_building(
+            solar_gains_kwh_m2_month=4.0,
+            cooling={"enabled": False, "seer": None, "setpoint_c": 24},
+        ),
+        include_reference=False,
+    )
+
+    assert no_equipment.annual_cooling_demand_kwh > 0
+    assert_close(
+        no_equipment.annual_cooling_demand_kwh,
+        active.annual_cooling_demand_kwh,
+        tolerance=1e-3,
+    )
+    assert_close(no_equipment.cooling.final_kwh, 0)
+    assert active.cooling.final_kwh > 0
+    assert_close(
+        sum(row.useful_cooling_kwh for row in no_equipment.monthly),
+        no_equipment.annual_cooling_demand_kwh,
+        tolerance=1e-3,
+    )
+
+
+def test_heating_demand_is_independent_of_heating_energy_carrier() -> None:
+    gas = calculate(
+        simple_building(
+            heating={
+                "system_type": "condensing_gas_boiler",
+                "efficiency": 0.94,
+                "carrier": "natural_gas",
+            }
+        ),
+        include_reference=False,
+    )
+    electric = calculate(
+        simple_building(
+            heating={
+                "system_type": "electric_resistance",
+                "efficiency": 1.0,
+                "carrier": "electricity",
+            }
+        ),
+        include_reference=False,
+    )
+
+    assert_close(
+        gas.annual_heating_demand_kwh,
+        electric.annual_heating_demand_kwh,
+        tolerance=1e-3,
+    )
+    assert gas.heating.final_kwh != electric.heating.final_kwh
+    assert gas.primary_energy.total_kwh != electric.primary_energy.total_kwh
+
+
 def test_methodology_no_longer_uses_synthetic_daily_weather_profile() -> None:
     cfg = methodology()
     assert cfg["version"] == "lacurent-commercial-v2.10"
@@ -926,6 +1046,69 @@ def test_reference_glazing_is_independent_from_real_glazing_and_climate_zone_bac
     assert triple_mapping["window"]["solar_gn"] == pytest.approx(0.47)
     assert clear_mapping["window"]["solar_climate_zone"] == "III"
     assert "copy_window_area_orientation" in clear_mapping["window"]["geometry_policy"]
+
+
+@pytest.mark.parametrize(
+    "building",
+    [
+        simple_building(),
+        demo_building(),
+        simple_building(
+            renewables={
+                "pv": {
+                    "enabled": True,
+                    "installed_power_kwp": 4.0,
+                    "orientation": "south",
+                    "tilt_degrees": 30,
+                    "performance_ratio": 0.82,
+                },
+                "solar_thermal": {
+                    "enabled": False,
+                    "collector_area_m2": 0,
+                    "orientation": "south",
+                    "tilt_degrees": 45,
+                    "system_efficiency": 0.45,
+                },
+            }
+        ),
+    ],
+)
+def test_compact_primary_scalar_matches_full_rbpe(building: BuildingInput) -> None:
+    full = calculate(building, include_reference=False)
+    compact = _primary_specific_energy_scalar(building)
+    assert compact == pytest.approx(
+        full.primary_energy.specific_kwh_m2,
+        abs=1e-9,
+    )
+
+
+def test_reference_first_calculation_preserves_reference_metrics() -> None:
+    actual = simple_building()
+    reference_building = build_reference_input(actual)
+
+    reference_only = calculate(
+        reference_building,
+        include_reference=False,
+    )
+    evaluated = calculate(actual)
+
+    assert evaluated.reference is not None
+    assert evaluated.reference.reference_specific_primary_kwh_m2 == pytest.approx(
+        reference_only.primary_energy.specific_kwh_m2,
+        abs=1e-9,
+    )
+    assert evaluated.reference.actual_specific_primary_kwh_m2 == pytest.approx(
+        evaluated.primary_energy.specific_kwh_m2,
+        abs=1e-9,
+    )
+    expected_diff = (
+        evaluated.primary_energy.specific_kwh_m2
+        - reference_only.primary_energy.specific_kwh_m2
+    )
+    assert evaluated.reference.difference_kwh_m2 == pytest.approx(
+        round(expected_diff, 2),
+        abs=1e-9,
+    )
 
 
 def test_reference_building_is_calculated_with_same_engine() -> None:
@@ -1159,6 +1342,43 @@ def test_photovoltaic_generation_uses_zone_orientation_and_reduces_grid_electric
     assert south.renewables.pv.exported_kwh >= 0
     assert south.final_energy_by_carrier["electricity"] < south.gross_final_energy_by_carrier["electricity"]
     assert len(south.renewables.monthly) == 12
+
+
+def test_pv_household_electricity_is_economic_only_and_does_not_change_mc001_energy() -> None:
+    base_pv = {
+        "enabled": True,
+        "installed_power_kwp": 3.0,
+        "orientation": "south",
+        "tilt_degrees": 30,
+        "performance_ratio": 0.82,
+    }
+    common = {
+        "heating": {"system_type": "heat_pump", "scop": 3.2, "carrier": "electricity"},
+    }
+
+    regulated_only = calculate(
+        simple_building(
+            **common,
+            renewables={"pv": {**base_pv, "household_electricity_kwh_year": 0}},
+        ),
+        include_reference=False,
+    )
+    with_household = calculate(
+        simple_building(
+            **common,
+            renewables={"pv": {**base_pv, "household_electricity_kwh_year": 6000}},
+        ),
+        include_reference=False,
+    )
+
+    assert with_household.renewables.pv.household_self_consumed_kwh > 0
+    assert (
+        with_household.renewables.pv.regulated_self_consumed_kwh
+        == regulated_only.renewables.pv.regulated_self_consumed_kwh
+    )
+    assert with_household.final_energy_by_carrier == regulated_only.final_energy_by_carrier
+    assert with_household.primary_energy == regulated_only.primary_energy
+    assert with_household.energy_class == regulated_only.energy_class
 
 
 def test_photovoltaic_resource_changes_with_climate_station() -> None:
