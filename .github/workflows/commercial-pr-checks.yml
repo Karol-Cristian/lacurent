@@ -76,4 +76,12 @@ jobs:
           node scripts/smoke-home-lab-browser.mjs
           HOME_LAB_SERVER_PID=$server_pid \
           RELIABILITY_PROD_BASE_URL=https://lacurent.com \
+          RELIABILITY_LOCAL_SEQUENTIAL=0 \
+          RELIABILITY_LOCAL_CONCURRENT_BATCHES=0 \
+          RELIABILITY_PROD_SEQUENTIAL=0 \
+          RELIABILITY_PROD_CONCURRENT_BATCHES=0 \
+          RELIABILITY_LOCAL_UI_ROUNDS=0 \
+          RELIABILITY_PROD_UI_ROUNDS=0 \
+          RELIABILITY_LOCAL_TEO_RUNS=0 \
+          RELIABILITY_PROD_TEO_RUNS=10 \
           node scripts/reliability-home-lab.mjs
