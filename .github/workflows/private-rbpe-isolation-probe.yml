@@ -1,9 +1,7 @@
 name: Private RBPE Isolation Probe
 
 on:
-  push:
-    branches:
-      - codex/private-rbpe-live-calculation
+  workflow_dispatch:
 
 jobs:
   private-rbpe-probe:
