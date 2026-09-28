@@ -652,7 +652,8 @@ jobs:
 
           sys.path.insert(0, "src")
           from app.engine import calculate, demo_building
-          from app.home_lab_payload import embed_lab_result_payload, home_lab_live_payload
+          from app.home_lab_live_payload import home_lab_live_payload
+          from app.home_lab_payload import embed_lab_result_payload
           from app.models import model_to_json
 
           building = demo_building()
