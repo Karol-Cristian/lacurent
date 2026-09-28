@@ -1,7 +1,9 @@
 name: Private RBPE Isolation Probe
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - codex/private-rbpe-live-calculation
 
 jobs:
   private-rbpe-probe:
@@ -106,16 +108,9 @@ jobs:
           class Default(WorkerEntrypoint):
               async def fetch(self, request):
                   payload = await request.text()
-                  result = await self.env.RBPE.calculate_home_lab(payload)
-                  if hasattr(result, "to_py"):
-                      result = result.to_py()
-                  if not isinstance(result, dict):
-                      result = dict(result)
+                  result_json = await self.env.RBPE.calculate_home_lab_json(payload)
                   return Response(
-                      json.dumps({
-                          "energy_class": result.get("energy_class"),
-                          "final_energy_kwh": result.get("total_final_energy_kwh"),
-                      }),
+                      str(result_json),
                       headers={"content-type": "application/json"},
                   )
           PY
@@ -183,9 +178,9 @@ jobs:
               status:response.status,
               elapsed_ms:Math.round(performance.now()-started),
               energy_class:body?.energy_class ?? null,
-              final_energy_kwh:body?.final_energy_kwh ?? null
+              final_energy_kwh:body?.total_final_energy_kwh ?? null
             }));
-            if (!response.ok || !body?.energy_class || body?.final_energy_kwh == null) {
+            if (!response.ok || !body?.energy_class || body?.total_final_energy_kwh == null) {
               console.error(raw.slice(0,1500));
               process.exit(1);
             }
