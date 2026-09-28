@@ -2017,6 +2017,30 @@
     };
   }
 
+  async function ensureBaselineDetails() {
+    if (!baselineResult) return null;
+    const hasDetails =
+      Array.isArray(baselineResult.price_reference_rows)
+      && baselineResult.energy_class_reference
+      && baselineResult.reference_parameters;
+    if (hasDetails) return baselineResult;
+
+    const revision = baselineSummaryRevision;
+    try {
+      const response = await fetch("/api/home-lab-next/calculate-details", {
+        method:"POST",
+        body:baseFormData(),
+        headers:{"Accept":"application/json"},
+      });
+      const details = await readJson(response);
+      if (revision !== baselineSummaryRevision || !baselineResult) return baselineResult;
+      baselineResult = {...baselineResult, ...details};
+      return baselineResult;
+    } catch (_) {
+      return baselineResult;
+    }
+  }
+
   function paintBaselineSummary(result, statusText = "Estimare pentru configurația curentă.") {
     if (!result) return;
     const energyClass = String(result.energy_class || "—").trim().toUpperCase() || "—";
@@ -3312,7 +3336,7 @@
   $("#closeLog").addEventListener("click", () => logDialog.close());
   logDialog.addEventListener("click", event => { if (event.target === logDialog) logDialog.close(); });
 
-  priceReferenceOpen?.addEventListener("click", () => {
+  priceReferenceOpen?.addEventListener("click", async () => {
     renderPriceReferences(
       current === "report" && optimizationResult
         ? optimizationSummaryForPersistentBar()
@@ -3320,13 +3344,19 @@
     );
     if (typeof priceDialog?.showModal === "function") priceDialog.showModal();
     else priceDialog?.setAttribute("open", "");
+    await ensureBaselineDetails();
+    renderPriceReferences(
+      current === "report" && optimizationResult
+        ? optimizationSummaryForPersistentBar()
+        : baselineResult
+    );
   });
   $("#closePriceReferences")?.addEventListener("click", () => priceDialog?.close());
   priceDialog?.addEventListener("click", event => {
     if (event.target === priceDialog) priceDialog.close();
   });
 
-  classReferenceOpen?.addEventListener("click", () => {
+  classReferenceOpen?.addEventListener("click", async () => {
     renderClassReference(
       current === "report" && optimizationResult
         ? optimizationSummaryForPersistentBar()
@@ -3334,6 +3364,12 @@
     );
     if (typeof classDialog?.showModal === "function") classDialog.showModal();
     else classDialog?.setAttribute("open", "");
+    await ensureBaselineDetails();
+    renderClassReference(
+      current === "report" && optimizationResult
+        ? optimizationSummaryForPersistentBar()
+        : baselineResult
+    );
   });
   $("#closeClassReference")?.addEventListener("click", () => classDialog?.close());
   classDialog?.addEventListener("click", event => {
