@@ -933,6 +933,7 @@ jobs:
                   headers={
                       "Accept": "application/json",
                       "Content-Type": "application/x-www-form-urlencoded",
+                      "User-Agent": "Mozilla/5.0 LaCurent-Production-Smoke/1.0",
                   },
               )
               with urllib.request.urlopen(request, timeout=30) as response:
