@@ -12,6 +12,8 @@ on:
       - "scripts/build-location-payload.mjs"
       - "scripts/prepare-commercial-cloudflare-worker.mjs"
       - "scripts/prepare-reference-cloudflare-worker.mjs"
+      - "scripts/prepare-teo-cloudflare-worker.mjs"
+      - "scripts/soak-teo-production.mjs"
 
 # Production deploys must finish in queue order. Without a shared concurrency
 # group, two close pushes can deploy in parallel and an older run can finish
@@ -109,8 +111,11 @@ jobs:
           node --check scripts/build-location-payload.mjs
           node --check scripts/prepare-commercial-cloudflare-worker.mjs
           node --check scripts/prepare-reference-cloudflare-worker.mjs
+          node --check scripts/prepare-teo-cloudflare-worker.mjs
+          node --check scripts/soak-teo-production.mjs
           node --check commercial/rbpe-router/worker.mjs
           node --check commercial/calc-gateway/worker.mjs
+          node --check commercial/teo-router/worker.mjs
           node --test commercial/tests/location-data-worker-asset.test.mjs
           python -m compileall -q commercial
           python -m py_compile scripts/build-heating-catalog-d1-import.py
@@ -263,6 +268,106 @@ jobs:
       - name: Deploy Home Lab calculation gateway
         working-directory: .wrangler/calc-gateway
         run: npx wrangler deploy
+
+      - name: Prepare private TEO shard bundle
+        run: node scripts/prepare-teo-cloudflare-worker.mjs
+
+      - name: Install Wrangler for private TEO shards
+        working-directory: .wrangler/teo-worker
+        run: |
+          npm install --save-dev wrangler@latest
+          npx wrangler --version
+
+      - name: Sync private TEO shard dependencies
+        working-directory: .wrangler/teo-worker
+        run: |
+          mkdir -p .bin
+          printf '#!/usr/bin/env bash\nexec npx wrangler "$@"\n' > .bin/wrangler
+          chmod +x .bin/wrangler
+          export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
+          uvx --from workers-py pywrangler sync --force
+
+      - name: Smoke-test private TEO shard runtime
+        working-directory: .wrangler/teo-worker
+        run: |
+          mkdir -p .bin
+          printf '#!/usr/bin/env bash\nexec npx wrangler "$@"\n' > .bin/wrangler
+          chmod +x .bin/wrangler
+          export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
+          uvx --from workers-py pywrangler dev --ip 127.0.0.1 --port 8792 > teo-worker-dev.log 2>&1 &
+          echo "$!" > teo-worker-dev.pid
+          for attempt in $(seq 1 90); do
+            if curl -fsS http://127.0.0.1:8792/health; then
+              break
+            fi
+            if ! kill -0 "$(cat teo-worker-dev.pid)" 2>/dev/null; then
+              cat teo-worker-dev.log
+              exit 1
+            fi
+            sleep 2
+          done
+          python - <<'PY'
+          import json
+          import sys
+          import urllib.parse
+          import urllib.request
+
+          sys.path.insert(0, "src")
+          from app.main import default_form_values
+
+          form = dict(default_form_values())
+          form["_optimization_mode"] = "auto_economic"
+          body = urllib.parse.urlencode(form).encode("utf-8")
+          request = urllib.request.Request(
+              "http://127.0.0.1:8792/api/optimization/home-lab/v4/plan",
+              data=body,
+              headers={
+                  "Content-Type": "application/x-www-form-urlencoded",
+                  "Accept": "application/json",
+              },
+          )
+          with urllib.request.urlopen(request, timeout=60) as response:
+              payload = json.loads(response.read().decode("utf-8"))
+              if response.status != 200:
+                  raise AssertionError(response.status)
+          if payload.get("optimizerVersion") != "teo-v4-browser":
+              raise AssertionError(payload)
+          if int(payload.get("searchPointCount") or 0) < 2000:
+              raise AssertionError(payload)
+          print("Private TEO local smoke", payload["optimizerVersion"], payload["searchPointCount"])
+          PY
+          kill "$(cat teo-worker-dev.pid)" || true
+
+      - name: Deploy four private TEO shards
+        working-directory: .wrangler/teo-worker
+        run: |
+          cp wrangler.toml /tmp/teo-worker-template.toml
+          export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
+          for suffix in a b c d; do
+            python - "$suffix" <<'PY'
+          from pathlib import Path
+          import sys
+          suffix = sys.argv[1]
+          text = Path("/tmp/teo-worker-template.toml").read_text()
+          text = text.replace(
+              'name = "lacurent-teo-private"',
+              f'name = "lacurent-teo-shard-{suffix}"',
+          )
+          Path("wrangler.toml").write_text(text)
+          PY
+            echo "Deploying private TEO shard $suffix"
+            uvx --from workers-py pywrangler deploy
+          done
+
+      - name: Prepare private TEO router
+        run: |
+          rm -rf .wrangler/teo-router
+          mkdir -p .wrangler/teo-router
+          cp commercial/teo-router/worker.mjs .wrangler/teo-router/worker.mjs
+          cp commercial/teo-router/wrangler.toml .wrangler/teo-router/wrangler.toml
+          cd .wrangler/teo-router
+          npm install --save-dev wrangler@latest
+          npx wrangler --version
 
       - name: Verify private RBPE topology deployment
         run: |
@@ -870,6 +975,17 @@ jobs:
           export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
           uvx --from workers-py pywrangler deploy
 
+      - name: Deploy private TEO router
+        working-directory: .wrangler/teo-router
+        run: npx wrangler deploy
+
+      - name: Verify private TEO topology deployment
+        run: |
+          echo "Private TEO topology deployed:"
+          echo "  lacurent-teo-shard-a..d"
+          echo "  lacurent-teo-router"
+          echo "  routes: /api/optimization/home-lab/v3/* and /v4/*"
+
       - name: Verify sharded Home Lab calculation route
         run: |
           python - <<'PY'
@@ -973,6 +1089,83 @@ jobs:
               with urllib.request.urlopen(request, timeout=30) as response:
                   if response.status != 200:
                       raise AssertionError(f"{url} returned {response.status}")
+          PY
+
+      - name: Verify sharded TEO production route
+        run: |
+          python - <<'PY'
+          import json
+          import urllib.parse
+          import urllib.request
+
+          form = {
+              "project_name": "TEO private route smoke",
+              "locality_id": "@lc2|alba_iulia|III|-18|siruta-smoke|Smoke%20Locality|Alba",
+              "locality": "Smoke Locality",
+              "heated_floor_area_m2": "160",
+              "heated_volume_m3": "432",
+              "indoor_design_temperature_c": "20",
+              "building_type": "residential_individual",
+              "construction_year": "2004",
+              "wall_area_m2": "168",
+              "wall_u_value": "0.42",
+              "roof_area_m2": "92",
+              "roof_u_value": "0.24",
+              "floor_area_m2": "80",
+              "floor_u_value": "0.36",
+              "floor_boundary_type": "ground",
+              "ground_exposed_perimeter_m": "36",
+              "ground_wall_thickness_m": "0.30",
+              "ground_conductivity_w_mk": "2.0",
+              "window_area_m2": "24",
+              "window_u_value": "1.35",
+              "door_area_m2": "3.2",
+              "door_u_value": "1.7",
+              "thermal_bridge_length_m": "42",
+              "thermal_bridge_psi_w_mk": "0.05",
+              "air_changes_per_hour": "0.5",
+              "infiltration_air_changes_per_hour": "0.15",
+              "heat_recovery_efficiency": "0",
+              "heating_system_type": "condensing_gas_boiler",
+              "heating_efficiency": "0.94",
+              "heating_carrier": "natural_gas",
+              "dhw_enabled": "on",
+              "dhw_occupants": "4",
+              "dhw_litres_per_person_day_at_60c": "50",
+              "dhw_efficiency": "0.86",
+              "dhw_carrier": "natural_gas",
+              "pv_enabled": "on",
+              "pv_installed_power_kwp": "5",
+              "pv_orientation": "south",
+              "pv_tilt_degrees": "30",
+              "pv_performance_ratio": "0.82",
+              "_optimization_mode": "auto_economic",
+          }
+          body = urllib.parse.urlencode(form).encode("utf-8")
+          request = urllib.request.Request(
+              "https://lacurent.com/api/optimization/home-lab/v4/plan",
+              data=body,
+              headers={
+                  "Accept": "application/json",
+                  "Content-Type": "application/x-www-form-urlencoded",
+                  "User-Agent": "Mozilla/5.0 LaCurent-TEO-Route-Smoke/1.0",
+              },
+          )
+          with urllib.request.urlopen(request, timeout=60) as response:
+              payload = json.loads(response.read().decode("utf-8"))
+              route = response.headers.get("X-LaCurent-TEO")
+              shard = response.headers.get("X-LaCurent-TEO-Shard")
+              if response.status != 200:
+                  raise AssertionError(response.status)
+              if route != "private-teo-sharded":
+                  raise AssertionError(f"TEO bypassed private router: {route!r}")
+              if not shard:
+                  raise AssertionError("TEO response did not expose serving shard.")
+              if payload.get("optimizerVersion") != "teo-v4-browser":
+                  raise AssertionError(payload)
+              if int(payload.get("searchPointCount") or 0) < 2000:
+                  raise AssertionError(payload)
+          print("TEO route smoke PASS", shard, payload["searchPointCount"])
           PY
 
       - name: Verify production custom domain
@@ -1643,3 +1836,11 @@ jobs:
         run: |
           node scripts/smoke-home-lab-browser.mjs
           echo "Production Home Lab / TEO browser smoke PASS"
+
+      - name: Run 10-pass production TEO reliability soak
+        env:
+          HOME_LAB_BASE_URL: https://lacurent.com
+          TEO_SOAK_RUNS: "10"
+        run: |
+          node scripts/soak-teo-production.mjs
+          echo "Production TEO 10/10 soak PASS"
