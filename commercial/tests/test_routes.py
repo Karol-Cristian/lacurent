@@ -1400,6 +1400,90 @@ def test_form_maps_heated_attic_roof_to_direct_exterior_and_heated_floor_to_zero
     assert floor.boundary_correction_factor == 0.0
 
 
+def test_private_rbpe_transport_matches_canonical_calculation_exactly() -> None:
+    from commercial.app.models import CalculationResult, model_to_dict, model_to_json
+    from commercial.app.rbpe_service import calculate_home_lab_result_payload
+
+    building = build_input_from_form(demo_form_data())
+    direct = calculate(building, include_reference=False)
+    transported = CalculationResult(
+        **calculate_home_lab_result_payload(model_to_json(building))
+    )
+
+    assert model_to_dict(transported) == model_to_dict(direct)
+
+
+def test_canonical_home_lab_result_uses_private_service_binding() -> None:
+    import asyncio
+    from types import SimpleNamespace
+
+    from starlette.requests import Request
+
+    from commercial.app import main
+    from commercial.app.rbpe_service import calculate_home_lab_result_payload
+
+    class PrivateRbpe:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        async def calculate_home_lab(self, payload):
+            self.calls += 1
+            return calculate_home_lab_result_payload(payload)
+
+    service = PrivateRbpe()
+    request = Request(
+        {
+            "type": "http",
+            "method": "POST",
+            "path": "/api/home-lab-next/calculate",
+            "headers": [],
+            "query_string": b"",
+            "server": ("test", 80),
+            "client": ("test", 1),
+            "scheme": "http",
+            "env": SimpleNamespace(REFERENCE_RBPE=service),
+        }
+    )
+    building = build_input_from_form(demo_form_data())
+
+    result = asyncio.run(main._canonical_home_lab_result(request, building))
+
+    assert service.calls == 1
+    assert result.total_final_energy_kwh > 0
+    assert result.reference is None
+
+
+def test_canonical_home_lab_result_never_falls_back_inside_cloudflare() -> None:
+    import asyncio
+    from types import SimpleNamespace
+
+    from fastapi import HTTPException
+    from starlette.requests import Request
+
+    from commercial.app import main
+
+    request = Request(
+        {
+            "type": "http",
+            "method": "POST",
+            "path": "/api/home-lab-next/calculate",
+            "headers": [],
+            "query_string": b"",
+            "server": ("test", 80),
+            "client": ("test", 1),
+            "scheme": "http",
+            "env": SimpleNamespace(),
+        }
+    )
+    building = build_input_from_form(demo_form_data())
+
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(main._canonical_home_lab_result(request, building))
+
+    assert exc.value.status_code == 503
+    assert "privat RBPE" in str(exc.value.detail)
+
+
 def test_home_lab_next_can_skip_redundant_reference_for_live_scenarios() -> None:
     data = demo_form_data()
     data["_skip_reference"] = "1"
