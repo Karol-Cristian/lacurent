@@ -1653,6 +1653,16 @@ svg{display:block}
 .hln-energy-sen small{display:block;font-size:9px;color:var(--hln-muted);margin-top:2px}
 .hln-energy-details{padding:2px 0 18px;font-size:12px;line-height:1.55}
 .hln-energy-details>p{margin:0 0 14px;max-width:800px}
+.hln-energy-calculation-summary{margin:0 0 16px;padding:14px;border:1px solid var(--hln-line);border-radius:14px;background:var(--hln-surface)}
+.hln-energy-calculation-summary>header{display:grid;gap:2px;margin-bottom:10px}
+.hln-energy-calculation-summary>header strong{font-size:14px;color:var(--hln-ink)}
+.hln-energy-calculation-summary>header small{color:var(--hln-muted)}
+.hln-energy-calculation-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.hln-energy-calculation-grid article{display:grid;gap:3px;min-width:0;padding:10px;border-radius:10px;background:var(--hln-bg)}
+.hln-energy-calculation-grid article small,.hln-energy-calculation-grid article span{color:var(--hln-muted)}
+.hln-energy-calculation-grid article strong{font-size:15px;color:var(--hln-ink);font-variant-numeric:tabular-nums}
+.hln-live-cost-card[data-hln-open-energy-details]{cursor:pointer}
+.hln-live-cost-card[data-hln-open-energy-details]:focus-visible{outline:2px solid var(--hln-reno);outline-offset:3px}
 .hln-energy-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .hln-energy-cards article{padding:14px;border:1px solid var(--hln-line);border-radius:12px;background:var(--hln-surface);min-width:0}
 .hln-energy-cards header{display:flex;gap:8px;justify-content:space-between;align-items:center;color:var(--hln-ink)}
@@ -1678,6 +1688,7 @@ svg{display:block}
  .hln-energy-sen small{font-size:8px}
  .hln-energy-strip:has(.hln-energy-prices[open]){flex-wrap:wrap}
  .hln-energy-prices[open]{flex-basis:100%}
+ .hln-energy-calculation-grid{grid-template-columns:1fr 1fr}
  .hln-energy-cards{grid-template-columns:1fr}
  .hln-energy-prices[open]+.hln-energy-sen{margin-top:-18px;padding-bottom:8px}
 }
