@@ -2080,7 +2080,7 @@
     baselineStatus.textContent = "Actualizare…";
     try {
       syncTechnicalForm();
-      const response = await fetch("/api/home-lab-next/calculate", {
+      const response = await fetch("/api/home-lab-next/calculate-live", {
         method:"POST",
         body:baseFormData(),
         headers:{"Accept":"application/json"},
@@ -2946,7 +2946,7 @@
       stage("baseline","active","rulează");
       log("Construiesc modelul termic al casei actuale din setul complet de inputuri Home Lab.");
       baselineResult = await postForm(
-        "/api/home-lab-next/calculate",
+        "/api/home-lab-next/calculate-live",
         baseFormData(),
         // A Cloudflare 500/1101 at baseline can mean the current Python
         // isolate is already resource-exhausted. Immediate retry against the
