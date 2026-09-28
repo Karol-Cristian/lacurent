@@ -319,6 +319,12 @@ def build_teo_v4_kernel(
                 if pv.performance_ratio is not None
                 else renewable_cfg["photovoltaic"]["default_performance_ratio"]
             ),
+            "pv_household_electricity_kwh_year": float(
+                pv.household_electricity_kwh_year
+            ),
+            "pv_export_credit_lei_per_kwh": float(
+                pv.export_credit_lei_per_kwh
+            ),
             "pv_hsol_kwh_m2_month": (
                 list(pv_plane["values_kwh_m2_month"])
                 if pv_plane is not None
