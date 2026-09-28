@@ -373,14 +373,32 @@ async function prepareFreshEditorialRun(browser, baseUrl) {
     } catch {}
   });
 
-  await page.goto(baseUrl + "/home-lab-next",{waitUntil:"networkidle",timeout:45000});
-  const privacy = page.locator("[data-lacurent-first-use-consent]");
-  if (await privacy.isVisible()) {
-    await privacy.locator("[data-lacurent-deny-local]").click();
-    await privacy.waitFor({state:"hidden",timeout:5000});
+  let bootstrapReady = false;
+  let bootstrapDiagnostics = "";
+  for (let attempt=0; attempt<3 && !bootstrapReady; attempt++) {
+    await page.goto(baseUrl + "/home-lab-next",{waitUntil:"networkidle",timeout:45000});
+    const privacy = page.locator("[data-lacurent-first-use-consent]");
+    if (await privacy.isVisible()) {
+      await privacy.locator("[data-lacurent-deny-local]").click();
+      await privacy.waitFor({state:"hidden",timeout:5000});
+    }
+    const rootCount = await page.locator("[data-editorial-lab]").count();
+    const introActive = await page.locator('[data-page="intro"].is-active').count();
+    const houseActive = await page.locator('[data-page="house"].is-active').count();
+    if (rootCount && (introActive || houseActive)) {
+      if (introActive) {
+        await page.locator('[data-page="intro"] [data-next]').click();
+      }
+      await page.locator('[data-page="house"].is-active').waitFor({state:"visible",timeout:15000});
+      bootstrapReady = true;
+      break;
+    }
+    bootstrapDiagnostics = (await page.locator("body").innerText()).slice(0,1500);
+    await page.waitForTimeout(750);
   }
-  await page.locator('[data-page="intro"] [data-next]').click();
-  await page.locator('[data-page="house"].is-active').waitFor({state:"visible",timeout:15000});
+  if (!bootstrapReady) {
+    throw new Error("Editorial bootstrap unavailable after 3 attempts: " + bootstrapDiagnostics);
+  }
   const marker = page.locator('#edLocationMap .ed-map-locality[data-climate-zone="III"]').first();
   await marker.waitFor({state:"visible",timeout:10000});
   const calcPromise = page.waitForResponse(
