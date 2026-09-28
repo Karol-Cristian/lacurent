@@ -25,7 +25,10 @@ page.on("requestfailed", request => {
         request.method() === "GET"
         || (
           request.method() === "POST"
-          && url.pathname === "/api/home-lab-next/calculate"
+          && (
+            url.pathname === "/api/home-lab-next/calculate"
+            || url.pathname === "/api/home-lab-next/calculate-live"
+          )
         )
       );
     if (url.origin === baseOrigin && !benignClientAbort) {
@@ -154,6 +157,57 @@ try {
   await expectVisible('[data-page="systems"].is-active');
   await page.locator('[data-page="systems"] [data-next]').click();
   await expectVisible('[data-page="renewables"].is-active');
+
+  // Release regression: repeated PV orientation edits must remain healthy. The
+  // Editorial UI uses the compact live payload while RBPE physics stays full.
+  await page.evaluate(() => {
+    const pvEnabled = document.querySelector("#pvEnabled");
+    if (!(pvEnabled instanceof HTMLInputElement)) {
+      throw new Error("Editorial PV enable control is missing");
+    }
+    pvEnabled.checked = true;
+  });
+  const pvOrientation = page.locator('select[name="pv_orientation"]');
+  for (const orientation of [
+    "south_west","west","north_west","north",
+    "north_east","east","south_east","south"
+  ]) {
+    const responsePromise = page.waitForResponse(
+      response =>
+        new URL(response.url()).pathname === "/api/home-lab-next/calculate-live"
+        && response.request().method() === "POST",
+      {timeout:30000}
+    );
+    await pvOrientation.selectOption(orientation);
+    const response = await responsePromise;
+    if (response.status() !== 200) {
+      throw new Error(
+        "Repeated PV orientation live RBPE failed for " + orientation +
+        " with HTTP " + response.status()
+      );
+    }
+    const postData = response.request().postData() || "";
+    if (!postData.includes("%40lc2%7C") && !postData.includes("@lc2|")) {
+      throw new Error("Editorial live RBPE lost compact climate routing.");
+    }
+    const payload = await response.json();
+    if (!payload.energy_class || payload.annual_cost_lei == null ||
+        payload.final_energy_kwh == null || payload.design_heat_load_kw == null) {
+      throw new Error(
+        "Editorial compact live RBPE payload is incomplete: " +
+        JSON.stringify(payload).slice(0, 1200)
+      );
+    }
+    for (const heavyKey of [
+      "monthly","monthly_costs","heat_loss_breakdown",
+      "reference_parameters","energy_class_reference","price_reference_rows"
+    ]) {
+      if (Object.prototype.hasOwnProperty.call(payload, heavyKey)) {
+        throw new Error("Editorial live RBPE unexpectedly returned heavy field " + heavyKey);
+      }
+    }
+  }
+
   await page.locator('[data-page="renewables"] [data-next]').click();
   await expectVisible('[data-page="goal"].is-active');
 
