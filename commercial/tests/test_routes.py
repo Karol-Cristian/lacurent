@@ -274,7 +274,8 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert "function renderLocalitySuggestions(" in js.text
     assert "function renderLocationMap(" in js.text
     assert "function selectLocality(" in js.text
-    assert '"/api/home-lab-next/calculate"' in js.text
+    assert '"/api/home-lab-next/calculate-live"' in js.text
+    assert '"/api/home-lab-next/calculate-details"' in js.text
     assert '"/api/optimization/home-lab/v4/plan"' in js.text
     assert '"/static/teo-v4-worker.js?v=4"' in js.text
     assert '"/api/optimization/home-lab/v3/verify"' in js.text
@@ -1266,6 +1267,44 @@ def test_partner_home_lab_next_route_is_embeddable_and_partner_scoped() -> None:
     assert 'data-calculate-url="/embed/demo-store/next/calculate"' in response.text
     assert "Partener Demo" in response.text
     assert "/static/embed-runtime.js?v=embed2" in response.text
+
+
+def test_home_lab_editorial_live_calculation_uses_compact_payload() -> None:
+    response = client.post("/api/home-lab-next/calculate-live", data=demo_form_data())
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["energy_class"]
+    assert payload["final_energy_kwh"] > 0
+    assert payload["annual_cost_lei"] is not None
+    assert payload["design_heat_load_kw"] > 0
+    assert payload["annual_heating_demand_kwh"] > 0
+    assert payload["annual_cooling_demand_kwh"] >= 0
+    assert payload["primary_specific_kwh_m2"] > 0
+    assert payload["methodology_version"]
+    assert payload["methodology_source"]
+    assert "monthly" not in payload
+    assert "monthly_costs" not in payload
+    assert "heat_loss_breakdown" not in payload
+    assert "reference_parameters" not in payload
+    assert "energy_class_reference" not in payload
+    assert "price_reference_rows" not in payload
+    assert "renewables" not in payload
+
+
+def test_home_lab_editorial_details_preserve_full_reference_payload() -> None:
+    response = client.post("/api/home-lab-next/calculate-details", data=demo_form_data())
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["energy_class"]
+    assert payload["annual_cost_lei"] is not None
+    assert len(payload["monthly"]) == 12
+    assert len(payload["monthly_costs"]) == 12
+    assert payload["heat_loss_breakdown"]
+    assert payload["reference_parameters"]["u_values_w_m2k"]["exterior_wall"] > 0
+    assert payload["energy_class_reference"]["intervals"]
+    assert payload["price_reference_rows"]
 
 
 def test_home_lab_next_calculation_reuses_existing_energy_engine() -> None:
