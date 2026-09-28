@@ -1,0 +1,13 @@
+name = "lacurent-home-lab-calc"
+main = "worker.mjs"
+compatibility_date = "2026-09-28"
+workers_dev = false
+
+[[services]]
+binding = "RBPE_ROUTER"
+service = "lacurent-rbpe-router"
+remote = true
+
+[[routes]]
+pattern = "lacurent.com/api/home-lab-next/calculate*"
+zone_name = "lacurent.com"

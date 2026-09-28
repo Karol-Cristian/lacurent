@@ -1,0 +1,24 @@
+name = "lacurent-rbpe-router"
+main = "worker.mjs"
+compatibility_date = "2026-09-28"
+workers_dev = false
+
+[[services]]
+binding = "RBPE_A"
+service = "lacurent-rbpe-shard-a"
+remote = true
+
+[[services]]
+binding = "RBPE_B"
+service = "lacurent-rbpe-shard-b"
+remote = true
+
+[[services]]
+binding = "RBPE_C"
+service = "lacurent-rbpe-shard-c"
+remote = true
+
+[[services]]
+binding = "RBPE_D"
+service = "lacurent-rbpe-shard-d"
+remote = true
