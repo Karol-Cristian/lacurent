@@ -20,7 +20,8 @@ from .engine import calculate, demo_building, design_heat_load_breakdown, refere
 from .error_page import render_error_html
 from .home_lab_images import HOME_LAB_IMAGE_BYTES
 from .methodology import climate_data, methodology, resolve_locality
-from .models import BuildingInput, building_from_json, model_to_dict, model_to_json
+from .models import BuildingInput, CalculationResult, building_from_json, model_to_dict, model_to_json
+from .rbpe_service import calculate_home_lab_result_payload
 from .optimization import (
     CandidateEvaluationV1,
     OptimizationCandidateRequestV1,
@@ -2777,6 +2778,40 @@ async def home_lab_classic(request: Request) -> HTMLResponse:
     )
 
 
+async def _canonical_home_lab_result(
+    request: Request,
+    building: BuildingInput,
+) -> CalculationResult:
+    """Run canonical RBPE outside the web isolate in production.
+
+    Cloudflare Python isolates have a shared memory budget across sequential
+    requests. Keeping calculate() in the main FastAPI/Jinja/D1 Worker caused
+    repeated live edits to raise its memory high-water mark until 1102. The
+    private REFERENCE_RBPE service already has its own isolate and is therefore
+    also the canonical execution boundary for ordinary Home Lab calculations.
+    """
+    payload = model_to_json(building)
+    env = request.scope.get("env")
+    if env is not None:
+        service = getattr(env, "REFERENCE_RBPE", None)
+        if service is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Serviciul privat RBPE nu este disponibil.",
+            )
+        raw = await service.calculate_home_lab(payload)
+        if hasattr(raw, "to_py"):
+            raw = raw.to_py()
+        if not isinstance(raw, dict):
+            raw = dict(raw)
+    else:
+        # Local pytest/Uvicorn fallback only. Production must always preserve
+        # the private Worker boundary above.
+        raw = calculate_home_lab_result_payload(payload)
+
+    return CalculationResult(**raw)
+
+
 async def home_lab_next_calculation(request: Request) -> JSONResponse:
     form = dict(await request.form())
     # Scenario and optimizer requests reuse the reference configuration already
@@ -2795,17 +2830,14 @@ async def home_lab_next_calculation(request: Request) -> JSONResponse:
         "on",
     }
     try:
-        # Clear any legacy full-result optimizer cache before allocating this
-        # fresh baseline/scenario engine graph. This bounds cross-run peak
-        # memory in a long-lived Cloudflare Python isolate.
         clear_baseline_evaluation_cache()
         gc.collect()
         building = build_input_from_form(form)
-        # Home Lab already exposes the MC001 reference parameters separately
-        # through embed_lab_result_payload(). Its interactive UI never consumes
-        # result.reference, while computing it recursively runs the full engine
-        # a second time. Keep every Home Lab request single-pass.
-        result = calculate(building, include_reference=False)
+        result = await _canonical_home_lab_result(request, building)
+        del building
+        gc.collect()
+    except HTTPException as exc:
+        return JSONResponse({"error": str(exc.detail)}, status_code=exc.status_code)
     except Exception as exc:
         return JSONResponse({"error": user_error(exc)}, status_code=422)
     if optimizer_candidate:
