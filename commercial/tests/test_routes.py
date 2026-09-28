@@ -162,7 +162,7 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'data-page="report"' in page.text
     assert 'data-page="renewables"' in page.text
     assert "/static/home-lab-editorial.css?v=17" in page.text
-    assert "/static/home-lab-editorial.js?v=39" in page.text
+    assert "/static/home-lab-editorial.js?v=40" in page.text
     assert "/static/home-lab-3d.js" not in page.text
     assert 'id="edBaselineClass"' in page.text
     assert 'id="edClassReferenceOpen"' in page.text
