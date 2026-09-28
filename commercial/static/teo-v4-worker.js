@@ -188,7 +188,12 @@ function monthlyBalance(kernel, measures, trans, air, branch) {
     }
     annualHeating += usefulHeating;
     annualCooling += usefulCooling;
-    rows.push({usefulHeating, usefulCooling, dhwUseful:num(month.dhw_useful_kwh)});
+    rows.push({
+      usefulHeating,
+      usefulCooling,
+      dhwUseful:num(month.dhw_useful_kwh),
+      days:num(month.days)
+    });
   }
   return {rows, annualHeating, annualCooling};
 }
@@ -377,6 +382,15 @@ function renewableAndCarriers(kernel, measures, branch, balance) {
 
   let dhwFinal = 0;
   let pvSelf = 0;
+  let pvRegulatedSelf = 0;
+  let pvHouseholdSelf = 0;
+  let pvExport = 0;
+  let householdGridImport = 0;
+  const householdAnnual = Math.max(num(renew.pv_household_electricity_kwh_year), 0);
+  const totalDays = Math.max(
+    balance.rows.reduce((sum, row) => sum + Math.max(num(row.days), 0), 0),
+    365
+  );
   const gross = {};
   function add(carrier, value) {
     if (!carrier || value <= 0) return;
@@ -396,32 +410,56 @@ function renewableAndCarriers(kernel, measures, branch, balance) {
     const monthDhwFinal = dhwBackupUseful * num(branch.dhw_final_per_useful);
     dhwFinal += monthDhwFinal;
 
-    let electricLoad = 0;
+    let regulatedElectricLoad = 0;
     if (auxiliary > 0) {
-      electricLoad += annualHeating > 0
+      regulatedElectricLoad += annualHeating > 0
         ? auxiliary * row.usefulHeating / annualHeating
         : auxiliary / Math.max(balance.rows.length, 1);
     }
     if (branch.heating_carrier === "electricity") {
-      electricLoad += row.usefulHeating * num(branch.heating_final_per_useful);
+      regulatedElectricLoad += row.usefulHeating * num(branch.heating_final_per_useful);
     }
-    electricLoad += row.usefulCooling * num(branch.cooling_final_per_useful);
-    if (branch.dhw_carrier === "electricity") electricLoad += monthDhwFinal;
+    regulatedElectricLoad += row.usefulCooling * num(branch.cooling_final_per_useful);
+    if (branch.dhw_carrier === "electricity") regulatedElectricLoad += monthDhwFinal;
 
+    const householdLoad = householdAnnual * Math.max(num(row.days), 0) / totalDays;
     const pvGeneration =
       num(renew.pv_hsol_kwh_m2_month?.[i]) * pvPower * pvPr;
-    pvSelf += Math.min(pvGeneration, electricLoad);
+    const regulatedSelf = pvPower > 0
+      ? Math.min(pvGeneration, regulatedElectricLoad)
+      : 0;
+    const householdSelf = pvPower > 0
+      ? Math.min(Math.max(pvGeneration - regulatedSelf, 0), householdLoad)
+      : 0;
+    const totalSelf = regulatedSelf + householdSelf;
+
+    pvRegulatedSelf += regulatedSelf;
+    pvHouseholdSelf += householdSelf;
+    pvSelf += totalSelf;
+    householdGridImport += Math.max(householdLoad - householdSelf, 0);
+    pvExport += Math.max(pvGeneration - totalSelf, 0);
   }
   add(branch.dhw_carrier, dhwFinal);
 
   const net = {...gross};
   if (pvPower > 0 && net.electricity) {
-    net.electricity = Math.max(num(net.electricity) - pvSelf, 0);
+    net.electricity = Math.max(num(net.electricity) - pvRegulatedSelf, 0);
   }
-  return {gross, net, pvSelf, heatingFinal, coolingFinal, dhwFinal};
+  return {
+    gross,
+    net,
+    pvSelf,
+    pvRegulatedSelf,
+    pvHouseholdSelf,
+    pvExport,
+    householdGridImport,
+    heatingFinal,
+    coolingFinal,
+    dhwFinal
+  };
 }
 
-function annualBill(branch, carriers) {
+function annualBill(branch, carriers, economics = null) {
   let total = 0;
   for (const [carrier, valueRaw] of Object.entries(carriers)) {
     const value = num(valueRaw);
@@ -436,7 +474,17 @@ function annualBill(branch, carriers) {
       total += Math.ceil(packages / batchSize) * num(ref.delivery_cost_lei_per_batch);
     }
   }
-  return total;
+
+  const householdGridImport = Math.max(num(economics?.householdGridImport), 0);
+  if (householdGridImport > EPS) {
+    const electricityRef = branch.prices?.electricity?.reference;
+    if (!electricityRef) return null;
+    total += householdGridImport * num(electricityRef.unit_price_lei_per_kwh);
+  }
+  const exportCreditRate = Math.max(num(economics?.exportCreditLeiPerKwh), 0);
+  const exported = Math.max(num(economics?.pvExport), 0);
+  total -= exported * exportCreditRate;
+  return Math.max(total, 0);
 }
 
 function primaryAndCo2(kernel, carriers) {
@@ -493,7 +541,11 @@ function evaluate(kernel, branch, measures, baselineBill, id) {
   const capex = intervention + generator;
 
   const energy = renewableAndCarriers(kernel, measures, branch, balance);
-  const bill = annualBill(branch, energy.net);
+  const bill = annualBill(branch, energy.net, {
+    householdGridImport:energy.householdGridImport,
+    pvExport:energy.pvExport,
+    exportCreditLeiPerKwh:num(kernel.renewables?.pv_export_credit_lei_per_kwh)
+  });
   if (bill == null || !Number.isFinite(bill)) return null;
   const indicators = primaryAndCo2(kernel, energy.net);
   if (!indicators) return null;

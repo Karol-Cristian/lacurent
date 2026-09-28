@@ -19,6 +19,7 @@ from commercial.app.optimization_v2 import evaluate_worker_safe_branch_v2
 from commercial.app.optimization_v3 import build_verification_plan_v3
 from commercial.app.pricing import estimate_energy_cost
 from commercial.app.teo_v4 import build_teo_v4_kernel
+from commercial.app.models import BuildingInput
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -230,6 +231,136 @@ def test_teo_v4_browser_verification_plan_matches_python_canonical_ranking() -> 
     python_ids = [item.candidate_id for item in python_plan.candidates]
     assert worker_result["frontierCount"] == python_plan.frontier_count
     assert browser_ids == python_ids
+
+
+def test_teo_v4_browser_matches_python_with_household_pv_economics() -> None:
+    baseline_raw = (
+        demo_building().model_dump()
+        if hasattr(demo_building(), "model_dump")
+        else demo_building().dict()
+    )
+    baseline_raw["renewables"]["pv"].update(
+        {
+            "household_electricity_kwh_year": 5000,
+            "export_credit_lei_per_kwh": 0.25,
+        }
+    )
+    baseline = BuildingInput(**baseline_raw)
+    baseline_result = calculate(baseline, include_reference=False)
+    baseline_cost = estimate_energy_cost(baseline_result)
+    assert baseline_cost["complete"]
+
+    catalog = roi_cost_basis_seed()
+    kernel = build_teo_v4_kernel(
+        baseline,
+        baseline_result,
+        cost_catalog=catalog,
+        branch_catalogs={"keep-current-heating": {}},
+    )
+    measures = ParametricMeasuresV1(pv_added_kwp=3.0)
+    request = OptimizationRequestV1(
+        baseline=baseline,
+        mode=OptimizationMode.auto_economic,
+    )
+    python_result = evaluate_worker_safe_branch_v2(
+        request,
+        branch_id="keep-current-heating",
+        shortlist=[measures],
+        bounds=OptimizationSearchBoundsV1(),
+        catalog=catalog,
+        heating_catalog={"options": [], "parametric_heating_nodes": []},
+        baseline_annual_bill_lei=float(baseline_cost["priced_total_lei"]),
+    )
+    assert len(python_result.candidates) == 1
+
+    worker_result = _run_worker(
+        {
+            "type": "run",
+            "kernel": kernel,
+            "searchPoints": [
+                measures.model_dump()
+                if hasattr(measures, "model_dump")
+                else measures.dict()
+            ],
+            "branchIds": ["keep-current-heating"],
+            "mode": "auto_economic",
+            "goals": {},
+            "baselineAnnualBillLei": float(baseline_cost["priced_total_lei"]),
+        }
+    )
+    browser = worker_result["candidateRows"][0]["candidate"]
+    canonical = python_result.candidates[0]
+
+    assert browser["annual_bill_lei"] == pytest.approx(
+        canonical.annual_bill_lei,
+        abs=2.0,
+    )
+    assert browser["final_energy_kwh"] == pytest.approx(
+        canonical.final_energy_kwh,
+        abs=5.0,
+    )
+
+
+def test_teo_v4_household_pv_economics_match_python_fast_kernel() -> None:
+    baseline = demo_building()
+    baseline.renewables.pv.household_electricity_kwh_year = 6000
+    baseline.renewables.pv.export_credit_lei_per_kwh = 0.25
+
+    baseline_result = calculate(baseline, include_reference=False)
+    baseline_cost = estimate_energy_cost(baseline_result)
+    assert baseline_cost["complete"]
+
+    catalog = roi_cost_basis_seed()
+    kernel = build_teo_v4_kernel(
+        baseline,
+        baseline_result,
+        cost_catalog=catalog,
+        branch_catalogs={"keep-current-heating": {}},
+    )
+    measures = ParametricMeasuresV1(pv_added_kwp=5.0)
+    request = OptimizationRequestV1(
+        baseline=baseline,
+        mode=OptimizationMode.auto_economic,
+    )
+    python_result = evaluate_worker_safe_branch_v2(
+        request,
+        branch_id="keep-current-heating",
+        shortlist=[measures],
+        bounds=OptimizationSearchBoundsV1(),
+        catalog=catalog,
+        heating_catalog={"options": [], "parametric_heating_nodes": []},
+        baseline_annual_bill_lei=float(baseline_cost["priced_total_lei"]),
+    )
+    assert len(python_result.candidates) == 1
+    canonical_fast = python_result.candidates[0]
+
+    worker_result = _run_worker(
+        {
+            "type": "run",
+            "kernel": kernel,
+            "searchPoints": [
+                (
+                    measures.model_dump()
+                    if hasattr(measures, "model_dump")
+                    else measures.dict()
+                )
+            ],
+            "branchIds": ["keep-current-heating"],
+            "mode": "auto_economic",
+            "goals": {},
+            "baselineAnnualBillLei": float(baseline_cost["priced_total_lei"]),
+        }
+    )
+    assert worker_result["sourceCandidateCount"] == 1
+    browser_fast = worker_result["candidateRows"][0]["candidate"]
+    assert browser_fast["annual_bill_lei"] == pytest.approx(
+        canonical_fast.annual_bill_lei,
+        abs=2.0,
+    )
+    assert browser_fast["annual_saving_lei"] == pytest.approx(
+        canonical_fast.annual_saving_lei,
+        abs=2.0,
+    )
 
 
 def _signature(measures: dict) -> tuple[float, ...]:

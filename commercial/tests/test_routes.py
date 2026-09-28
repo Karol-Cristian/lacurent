@@ -1460,6 +1460,110 @@ def test_home_lab_next_direct_electric_heating_pv_changes_live_result() -> None:
     assert with_payload["annual_cost_lei"] < without_payload["annual_cost_lei"]
 
 
+def test_home_lab_next_pv_orientation_and_tilt_change_live_generation_and_cost() -> None:
+    base = demo_form_data()
+    base.update(
+        {
+            "building_length_m": "10",
+            "building_width_m": "8",
+            "heated_levels": "2",
+            "average_height_m": "2.7",
+            "house_window_area_m2": "20",
+            "heating_choice": "electric_resistance",
+            "expert_heating_override": "",
+            "cooling_enabled": "",
+            "pv_enabled": "on",
+            "pv_installed_power_kwp": "5",
+            "pv_orientation": "south",
+            "pv_tilt_degrees": "30",
+            "pv_performance_ratio": "0.82",
+            "pv_household_electricity_kwh_year": "0",
+            "pv_export_credit_lei_per_kwh": "0",
+        }
+    )
+    south = client.post("/api/home-lab-next/calculate", data=base)
+    assert south.status_code == 200
+    south_payload = south.json()
+
+    north_data = dict(base)
+    north_data.update({"pv_orientation": "north", "pv_tilt_degrees": "90"})
+    north = client.post("/api/home-lab-next/calculate", data=north_data)
+    assert north.status_code == 200
+    north_payload = north.json()
+
+    assert (
+        south_payload["renewables"]["pv"]["annual_generation_kwh"]
+        > north_payload["renewables"]["pv"]["annual_generation_kwh"]
+    )
+    assert south_payload["annual_cost_lei"] < north_payload["annual_cost_lei"]
+    assert south_payload["final_energy_kwh"] < north_payload["final_energy_kwh"]
+
+
+def test_home_lab_next_household_pv_economics_do_not_change_mc001_class() -> None:
+    base = demo_form_data()
+    base.update(
+        {
+            "heating_choice": "wood_stove",
+            "expert_heating_override": "",
+            "cooling_enabled": "",
+            "pv_enabled": "on",
+            "pv_installed_power_kwp": "3",
+            "pv_orientation": "south",
+            "pv_tilt_degrees": "30",
+            "pv_performance_ratio": "0.82",
+            "pv_household_electricity_kwh_year": "12000",
+            "pv_export_credit_lei_per_kwh": "0",
+        }
+    )
+    south = client.post("/api/home-lab-next/calculate", data=base)
+    assert south.status_code == 200
+    south_payload = south.json()
+
+    north_data = dict(base)
+    north_data.update({"pv_orientation": "north", "pv_tilt_degrees": "90"})
+    north = client.post("/api/home-lab-next/calculate", data=north_data)
+    assert north.status_code == 200
+    north_payload = north.json()
+
+    assert south_payload["energy_class"] == north_payload["energy_class"]
+    assert south_payload["primary_specific_kwh_m2"] == north_payload["primary_specific_kwh_m2"]
+    assert south_payload["annual_cost_lei"] < north_payload["annual_cost_lei"]
+    assert south_payload["pv_economics"]["scope"] == "economic_only_not_mc001_regulated_energy"
+    assert south_payload["renewables"]["pv"]["household_self_consumed_kwh"] > 0
+
+
+def test_home_lab_next_explicit_pv_export_credit_changes_economics_only() -> None:
+    base = demo_form_data()
+    base.update(
+        {
+            "heating_choice": "wood_stove",
+            "expert_heating_override": "",
+            "cooling_enabled": "",
+            "pv_enabled": "on",
+            "pv_installed_power_kwp": "5",
+            "pv_orientation": "south",
+            "pv_tilt_degrees": "30",
+            "pv_performance_ratio": "0.82",
+            "pv_household_electricity_kwh_year": "0",
+            "pv_export_credit_lei_per_kwh": "0",
+        }
+    )
+    no_credit = client.post("/api/home-lab-next/calculate", data=base)
+    assert no_credit.status_code == 200
+    no_credit_payload = no_credit.json()
+
+    credit_data = dict(base)
+    credit_data["pv_export_credit_lei_per_kwh"] = "0.30"
+    with_credit = client.post("/api/home-lab-next/calculate", data=credit_data)
+    assert with_credit.status_code == 200
+    credit_payload = with_credit.json()
+
+    assert credit_payload["energy_class"] == no_credit_payload["energy_class"]
+    assert credit_payload["primary_specific_kwh_m2"] == no_credit_payload["primary_specific_kwh_m2"]
+    assert credit_payload["annual_cost_lei"] < no_credit_payload["annual_cost_lei"]
+    assert credit_payload["pv_economics"]["export_credit_lei"] > 0
+
+
 def test_home_lab_next_normalizes_stale_wood_stove_chain() -> None:
     data = demo_form_data()
     data.update(
@@ -1743,6 +1847,38 @@ def test_home_lab_next_calculates_pv_and_solar_thermal_from_solar_resource() -> 
     assert payload["renewables"]["solar_thermal"]["used_for_dhw_kwh"] > 0
     assert len(payload["renewables"]["monthly"]) == 12
     assert payload["gross_service_final_energy_kwh"] >= payload["final_energy_kwh"]
+
+
+def test_home_lab_next_solar_thermal_orientation_and_tilt_change_output() -> None:
+    base = demo_form_data()
+    base.update(
+        {
+            "solar_thermal_enabled": "on",
+            "solar_thermal_collector_area_m2": "2",
+            "solar_thermal_orientation": "south",
+            "solar_thermal_tilt_degrees": "45",
+            "solar_thermal_system_efficiency": "0.45",
+        }
+    )
+    south = client.post("/api/home-lab-next/calculate", data=base)
+    assert south.status_code == 200
+    south_payload = south.json()
+
+    north_data = dict(base)
+    north_data.update(
+        {
+            "solar_thermal_orientation": "north",
+            "solar_thermal_tilt_degrees": "90",
+        }
+    )
+    north = client.post("/api/home-lab-next/calculate", data=north_data)
+    assert north.status_code == 200
+    north_payload = north.json()
+
+    south_solar = south_payload["renewables"]["solar_thermal"]
+    north_solar = north_payload["renewables"]["solar_thermal"]
+    assert south_solar["annual_plane_hsol_kwh_m2"] > north_solar["annual_plane_hsol_kwh_m2"]
+    assert south_solar["annual_available_kwh"] > north_solar["annual_available_kwh"]
 
 
 def test_editorial_finalization_runs_in_browser_after_parametric_verify() -> None:
