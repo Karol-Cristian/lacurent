@@ -7,7 +7,7 @@
   <title>Home Lab Editorial — experiment | LaCurent</title>
   <meta name="robots" content="noindex,nofollow">
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
-  <link rel="stylesheet" href="/static/home-lab-editorial.css?v=17">
+  <link rel="stylesheet" href="/static/home-lab-editorial.css?v=18">
   <link rel="stylesheet" href="/static/privacy-consent.css?v=privacy1">
 </head>
 <body>
@@ -44,6 +44,13 @@
         <strong id="edBaselineCost">—</strong>
         <span class="ed-price-info" aria-hidden="true">i</span>
       </button>
+      <i class="ed-baseline-energy-divider" aria-hidden="true"></i>
+      <div class="ed-baseline-energy-group" aria-label="Indicatori energetici calculați">
+        <span class="ed-baseline-energy-item"><small>Necesar încălzire</small><strong id="edBaselineHeatingDemand">—</strong><em>util</em></span>
+        <span class="ed-baseline-energy-item"><small>Necesar răcire</small><strong id="edBaselineCoolingDemand">—</strong><em>util</em></span>
+        <span class="ed-baseline-energy-item"><small>Energie finală</small><strong id="edBaselineFinalEnergy">—</strong></span>
+        <span class="ed-baseline-energy-item"><small>Energie primară</small><strong id="edBaselinePrimaryEnergy">—</strong></span>
+      </div>
       <small id="edBaselineStatus">Se actualizează după primele date.</small>
     </div>
   </aside>
@@ -614,6 +621,6 @@
   {% include "_legal_footer.html" %}
   {% include "_privacy_controls.html" %}
   <script src="/static/privacy-consent.js?v=privacy1"></script>
-  <script src="/static/home-lab-editorial.js?v=40"></script>
+  <script src="/static/home-lab-editorial.js?v=41"></script>
 </body>
 </html>

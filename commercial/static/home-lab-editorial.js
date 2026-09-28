@@ -21,6 +21,10 @@
   const baselineBar = document.querySelector(".ed-baseline-bar");
   const baselineClass = $("#edBaselineClass");
   const baselineCost = $("#edBaselineCost");
+  const baselineHeatingDemand = $("#edBaselineHeatingDemand");
+  const baselineCoolingDemand = $("#edBaselineCoolingDemand");
+  const baselineFinalEnergy = $("#edBaselineFinalEnergy");
+  const baselinePrimaryEnergy = $("#edBaselinePrimaryEnergy");
   const baselineStatus = $("#edBaselineStatus");
   const priceDialog = $("#priceDialog");
   const priceReferenceOpen = $("#edPriceReferencesOpen");
@@ -2004,14 +2008,26 @@
         }))
       : [];
 
+    const primarySpecific =
+      parametric.primarySpecificKwhM2
+      ?? scenario.primary_specific_kwh_m2
+      ?? null;
+    const heatedArea = parseDecimal($("#heatedArea")?.value);
     return {
       ...(baselineResult || {}),
       energy_class:parametric.energyClass ?? scenario.energy_class ?? baselineResult?.energy_class,
       annual_cost_lei:parametric.annualBillLei ?? scenario.annual_cost_lei ?? null,
-      primary_specific_kwh_m2:
-        parametric.primarySpecificKwhM2
-        ?? scenario.primary_specific_kwh_m2
-        ?? baselineResult?.primary_specific_kwh_m2,
+      annual_heating_demand_kwh:scenario.annual_heating_demand_kwh ?? null,
+      annual_cooling_demand_kwh:scenario.annual_cooling_demand_kwh ?? null,
+      final_energy_kwh:parametric.finalEnergyKwh ?? scenario.final_energy_kwh ?? null,
+      primary_energy_kwh:
+        scenario.primary_energy_kwh
+        ?? (
+          Number.isFinite(Number(primarySpecific)) && Number.isFinite(heatedArea)
+            ? Number(primarySpecific) * heatedArea
+            : null
+        ),
+      primary_specific_kwh_m2:primarySpecific,
       price_reference_rows:finalPriceRows.length ? finalPriceRows : fallbackPriceRows,
       _summary_scope:"teo_final",
     };
@@ -2027,6 +2043,14 @@
       delete baselineClass.dataset.energyClass;
     }
     baselineCost.textContent = result.annual_cost_lei == null ? "—" : money(result.annual_cost_lei) + "/an";
+    baselineHeatingDemand.textContent =
+      result.annual_heating_demand_kwh == null ? "—" : energy(result.annual_heating_demand_kwh);
+    baselineCoolingDemand.textContent =
+      result.annual_cooling_demand_kwh == null ? "—" : energy(result.annual_cooling_demand_kwh);
+    baselineFinalEnergy.textContent =
+      result.final_energy_kwh == null ? "—" : energy(result.final_energy_kwh);
+    baselinePrimaryEnergy.textContent =
+      result.primary_energy_kwh == null ? "—" : energy(result.primary_energy_kwh);
     baselineStatus.textContent = statusText;
     baselineBar.classList.remove("is-updating");
     if (priceDialog?.open) renderPriceReferences(result);
@@ -2040,6 +2064,10 @@
       baselineClass.textContent = "—";
       delete baselineClass.dataset.energyClass;
       baselineCost.textContent = "—";
+      baselineHeatingDemand.textContent = "—";
+      baselineCoolingDemand.textContent = "—";
+      baselineFinalEnergy.textContent = "—";
+      baselinePrimaryEnergy.textContent = "—";
       baselineStatus.textContent = locality ? "Alege localitatea din sugestii sau de pe hartă." : "Completează localitatea.";
       baselineBar.classList.remove("is-updating");
       return false;

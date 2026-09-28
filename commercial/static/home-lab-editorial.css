@@ -1408,3 +1408,94 @@ body{
 .ed-advanced-grid .ed-field.is-derived-value input{
   color:#5d6b78;
 }
+
+
+/* Editorial v18: persistent RBPE energy indicators */
+.ed-baseline-inner{
+  width:min(calc(100% - 32px),1180px);
+}
+.ed-baseline-energy-divider{flex:0 0 1px}
+.ed-baseline-energy-group{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(112px,1fr));
+  align-items:center;
+  gap:8px;
+  min-width:0;
+  flex:1 1 520px;
+}
+.ed-baseline-energy-item{
+  min-width:0;
+  display:grid;
+  grid-template-columns:1fr auto;
+  grid-template-areas:"label value" "unit value";
+  column-gap:6px;
+  align-items:center;
+  padding:3px 6px;
+  border-radius:8px;
+  white-space:nowrap;
+}
+.ed-baseline-energy-item small{
+  grid-area:label;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  font-size:8px;
+  line-height:1.1;
+  color:var(--muted);
+  font-weight:650;
+}
+.ed-baseline-energy-item strong{
+  grid-area:value;
+  font-size:11px;
+  line-height:1.1;
+  font-variant-numeric:tabular-nums;
+  letter-spacing:-.02em;
+}
+.ed-baseline-energy-item em{
+  grid-area:unit;
+  font-size:7px;
+  line-height:1;
+  color:#9aa0aa;
+  font-style:normal;
+}
+.ed-baseline-bar.is-updating .ed-baseline-energy-item strong{opacity:.55}
+
+@media(max-width:920px){
+  .ed-baseline-inner{
+    flex-wrap:wrap;
+    padding:4px 12px 5px;
+    row-gap:3px;
+  }
+  .ed-baseline-energy-divider{display:none}
+  .ed-baseline-energy-group{
+    order:3;
+    flex-basis:100%;
+    width:100%;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:3px;
+  }
+  .ed-baseline-energy-item{
+    display:flex;
+    justify-content:center;
+    gap:3px;
+    padding:1px 2px;
+  }
+  .ed-baseline-energy-item small{font-size:7px}
+  .ed-baseline-energy-item strong{font-size:9px}
+  .ed-baseline-energy-item em{display:none}
+}
+@media(max-width:720px){
+  .ed-baseline-bar{min-height:62px}
+  .ed-baseline-inner{
+    min-height:62px;
+    padding:3px 8px 4px;
+  }
+  .ed-baseline-energy-item small{
+    max-width:56px;
+    white-space:normal;
+    text-align:right;
+    line-height:1.05;
+  }
+  .ed-baseline-energy-item strong{font-size:8.5px}
+  .ed-shell{min-height:calc(100vh - 118px)}
+  .ed-page{min-height:calc(100vh - 118px)}
+}

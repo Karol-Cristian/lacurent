@@ -207,9 +207,18 @@ try {
     }
     await page.waitForFunction(
       () => {
-        const cls = String(document.querySelector("#edBaselineClass")?.textContent || "").trim();
-        const cost = String(document.querySelector("#edBaselineCost")?.textContent || "").trim();
-        return cls && cls !== "—" && cost && cost !== "—";
+        const ids = [
+          "#edBaselineClass",
+          "#edBaselineCost",
+          "#edBaselineHeatingDemand",
+          "#edBaselineCoolingDemand",
+          "#edBaselineFinalEnergy",
+          "#edBaselinePrimaryEnergy",
+        ];
+        return ids.every(selector => {
+          const value = String(document.querySelector(selector)?.textContent || "").trim();
+          return value && value !== "—";
+        });
       },
       null,
       {timeout:30000}
