@@ -45,8 +45,12 @@ jobs:
           node --check scripts/build-location-payload.mjs
           node --check scripts/prepare-commercial-cloudflare-worker.mjs
           node --check scripts/prepare-reference-cloudflare-worker.mjs
+          node --check scripts/prepare-teo-cloudflare-worker.mjs
+          node --check scripts/soak-teo-production.mjs
+          node --check commercial/teo-router/worker.mjs
           node scripts/prepare-commercial-cloudflare-worker.mjs
           node scripts/prepare-reference-cloudflare-worker.mjs
+          node scripts/prepare-teo-cloudflare-worker.mjs
           node --test commercial/tests/location-data-worker-asset.test.mjs
           node --test commercial/tests/language-toggle.test.cjs
           node --test commercial/tests/scenario-cockpit.test.cjs
