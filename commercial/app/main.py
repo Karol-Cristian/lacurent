@@ -2778,23 +2778,6 @@ async def home_lab_classic(request: Request) -> HTMLResponse:
     )
 
 
-def _private_rbpe_http_request(payload: str) -> Any:
-    """Build the internal Cloudflare Request lazily inside the Worker runtime."""
-    from js import Request as JsRequest
-
-    return JsRequest.new(
-        "https://rbpe.internal/calculate-home-lab",
-        {
-            "method": "POST",
-            "headers": {
-                "content-type": "application/json",
-                "accept": "application/json",
-            },
-            "body": json.dumps({"payload": payload}),
-        },
-    )
-
-
 async def _canonical_home_lab_result(
     request: Request,
     building: BuildingInput,
@@ -2816,22 +2799,12 @@ async def _canonical_home_lab_result(
                 status_code=503,
                 detail="Serviciul privat RBPE nu este disponibil.",
             )
-        # Use the HTTP service-binding path rather than custom RPC. The exact
-        # route below is stress-tested against the private Python Worker and
-        # avoids the extra RPC object-lifecycle pressure observed under long
-        # sequences of live recalculations.
-        inner = _private_rbpe_http_request(payload)
-        response = await service.fetch(inner)
-        raw_json = await response.text()
-        if int(response.status) != 200:
-            if int(response.status) >= 500:
-                raise HTTPException(
-                    status_code=503,
-                    detail="Serviciul privat RBPE este temporar indisponibil.",
-                )
-            raise ValueError(
-                f"Private RBPE returned HTTP {int(response.status)}: {raw_json[:300]}"
-            )
+        # Cross the Worker boundary as one primitive JSON string. The
+        # dedicated Worker performs calculate() and serializes exactly once;
+        # the web Worker only reconstructs the transport result.
+        raw_json = await service.calculate_home_lab_json(payload)
+        if not isinstance(raw_json, str):
+            raw_json = str(raw_json)
         raw = json.loads(raw_json)
     else:
         # Local pytest/Uvicorn fallback only. Production must always preserve
