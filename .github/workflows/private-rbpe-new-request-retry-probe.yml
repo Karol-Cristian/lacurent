@@ -60,8 +60,21 @@ jobs:
               'service = "lacurent-reference-rbpe"',
               f'service = "lacurent-rbpe-e2e-{os.environ["GITHUB_RUN_ID"]}"',
           )
-          # Probe is workers.dev-only; never attach production custom domains.
-          text=text.split("\n[[routes]]",1)[0].rstrip()+"\n"
+          # Probe is workers.dev-only; remove only route blocks while preserving
+          # the Text module rules needed by FastAPI StaticFiles/Jinja.
+          lines=text.splitlines()
+          out=[]
+          skipping_route=False
+          for line in lines:
+              stripped=line.strip()
+              if stripped == "[[routes]]":
+                  skipping_route=True
+                  continue
+              if skipping_route and stripped.startswith("[["):
+                  skipping_route=False
+              if not skipping_route:
+                  out.append(line)
+          text="\n".join(out).rstrip()+"\n"
           p.write_text(text)
           print(text)
           PY
