@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import gc
 import json
 from typing import Any
 
@@ -34,7 +33,11 @@ def calculate_home_lab_result_json(payload: str | dict[str, Any]) -> str:
     result = calculate(building, include_reference=False)
     encoded = model_to_json(result)
 
+    # CalculationResult/BuildingInput graphs are acyclic in the canonical path
+    # and CPython releases them through reference counting when these local
+    # references are dropped. A forced full gc.collect() on every Pyodide
+    # request becomes progressively CPU-expensive and can itself trip the
+    # Cloudflare Python CPU limit under repeated live recalculation.
     del result
     del building
-    gc.collect()
     return encoded
