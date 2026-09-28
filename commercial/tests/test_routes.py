@@ -2813,8 +2813,8 @@ def test_home_lab_hud_exposes_useful_heating_and_cooling_demand() -> None:
     assert 'id="hlnPersistentHeatingSpecific"' in response.text
     assert 'id="hlnPersistentCoolingDemand"' in response.text
     assert 'id="hlnPersistentCoolingSpecific"' in response.text
-    assert "Necesar încălzire" in response.text
-    assert "Necesar răcire" in response.text
+    assert "Necesar util încălzire" in response.text
+    assert "Necesar util răcire" in response.text
 
     js = client.get("/static/home-lab-next.js")
     assert js.status_code == 200
