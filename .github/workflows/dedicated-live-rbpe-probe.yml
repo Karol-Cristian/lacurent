@@ -1,0 +1,134 @@
+name: Dedicated Live RBPE Probe
+
+on:
+  push:
+    branches:
+      - codex/dedicated-live-rbpe-worker
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install tools
+        run: python -m pip install uv "pydantic<2"
+
+      - name: Prepare isolated live RBPE Worker
+        run: |
+          node scripts/prepare-reference-cloudflare-worker.mjs
+          python - <<'PY'
+          from pathlib import Path
+          p = Path(".wrangler/reference-rbpe-worker/wrangler.toml")
+          text = p.read_text()
+          text = text.replace('name = "lacurent-reference-rbpe"', 'name = "lacurent-live-rbpe-probe"')
+          text = text.replace("workers_dev = false", "workers_dev = true")
+          p.write_text(text)
+          PY
+
+      - name: Install Wrangler and sync
+        working-directory: .wrangler/reference-rbpe-worker
+        run: |
+          npm install --save-dev wrangler@latest
+          mkdir -p .bin
+          printf '#!/usr/bin/env bash\nexec npx wrangler "$@"\n' > .bin/wrangler
+          chmod +x .bin/wrangler
+          export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
+          uvx --from workers-py pywrangler sync --force
+
+      - name: Deploy probe
+        working-directory: .wrangler/reference-rbpe-worker
+        run: |
+          export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
+          uvx --from workers-py pywrangler deploy
+
+      - name: Wait for health
+        run: |
+          for attempt in $(seq 1 45); do
+            if curl -fsS https://lacurent-live-rbpe-probe.lemnarukarol.workers.dev/health; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
+
+      - name: Stress full live payload 96 times
+        run: |
+          python - <<'PY'
+          import json
+          import sys
+          import time
+          import urllib.error
+          import urllib.request
+
+          sys.path.insert(0, "commercial")
+          from app.engine import demo_building
+          from app.models import model_to_dict
+
+          base = model_to_dict(demo_building())
+          url = "https://lacurent-live-rbpe-probe.lemnarukarol.workers.dev/live-calculation"
+          orientations = [
+              "south", "south_west", "west", "north_west",
+              "north", "north_east", "east", "south_east",
+          ]
+          count = 0
+          for cycle in range(12):
+              for orientation in orientations:
+                  count += 1
+                  payload = json.loads(json.dumps(base))
+                  payload.setdefault("renewables", {}).setdefault("pv", {}).update({
+                      "enabled": True,
+                      "installed_power_kwp": 5,
+                      "orientation": orientation,
+                      "tilt_degrees": 30,
+                      "performance_ratio": 0.82,
+                  })
+                  body = json.dumps({"payload": payload}).encode("utf-8")
+                  req = urllib.request.Request(
+                      url,
+                      data=body,
+                      headers={"Content-Type": "application/json", "Accept": "application/json"},
+                  )
+                  started = time.perf_counter()
+                  try:
+                      with urllib.request.urlopen(req, timeout=30) as response:
+                          raw = response.read().decode("utf-8")
+                          data = json.loads(raw)
+                          status = response.status
+                  except urllib.error.HTTPError as exc:
+                      raw = exc.read().decode("utf-8", errors="replace")
+                      print("FAIL", count, orientation, exc.code, raw[:1200])
+                      raise
+                  elapsed_ms = round((time.perf_counter() - started) * 1000, 1)
+                  if status != 200 or not data.get("energy_class"):
+                      raise AssertionError((count, status, data))
+                  if data.get("annual_cost_lei") is None:
+                      raise AssertionError((count, "annual_cost_lei", data))
+                  if len(data.get("monthly") or []) != 12:
+                      raise AssertionError((count, "monthly", data))
+                  print(json.dumps({
+                      "count": count,
+                      "orientation": orientation,
+                      "status": status,
+                      "elapsed_ms": elapsed_ms,
+                      "energy_class": data.get("energy_class"),
+                      "annual_cost_lei": data.get("annual_cost_lei"),
+                  }))
+                  time.sleep(0.1)
+          print(json.dumps({"status": "ok", "total_requests": count}))
+          PY
+
+      - name: Delete probe
+        if: always()
+        working-directory: .wrangler/reference-rbpe-worker
+        run: npx wrangler delete --name lacurent-live-rbpe-probe --force || true
