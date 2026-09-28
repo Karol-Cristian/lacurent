@@ -8,7 +8,7 @@ from workers import Response, WorkerEntrypoint
 
 from app.engine import reference_primary_specific_energy
 from app.models import building_from_json
-from app.rbpe_service import calculate_home_lab_result_json
+from app.rbpe_service import calculate_home_lab_api_json, calculate_home_lab_result_json
 
 
 CORS_HEADERS = {
@@ -65,6 +65,13 @@ class Default(WorkerEntrypoint):
     async def calculate_home_lab_json(self, payload):
         """Run canonical Home Lab RBPE and cross RPC as a primitive JSON string."""
         return calculate_home_lab_result_json(payload)
+
+    async def calculate_home_lab_api_json(self, payload, optimizer_candidate=False):
+        """Return the final Home Lab API payload without rebuilding it in FastAPI."""
+        return calculate_home_lab_api_json(
+            payload,
+            optimizer_candidate=bool(optimizer_candidate),
+        )
 
     async def fetch(self, request):
         path = urlparse(request.url).path
