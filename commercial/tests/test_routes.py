@@ -161,14 +161,18 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'data-page="run"' in page.text
     assert 'data-page="report"' in page.text
     assert 'data-page="renewables"' in page.text
-    assert "/static/home-lab-editorial.css?v=17" in page.text
-    assert "/static/home-lab-editorial.js?v=40" in page.text
+    assert "/static/home-lab-editorial.css?v=18" in page.text
+    assert "/static/home-lab-editorial.js?v=41" in page.text
     assert "/static/home-lab-3d.js" not in page.text
     assert 'id="edBaselineClass"' in page.text
     assert 'id="edClassReferenceOpen"' in page.text
     assert 'id="classDialog"' in page.text
     assert "Praguri & casa de referință" in page.text
     assert 'id="edBaselineCost"' in page.text
+    assert 'id="edBaselineHeatingDemand"' in page.text
+    assert 'id="edBaselineCoolingDemand"' in page.text
+    assert 'id="edBaselineFinalEnergy"' in page.text
+    assert 'id="edBaselinePrimaryEnergy"' in page.text
     assert 'id="edPriceReferencesOpen"' in page.text
     assert 'id="priceDialog"' in page.text
     assert 'id="edPriceReferenceGrid"' in page.text
@@ -249,6 +253,10 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert "function syncTechnicalForm()" in js.text
     assert "function scheduleBaselineSummary(" in js.text
     assert "function paintBaselineSummary(" in js.text
+    assert 'baselineHeatingDemand.textContent' in js.text
+    assert 'baselineCoolingDemand.textContent' in js.text
+    assert 'baselineFinalEnergy.textContent' in js.text
+    assert 'baselinePrimaryEnergy.textContent' in js.text
     assert "DEFAULT_INFILTRATION_ACH = 0.15" in js.text
     assert "function optimizationSummaryForPersistentBar()" in js.text
     assert "Shortlist canonic selectat local:" in js.text
