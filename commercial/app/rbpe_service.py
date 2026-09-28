@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import json
 from typing import Any
+from urllib.parse import parse_qsl
 
 from .engine import calculate
+from .home_lab_form import build_input_from_form
 from .home_lab_payload import embed_lab_result_payload, optimizer_candidate_payload
-from .models import building_from_json, model_to_json
+from .models import BuildingInput, building_from_json, model_to_json
 
 
 def calculate_home_lab_result_payload(payload: str | dict[str, Any]) -> dict[str, Any]:
@@ -44,23 +46,11 @@ def calculate_home_lab_result_json(payload: str | dict[str, Any]) -> str:
     return encoded
 
 
-def calculate_home_lab_api_json(
-    payload: str | dict[str, Any],
+def _calculate_home_lab_api_json_from_building(
+    building: BuildingInput,
     *,
     optimizer_candidate: bool = False,
 ) -> str:
-    """Run canonical RBPE and return the final browser/API payload as JSON.
-
-    The main web Worker must not reconstruct the full CalculationResult. Doing
-    so duplicates the heavy result graph inside the FastAPI/Jinja isolate and
-    defeats the private Worker memory boundary.
-    """
-    if payload in (None, ""):
-        raise ValueError("Missing Home Lab RBPE input.")
-
-    building = building_from_json(
-        payload if isinstance(payload, str) else json.dumps(payload)
-    )
     result = calculate(building, include_reference=False)
     response_payload = (
         optimizer_candidate_payload(result)
@@ -72,8 +62,51 @@ def calculate_home_lab_api_json(
         ensure_ascii=False,
         separators=(",", ":"),
     )
-
     del response_payload
     del result
+    return encoded
+
+
+def calculate_home_lab_api_json(
+    payload: str | dict[str, Any],
+    *,
+    optimizer_candidate: bool = False,
+) -> str:
+    """Run canonical RBPE and return the final browser/API payload as JSON."""
+    if payload in (None, ""):
+        raise ValueError("Missing Home Lab RBPE input.")
+
+    building = building_from_json(
+        payload if isinstance(payload, str) else json.dumps(payload)
+    )
+    encoded = _calculate_home_lab_api_json_from_building(
+        building,
+        optimizer_candidate=optimizer_candidate,
+    )
     del building
+    return encoded
+
+
+def calculate_home_lab_form_api_json(encoded_form: str) -> str:
+    """Parse one live Home Lab form and execute canonical RBPE entirely here.
+
+    This is the route-facing entrypoint used by the dedicated calculation
+    gateway. The main FastAPI/Jinja Worker never materializes FormData,
+    BuildingInput or CalculationResult for live edits.
+    """
+    if encoded_form in (None, ""):
+        raise ValueError("Missing Home Lab form payload.")
+
+    form = dict(parse_qsl(str(encoded_form), keep_blank_values=True))
+    form.pop("_skip_reference", None)
+    optimizer_candidate = str(form.pop("_optimizer_candidate", "")).strip().lower() in {
+        "1", "true", "yes", "on",
+    }
+    building = build_input_from_form(form)
+    encoded = _calculate_home_lab_api_json_from_building(
+        building,
+        optimizer_candidate=optimizer_candidate,
+    )
+    del building
+    del form
     return encoded
