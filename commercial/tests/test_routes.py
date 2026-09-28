@@ -957,6 +957,11 @@ def test_home_lab_persistent_summary_stays_bound_to_current_result_and_status() 
     assert 'class="hln-live-summary"' in response.text
     assert 'id="hlnPersistentClass"' in response.text
     assert 'id="hlnPersistentCost"' in response.text
+    assert 'data-hln-open-energy-details' in response.text
+    assert 'id="hlnEnergyDetailHeating"' in response.text
+    assert 'id="hlnEnergyDetailCooling"' in response.text
+    assert 'id="hlnEnergyDetailFinal"' in response.text
+    assert 'id="hlnEnergyDetailPrimary"' in response.text
     assert 'id="hlnPersistentEnergy"' in response.text
     assert 'class="hln-dock"' in response.text
     assert 'class="hln-dock-benefits hln-dock-compare"' in response.text
@@ -1010,6 +1015,11 @@ def test_home_lab_persistent_summary_stays_bound_to_current_result_and_status() 
     assert js.status_code == 200
     assert '$("#hlnPersistentClass").textContent' in js.text
     assert '$("#hlnPersistentCost").textContent' in js.text
+    assert 'const openEnergyDetails = () =>' in js.text
+    assert '$("#hlnEnergyDetailHeating")' in js.text
+    assert '$("#hlnEnergyDetailCooling")' in js.text
+    assert '$("#hlnEnergyDetailFinal")' in js.text
+    assert '$("#hlnEnergyDetailPrimary")' in js.text
     assert '$("#hlnPersistentEnergy").textContent' in js.text
     assert 'const costDeltaNode = $("#hlnPersistentCostDelta")' in js.text
     assert 'const energyDeltaNode = $("#hlnPersistentEnergyDelta")' in js.text
@@ -1501,6 +1511,8 @@ def test_private_rbpe_raw_form_payload_matches_existing_live_api() -> None:
     response = client.post("/api/home-lab-next/calculate", data=form)
     assert response.status_code == 200
     assert private_payload == response.json()
+    result = calculate(build_input_from_form(form), include_reference=False)
+    assert private_payload["primary_energy_kwh"] == pytest.approx(result.primary_energy.total_kwh)
 
 
 def test_live_calculation_route_does_not_run_canonical_engine_in_web_worker() -> None:

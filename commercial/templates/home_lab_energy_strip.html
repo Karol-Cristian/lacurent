@@ -10,6 +10,34 @@
           <span class="hln-energy-reference">Referințe <span aria-hidden="true">⌄</span></span>
         </summary>
         <div class="hln-energy-details">
+          <section class="hln-energy-calculation-summary" aria-label="Rezumat energetic al configurației curente">
+            <header>
+              <strong>Energia casei calculate</strong>
+              <small>Valorile fizice folosite pentru a înțelege costul anual estimat.</small>
+            </header>
+            <div class="hln-energy-calculation-grid">
+              <article>
+                <small>Necesar încălzire</small>
+                <strong id="hlnEnergyDetailHeating">—</strong>
+                <span id="hlnEnergyDetailHeatingSpecific">energie utilă</span>
+              </article>
+              <article>
+                <small>Necesar răcire</small>
+                <strong id="hlnEnergyDetailCooling">—</strong>
+                <span id="hlnEnergyDetailCoolingSpecific">energie utilă</span>
+              </article>
+              <article>
+                <small>Energie finală</small>
+                <strong id="hlnEnergyDetailFinal">—</strong>
+                <span>după randamentele sistemelor și regenerabile</span>
+              </article>
+              <article>
+                <small>Energie primară</small>
+                <strong id="hlnEnergyDetailPrimary">—</strong>
+                <span id="hlnEnergyDetailPrimarySpecific">indicator pentru clasa energetică</span>
+              </article>
+            </div>
+          </section>
           <p>Prețuri de referință, nu cotații live. Date salvate la <time datetime="{{ energy_overview.retrieved_on }}">{{ energy_overview.retrieved_on }}</time>. Costul casei folosește localitatea și ipotezele calculatorului; oferta ta poate fi diferită.</p>
           <div class="hln-energy-cards">
             {% for item in energy_overview.rows %}
