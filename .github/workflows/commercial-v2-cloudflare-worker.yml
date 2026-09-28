@@ -652,6 +652,7 @@ jobs:
 
           sys.path.insert(0, "src")
           from app.engine import calculate, demo_building
+          from app.home_lab_payload import embed_lab_result_payload
           from app.models import model_to_json
 
           building = demo_building()
@@ -683,6 +684,53 @@ jobs:
           if float(payload.get("referenceSpecificPrimaryKwhM2") or 0) <= 0:
               raise AssertionError(payload)
           print("Reference RBPE local smoke", payload)
+
+          canonical_result = calculate(building, include_reference=False)
+          expected_live = embed_lab_result_payload(canonical_result)
+          live_body = json.dumps({
+              "payload": model_to_json(building),
+          }).encode("utf-8")
+          live_request = urllib.request.Request(
+              "http://127.0.0.1:8791/live-calculation",
+              data=live_body,
+              headers={"Content-Type": "application/json"},
+          )
+          try:
+              with urllib.request.urlopen(live_request, timeout=30) as response:
+                  live_payload = json.loads(response.read().decode("utf-8"))
+                  if response.status != 200:
+                      raise AssertionError(response.status)
+          except urllib.error.HTTPError as exc:
+              detail = exc.read().decode("utf-8", errors="replace")
+              raise AssertionError(
+                  f"Live RBPE local smoke HTTP {exc.code}: {detail}"
+              ) from exc
+
+          for key in (
+              "energy_class",
+              "final_energy_kwh",
+              "primary_specific_kwh_m2",
+              "co2_specific_kg_m2",
+              "annual_heating_demand_kwh",
+              "annual_cooling_demand_kwh",
+              "annual_cost_lei",
+              "design_heat_load_kw",
+              "methodology_version",
+          ):
+              if live_payload.get(key) != expected_live.get(key):
+                  raise AssertionError(
+                      f"Dedicated live RBPE mismatch for {key}: "
+                      f"{live_payload.get(key)!r} != {expected_live.get(key)!r}"
+                  )
+          if live_payload.get("monthly") != expected_live.get("monthly"):
+              raise AssertionError("Dedicated live RBPE monthly payload changed.")
+          if live_payload.get("heat_loss_breakdown") != expected_live.get("heat_loss_breakdown"):
+              raise AssertionError("Dedicated live RBPE loss payload changed.")
+          print("Live RBPE local smoke", {
+              "energy_class": live_payload.get("energy_class"),
+              "final_energy_kwh": live_payload.get("final_energy_kwh"),
+              "annual_cost_lei": live_payload.get("annual_cost_lei"),
+          })
           PY
           kill "$(cat reference-worker-dev.pid)" || true
 
