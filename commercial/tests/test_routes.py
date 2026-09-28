@@ -161,7 +161,7 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'data-page="run"' in page.text
     assert 'data-page="report"' in page.text
     assert 'data-page="renewables"' in page.text
-    assert "/static/home-lab-editorial.css?v=19" in page.text
+    assert "/static/home-lab-editorial.css?v=20" in page.text
     assert "/static/home-lab-editorial.js?v=42" in page.text
     assert "/static/home-lab-3d.js" not in page.text
     assert 'id="edBaselineClass"' in page.text
@@ -240,6 +240,10 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert "--max:820px" in css.text
     assert "backdrop-filter:blur(18px)" in css.text
     assert ".ed-baseline-bar" in css.text
+    assert ".ed-price-dialog{" in css.text
+    assert "overflow:hidden;" in css.text
+    assert "overflow-y:auto;" in css.text
+    assert "overscroll-behavior:contain;" in css.text
     assert '#edBaselineClass[data-energy-class="A"]{background:#00a651;color:#fff}' in css.text
     assert '#edBaselineClass[data-energy-class="B"]{background:#50b848;color:#102219}' in css.text
     assert '#edBaselineClass[data-energy-class="C"]{background:#bfd730;color:#102219}' in css.text
