@@ -67,7 +67,6 @@ def _live_calculation_payload(payload) -> dict:
     )
     result = calculate(building, include_reference=False)
     response = embed_lab_result_payload(result)
-    response["calculation_execution"] = "dedicated_live_rbpe_worker"
     del result
     del building
     gc.collect()
