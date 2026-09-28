@@ -8,7 +8,7 @@ on:
 jobs:
   private-rbpe-probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 20
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -77,7 +77,7 @@ jobs:
           print(model_to_json(build_input_from_form(form)))
           PY
 
-      - name: Prepare and deploy private RBPE probe
+      - name: Prepare and deploy direct RBPE probe
         run: |
           node scripts/prepare-reference-cloudflare-worker.mjs
           python - <<'PY'
@@ -86,6 +86,9 @@ jobs:
           text = p.read_text().replace(
               'name = "lacurent-reference-rbpe"',
               'name = "lacurent-rbpe-live-probe"',
+          ).replace(
+              'workers_dev = false',
+              'workers_dev = true',
           )
           p.write_text(text)
           PY
@@ -98,78 +101,29 @@ jobs:
           uvx --from workers-py pywrangler sync --force
           uvx --from workers-py pywrangler deploy
 
-      - name: Prepare minimal Python proxy bound to private RBPE
-        run: |
-          mkdir -p .wrangler/rbpe-proxy-probe
-          cat > .wrangler/rbpe-proxy-probe/worker.py <<'PY'
-          import json
-          from workers import Response, WorkerEntrypoint
-
-          class Default(WorkerEntrypoint):
-              async def fetch(self, request):
-                  payload = await request.text()
-                  result_json = await self.env.RBPE.calculate_home_lab_json(payload)
-                  return Response(
-                      str(result_json),
-                      headers={"content-type": "application/json"},
-                  )
-          PY
-          cat > .wrangler/rbpe-proxy-probe/pyproject.toml <<'TOML'
-          [project]
-          name = "lacurent-rbpe-proxy-probe"
-          version = "0.1.0"
-          requires-python = ">=3.13"
-          dependencies = []
-
-          [dependency-groups]
-          dev = ["workers-py", "workers-runtime-sdk"]
-
-          [tool.pywrangler]
-          allow-build = false
-          TOML
-          cat > .wrangler/rbpe-proxy-probe/wrangler.toml <<'TOML'
-          name = "lacurent-rbpe-proxy-probe"
-          main = "worker.py"
-          compatibility_date = "2026-09-27"
-          compatibility_flags = ["python_workers", "enable_weak_ref"]
-          workers_dev = true
-
-          [[services]]
-          binding = "RBPE"
-          service = "lacurent-rbpe-live-probe"
-          remote = true
-          TOML
-          cd .wrangler/rbpe-proxy-probe
-          npm install --save-dev wrangler@latest
-          mkdir -p .bin
-          printf '#!/usr/bin/env bash\nexec npx wrangler "$@"\n' > .bin/wrangler
-          chmod +x .bin/wrangler
-          export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
-          uvx --from workers-py pywrangler sync --force
-          uvx --from workers-py pywrangler deploy
-
-      - name: Wait for proxy
+      - name: Wait for direct RBPE probe
         run: |
           for attempt in $(seq 1 60); do
-            status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
-              --data-binary @/tmp/building.json \
-              https://lacurent-rbpe-proxy-probe.lemnarukarol.workers.dev/ || true)"
-            if [ "$status" = "200" ]; then
+            if curl -fsS https://lacurent-rbpe-live-probe.lemnarukarol.workers.dev/health; then
               exit 0
             fi
             sleep 2
           done
           exit 1
 
-      - name: Run 96 serial private RBPE calls
+      - name: Run 96 direct serial RBPE calculations
         run: |
           node <<'JS'
           const fs = await import("node:fs");
-          const url = "https://lacurent-rbpe-proxy-probe.lemnarukarol.workers.dev/";
           const payload = fs.readFileSync("/tmp/building.json", "utf8").trim();
+          const url = "https://lacurent-rbpe-live-probe.lemnarukarol.workers.dev/calculate-home-lab";
           for (let i = 0; i < 96; i++) {
             const started = performance.now();
-            const response = await fetch(url, {method:"POST", body:payload});
+            const response = await fetch(url, {
+              method:"POST",
+              headers:{"content-type":"application/json","accept":"application/json"},
+              body:JSON.stringify({payload})
+            });
             const raw = await response.text();
             let body = null;
             try { body = JSON.parse(raw); } catch (_) {}
@@ -188,50 +142,13 @@ jobs:
           }
           JS
 
-      - name: Allow analytics to settle
-        if: always()
-        run: sleep 25
-
-      - name: Query probe memory
+      - name: Final health
         if: always()
         run: |
-          python - <<'PY' > /tmp/query.json
-          import json, os
-          from datetime import datetime, timezone, timedelta
-          now = datetime.now(timezone.utc)
-          query = """query GetWorkersAnalytics($accountTag: string, $datetimeStart: string, $datetimeEnd: string) {
-            viewer { accounts(filter: {accountTag: $accountTag}) {
-              workersInvocationsAdaptive(limit: 500, filter: {
-                datetime_geq: $datetimeStart,
-                datetime_leq: $datetimeEnd
-              }) {
-                sum { requests errors }
-                quantiles { cpuTimeP50 cpuTimeP99 memoryUsageBytesP50 memoryUsageBytesP99 }
-                dimensions { datetime scriptName status }
-              }
-            } }
-          }"""
-          print(json.dumps({
-            "query": query,
-            "variables": {
-              "accountTag": os.environ["CLOUDFLARE_ACCOUNT_ID"],
-              "datetimeStart": (now-timedelta(minutes=15)).isoformat(timespec="milliseconds").replace("+00:00","Z"),
-              "datetimeEnd": now.isoformat(timespec="milliseconds").replace("+00:00","Z")
-            }
-          }))
-          PY
-          curl --fail-with-body --silent https://api.cloudflare.com/client/v4/graphql \
-            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-            --header "Content-Type: application/json" \
-            --data @/tmp/query.json \
-            | jq '.data.viewer.accounts[0].workersInvocationsAdaptive
-              | map(select(.dimensions.scriptName == "lacurent-rbpe-proxy-probe"
-                        or .dimensions.scriptName == "lacurent-rbpe-live-probe"))'
+          curl -i https://lacurent-rbpe-live-probe.lemnarukarol.workers.dev/health || true
 
-      - name: Delete probe Workers
+      - name: Delete probe Worker
         if: always()
         run: |
-          cd .wrangler/rbpe-proxy-probe
-          npx wrangler delete --name lacurent-rbpe-proxy-probe --force || true
-          cd ../reference-rbpe-worker
+          cd .wrangler/reference-rbpe-worker
           npx wrangler delete --name lacurent-rbpe-live-probe --force || true
