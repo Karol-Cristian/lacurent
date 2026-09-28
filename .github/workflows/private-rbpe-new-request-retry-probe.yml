@@ -1,4 +1,4 @@
-name: Private RBPE End-to-End Shard Probe
+name: Private RBPE Gateway Stress Probe
 
 on:
   push:
@@ -38,7 +38,7 @@ jobs:
           export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
           uvx --from workers-py pywrangler sync --force
 
-      - name: Deploy four unique private RBPE shards
+      - name: Deploy four private RBPE shards
         run: |
           cp .wrangler/reference-rbpe-worker/wrangler.toml /tmp/reference-template.toml
           cd .wrangler/reference-rbpe-worker
@@ -51,14 +51,14 @@ jobs:
           text = Path("/tmp/reference-template.toml").read_text()
           text = text.replace(
               'name = "lacurent-reference-rbpe"',
-              f'name = "lacurent-rbpe-e2e-{run_id}-{suffix}"',
+              f'name = "lacurent-rbpe-gw-{run_id}-{suffix}"',
           )
           Path("wrangler.toml").write_text(text)
           PY
             uvx --from workers-py pywrangler deploy
           done
 
-      - name: Deploy unique private RBPE router
+      - name: Deploy private RBPE router
         run: |
           mkdir -p .wrangler/rbpe-router-probe
           cp commercial/rbpe-router/worker.mjs .wrangler/rbpe-router-probe/worker.mjs
@@ -68,61 +68,51 @@ jobs:
           import os
           run_id = os.environ["GITHUB_RUN_ID"]
           p = Path(".wrangler/rbpe-router-probe/wrangler.toml")
-          text = p.read_text()
-          text = text.replace(
+          text = p.read_text().replace(
               'name = "lacurent-rbpe-router"',
-              f'name = "lacurent-rbpe-router-e2e-{run_id}"',
+              f'name = "lacurent-rbpe-router-gw-{run_id}"',
           )
           for suffix in "abcd":
               text = text.replace(
                   f'service = "lacurent-rbpe-shard-{suffix}"',
-                  f'service = "lacurent-rbpe-e2e-{run_id}-{suffix}"',
+                  f'service = "lacurent-rbpe-gw-{run_id}-{suffix}"',
               )
           p.write_text(text)
-          print(text)
           PY
           cd .wrangler/rbpe-router-probe
           npm install --save-dev wrangler@latest
           npx wrangler deploy
 
-      - name: Prepare web Worker probe
+      - name: Deploy calculation gateway probe
         run: |
-          node scripts/prepare-commercial-cloudflare-worker.mjs \
-            --name "lacurent-commercial-rbpe-e2e-$GITHUB_RUN_ID"
+          mkdir -p .wrangler/calc-gateway-probe
+          cp commercial/calc-gateway/worker.mjs .wrangler/calc-gateway-probe/worker.mjs
+          cp commercial/calc-gateway/wrangler.toml .wrangler/calc-gateway-probe/wrangler.toml
           python - <<'PY'
           from pathlib import Path
           import os
           run_id = os.environ["GITHUB_RUN_ID"]
-          p = Path(".wrangler/commercial-v2-worker/wrangler.toml")
+          p = Path(".wrangler/calc-gateway-probe/wrangler.toml")
           text = p.read_text()
           text = text.replace(
-              'service = "lacurent-rbpe-router"',
-              f'service = "lacurent-rbpe-router-e2e-{run_id}"',
+              'name = "lacurent-home-lab-calc"',
+              f'name = "lacurent-home-lab-calc-gw-{run_id}"',
           )
-          if "\n[[routes]]" in text:
-              head = text.split("\n[[routes]]", 1)[0].rstrip()
-              rules = ""
-              if "\n[[rules]]" in text:
-                  rules = "\n[[rules]]" + text.split("\n[[rules]]", 1)[1]
-              text = head + "\n" + rules.lstrip("\n")
+          text = text.replace("workers_dev = false", "workers_dev = true")
+          text = text.replace(
+              'service = "lacurent-rbpe-router"',
+              f'service = "lacurent-rbpe-router-gw-{run_id}"',
+          )
+          text = text.split("\n[[routes]]", 1)[0].rstrip() + "\n"
           p.write_text(text)
-          print(text)
           PY
-
-      - name: Deploy web Worker probe
-        working-directory: .wrangler/commercial-v2-worker
-        run: |
+          cd .wrangler/calc-gateway-probe
           npm install --save-dev wrangler@latest
-          mkdir -p .bin
-          printf '#!/usr/bin/env bash\nexec npx wrangler "$@"\n' > .bin/wrangler
-          chmod +x .bin/wrangler
-          export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
-          uvx --from workers-py pywrangler sync --force
-          uvx --from workers-py pywrangler deploy
+          npx wrangler deploy
 
-      - name: Wait for web Worker
+      - name: Wait for calculation gateway
         env:
-          PROBE_URL: https://lacurent-commercial-rbpe-e2e-${{ github.run_id }}.lemnarukarol.workers.dev
+          PROBE_URL: https://lacurent-home-lab-calc-gw-${{ github.run_id }}.lemnarukarol.workers.dev
         run: |
           for attempt in $(seq 1 90); do
             if curl -fsS "$PROBE_URL/health"; then
@@ -132,9 +122,9 @@ jobs:
           done
           exit 1
 
-      - name: Run 500 end-to-end Home Lab recalculations
+      - name: Run 500 live calculation requests
         env:
-          PROBE_URL: https://lacurent-commercial-rbpe-e2e-${{ github.run_id }}.lemnarukarol.workers.dev
+          PROBE_URL: https://lacurent-home-lab-calc-gw-${{ github.run_id }}.lemnarukarol.workers.dev
         run: |
           node <<'JS'
           const baseUrl = process.env.PROBE_URL;
@@ -143,7 +133,7 @@ jobs:
             "north","north_east","east","south_east"
           ];
           const base = {
-            project_name:"Private RBPE sharded e2e stress",
+            project_name:"Gateway RBPE stress",
             locality_id:"@lc2|alba_iulia|III|-18|siruta-stress|Stress%20Locality|Alba",
             locality:"Stress Locality",
             heated_floor_area_m2:"160",
@@ -187,7 +177,7 @@ jobs:
           let maxMs = 0;
           for (let i = 0; i < 500; i += 1) {
             const orientation = orientations[i % orientations.length];
-            const form = new URLSearchParams({...base, pv_orientation:orientation});
+            const body = new URLSearchParams({...base, pv_orientation:orientation});
             const started = performance.now();
             const response = await fetch(baseUrl + "/api/home-lab-next/calculate", {
               method:"POST",
@@ -195,11 +185,11 @@ jobs:
                 "accept":"application/json",
                 "content-type":"application/x-www-form-urlencoded"
               },
-              body:form
+              body
             });
             const raw = await response.text();
-            let body = null;
-            try { body = JSON.parse(raw); } catch {}
+            let payload = null;
+            try { payload = JSON.parse(raw); } catch {}
             const elapsed = Math.round(performance.now() - started);
             maxMs = Math.max(maxMs, elapsed);
 
@@ -210,34 +200,30 @@ jobs:
                 elapsed_ms:elapsed,
                 max_ms:maxMs,
                 orientation,
-                energy_class:body?.energy_class ?? null,
-                annual_cost_lei:body?.annual_cost_lei ?? null,
-                result_orientation:body?.renewables?.pv?.orientation ?? null
+                energy_class:payload?.energy_class ?? null,
+                annual_cost_lei:payload?.annual_cost_lei ?? null,
+                result_orientation:payload?.renewables?.pv?.orientation ?? null,
+                calc_path:response.headers.get("x-lacurent-calc")
               }));
             }
 
             if (
               !response.ok ||
-              !body?.energy_class ||
-              body?.annual_cost_lei == null ||
-              body?.renewables?.pv?.orientation !== orientation
+              payload?.energy_class == null ||
+              payload?.annual_cost_lei == null ||
+              payload?.renewables?.pv?.orientation !== orientation ||
+              response.headers.get("x-lacurent-calc") !== "private-rbpe-sharded"
             ) {
-              console.error(raw.slice(0,1600));
+              console.error(raw.slice(0,1800));
               process.exit(1);
             }
-            await new Promise(resolve => setTimeout(resolve, 60));
+            await new Promise(resolve => setTimeout(resolve, 40));
           }
 
-          for (const path of ["/health", "/home-lab-next"]) {
-            const response = await fetch(baseUrl + path, {
-              headers:{"accept":path === "/health" ? "application/json" : "text/html"}
-            });
-            console.log(JSON.stringify({path,status:response.status}));
-            if (!response.ok) process.exit(2);
-          }
-
+          const health = await fetch(baseUrl + "/health");
+          if (!health.ok) process.exit(2);
           console.log(JSON.stringify({
-            status:"e2e-shard-stress-complete",
+            status:"gateway-stress-complete",
             logical_requests:500,
             max_elapsed_ms:maxMs
           }));
@@ -246,11 +232,11 @@ jobs:
       - name: Delete probe Workers
         if: always()
         run: |
-          cd .wrangler/commercial-v2-worker
-          npx wrangler delete --name "lacurent-commercial-rbpe-e2e-$GITHUB_RUN_ID" --force || true
+          cd .wrangler/calc-gateway-probe
+          npx wrangler delete --name "lacurent-home-lab-calc-gw-$GITHUB_RUN_ID" --force || true
           cd ../rbpe-router-probe
-          npx wrangler delete --name "lacurent-rbpe-router-e2e-$GITHUB_RUN_ID" --force || true
+          npx wrangler delete --name "lacurent-rbpe-router-gw-$GITHUB_RUN_ID" --force || true
           cd ../reference-rbpe-worker
           for suffix in a b c d; do
-            npx wrangler delete --name "lacurent-rbpe-e2e-$GITHUB_RUN_ID-$suffix" --force || true
+            npx wrangler delete --name "lacurent-rbpe-gw-$GITHUB_RUN_ID-$suffix" --force || true
           done
