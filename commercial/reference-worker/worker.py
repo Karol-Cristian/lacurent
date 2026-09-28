@@ -8,6 +8,7 @@ from workers import Response, WorkerEntrypoint
 
 from app.engine import reference_primary_specific_energy
 from app.models import building_from_json
+from app.rbpe_service import calculate_home_lab_result_payload
 
 
 CORS_HEADERS = {
@@ -61,6 +62,10 @@ class Default(WorkerEntrypoint):
         """Private Worker RPC entrypoint used by the main LaCurent service."""
         return _reference_comparison_payload(payload, actual_specific)
 
+    async def calculate_home_lab(self, payload):
+        """Run canonical Home Lab RBPE with an isolate separate from the web app."""
+        return calculate_home_lab_result_payload(payload)
+
     async def fetch(self, request):
         path = urlparse(request.url).path
         method = str(request.method).upper()
@@ -77,11 +82,15 @@ class Default(WorkerEntrypoint):
                 }
             )
 
-        if method != "POST" or path != "/reference-comparison":
+        if method != "POST" or path not in {"/reference-comparison", "/calculate-home-lab"}:
             return _json_response({"error": "Not found"}, status=404)
 
         try:
             body = await request.json()
+            if path == "/calculate-home-lab":
+                return _json_response(
+                    calculate_home_lab_result_payload(body.get("payload"))
+                )
             return _json_response(
                 _reference_comparison_payload(
                     body.get("payload"),
