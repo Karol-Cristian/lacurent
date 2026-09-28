@@ -2518,6 +2518,33 @@ def test_roi_cost_basis_bootstraps_through_worker_binding_not_deploy_token() -> 
     assert 'market_cost_payload.get("source") != "d1"' in workflow
 
 
+def test_market_cost_basis_falls_back_when_d1_lock_acquisition_fails(monkeypatch) -> None:
+    from types import SimpleNamespace
+
+    from commercial.app import main
+
+    class BrokenLock:
+        async def __aenter__(self):
+            raise RuntimeError("bound to a different event loop")
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+    class Database:
+        pass
+
+    monkeypatch.setattr(main, "_roi_cost_basis_cached_payload", None)
+    monkeypatch.setattr(main, "_roi_cost_basis_cache_expires_at", 0.0)
+    monkeypatch.setattr(main, "_roi_cost_basis_retry_after", 0.0)
+    monkeypatch.setattr(main, "_roi_cost_basis_lock", BrokenLock())
+
+    response = client.get("/api/market-cost-basis")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["source"] == "seed_fallback"
+    assert payload["catalog_version"] == "ro-market-planning-2026-09-22"
+
+
 def test_roi_cost_basis_coalesces_concurrent_d1_bootstrap_and_reads(monkeypatch) -> None:
     import asyncio
     from types import SimpleNamespace
