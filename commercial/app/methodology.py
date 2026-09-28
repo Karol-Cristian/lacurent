@@ -244,6 +244,7 @@ def _climate_from_station(
             "id": locality_id or station.get("source_locality_id") or station.get("locality_id") or station["id"],
             "siruta": locality_id or station.get("source_locality_id"),
             "name": selected_name,
+            "display_name": selected_name,
             "county": county if county is not None else station.get("county"),
             "uat_name": None,
             "locality_type": None,
