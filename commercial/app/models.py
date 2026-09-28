@@ -392,6 +392,11 @@ class PhotovoltaicInput(BaseModel):
     orientation: SolarOrientation = "south"
     tilt_degrees: float = Field(default=30, ge=0, le=90)
     performance_ratio: float | None = Field(default=None, gt=0, le=1)
+    # Economic-only electricity demand used for PV self-consumption. It is kept
+    # separate from MC001 regulated final energy / primary-energy classification.
+    household_electricity_kwh_year: float = Field(default=0, ge=0, le=100000)
+    # Explicit prosumer compensation assumption. Zero means no export credit.
+    export_credit_lei_per_kwh: float = Field(default=0, ge=0, le=10)
 
     @root_validator(skip_on_failure=True)
     def validate_enabled_system(cls, values: dict) -> dict:
@@ -574,7 +579,12 @@ class MonthlyRenewableBalance(BaseModel):
     month: str
     pv_plane_hsol_kwh_m2: float = 0
     pv_generation_kwh: float = 0
+    # Total economic self-consumption = regulated services + household demand.
     pv_self_consumed_kwh: float = 0
+    pv_regulated_self_consumed_kwh: float = 0
+    pv_household_self_consumed_kwh: float = 0
+    household_electricity_load_kwh: float = 0
+    household_grid_import_kwh: float = 0
     pv_exported_kwh: float = 0
     solar_thermal_plane_hsol_kwh_m2: float = 0
     solar_thermal_available_kwh: float = 0
@@ -590,7 +600,12 @@ class PhotovoltaicResult(BaseModel):
     annual_plane_hsol_kwh_m2: float = 0
     annual_generation_kwh: float = 0
     self_consumed_kwh: float = 0
+    regulated_self_consumed_kwh: float = 0
+    household_self_consumed_kwh: float = 0
+    household_electricity_kwh_year: float = 0
+    household_grid_import_kwh: float = 0
     exported_kwh: float = 0
+    export_credit_lei_per_kwh: float = 0
     self_consumption_percent: float = 0
 
 
