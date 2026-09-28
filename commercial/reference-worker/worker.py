@@ -8,7 +8,11 @@ from workers import Response, WorkerEntrypoint
 
 from app.engine import reference_primary_specific_energy
 from app.models import building_from_json
-from app.rbpe_service import calculate_home_lab_api_json, calculate_home_lab_result_json
+from app.rbpe_service import (
+    calculate_home_lab_api_json,
+    calculate_home_lab_form_api_json,
+    calculate_home_lab_result_json,
+)
 
 
 CORS_HEADERS = {
@@ -72,6 +76,10 @@ class Default(WorkerEntrypoint):
             payload,
             optimizer_candidate=bool(optimizer_candidate),
         )
+
+    async def calculate_home_lab_form_api_json(self, encoded_form):
+        """Parse the live form and execute canonical RBPE inside this shard."""
+        return calculate_home_lab_form_api_json(str(encoded_form))
 
     async def fetch(self, request):
         path = urlparse(request.url).path
