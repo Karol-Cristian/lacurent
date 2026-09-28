@@ -20,8 +20,62 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Install uv
-        run: python -m pip install uv
+
+      - name: Install probe dependencies
+        run: |
+          python -m pip install uv
+          python -m pip install -r commercial/requirements.txt
+
+      - name: Prepare canonical building payload
+        run: |
+          python - <<'PY' > /tmp/building.json
+          from commercial.app.main import build_input_from_form
+          from commercial.app.models import model_to_json
+
+          form = {
+              "project_name": "Private RBPE stress",
+              "locality_id": "@lc2|alba_iulia|III|-18|siruta-stress|Stress%20Locality|Alba",
+              "locality": "Stress Locality",
+              "heated_floor_area_m2": "160",
+              "heated_volume_m3": "432",
+              "indoor_design_temperature_c": "20",
+              "building_type": "residential_individual",
+              "construction_year": "2004",
+              "wall_area_m2": "168",
+              "wall_u_value": "0.42",
+              "roof_area_m2": "92",
+              "roof_u_value": "0.24",
+              "floor_area_m2": "80",
+              "floor_u_value": "0.36",
+              "floor_boundary_type": "ground",
+              "ground_exposed_perimeter_m": "36",
+              "ground_wall_thickness_m": "0.30",
+              "ground_conductivity_w_mk": "2.0",
+              "window_area_m2": "24",
+              "window_u_value": "1.35",
+              "door_area_m2": "3.2",
+              "door_u_value": "1.7",
+              "thermal_bridge_length_m": "42",
+              "thermal_bridge_psi_w_mk": "0.05",
+              "air_changes_per_hour": "0.5",
+              "infiltration_air_changes_per_hour": "0.15",
+              "heat_recovery_efficiency": "0",
+              "heating_system_type": "condensing_gas_boiler",
+              "heating_efficiency": "0.94",
+              "heating_carrier": "natural_gas",
+              "dhw_enabled": "on",
+              "dhw_occupants": "4",
+              "dhw_litres_per_person_day_at_60c": "50",
+              "dhw_efficiency": "0.86",
+              "dhw_carrier": "natural_gas",
+              "pv_enabled": "on",
+              "pv_installed_power_kwp": "5",
+              "pv_orientation": "south",
+              "pv_tilt_degrees": "30",
+              "pv_performance_ratio": "0.82",
+          }
+          print(model_to_json(build_input_from_form(form)))
+          PY
 
       - name: Prepare and deploy private RBPE probe
         run: |
@@ -44,27 +98,55 @@ jobs:
           uvx --from workers-py pywrangler sync --force
           uvx --from workers-py pywrangler deploy
 
-      - name: Prepare and deploy web probe bound to private RBPE
+      - name: Prepare minimal Python proxy bound to private RBPE
         run: |
-          node scripts/prepare-commercial-cloudflare-worker.mjs --name lacurent-commercial-v2-rbpe-probe
-          python - <<'PY'
-          from pathlib import Path
-          p = Path(".wrangler/commercial-v2-worker/wrangler.toml")
-          text = p.read_text()
-          text = text.replace(
-              'service = "lacurent-reference-rbpe"',
-              'service = "lacurent-rbpe-live-probe"',
-          )
-          # Probe is workers.dev only; never attach production domains. Keep
-          # the text-module rules because FastAPI mounts static/templates from
-          # the packaged Python filesystem at import time.
-          before_routes = text.split("\n[[routes]]", 1)[0].rstrip()
-          rules = "\n[[rules]]" + text.split("\n[[rules]]", 1)[1]
-          text = before_routes + "\n" + rules.lstrip("\n")
-          p.write_text(text)
-          print(text)
+          mkdir -p .wrangler/rbpe-proxy-probe
+          cat > .wrangler/rbpe-proxy-probe/worker.py <<'PY'
+          import json
+          from workers import Response, WorkerEntrypoint
+
+          class Default(WorkerEntrypoint):
+              async def fetch(self, request):
+                  payload = await request.text()
+                  result = await self.env.RBPE.calculate_home_lab(payload)
+                  if hasattr(result, "to_py"):
+                      result = result.to_py()
+                  if not isinstance(result, dict):
+                      result = dict(result)
+                  return Response(
+                      json.dumps({
+                          "energy_class": result.get("energy_class"),
+                          "final_energy_kwh": result.get("total_final_energy_kwh"),
+                      }),
+                      headers={"content-type": "application/json"},
+                  )
           PY
-          cd .wrangler/commercial-v2-worker
+          cat > .wrangler/rbpe-proxy-probe/pyproject.toml <<'TOML'
+          [project]
+          name = "lacurent-rbpe-proxy-probe"
+          version = "0.1.0"
+          requires-python = ">=3.13"
+          dependencies = []
+
+          [dependency-groups]
+          dev = ["workers-py", "workers-runtime-sdk"]
+
+          [tool.pywrangler]
+          allow-build = false
+          TOML
+          cat > .wrangler/rbpe-proxy-probe/wrangler.toml <<'TOML'
+          name = "lacurent-rbpe-proxy-probe"
+          main = "worker.py"
+          compatibility_date = "2026-09-27"
+          compatibility_flags = ["python_workers", "enable_weak_ref"]
+          workers_dev = true
+
+          [[services]]
+          binding = "RBPE"
+          service = "lacurent-rbpe-live-probe"
+          remote = true
+          TOML
+          cd .wrangler/rbpe-proxy-probe
           npm install --save-dev wrangler@latest
           mkdir -p .bin
           printf '#!/usr/bin/env bash\nexec npx wrangler "$@"\n' > .bin/wrangler
@@ -73,96 +155,49 @@ jobs:
           uvx --from workers-py pywrangler sync --force
           uvx --from workers-py pywrangler deploy
 
-      - name: Wait for web probe
+      - name: Wait for proxy
         run: |
           for attempt in $(seq 1 60); do
-            if curl -fsS https://lacurent-commercial-v2-rbpe-probe.lemnarukarol.workers.dev/health; then
+            status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
+              --data-binary @/tmp/building.json \
+              https://lacurent-rbpe-proxy-probe.lemnarukarol.workers.dev/ || true)"
+            if [ "$status" = "200" ]; then
               exit 0
             fi
             sleep 2
           done
           exit 1
 
-      - name: Run 96 serial live RBPE recalculations
+      - name: Run 96 serial private RBPE calls
         run: |
           node <<'JS'
-          const baseUrl = "https://lacurent-commercial-v2-rbpe-probe.lemnarukarol.workers.dev";
-          const orientations = ["south","south_west","west","north_west","north","north_east","east","south_east"];
-          const base = {
-            project_name:"Private RBPE stress",
-            locality_id:"@lc2|alba_iulia|III|-18|siruta-stress|Stress%20Locality|Alba",
-            locality:"Stress Locality",
-            heated_floor_area_m2:"160",
-            heated_volume_m3:"432",
-            indoor_design_temperature_c:"20",
-            building_type:"residential_individual",
-            construction_year:"2004",
-            wall_area_m2:"168",
-            wall_u_value:"0.42",
-            roof_area_m2:"92",
-            roof_u_value:"0.24",
-            floor_area_m2:"80",
-            floor_u_value:"0.36",
-            floor_boundary_type:"ground",
-            ground_exposed_perimeter_m:"36",
-            ground_wall_thickness_m:"0.30",
-            ground_conductivity_w_mk:"2.0",
-            window_area_m2:"24",
-            window_u_value:"1.35",
-            door_area_m2:"3.2",
-            door_u_value:"1.7",
-            thermal_bridge_length_m:"42",
-            thermal_bridge_psi_w_mk:"0.05",
-            air_changes_per_hour:"0.5",
-            infiltration_air_changes_per_hour:"0.15",
-            heat_recovery_efficiency:"0",
-            heating_system_type:"condensing_gas_boiler",
-            heating_efficiency:"0.94",
-            heating_carrier:"natural_gas",
-            dhw_enabled:"on",
-            dhw_occupants:"4",
-            dhw_litres_per_person_day_at_60c:"50",
-            dhw_efficiency:"0.86",
-            dhw_carrier:"natural_gas",
-            pv_enabled:"on",
-            pv_installed_power_kwp:"5",
-            pv_tilt_degrees:"30",
-            pv_performance_ratio:"0.82"
-          };
-
+          const fs = await import("node:fs");
+          const url = "https://lacurent-rbpe-proxy-probe.lemnarukarol.workers.dev/";
+          const payload = fs.readFileSync("/tmp/building.json", "utf8").trim();
           for (let i = 0; i < 96; i++) {
-            const orientation = orientations[i % orientations.length];
-            const body = new URLSearchParams({...base, pv_orientation:orientation});
             const started = performance.now();
-            const response = await fetch(baseUrl + "/api/home-lab-next/calculate", {
-              method:"POST",
-              headers:{"Accept":"application/json","Content-Type":"application/x-www-form-urlencoded"},
-              body
-            });
+            const response = await fetch(url, {method:"POST", body:payload});
             const raw = await response.text();
-            let payload = null;
-            try { payload = JSON.parse(raw); } catch (_) {}
+            let body = null;
+            try { body = JSON.parse(raw); } catch (_) {}
             console.log(JSON.stringify({
               count:i+1,
-              orientation,
               status:response.status,
               elapsed_ms:Math.round(performance.now()-started),
-              energy_class:payload?.energy_class ?? null,
-              annual_cost_lei:payload?.annual_cost_lei ?? null
+              energy_class:body?.energy_class ?? null,
+              final_energy_kwh:body?.final_energy_kwh ?? null
             }));
-            if (!response.ok || !payload?.energy_class || payload?.annual_cost_lei == null) {
+            if (!response.ok || !body?.energy_class || body?.final_energy_kwh == null) {
               console.error(raw.slice(0,1500));
               process.exit(1);
             }
             await new Promise(resolve => setTimeout(resolve, 100));
           }
-
-          for (const path of ["/health", "/home-lab-next"]) {
-            const response = await fetch(baseUrl + path);
-            console.log(path, response.status);
-            if (!response.ok) process.exit(2);
-          }
           JS
+
+      - name: Allow analytics to settle
+        if: always()
+        run: sleep 25
 
       - name: Query probe memory
         if: always()
@@ -197,13 +232,13 @@ jobs:
             --header "Content-Type: application/json" \
             --data @/tmp/query.json \
             | jq '.data.viewer.accounts[0].workersInvocationsAdaptive
-              | map(select(.dimensions.scriptName == "lacurent-commercial-v2-rbpe-probe"
+              | map(select(.dimensions.scriptName == "lacurent-rbpe-proxy-probe"
                         or .dimensions.scriptName == "lacurent-rbpe-live-probe"))'
 
       - name: Delete probe Workers
         if: always()
         run: |
-          cd .wrangler/commercial-v2-worker
-          npx wrangler delete --name lacurent-commercial-v2-rbpe-probe --force || true
+          cd .wrangler/rbpe-proxy-probe
+          npx wrangler delete --name lacurent-rbpe-proxy-probe --force || true
           cd ../reference-rbpe-worker
           npx wrangler delete --name lacurent-rbpe-live-probe --force || true
