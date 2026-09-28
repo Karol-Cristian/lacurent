@@ -9,6 +9,72 @@ from .pricing import estimate_energy_cost
 from .reference import reference_physical_mapping
 
 
+def home_lab_live_payload(result: Any) -> dict[str, Any]:
+    """Compact projection for high-frequency Home Lab recalculation.
+
+    The canonical RBPE calculation is still complete. This function only avoids
+    rebuilding and serializing report-only/reference-heavy structures on every
+    slider/select change.
+    """
+
+    cost = estimate_energy_cost(result)
+    climate = result.climate or {}
+    selected = climate.get("selected_locality", {})
+    design_load = design_heat_load_breakdown(
+        result.input,
+        result.transmission_components,
+        result.h_ve_w_k,
+        climate,
+    )
+    area = float(result.input.heated_floor_area_m2)
+    method = methodology()
+
+    return {
+        "energy_class": result.energy_class,
+        "final_energy_kwh": float(result.total_final_energy_kwh),
+        "gross_service_final_energy_kwh": float(result.total_service_final_energy_kwh),
+        "annual_heating_demand_kwh": float(result.annual_heating_demand_kwh),
+        "annual_cooling_demand_kwh": float(result.annual_cooling_demand_kwh),
+        "heating_demand_specific_kwh_m2": (
+            float(result.annual_heating_demand_kwh) / area
+        ),
+        "cooling_demand_specific_kwh_m2": (
+            float(result.annual_cooling_demand_kwh) / area
+        ),
+        "primary_specific_kwh_m2": float(result.primary_energy.specific_kwh_m2),
+        "co2_kg": float(result.co2.total_kg),
+        "co2_specific_kg_m2": float(result.co2.specific_kg_m2),
+        "heat_loss_w_k": float(result.heat_loss_w_k),
+        "annual_cost_lei": (
+            float(cost["priced_total_lei"]) if cost.get("complete") else None
+        ),
+        "average_monthly_cost_lei": (
+            float(cost["average_monthly_priced_lei"])
+            if cost.get("complete")
+            else None
+        ),
+        "design_heat_load_kw": design_load.get("total_kw"),
+        "locality": selected.get("display_name") or result.input.locality,
+        "climate_station": climate.get("station") or "",
+        "climate_zone": climate.get("climate_zone") or None,
+        "winter_design_temperature_c": climate.get("winter_design_temperature_c"),
+        "solar_orientation": result.input.solar.orientation,
+        "solar_glazing_type_id": result.input.solar.glazing_type_id,
+        "final_energy_by_service": {
+            key: float(value)
+            for key, value in result.final_energy_by_service.items()
+        },
+        "final_energy_by_carrier": {
+            str(key): float(value)
+            for key, value in result.final_energy_by_carrier.items()
+        },
+        "price_retrieved_on": cost.get("retrieved_on"),
+        "methodology_version": str(result.methodology_version),
+        "methodology_scope": method.get("scope"),
+        "methodology_source": method.get("monthly_method", {}).get("source"),
+    }
+
+
 def embed_lab_result_payload(result: Any) -> dict[str, Any]:
     cost = estimate_energy_cost(result)
     climate = result.climate or {}
