@@ -154,6 +154,64 @@ try {
   await expectVisible('[data-page="systems"].is-active');
   await page.locator('[data-page="systems"] [data-next]').click();
   await expectVisible('[data-page="renewables"].is-active');
+
+  // Regression for the production 1101 sequence reported when repeatedly
+  // changing PV orientation. Every change must complete one live RBPE request,
+  // keep the HUD populated and route climate through the compact @lc2 token
+  // instead of the large Python locality-registry fallback.
+  const pvEnabled = page.locator("#pvEnabled");
+  if (!(await pvEnabled.isChecked())) {
+    const enableResponse = page.waitForResponse(
+      response =>
+        new URL(response.url()).pathname === "/api/home-lab-next/calculate"
+        && response.request().method() === "POST",
+      {timeout:30000}
+    );
+    await pvEnabled.check();
+    const response = await enableResponse;
+    if (response.status() !== 200) {
+      throw new Error("PV enable live RBPE failed with HTTP " + response.status());
+    }
+  }
+
+  const pvOrientation = page.locator('select[name="pv_orientation"]');
+  const orientationSequence = [
+    "south","south_west","west","north_west",
+    "north","north_east","east","south_east"
+  ];
+  for (const orientation of orientationSequence) {
+    const responsePromise = page.waitForResponse(
+      response =>
+        new URL(response.url()).pathname === "/api/home-lab-next/calculate"
+        && response.request().method() === "POST",
+      {timeout:30000}
+    );
+    await pvOrientation.selectOption(orientation);
+    const response = await responsePromise;
+    if (response.status() !== 200) {
+      throw new Error(
+        "Repeated PV orientation live RBPE failed for " + orientation +
+        " with HTTP " + response.status()
+      );
+    }
+    const postData = response.request().postData() || "";
+    if (!postData.includes("%40lc2%7C") && !postData.includes("@lc2|")) {
+      throw new Error(
+        "PV orientation request did not use the compact climate token: " +
+        postData.slice(0, 1200)
+      );
+    }
+    await page.waitForFunction(
+      () => {
+        const cls = String(document.querySelector("#edBaselineClass")?.textContent || "").trim();
+        const cost = String(document.querySelector("#edBaselineCost")?.textContent || "").trim();
+        return cls && cls !== "—" && cost && cost !== "—";
+      },
+      null,
+      {timeout:30000}
+    );
+  }
+
   await page.locator('[data-page="renewables"] [data-next]').click();
   await expectVisible('[data-page="goal"].is-active');
 
