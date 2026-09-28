@@ -1,4 +1,4 @@
-name: Private RBPE New Request Retry Probe
+name: Private RBPE HTTP Binding Probe
 
 on:
   push:
@@ -26,13 +26,13 @@ jobs:
           python -m pip install uv
           python -m pip install -r commercial/requirements.txt
 
-      - name: Build canonical stress input
+      - name: Build canonical input
         run: |
           python - <<'PY' > /tmp/building.json
           from commercial.app.main import build_input_from_form
           from commercial.app.models import model_to_json
           form = {
-              "project_name":"Private RBPE retry stress",
+              "project_name":"HTTP binding stress",
               "locality_id":"@lc2|alba_iulia|III|-18|siruta-stress|Stress%20Locality|Alba",
               "locality":"Stress Locality",
               "heated_floor_area_m2":"160","heated_volume_m3":"432",
@@ -56,15 +56,15 @@ jobs:
           print(model_to_json(build_input_from_form(form)))
           PY
 
-      - name: Deploy private RBPE probe
+      - name: Deploy private RBPE
         run: |
           node scripts/prepare-reference-cloudflare-worker.mjs
           python - <<'PY'
           from pathlib import Path
-          p = Path(".wrangler/reference-rbpe-worker/wrangler.toml")
+          p=Path(".wrangler/reference-rbpe-worker/wrangler.toml")
           p.write_text(p.read_text().replace(
               'name = "lacurent-reference-rbpe"',
-              'name = "lacurent-rbpe-new-request-probe"',
+              'name = "lacurent-rbpe-http-probe"',
           ))
           PY
           cd .wrangler/reference-rbpe-worker
@@ -77,146 +77,110 @@ jobs:
           uvx --from workers-py pywrangler deploy
           sleep 15
 
-      - name: Deploy one-shot proxy
+      - name: Deploy JavaScript HTTP-binding proxy
         run: |
-          mkdir -p .wrangler/rbpe-new-request-proxy
-          cat > .wrangler/rbpe-new-request-proxy/worker.py <<'PY'
-          import json
-          from workers import Response, WorkerEntrypoint
-
-          class Default(WorkerEntrypoint):
-              async def fetch(self, request):
-                  payload = await request.text()
-                  try:
-                      result_json = await self.env.RBPE.calculate_home_lab_json(payload)
-                      return Response(
-                          str(result_json),
-                          headers={"content-type":"application/json"},
-                      )
-                  except Exception as exc:
-                      return Response(
-                          json.dumps({
-                              "error":"private_rbpe_recycle",
-                              "errorType":type(exc).__name__,
-                          }),
-                          status=503,
-                          headers={
-                              "content-type":"application/json",
-                              "retry-after":"0.4",
-                          },
-                      )
-          PY
-          cat > .wrangler/rbpe-new-request-proxy/pyproject.toml <<'TOML'
-          [project]
-          name = "lacurent-rbpe-new-request-proxy"
-          version = "0.1.0"
-          requires-python = ">=3.13"
-          dependencies = []
-
-          [dependency-groups]
-          dev = ["workers-py", "workers-runtime-sdk"]
-
-          [tool.pywrangler]
-          allow-build = false
-          TOML
-          cat > .wrangler/rbpe-new-request-proxy/wrangler.toml <<'TOML'
-          name = "lacurent-rbpe-new-request-proxy"
-          main = "worker.py"
+          mkdir -p .wrangler/rbpe-http-proxy
+          cat > .wrangler/rbpe-http-proxy/worker.mjs <<'JS'
+          export default {
+            async fetch(request, env) {
+              const payload = await request.text();
+              try {
+                const inner = new Request("https://rbpe.internal/calculate-home-lab", {
+                  method: "POST",
+                  headers: {"content-type":"application/json","accept":"application/json"},
+                  body: JSON.stringify({payload})
+                });
+                const response = await env.RBPE.fetch(inner);
+                return new Response(response.body, {
+                  status: response.status,
+                  headers: response.headers
+                });
+              } catch (error) {
+                return Response.json(
+                  {error:"private_rbpe_binding_failure", errorType:error?.name || "Error"},
+                  {status:503}
+                );
+              }
+            }
+          };
+          JS
+          cat > .wrangler/rbpe-http-proxy/wrangler.toml <<'TOML'
+          name = "lacurent-rbpe-http-proxy"
+          main = "worker.mjs"
           compatibility_date = "2026-09-27"
-          compatibility_flags = ["python_workers", "enable_weak_ref"]
           workers_dev = true
 
           [[services]]
           binding = "RBPE"
-          service = "lacurent-rbpe-new-request-probe"
+          service = "lacurent-rbpe-http-probe"
           remote = true
           TOML
-          cd .wrangler/rbpe-new-request-proxy
+          cd .wrangler/rbpe-http-proxy
           npm install --save-dev wrangler@latest
-          mkdir -p .bin
-          printf '#!/usr/bin/env bash\nexec npx wrangler "$@"\n' > .bin/wrangler
-          chmod +x .bin/wrangler
-          export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
-          uvx --from workers-py pywrangler sync --force
-          uvx --from workers-py pywrangler deploy
+          npx wrangler deploy
+          sleep 15
 
-      - name: Wait until service binding is healthy
+      - name: Wait for healthy binding
         run: |
           for attempt in $(seq 1 90); do
-            code="$(curl -sS -o /tmp/probe.json -w '%{http_code}' -X POST \
+            code="$(curl -sS -o /tmp/result.json -w '%{http_code}' -X POST \
               --data-binary @/tmp/building.json \
-              https://lacurent-rbpe-new-request-proxy.lemnarukarol.workers.dev/ || true)"
+              https://lacurent-rbpe-http-proxy.lemnarukarol.workers.dev/ || true)"
             if [ "$code" = "200" ]; then
-              cat /tmp/probe.json
+              cat /tmp/result.json
               exit 0
             fi
             sleep 2
           done
-          cat /tmp/probe.json || true
+          cat /tmp/result.json || true
           exit 1
 
-      - name: Run 240 logical calculations with new-request recovery
+      - name: Run 240 serial calculations through HTTP binding
         run: |
           node <<'JS'
           const fs = await import("node:fs");
           const payload = fs.readFileSync("/tmp/building.json","utf8").trim();
-          const url = "https://lacurent-rbpe-new-request-proxy.lemnarukarol.workers.dev/";
+          const url = "https://lacurent-rbpe-http-proxy.lemnarukarol.workers.dev/";
           const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-          let recovered = 0;
+          let recoveries = 0;
 
-          async function callOnce() {
+          async function once() {
             const response = await fetch(url,{method:"POST",body:payload});
             const raw = await response.text();
-            let body = null;
-            try { body = JSON.parse(raw); } catch (_) {}
+            let body=null;
+            try { body=JSON.parse(raw); } catch {}
             return {response,raw,body};
           }
 
-          for (let i=0; i<240; i++) {
-            const started = performance.now();
-            let attempt = 1;
-            let current = await callOnce();
-
-            if (
-              current.response.status === 503 &&
-              current.body?.error === "private_rbpe_recycle"
-            ) {
-              recovered += 1;
-              attempt = 2;
-              await sleep(2500);
-              current = await callOnce();
+          for (let i=0;i<240;i++) {
+            const started=performance.now();
+            let attempt=1;
+            let current=await once();
+            if (current.response.status >= 500) {
+              recoveries += 1;
+              attempt=2;
+              await sleep(750);
+              current=await once();
             }
-
             console.log(JSON.stringify({
-              count:i+1,
-              status:current.response.status,
-              attempt,
+              count:i+1,status:current.response.status,attempt,
               elapsed_ms:Math.round(performance.now()-started),
               energy_class:current.body?.energy_class ?? null,
               final_energy_kwh:current.body?.total_final_energy_kwh ?? null
             }));
-
-            if (
-              !current.response.ok ||
-              !current.body?.energy_class ||
-              current.body?.total_final_energy_kwh == null
-            ) {
+            if (!current.response.ok || !current.body?.energy_class || current.body?.total_final_energy_kwh == null) {
               console.error(current.raw.slice(0,1500));
               process.exit(1);
             }
             await sleep(75);
           }
-          console.log(JSON.stringify({
-            status:"stress-complete",
-            logical_requests:240,
-            recovered_recycles:recovered
-          }));
+          console.log(JSON.stringify({status:"stress-complete",logical_requests:240,recoveries}));
           JS
 
       - name: Delete probes
         if: always()
         run: |
-          cd .wrangler/rbpe-new-request-proxy
-          npx wrangler delete --name lacurent-rbpe-new-request-proxy --force || true
+          cd .wrangler/rbpe-http-proxy
+          npx wrangler delete --name lacurent-rbpe-http-proxy --force || true
           cd ../reference-rbpe-worker
-          npx wrangler delete --name lacurent-rbpe-new-request-probe --force || true
+          npx wrangler delete --name lacurent-rbpe-http-probe --force || true
