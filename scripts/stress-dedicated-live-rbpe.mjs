@@ -9,6 +9,7 @@ const orientations = ["south","south_west","west","north_west","north","north_ea
 const cycles = Number(process.env.RBPE_CYCLES || 12);
 const delayMs = Number(process.env.RBPE_DELAY_MS || 100);
 const details = /^(1|true|yes)$/i.test(String(process.env.RBPE_DETAILS || ""));
+const endpointPath = process.env.RBPE_PATH || "/live-calculation";
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 let count = 0;
@@ -26,7 +27,7 @@ for (let cycle = 0; cycle < cycles; cycle += 1) {
       performance_ratio:0.82,
     };
     const started = performance.now();
-    const response = await fetch(baseUrl + "/live-calculation", {
+    const response = await fetch(baseUrl + endpointPath, {
       method:"POST",
       headers:{
         "Accept":"application/json",
