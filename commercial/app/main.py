@@ -2799,11 +2799,10 @@ async def _canonical_home_lab_result(
                 status_code=503,
                 detail="Serviciul privat RBPE nu este disponibil.",
             )
-        raw = await service.calculate_home_lab(payload)
-        if hasattr(raw, "to_py"):
-            raw = raw.to_py()
-        if not isinstance(raw, dict):
-            raw = dict(raw)
+        raw_json = await service.calculate_home_lab_json(payload)
+        if not isinstance(raw_json, str):
+            raw_json = str(raw_json)
+        raw = json.loads(raw_json)
     else:
         # Local pytest/Uvicorn fallback only. Production must always preserve
         # the private Worker boundary above.
