@@ -42,6 +42,15 @@ jobs:
           text = parts[0].rstrip() + "\n"
           p.write_text(text)
           print(text)
+
+          pyproject = Path(".wrangler/commercial-v2-worker/pyproject.toml")
+          project_text = pyproject.read_text()
+          project_text = project_text.replace(
+              '"pydantic>=1.10,<2",',
+              '"pydantic>=2.13,<3",',
+          )
+          pyproject.write_text(project_text)
+          print(project_text)
           PY
 
       - name: Install Wrangler and sync Python dependencies
