@@ -152,6 +152,7 @@ button{cursor:pointer}
 .ed-price-dialog{
   width:min(94vw,820px);
   max-height:min(86vh,760px);
+  overflow:hidden;
   border:1px solid var(--line);
   border-radius:22px;
   padding:0;
@@ -164,7 +165,12 @@ button{cursor:pointer}
   backdrop-filter:blur(5px);
   -webkit-backdrop-filter:blur(5px);
 }
-.ed-price-dialog-shell{overflow:auto;max-height:min(86vh,760px)}
+.ed-price-dialog-shell{
+  max-height:min(86vh,760px);
+  overflow-x:hidden;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+}
 .ed-price-dialog-header{
   position:sticky;
   top:0;

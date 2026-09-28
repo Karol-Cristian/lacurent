@@ -251,6 +251,26 @@ try {
   }
   await page.locator("#edPriceReferencesOpen").click();
   await page.locator("#priceDialog").waitFor({state:"visible", timeout:5000});
+  const modalScrollContract = await page.evaluate(() => {
+    const dialog = document.querySelector("#priceDialog");
+    const shell = dialog?.querySelector(".ed-price-dialog-shell");
+    if (!(dialog instanceof HTMLElement) || !(shell instanceof HTMLElement)) return null;
+    const dialogStyle = getComputedStyle(dialog);
+    const shellStyle = getComputedStyle(shell);
+    return {
+      dialogOverflowX:dialogStyle.overflowX,
+      dialogOverflowY:dialogStyle.overflowY,
+      shellOverflowX:shellStyle.overflowX,
+      shellOverflowY:shellStyle.overflowY,
+    };
+  });
+  if (!modalScrollContract ||
+      modalScrollContract.dialogOverflowX !== "hidden" ||
+      modalScrollContract.dialogOverflowY !== "hidden" ||
+      modalScrollContract.shellOverflowX !== "hidden" ||
+      modalScrollContract.shellOverflowY !== "auto") {
+    throw new Error("Editorial dialog must have exactly one scroll owner: " + JSON.stringify(modalScrollContract));
+  }
   const mobileEnergyDetails = await page.locator("#edCostEnergySummary").innerText();
   for (const label of [
     "Necesar util anual de încălzire",
