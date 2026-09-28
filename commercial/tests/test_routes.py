@@ -810,6 +810,51 @@ def test_private_rbpe_topology_is_minimal_sharded_and_service_bound() -> None:
     assert ".wrangler/reference-rbpe-worker" in prepare
 
 
+def test_private_teo_topology_is_sharded_and_route_isolated() -> None:
+    shard_wrangler = Path("commercial/teo-worker/wrangler.toml").read_text(
+        encoding="utf-8"
+    )
+    router = Path("commercial/teo-router/worker.mjs").read_text(encoding="utf-8")
+    router_wrangler = Path("commercial/teo-router/wrangler.toml").read_text(
+        encoding="utf-8"
+    )
+    prepare = Path("scripts/prepare-teo-cloudflare-worker.mjs").read_text(
+        encoding="utf-8"
+    )
+    workflow = Path(".github/workflows/commercial-v2-cloudflare-worker.yml").read_text(
+        encoding="utf-8"
+    )
+    soak = Path("scripts/soak-teo-production.mjs").read_text(encoding="utf-8")
+
+    assert 'name = "lacurent-teo-private"' in shard_wrangler
+    assert 'workers_dev = false' in shard_wrangler
+    assert 'binding = "DB"' in shard_wrangler
+    assert 'database_name = "lacurent-db"' in shard_wrangler
+    assert 'binding = "REFERENCE_RBPE"' in shard_wrangler
+    assert 'service = "lacurent-rbpe-router"' in shard_wrangler
+
+    for binding in ("TEO_A", "TEO_B", "TEO_C", "TEO_D"):
+        assert f'binding = "{binding}"' in router_wrangler
+    for suffix in ("a", "b", "c", "d"):
+        assert f'service = "lacurent-teo-shard-{suffix}"' in router_wrangler
+
+    assert 'pattern = "lacurent.com/api/optimization/home-lab/v3/*"' in router_wrangler
+    assert 'pattern = "lacurent.com/api/optimization/home-lab/v4/*"' in router_wrangler
+    assert '"x-lacurent-teo", "private-teo-sharded"' in router
+    assert "disabledUntil" in router
+    assert "response.status >= 500" in router
+    assert "requestBodyBytes" in router
+    assert ".wrangler/teo-worker" in prepare
+    assert "copyDirectory(path.join(commercialRoot, \"app\")" in prepare
+    assert "Deploy four private TEO shards" in workflow
+    assert "Deploy private TEO router" in workflow
+    assert "Run 10-pass production TEO reliability soak" in workflow
+    assert 'TEO_SOAK_RUNS: "10"' in workflow
+    assert "private-teo-sharded" in soak
+    assert "serverErrors.length" in soak
+    assert "TEO final report is non-deterministic" in soak
+
+
 def test_official_price_registry_endpoint_is_available() -> None:
     response = client.get("/api/energy-prices")
     assert response.status_code == 200
