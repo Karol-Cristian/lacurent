@@ -87,7 +87,7 @@ jobs:
           Path("wrangler.toml").write_text(
               template.replace(
                   'name = "lacurent-reference-rbpe"',
-                  f'name = "lacurent-rbpe-live-{suffix}"',
+                  f'name = "lacurent-rbpe-live-{suffix}-{__import__("os").environ["GITHUB_RUN_ID"]}"',
               )
           )
           PY
@@ -196,30 +196,30 @@ jobs:
           };
           JS
 
-          cat > .wrangler/rbpe-shard-router/wrangler.toml <<'TOML'
-          name = "lacurent-rbpe-live-router-probe"
+          cat > .wrangler/rbpe-shard-router/wrangler.toml <<TOML
+          name = "lacurent-rbpe-router-${GITHUB_RUN_ID}"
           main = "worker.mjs"
           compatibility_date = "2026-09-27"
           workers_dev = true
 
           [[services]]
           binding = "RBPE_A"
-          service = "lacurent-rbpe-live-a"
+          service = "lacurent-rbpe-live-a-${GITHUB_RUN_ID}"
           remote = true
 
           [[services]]
           binding = "RBPE_B"
-          service = "lacurent-rbpe-live-b"
+          service = "lacurent-rbpe-live-b-${GITHUB_RUN_ID}"
           remote = true
 
           [[services]]
           binding = "RBPE_C"
-          service = "lacurent-rbpe-live-c"
+          service = "lacurent-rbpe-live-c-${GITHUB_RUN_ID}"
           remote = true
 
           [[services]]
           binding = "RBPE_D"
-          service = "lacurent-rbpe-live-d"
+          service = "lacurent-rbpe-live-d-${GITHUB_RUN_ID}"
           remote = true
           TOML
 
@@ -232,7 +232,7 @@ jobs:
           for attempt in $(seq 1 90); do
             code="$(curl -sS -o /tmp/router-result.json -w '%{http_code}' -X POST \
               --data-binary @/tmp/building.json \
-              https://lacurent-rbpe-live-router-probe.lemnarukarol.workers.dev/ || true)"
+              https://lacurent-rbpe-router-${GITHUB_RUN_ID}.lemnarukarol.workers.dev/ || true)"
             if [ "$code" = "200" ]; then
               cat /tmp/router-result.json
               exit 0
@@ -243,11 +243,13 @@ jobs:
           exit 1
 
       - name: Run 500 serial calculations through sharded router
+        env:
+          ROUTER_URL: https://lacurent-rbpe-router-${{ github.run_id }}.lemnarukarol.workers.dev/
         run: |
           node <<'JS'
           const fs = await import("node:fs");
           const payload = fs.readFileSync("/tmp/building.json","utf8").trim();
-          const url = "https://lacurent-rbpe-live-router-probe.lemnarukarol.workers.dev/";
+          const url = process.env.ROUTER_URL;
           const counts = {};
           let recovered = 0;
           let maxMs = 0;
@@ -292,8 +294,8 @@ jobs:
         if: always()
         run: |
           cd .wrangler/rbpe-shard-router
-          npx wrangler delete --name lacurent-rbpe-live-router-probe --force || true
+          npx wrangler delete --name "lacurent-rbpe-router-${GITHUB_RUN_ID}" --force || true
           cd ../reference-rbpe-worker
           for suffix in a b c d; do
-            npx wrangler delete --name "lacurent-rbpe-live-$suffix" --force || true
+            npx wrangler delete --name "lacurent-rbpe-live-$suffix-${GITHUB_RUN_ID}" --force || true
           done
