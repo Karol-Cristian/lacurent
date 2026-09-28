@@ -30,6 +30,7 @@
   const priceReferenceOpen = $("#edPriceReferencesOpen");
   const priceReferenceGrid = $("#edPriceReferenceGrid");
   const priceReferenceBody = $("#edPriceReferenceBody");
+  const costEnergySummary = $("#edCostEnergySummary");
   const priceRetrievedOn = $("#edPriceRetrievedOn");
   const priceReferenceFallbackHtml = priceReferenceGrid?.innerHTML || "";
   const priceReferenceFallbackIntro = priceReferenceBody?.querySelector(".ed-price-reference-intro")?.textContent || "";
@@ -1800,8 +1801,25 @@
     return "Referință";
   }
 
+  function renderCostEnergySummary(result = baselineResult) {
+    if (!costEnergySummary) return;
+    const metrics = [
+      ["QH,nd", "Necesar util anual de încălzire", result?.annual_heating_demand_kwh],
+      ["QC,nd", "Necesar util anual de răcire", result?.annual_cooling_demand_kwh],
+      ["Efinal", "Energie finală anuală", result?.final_energy_kwh],
+      ["Eprim", "Energie primară anuală", result?.primary_energy_kwh],
+    ];
+    costEnergySummary.innerHTML = metrics.map(([symbol, label, value]) =>
+      '<article class="ed-cost-energy-card">' +
+        '<div><b>' + escapeHtml(symbol) + '</b><small>' + escapeHtml(label) + '</small></div>' +
+        '<strong>' + escapeHtml(value == null ? "—" : energy(value)) + '</strong>' +
+      '</article>'
+    ).join("");
+  }
+
   function renderPriceReferences(result = baselineResult) {
     if (!priceReferenceGrid || !priceReferenceBody) return;
+    renderCostEnergySummary(result);
     const rows = Array.isArray(result?.price_reference_rows)
       ? result.price_reference_rows.filter(row => Number(row?.final_kwh || 0) > 0.0001)
       : [];

@@ -161,8 +161,8 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'data-page="run"' in page.text
     assert 'data-page="report"' in page.text
     assert 'data-page="renewables"' in page.text
-    assert "/static/home-lab-editorial.css?v=18" in page.text
-    assert "/static/home-lab-editorial.js?v=41" in page.text
+    assert "/static/home-lab-editorial.css?v=19" in page.text
+    assert "/static/home-lab-editorial.js?v=42" in page.text
     assert "/static/home-lab-3d.js" not in page.text
     assert 'id="edBaselineClass"' in page.text
     assert 'id="edClassReferenceOpen"' in page.text
@@ -173,6 +173,11 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'id="edBaselineCoolingDemand"' in page.text
     assert 'id="edBaselineFinalEnergy"' in page.text
     assert 'id="edBaselinePrimaryEnergy"' in page.text
+    assert 'title="Necesar anual util pentru încălzire">QH,nd</abbr>' in page.text
+    assert 'title="Necesar anual util pentru răcire">QC,nd</abbr>' in page.text
+    assert 'title="Energie finală anuală">Efinal</abbr>' in page.text
+    assert 'title="Energie primară anuală">Eprim</abbr>' in page.text
+    assert 'id="edCostEnergySummary"' in page.text
     assert 'id="edPriceReferencesOpen"' in page.text
     assert 'id="priceDialog"' in page.text
     assert 'id="edPriceReferenceGrid"' in page.text
@@ -257,6 +262,8 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'baselineCoolingDemand.textContent' in js.text
     assert 'baselineFinalEnergy.textContent' in js.text
     assert 'baselinePrimaryEnergy.textContent' in js.text
+    assert "function renderCostEnergySummary(" in js.text
+    assert '["QH,nd", "Necesar util anual de încălzire"' in js.text
     assert "DEFAULT_INFILTRATION_ACH = 0.15" in js.text
     assert "function optimizationSummaryForPersistentBar()" in js.text
     assert "Shortlist canonic selectat local:" in js.text

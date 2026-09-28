@@ -1499,3 +1499,87 @@ body{
   .ed-shell{min-height:calc(100vh - 118px)}
   .ed-page{min-height:calc(100vh - 118px)}
 }
+
+
+/* Editorial v19: compact mobile HUD + engineering indicator notation */
+.ed-baseline-energy-item{
+  grid-template-columns:auto 1fr;
+  grid-template-areas:"label value";
+  gap:8px;
+  padding:4px 7px;
+}
+.ed-baseline-energy-item abbr{
+  grid-area:label;
+  text-decoration:none;
+  border:0;
+  cursor:help;
+  font-size:11px;
+  line-height:1;
+  color:#6e7580;
+  font-weight:760;
+  letter-spacing:-.015em;
+}
+.ed-baseline-energy-item strong{
+  font-size:14px;
+  line-height:1;
+  justify-self:end;
+}
+.ed-cost-energy-summary{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:8px;
+  margin:0 0 18px;
+}
+.ed-cost-energy-card{
+  min-width:0;
+  padding:12px 13px;
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:#fafbfc;
+}
+.ed-cost-energy-card>div{
+  display:grid;
+  gap:2px;
+  margin-bottom:9px;
+}
+.ed-cost-energy-card b{
+  font-size:12px;
+  letter-spacing:-.02em;
+}
+.ed-cost-energy-card small{
+  color:var(--muted);
+  font-size:8.5px;
+  line-height:1.25;
+}
+.ed-cost-energy-card>strong{
+  display:block;
+  font-size:14px;
+  line-height:1.15;
+  letter-spacing:-.025em;
+  font-variant-numeric:tabular-nums;
+}
+@media(max-width:920px) and (min-width:721px){
+  .ed-baseline-energy-item abbr{font-size:10px}
+  .ed-baseline-energy-item strong{font-size:12px}
+}
+@media(max-width:720px){
+  .ed-baseline-energy-group,
+  .ed-baseline-energy-divider{
+    display:none!important;
+  }
+  .ed-baseline-bar{min-height:38px}
+  .ed-baseline-inner{
+    min-height:38px;
+    flex-wrap:nowrap;
+    padding:0 12px;
+  }
+  .ed-shell{min-height:calc(100vh - 94px)}
+  .ed-page{min-height:calc(100vh - 94px)}
+  .ed-cost-energy-summary{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:7px;
+    margin-bottom:15px;
+  }
+  .ed-cost-energy-card{padding:11px}
+  .ed-cost-energy-card>strong{font-size:13px}
+}

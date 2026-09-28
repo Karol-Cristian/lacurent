@@ -225,6 +225,51 @@ try {
     );
   }
 
+  const desktopEnergyHud = await page.evaluate(() => {
+    const group = document.querySelector(".ed-baseline-energy-group");
+    if (!(group instanceof HTMLElement)) return null;
+    return {
+      display:getComputedStyle(group).display,
+      text:String(group.textContent || "").replace(/\\s+/g, " ").trim(),
+    };
+  });
+  if (!desktopEnergyHud || desktopEnergyHud.display === "none" ||
+      !desktopEnergyHud.text.includes("QH,nd") ||
+      !desktopEnergyHud.text.includes("QC,nd") ||
+      !desktopEnergyHud.text.includes("Efinal") ||
+      !desktopEnergyHud.text.includes("Eprim")) {
+    throw new Error("Editorial desktop energy HUD notation is missing: " + JSON.stringify(desktopEnergyHud));
+  }
+
+  const editorialDesktopViewport = page.viewportSize();
+  await page.setViewportSize({width:390,height:844});
+  const mobileEnergyHudDisplay = await page.evaluate(() =>
+    getComputedStyle(document.querySelector(".ed-baseline-energy-group")).display
+  );
+  if (mobileEnergyHudDisplay !== "none") {
+    throw new Error("Editorial mobile energy metrics must be hidden behind annual cost details.");
+  }
+  await page.locator("#edPriceReferencesOpen").click();
+  await page.locator("#priceDialog").waitFor({state:"visible", timeout:5000});
+  const mobileEnergyDetails = await page.locator("#edCostEnergySummary").innerText();
+  for (const label of [
+    "Necesar util anual de încălzire",
+    "Necesar util anual de răcire",
+    "Energie finală anuală",
+    "Energie primară anuală",
+  ]) {
+    if (!mobileEnergyDetails.includes(label)) {
+      throw new Error("Annual cost dialog is missing energy detail: " + label + " :: " + mobileEnergyDetails);
+    }
+  }
+  if ((mobileEnergyDetails.match(/—/g) || []).length > 0) {
+    throw new Error("Annual cost dialog contains unresolved live RBPE energy values: " + mobileEnergyDetails);
+  }
+  await page.locator("#closePriceReferences").click();
+  if (editorialDesktopViewport) {
+    await page.setViewportSize(editorialDesktopViewport);
+  }
+
   await page.locator('[data-page="renewables"] [data-next]').click();
   await expectVisible('[data-page="goal"].is-active');
 
