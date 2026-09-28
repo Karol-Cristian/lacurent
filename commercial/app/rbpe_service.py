@@ -29,3 +29,17 @@ def calculate_home_lab_result_payload(payload: str | dict[str, Any]) -> dict[str
     del building
     gc.collect()
     return transport
+
+
+def calculate_home_lab_result_json(payload: str | dict[str, Any]) -> str:
+    """Serialize the canonical result before crossing the Worker RPC boundary.
+
+    Nested Python objects transferred directly through cross-Worker RPC create a
+    large Pyodide/V8 proxy graph in the caller. A JSON string is a primitive
+    transport value and keeps that bridge memory bounded.
+    """
+    transport = calculate_home_lab_result_payload(payload)
+    encoded = json.dumps(transport, ensure_ascii=False, separators=(",", ":"))
+    del transport
+    gc.collect()
+    return encoded
