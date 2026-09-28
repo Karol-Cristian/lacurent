@@ -904,6 +904,11 @@ def test_home_lab_persistent_summary_stays_bound_to_current_result_and_status() 
     assert 'class="hln-live-summary"' in response.text
     assert 'id="hlnPersistentClass"' in response.text
     assert 'id="hlnPersistentCost"' in response.text
+    assert 'data-hln-open-energy-details' in response.text
+    assert 'id="hlnEnergyDetailHeating"' in response.text
+    assert 'id="hlnEnergyDetailCooling"' in response.text
+    assert 'id="hlnEnergyDetailFinal"' in response.text
+    assert 'id="hlnEnergyDetailPrimary"' in response.text
     assert 'id="hlnPersistentEnergy"' in response.text
     assert 'class="hln-dock"' in response.text
     assert 'class="hln-dock-benefits hln-dock-compare"' in response.text
@@ -957,6 +962,11 @@ def test_home_lab_persistent_summary_stays_bound_to_current_result_and_status() 
     assert js.status_code == 200
     assert '$("#hlnPersistentClass").textContent' in js.text
     assert '$("#hlnPersistentCost").textContent' in js.text
+    assert 'const openEnergyDetails = () =>' in js.text
+    assert '$("#hlnEnergyDetailHeating")' in js.text
+    assert '$("#hlnEnergyDetailCooling")' in js.text
+    assert '$("#hlnEnergyDetailFinal")' in js.text
+    assert '$("#hlnEnergyDetailPrimary")' in js.text
     assert '$("#hlnPersistentEnergy").textContent' in js.text
     assert 'const costDeltaNode = $("#hlnPersistentCostDelta")' in js.text
     assert 'const energyDeltaNode = $("#hlnPersistentEnergyDelta")' in js.text
@@ -1406,6 +1416,7 @@ def test_home_lab_next_optimizer_candidate_returns_compact_metrics_only() -> Non
         "annual_cost_lei",
     }
     assert payload["final_energy_kwh"] > 0
+    assert payload["primary_energy_kwh"] > 0
     assert payload["primary_specific_kwh_m2"] > 0
     assert payload["co2_specific_kg_m2"] >= 0
     assert payload["annual_cost_lei"] is not None
