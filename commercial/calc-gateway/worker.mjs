@@ -1,3 +1,23 @@
+export async function encodeLiveCalculationForm(request) {
+  const contentType = String(request.headers.get("content-type") || "").toLowerCase();
+
+  if (contentType.includes("multipart/form-data")) {
+    const form = await request.formData();
+    const params = new URLSearchParams();
+    for (const [key, value] of form.entries()) {
+      if (typeof value !== "string") {
+        throw new TypeError("Home Lab live calculation does not accept file uploads.");
+      }
+      params.append(key, value);
+    }
+    return params.toString();
+  }
+
+  // application/x-www-form-urlencoded is already the canonical transport used
+  // by the Python shard parser. Keep it byte-light and avoid reparsing it here.
+  return await request.text();
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -17,7 +37,7 @@ export default {
     }
 
     try {
-      const encodedForm = await request.text();
+      const encodedForm = await encodeLiveCalculationForm(request);
       const rawJson = await env.RBPE_ROUTER.calculate_home_lab_form_api_json(
         encodedForm,
       );
