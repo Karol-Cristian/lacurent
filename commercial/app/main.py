@@ -21,8 +21,8 @@ from .error_page import render_error_html
 from .home_lab_images import HOME_LAB_IMAGE_BYTES
 from .home_lab_payload import embed_lab_result_payload, optimizer_candidate_payload
 from .methodology import climate_data, methodology, resolve_locality
-from .models import BuildingInput, CalculationResult, building_from_json, model_to_dict, model_to_json
-from .rbpe_service import calculate_home_lab_result_payload
+from .models import BuildingInput, building_from_json, model_to_dict, model_to_json
+from .rbpe_service import calculate_home_lab_api_json
 from .optimization import (
     CandidateEvaluationV1,
     OptimizationCandidateRequestV1,
@@ -196,6 +196,7 @@ async def collect_python_worker_garbage(request: Request, call_next: Any) -> Any
                 "/static/",
                 "/home-lab-assets/",
                 "/api/optimization/home-lab/v4/flow/",
+                "/api/home-lab-next/calculate",
             )
         ):
             gc.collect()
@@ -2425,53 +2426,12 @@ async def home_lab_classic(request: Request) -> HTMLResponse:
     )
 
 
-async def _canonical_home_lab_result(
-    request: Request,
-    building: BuildingInput,
-) -> CalculationResult:
-    """Run canonical RBPE outside the web isolate in production.
-
-    Cloudflare Python isolates have a shared memory budget across sequential
-    requests. Keeping calculate() in the main FastAPI/Jinja/D1 Worker caused
-    repeated live edits to raise its memory high-water mark until 1102. The
-    private REFERENCE_RBPE service already has its own isolate and is therefore
-    also the canonical execution boundary for ordinary Home Lab calculations.
-    """
-    payload = model_to_json(building)
-    env = request.scope.get("env")
-    if env is not None:
-        service = getattr(env, "REFERENCE_RBPE", None)
-        if service is None:
-            raise HTTPException(
-                status_code=503,
-                detail="Serviciul privat RBPE nu este disponibil.",
-            )
-        # Cross the Worker boundary as one primitive JSON string. The
-        # dedicated Worker performs calculate() and serializes exactly once;
-        # the web Worker only reconstructs the transport result.
-        raw_json = await service.calculate_home_lab_json(payload)
-        if not isinstance(raw_json, str):
-            raw_json = str(raw_json)
-        raw = json.loads(raw_json)
-    else:
-        # Local pytest/Uvicorn fallback only. Production must always preserve
-        # the private Worker boundary above.
-        raw = calculate_home_lab_result_payload(payload)
-
-    return CalculationResult(**raw)
-
-
-async def home_lab_next_calculation(request: Request) -> JSONResponse:
+async def home_lab_next_calculation(request: Request) -> Response:
     form = dict(await request.form())
-    # Scenario and optimizer requests reuse the reference configuration already
-    # calculated for the saved baseline. Recomputing it here roughly doubles
-    # the CPU work per live request and is unnecessary for those flows.
-    skip_reference = str(form.pop("_skip_reference", "")).strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
+    # Reference RBPE is a separate on-demand comparison. Ordinary live and
+    # optimizer-candidate calculations are always single-pass actual-building
+    # evaluations in the private RBPE Worker.
+    form.pop("_skip_reference", None)
     optimizer_candidate = str(form.pop("_optimizer_candidate", "")).strip().lower() in {
         "1",
         "true",
@@ -2480,22 +2440,44 @@ async def home_lab_next_calculation(request: Request) -> JSONResponse:
     }
     try:
         clear_baseline_evaluation_cache()
-        gc.collect()
         building = build_input_from_form(form)
-        result = await _canonical_home_lab_result(request, building)
+        payload = model_to_json(building)
+        env = request.scope.get("env")
+        if env is not None:
+            service = getattr(env, "REFERENCE_RBPE", None)
+            if service is None:
+                raise HTTPException(
+                    status_code=503,
+                    detail="Serviciul privat RBPE nu este disponibil.",
+                )
+            raw_json = await service.calculate_home_lab_api_json(
+                payload,
+                optimizer_candidate,
+            )
+            if not isinstance(raw_json, str):
+                raw_json = str(raw_json)
+        else:
+            # Local pytest/Uvicorn fallback. Production must preserve the
+            # private Worker boundary above.
+            raw_json = calculate_home_lab_api_json(
+                payload,
+                optimizer_candidate=optimizer_candidate,
+            )
         del building
-        gc.collect()
     except HTTPException as exc:
         return JSONResponse({"error": str(exc.detail)}, status_code=exc.status_code)
     except Exception as exc:
         return JSONResponse({"error": user_error(exc)}, status_code=422)
-    if optimizer_candidate:
-        return JSONResponse(optimizer_candidate_payload(result))
-    return JSONResponse(embed_lab_result_payload(result))
+
+    return Response(
+        raw_json,
+        media_type="application/json",
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @app.post("/api/home-lab-next/calculate")
-async def home_lab_next_calculate_api(request: Request) -> JSONResponse:
+async def home_lab_next_calculate_api(request: Request) -> Response:
     return await home_lab_next_calculation(request)
 
 
