@@ -77,13 +77,43 @@ jobs:
               json.dump(model_to_dict(demo_building()), f)
           PY
 
-      - name: Stress full live payload 96 times
+      - name: Stress compact live RBPE 1000 times
         env:
           RBPE_BASE_URL: https://lacurent-live-rbpe-probe.lemnarukarol.workers.dev
           RBPE_BUILDING_FILE: /tmp/rbpe-building.json
-          RBPE_CYCLES: "12"
-          RBPE_DELAY_MS: "100"
+          RBPE_CYCLES: "125"
+          RBPE_DELAY_MS: "10"
+          RBPE_DETAILS: "false"
         run: node scripts/stress-dedicated-live-rbpe.mjs
+
+      - name: Verify full details remain available
+        env:
+          RBPE_BASE_URL: https://lacurent-live-rbpe-probe.lemnarukarol.workers.dev
+          RBPE_BUILDING_FILE: /tmp/rbpe-building.json
+          RBPE_CYCLES: "1"
+          RBPE_DELAY_MS: "50"
+          RBPE_DETAILS: "true"
+        run: node scripts/stress-dedicated-live-rbpe.mjs
+
+      - name: Query probe memory after stress
+        shell: bash
+        run: |
+          sleep 8
+          python - <<'PY' > /tmp/query.json
+          import json, os
+          from datetime import datetime, timezone, timedelta
+          now = datetime.now(timezone.utc)
+          print(json.dumps({
+            "query": "query GetWorkersAnalytics($accountTag: string, $datetimeStart: string, $datetimeEnd: string, $scriptName: string) { viewer { accounts(filter: {accountTag: $accountTag}) { workersInvocationsAdaptive(limit: 200, filter: {scriptName: $scriptName, datetime_geq: $datetimeStart, datetime_leq: $datetimeEnd}) { sum { requests errors } quantiles { cpuTimeP50 cpuTimeP99 memoryUsageBytesP50 memoryUsageBytesP99 } dimensions { datetime scriptName status } } } } }",
+            "variables": {
+              "accountTag": os.environ["CLOUDFLARE_ACCOUNT_ID"],
+              "datetimeStart": (now-timedelta(minutes=15)).isoformat(timespec="milliseconds").replace("+00:00","Z"),
+              "datetimeEnd": now.isoformat(timespec="milliseconds").replace("+00:00","Z"),
+              "scriptName": "lacurent-live-rbpe-probe"
+            }
+          }))
+          PY
+          curl --fail-with-body --silent             https://api.cloudflare.com/client/v4/graphql             --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             --header "Content-Type: application/json"             --data @/tmp/query.json | jq .
 
       - name: Delete probe
         if: always()
