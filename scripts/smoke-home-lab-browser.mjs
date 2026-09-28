@@ -176,7 +176,8 @@ try {
     const responsePromise = page.waitForResponse(
       response =>
         new URL(response.url()).pathname === "/api/home-lab-next/calculate"
-        && response.request().method() === "POST",
+        && response.request().method() === "POST"
+        && new URLSearchParams(response.request().postData() || "").get("pv_orientation") === orientation,
       {timeout:30000}
     );
     await pvOrientation.selectOption(orientation);
@@ -186,6 +187,10 @@ try {
         "Repeated PV orientation live RBPE failed for " + orientation +
         " with HTTP " + response.status()
       );
+    }
+    const payload = await response.json();
+    if (payload.renewables?.pv?.orientation !== orientation) {
+      throw new Error("PV response orientation mismatch for " + orientation);
     }
     const postData = response.request().postData() || "";
     if (!postData.includes("%40lc2%7C") && !postData.includes("@lc2|")) {

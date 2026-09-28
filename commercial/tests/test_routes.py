@@ -743,23 +743,51 @@ def test_reference_comparison_api_local_fallback_matches_canonical_reference() -
     )
 
 
-def test_reference_worker_is_minimal_private_and_service_bound() -> None:
+def test_private_rbpe_topology_is_minimal_sharded_and_service_bound() -> None:
     worker = Path("commercial/reference-worker/worker.py").read_text(encoding="utf-8")
-    wrangler = Path("commercial/reference-worker/wrangler.toml").read_text(encoding="utf-8")
+    shard_wrangler = Path("commercial/reference-worker/wrangler.toml").read_text(
+        encoding="utf-8"
+    )
+    router = Path("commercial/rbpe-router/worker.mjs").read_text(encoding="utf-8")
+    router_wrangler = Path("commercial/rbpe-router/wrangler.toml").read_text(
+        encoding="utf-8"
+    )
+    gateway = Path("commercial/calc-gateway/worker.mjs").read_text(encoding="utf-8")
+    gateway_wrangler = Path("commercial/calc-gateway/wrangler.toml").read_text(
+        encoding="utf-8"
+    )
     main_wrangler = Path("commercial/cloudflare-worker/wrangler.toml").read_text(
         encoding="utf-8"
     )
-    prepare = Path("scripts/prepare-reference-cloudflare-worker.mjs").read_text(encoding="utf-8")
+    prepare = Path("scripts/prepare-reference-cloudflare-worker.mjs").read_text(
+        encoding="utf-8"
+    )
 
     assert "from app.engine import reference_primary_specific_energy" in worker
     assert "from app.main import" not in worker
-    assert "fastapi" not in worker.lower()
+    assert "from fastapi" not in worker.lower()
+    assert "import fastapi" not in worker.lower()
     assert "async def reference_comparison(" in worker
-    assert 'compatibility_flags = ["python_workers", "enable_weak_ref"]' in wrangler
-    assert 'workers_dev = false' in wrangler
-    assert "lacurent-reference-rbpe" in wrangler
+    assert "async def calculate_home_lab_form_api_json(" in worker
+    assert 'compatibility_flags = ["python_workers", "enable_weak_ref"]' in shard_wrangler
+    assert 'workers_dev = false' in shard_wrangler
+    assert "lacurent-reference-rbpe" in shard_wrangler
+
+    for binding in ("RBPE_A", "RBPE_B", "RBPE_C", "RBPE_D"):
+        assert f'binding = "{binding}"' in router_wrangler
+    for suffix in ("a", "b", "c", "d"):
+        assert f'service = "lacurent-rbpe-shard-{suffix}"' in router_wrangler
+    assert "calculate_home_lab_form_api_json" in router
+    assert "disabledUntil" in router
+
+    assert 'binding = "RBPE_ROUTER"' in gateway_wrangler
+    assert 'service = "lacurent-rbpe-router"' in gateway_wrangler
+    assert 'pattern = "lacurent.com/api/home-lab-next/calculate*"' in gateway_wrangler
+    assert "calculate_home_lab_form_api_json" in gateway
+    assert '"x-lacurent-calc": "private-rbpe-sharded"' in gateway
+
     assert 'binding = "REFERENCE_RBPE"' in main_wrangler
-    assert 'service = "lacurent-reference-rbpe"' in main_wrangler
+    assert 'service = "lacurent-rbpe-router"' in main_wrangler
     assert ".wrangler/reference-rbpe-worker" in prepare
 
 
@@ -1400,6 +1428,93 @@ def test_form_maps_heated_attic_roof_to_direct_exterior_and_heated_floor_to_zero
     assert floor.boundary_correction_factor == 0.0
 
 
+def test_extracted_home_lab_form_parser_matches_web_parser() -> None:
+    from commercial.app.home_lab_form import build_input_from_form as isolated_parser
+    from commercial.app.models import model_to_dict
+
+    cases = []
+
+    base = demo_form_data()
+    cases.append(base)
+
+    heat_pump = _simple_home_lab_dhw_form("heat_pump")
+    heat_pump.update(
+        {
+            "heating_chain_enabled": "on",
+            "heating_generator_type": "heat_pump_air_water",
+            "heating_emitter_type": "underfloor",
+            "heating_distribution_type": "underfloor",
+            "pv_enabled": "on",
+            "pv_installed_power_kwp": "8.5",
+            "pv_orientation": "south_west",
+        }
+    )
+    cases.append(heat_pump)
+
+    apartment = demo_form_data()
+    apartment.update(
+        {
+            "building_type": "residential_collective",
+            "apartment_area_m2": "73.5",
+            "apartment_height_m": "2.65",
+            "apartment_exterior_wall_length_m": "11.2",
+            "apartment_window_area_m2": "9.8",
+            "apartment_top_exposed": "on",
+            "building_length_m": "",
+            "building_width_m": "",
+            "heated_levels": "",
+            "heating_choice": "electric_resistance",
+            "expert_heating_override": "",
+        }
+    )
+    cases.append(apartment)
+
+    for form in cases:
+        assert model_to_dict(isolated_parser(dict(form))) == model_to_dict(
+            build_input_from_form(dict(form))
+        )
+
+
+def test_private_rbpe_transport_matches_canonical_calculation_exactly() -> None:
+    from commercial.app.models import CalculationResult, model_to_dict, model_to_json
+    from commercial.app.rbpe_service import calculate_home_lab_result_payload
+
+    building = build_input_from_form(demo_form_data())
+    direct = calculate(building, include_reference=False)
+    transported = CalculationResult(
+        **calculate_home_lab_result_payload(model_to_json(building))
+    )
+
+    assert model_to_dict(transported) == model_to_dict(direct)
+
+
+def test_private_rbpe_raw_form_payload_matches_existing_live_api() -> None:
+    import json
+    import urllib.parse
+
+    from commercial.app.rbpe_service import calculate_home_lab_form_api_json
+
+    form = demo_form_data()
+    encoded = urllib.parse.urlencode(form)
+    private_payload = json.loads(calculate_home_lab_form_api_json(encoded))
+
+    response = client.post("/api/home-lab-next/calculate", data=form)
+    assert response.status_code == 200
+    assert private_payload == response.json()
+
+
+def test_live_calculation_route_does_not_run_canonical_engine_in_web_worker() -> None:
+    source = Path("commercial/app/main.py").read_text(encoding="utf-8")
+    section = source.split("async def home_lab_next_calculation", 1)[1].split(
+        '@app.post("/api/home-lab-next/calculate")',
+        1,
+    )[0]
+
+    assert "await service.calculate_home_lab_api_json(" in section
+    assert "calculate(building, include_reference=False)" not in section
+    assert "CalculationResult(" not in section
+
+
 def test_home_lab_next_can_skip_redundant_reference_for_live_scenarios() -> None:
     data = demo_form_data()
     data["_skip_reference"] = "1"
@@ -1992,7 +2107,8 @@ def test_optimizer_reuses_baseline_bill_and_resets_cross_run_engine_cache() -> N
         1,
     )[0]
     assert "clear_baseline_evaluation_cache()" in calculate_section
-    assert "gc.collect()" in calculate_section
+    assert "await service.calculate_home_lab_api_json(" in calculate_section
+    assert "calculate(building, include_reference=False)" not in calculate_section
 
     verify_section = main_source.split(
         "async def home_lab_optimization_v3_verify_api",
@@ -2193,12 +2309,23 @@ def test_worker_memory_guard_and_v3_verification_use_bounded_state() -> None:
 
 
 def test_home_lab_next_calculation_is_single_pass_without_reference_engine_recursion() -> None:
-    source = Path("commercial/app/main.py").read_text(encoding="utf-8")
-    section = source.split("async def home_lab_next_calculation", 1)[1].split(
+    web_source = Path("commercial/app/main.py").read_text(encoding="utf-8")
+    web_section = web_source.split("async def home_lab_next_calculation", 1)[1].split(
         '@app.post("/api/home-lab-next/calculate")', 1
     )[0]
-    assert "calculate(building, include_reference=False)" in section
-    assert "include_reference=not (skip_reference or optimizer_candidate)" not in section
+    rbpe_source = Path("commercial/app/rbpe_service.py").read_text(encoding="utf-8")
+    engine_section = rbpe_source.split(
+        "def _calculate_home_lab_api_json_from_building",
+        1,
+    )[1].split(
+        "def calculate_home_lab_api_json",
+        1,
+    )[0]
+
+    assert "calculate(building, include_reference=False)" not in web_section
+    assert "await service.calculate_home_lab_api_json(" in web_section
+    assert engine_section.count("calculate(building, include_reference=False)") == 1
+    assert "include_reference=True" not in engine_section
 
 
 def test_home_lab_next_optimizer_uses_compact_cached_candidates() -> None:
