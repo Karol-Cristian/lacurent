@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from commercial.app.engine import calculate, demo_building, dhw_energy
 from commercial.app.main import app, build_input_from_form
+from commercial.app import methodology as methodology_module
 from commercial.app.pricing import _firewood_reference
 from commercial.app.simulation_facts import FACT_SCENARIOS, _build_fact
 
@@ -161,7 +162,7 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'data-page="report"' in page.text
     assert 'data-page="renewables"' in page.text
     assert "/static/home-lab-editorial.css?v=17" in page.text
-    assert "/static/home-lab-editorial.js?v=39" in page.text
+    assert "/static/home-lab-editorial.js?v=40" in page.text
     assert "/static/home-lab-3d.js" not in page.text
     assert 'id="edBaselineClass"' in page.text
     assert 'id="edClassReferenceOpen"' in page.text
@@ -277,6 +278,9 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert '"/api/optimization/home-lab/v4/plan"' in js.text
     assert '"/static/teo-v4-worker.js?v=4"' in js.text
     assert '"/api/optimization/home-lab/v3/verify"' in js.text
+    assert "function climateTokenForSelectedLocality()" in js.text
+    assert "return `@lc2|" in js.text
+    assert 'data.set("locality_id", climateTokenForSelectedLocality())' in js.text
     # TEO ends at the canonically verified parametric optimum.
     # Product/SKU matching is intentionally a later workflow.
     assert '"/api/optimization/home-lab/v3/product"' not in js.text
@@ -286,6 +290,27 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert "finalizeHttpRequests:0" in js.text
     assert 'showPage("done");' in js.text
     assert '$("#openReport").addEventListener("click", () => showPage("report"));' in js.text
+
+
+def test_compact_browser_climate_token_preserves_selected_locality_without_registry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_large_registry() -> None:
+        raise AssertionError("compact climate token must not load the locality registry")
+
+    monkeypatch.setattr(methodology_module, "_locality_indexes", fail_large_registry)
+
+    climate = methodology_module.resolve_climate(
+        "@lc2|alba_iulia|III|-18|siruta-123|Ora%C8%99%20Test|Satu%20Mare"
+    )
+
+    assert climate["station_id"] == "mc001_6_2013_alba_iulia"
+    assert climate["climate_zone"] == "III"
+    assert climate["winter_design_temperature_c"] == -18
+    assert climate["station_resolution"] == "browser-selected"
+    assert climate["selected_locality"]["id"] == "siruta-123"
+    assert climate["selected_locality"]["name"] == "Oraș Test"
+    assert climate["selected_locality"]["county"] == "Satu Mare"
 
 
 def test_editorial_energy_class_opens_thresholds_and_reference_house() -> None:
