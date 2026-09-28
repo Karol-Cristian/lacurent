@@ -1413,25 +1413,33 @@ def test_private_rbpe_transport_matches_canonical_calculation_exactly() -> None:
     assert model_to_dict(transported) == model_to_dict(direct)
 
 
-def test_canonical_home_lab_result_uses_private_service_binding() -> None:
+def test_canonical_home_lab_result_uses_private_service_binding(monkeypatch) -> None:
     import asyncio
     from types import SimpleNamespace
 
     from starlette.requests import Request
 
     from commercial.app import main
-    from commercial.app.rbpe_service import calculate_home_lab_result_payload
+    from commercial.app.rbpe_service import calculate_home_lab_result_json
+
+    class PrivateResponse:
+        status = 200
+
+        def __init__(self, payload: str) -> None:
+            self.payload = payload
+
+        async def text(self) -> str:
+            return self.payload
 
     class PrivateRbpe:
         def __init__(self) -> None:
             self.calls = 0
 
-        async def calculate_home_lab_json(self, payload):
-            import json
-
+        async def fetch(self, payload):
             self.calls += 1
-            return json.dumps(calculate_home_lab_result_payload(payload))
+            return PrivateResponse(calculate_home_lab_result_json(payload))
 
+    monkeypatch.setattr(main, "_private_rbpe_http_request", lambda payload: payload)
     service = PrivateRbpe()
     request = Request(
         {
