@@ -114,9 +114,17 @@ jobs:
         env:
           PROBE_URL: https://lacurent-home-lab-calc-gw-${{ github.run_id }}.lemnarukarol.workers.dev
         run: |
-          for attempt in $(seq 1 90); do
-            if curl -fsS "$PROBE_URL/health"; then
-              exit 0
+          stable=0
+          for attempt in $(seq 1 120); do
+            if curl -fsS "$PROBE_URL/health" >/tmp/gateway-health.json; then
+              stable=$((stable + 1))
+              cat /tmp/gateway-health.json
+              if [ "$stable" -ge 3 ]; then
+                sleep 8
+                exit 0
+              fi
+            else
+              stable=0
             fi
             sleep 2
           done
