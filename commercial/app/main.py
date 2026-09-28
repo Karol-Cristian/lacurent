@@ -2440,7 +2440,7 @@ async def home_lab_classic(request: Request) -> HTMLResponse:
     )
 
 
-async def home_lab_next_calculation(request: Request, *, details: bool = False) -> JSONResponse:
+async def home_lab_next_calculation(request: Request, *, details: bool = True) -> JSONResponse:
     form = dict(await request.form())
     # Retain compatibility with older scenario/optimizer callers. Reference
     # calculation is already excluded from the canonical live RBPE pass.
@@ -2516,6 +2516,13 @@ async def home_lab_next_calculation(request: Request, *, details: bool = False) 
 
 @app.post("/api/home-lab-next/calculate")
 async def home_lab_next_calculate_api(request: Request) -> JSONResponse:
+    # Stable full-detail API retained for Home Lab Classic and integrations.
+    return await home_lab_next_calculation(request, details=True)
+
+
+@app.post("/api/home-lab-next/calculate-live")
+async def home_lab_next_calculate_live_api(request: Request) -> JSONResponse:
+    # High-frequency Editorial path: full RBPE physics, compact projection.
     return await home_lab_next_calculation(request, details=False)
 
 
