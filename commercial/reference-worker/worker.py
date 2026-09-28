@@ -8,7 +8,7 @@ from workers import Response, WorkerEntrypoint
 
 from app.engine import reference_primary_specific_energy
 from app.models import building_from_json
-from app.rbpe_service import calculate_home_lab_result_json, calculate_home_lab_result_payload
+from app.rbpe_service import calculate_home_lab_result_json
 
 
 CORS_HEADERS = {
@@ -88,8 +88,14 @@ class Default(WorkerEntrypoint):
         try:
             body = await request.json()
             if path == "/calculate-home-lab":
-                return _json_response(
-                    calculate_home_lab_result_payload(body.get("payload"))
+                encoded = calculate_home_lab_result_json(body.get("payload"))
+                return Response(
+                    encoded,
+                    status=200,
+                    headers={
+                        **CORS_HEADERS,
+                        "content-type": "application/json; charset=utf-8",
+                    },
                 )
             return _json_response(
                 _reference_comparison_payload(
