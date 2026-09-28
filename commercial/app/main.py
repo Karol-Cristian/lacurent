@@ -1268,6 +1268,12 @@ def build_input_from_form(form: dict[str, Any]) -> BuildingInput:
                 "orientation": form.get("pv_orientation") or "south",
                 "tilt_degrees": parse_optional_float(form.get("pv_tilt_degrees")) if form.get("pv_tilt_degrees") not in (None, "") else 30,
                 "performance_ratio": parse_optional_float(form.get("pv_performance_ratio")),
+                "household_electricity_kwh_year": parse_optional_float(
+                    form.get("pv_household_electricity_kwh_year")
+                ) or 0,
+                "export_credit_lei_per_kwh": parse_optional_float(
+                    form.get("pv_export_credit_lei_per_kwh")
+                ) or 0,
             },
             "solar_thermal": {
                 "enabled": _checked(form, "solar_thermal_enabled"),
@@ -1567,6 +1573,7 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
             for key, value in result.final_energy_by_carrier.items()
         },
         "renewables": model_to_dict(result.renewables),
+        "pv_economics": cost.get("pv_economics") or {},
         "heating_system": model_to_dict(result.heating_system),
         "annual_fuel_use": annual_fuel_use,
         "monthly": [
@@ -1591,6 +1598,10 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
                     0.0,
                 ),
                 "pv_self_consumed_kwh": float(row.get("pv_self_consumed_kwh", 0.0)),
+                "household_grid_import_kwh": float(row.get("household_grid_import_kwh", 0.0)),
+                "household_electricity_cost_lei": float(row.get("household_electricity_cost_lei", 0.0)),
+                "pv_exported_kwh": float(row.get("pv_exported_kwh", 0.0)),
+                "pv_export_credit_lei": float(row.get("pv_export_credit_lei", 0.0)),
                 "complete": bool(row["complete"]),
             }
             for row in cost.get("monthly_rows", [])
