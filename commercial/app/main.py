@@ -1822,7 +1822,12 @@ def _roi_cost_payload_from_rows(rows: list[dict[str, Any]], *, source: str) -> d
 
 
 async def _cached_roi_cost_payload_from_d1(db: Any) -> dict[str, Any] | None:
-    """Coalesce D1 setup/reads and keep the small versioned catalog per isolate."""
+    """Coalesce D1 setup/reads and keep the small versioned catalog per isolate.
+
+    Cloudflare may resume a long-lived Python isolate on a different ASGI event
+    loop. Treat lock acquisition itself as fallible so a stale asyncio.Lock can
+    never turn optional market metadata into a 503 for the public Worker.
+    """
     global _roi_cost_basis_cached_payload
     global _roi_cost_basis_cache_expires_at
     global _roi_cost_basis_retry_after
@@ -1833,14 +1838,14 @@ async def _cached_roi_cost_payload_from_d1(db: Any) -> dict[str, Any] | None:
     if now < _roi_cost_basis_retry_after:
         return None
 
-    async with _roi_cost_basis_lock:
-        now = time.monotonic()
-        if _roi_cost_basis_cached_payload is not None and now < _roi_cost_basis_cache_expires_at:
-            return _roi_cost_basis_cached_payload
-        if now < _roi_cost_basis_retry_after:
-            return None
+    try:
+        async with _roi_cost_basis_lock:
+            now = time.monotonic()
+            if _roi_cost_basis_cached_payload is not None and now < _roi_cost_basis_cache_expires_at:
+                return _roi_cost_basis_cached_payload
+            if now < _roi_cost_basis_retry_after:
+                return None
 
-        try:
             await _ensure_roi_cost_basis_d1(db)
             result = await db.prepare(
                 """
@@ -1854,16 +1859,16 @@ async def _cached_roi_cost_payload_from_d1(db: Any) -> dict[str, Any] | None:
             payload = _roi_cost_payload_from_rows(_d1_rows(result), source="d1")
             if not payload["costs"]:
                 raise ValueError("D1 ROI cost catalog is empty.")
-        except Exception:
-            # A short negative cache prevents a failing D1 binding from turning
-            # concurrent page loads into a serialized retry storm.
-            _roi_cost_basis_retry_after = time.monotonic() + ROI_COST_BASIS_RETRY_SECONDS
-            return None
 
-        _roi_cost_basis_cached_payload = payload
-        _roi_cost_basis_cache_expires_at = time.monotonic() + ROI_COST_BASIS_CACHE_SECONDS
-        _roi_cost_basis_retry_after = 0.0
-        return payload
+            _roi_cost_basis_cached_payload = payload
+            _roi_cost_basis_cache_expires_at = time.monotonic() + ROI_COST_BASIS_CACHE_SECONDS
+            _roi_cost_basis_retry_after = 0.0
+            return payload
+    except Exception:
+        # D1-backed market metadata is an optimization, never a hard dependency
+        # of the public calculator. This also covers lock/event-loop failures.
+        _roi_cost_basis_retry_after = time.monotonic() + ROI_COST_BASIS_RETRY_SECONDS
+        return None
 
 
 @app.get("/api/market-cost-basis")
@@ -1875,15 +1880,20 @@ async def market_cost_basis_api(request: Request) -> JSONResponse:
     so the scientific calculator remains usable and Best ROI never asks the
     homeowner to supply catalog maintenance data.
     """
-    env = request.scope.get("env")
-    db = getattr(env, "DB", None) if env is not None else None
-    if db is not None:
-        payload = await _cached_roi_cost_payload_from_d1(db)
-        if payload is not None:
-            return JSONResponse(
-                payload,
-                headers={"Cache-Control": "public, max-age=900"},
-            )
+    try:
+        env = request.scope.get("env")
+        db = getattr(env, "DB", None) if env is not None else None
+        if db is not None:
+            payload = await _cached_roi_cost_payload_from_d1(db)
+            if payload is not None:
+                return JSONResponse(
+                    payload,
+                    headers={"Cache-Control": "public, max-age=900"},
+                )
+    except Exception:
+        # The public endpoint must remain available even if the runtime binding
+        # or its event-loop state is temporarily unhealthy.
+        pass
 
     seed = roi_cost_basis_seed()
     payload = {
