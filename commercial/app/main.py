@@ -19,7 +19,8 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from .engine import calculate, demo_building, design_heat_load_breakdown, reference_primary_specific_energy
 from .error_page import render_error_html
 from .home_lab_images import HOME_LAB_IMAGE_BYTES
-from .home_lab_payload import embed_lab_result_payload, home_lab_live_payload
+from .home_lab_live_payload import home_lab_live_payload
+from .home_lab_payload import embed_lab_result_payload
 from .methodology import climate_data, methodology, resolve_locality
 from .models import BuildingInput, building_from_json, model_to_dict, model_to_json
 from .optimization import (
