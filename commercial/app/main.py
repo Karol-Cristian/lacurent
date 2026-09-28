@@ -2799,9 +2799,34 @@ async def _canonical_home_lab_result(
                 status_code=503,
                 detail="Serviciul privat RBPE nu este disponibil.",
             )
-        raw_json = await service.calculate_home_lab_json(payload)
-        if not isinstance(raw_json, str):
-            raw_json = str(raw_json)
+        # Use the HTTP service-binding path rather than custom RPC. The exact
+        # route below is stress-tested against the private Python Worker and
+        # avoids the extra RPC object-lifecycle pressure observed under long
+        # sequences of live recalculations.
+        from js import Request as JsRequest
+
+        inner = JsRequest.new(
+            "https://rbpe.internal/calculate-home-lab",
+            {
+                "method": "POST",
+                "headers": {
+                    "content-type": "application/json",
+                    "accept": "application/json",
+                },
+                "body": json.dumps({"payload": payload}),
+            },
+        )
+        response = await service.fetch(inner)
+        raw_json = await response.text()
+        if int(response.status) != 200:
+            if int(response.status) >= 500:
+                raise HTTPException(
+                    status_code=503,
+                    detail="Serviciul privat RBPE este temporar indisponibil.",
+                )
+            raise ValueError(
+                f"Private RBPE returned HTTP {int(response.status)}: {raw_json[:300]}"
+            )
         raw = json.loads(raw_json)
     else:
         # Local pytest/Uvicorn fallback only. Production must always preserve
