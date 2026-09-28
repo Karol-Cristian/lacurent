@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 from workers import Response, WorkerEntrypoint
 
 from app.engine import calculate, reference_primary_specific_energy
-from app.home_lab_payload import embed_lab_result_payload, home_lab_live_payload
+from app.home_lab_live_payload import home_lab_live_payload
 from app.models import building_from_json
 
 
@@ -66,11 +66,14 @@ def _live_calculation_payload(payload, *, details: bool = False) -> dict:
         payload if isinstance(payload, str) else json.dumps(payload)
     )
     result = calculate(building, include_reference=False)
-    response = (
-        embed_lab_result_payload(result)
-        if details
-        else home_lab_live_payload(result)
-    )
+    if details:
+        # Import the heavy report/reference projection only on explicit detail
+        # requests. High-frequency live edits keep the isolate lean.
+        from app.home_lab_payload import embed_lab_result_payload
+
+        response = embed_lab_result_payload(result)
+    else:
+        response = home_lab_live_payload(result)
     del result
     del building
     gc.collect()
