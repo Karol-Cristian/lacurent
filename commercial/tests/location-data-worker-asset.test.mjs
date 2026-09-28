@@ -10,6 +10,7 @@ import {
   LOCATION_DATA_DELIVERY,
   buildLocationPayload,
 } from "../../scripts/build-location-payload.mjs";
+import { encodeLiveCalculationForm } from "../calc-gateway/worker.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../..");
@@ -50,4 +51,40 @@ test("Cloudflare location asset preserves every registry byte and full payload",
   assert.match(headers, new RegExp(`X-LaCurent-Location-Delivery: ${LOCATION_DATA_DELIVERY}`));
 
   fs.rmSync(tempRoot, { recursive: true, force: true });
+});
+
+
+test("Home Lab calculation gateway normalizes browser FormData for RBPE shards", async () => {
+  const multipart = new FormData();
+  multipart.set("locality_id", "@lc2|cluj_napoca|III|-18|siruta-54984|Cluj-Napoca|Cluj");
+  multipart.set("heated_floor_area_m2", "120");
+  multipart.set("heating_system_type", "condensing_gas_boiler");
+  multipart.set("pv_enabled", "on");
+  multipart.set("pv_orientation", "south_west");
+
+  const multipartRequest = new Request(
+    "https://lacurent.com/api/home-lab-next/calculate",
+    { method:"POST", body:multipart },
+  );
+  const multipartEncoded = await encodeLiveCalculationForm(multipartRequest);
+  const multipartParams = new URLSearchParams(multipartEncoded);
+
+  assert.equal(multipartParams.get("heated_floor_area_m2"), "120");
+  assert.equal(multipartParams.get("heating_system_type"), "condensing_gas_boiler");
+  assert.equal(multipartParams.get("pv_enabled"), "on");
+  assert.equal(multipartParams.get("pv_orientation"), "south_west");
+  assert.match(multipartParams.get("locality_id"), /^@lc2\|/);
+
+  const urlEncodedRequest = new Request(
+    "https://lacurent.com/api/home-lab-next/calculate",
+    {
+      method:"POST",
+      headers:{"content-type":"application/x-www-form-urlencoded"},
+      body:"heated_floor_area_m2=120&pv_orientation=south",
+    },
+  );
+  assert.equal(
+    await encodeLiveCalculationForm(urlEncodedRequest),
+    "heated_floor_area_m2=120&pv_orientation=south",
+  );
 });
