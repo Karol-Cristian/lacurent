@@ -183,7 +183,7 @@ jobs:
             ) {
               recovered += 1;
               attempt = 2;
-              await sleep(500);
+              await sleep(2500);
               current = await callOnce();
             }
 
