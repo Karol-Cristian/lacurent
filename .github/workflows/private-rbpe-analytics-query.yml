@@ -1,0 +1,40 @@
+name: Private RBPE Analytics Query
+
+on:
+  push:
+    branches:
+      - codex/private-rbpe-live-calculation
+
+jobs:
+  query:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Query historical probe metrics
+        run: |
+          cat > /tmp/query.json <<'JSON'
+          {
+            "query": "query GetWorkersAnalytics($accountTag: string, $datetimeStart: string, $datetimeEnd: string) { viewer { accounts(filter: {accountTag: $accountTag}) { workersInvocationsAdaptive(limit: 1000, filter: {datetime_geq: $datetimeStart, datetime_leq: $datetimeEnd}) { sum { requests errors } quantiles { cpuTimeP50 cpuTimeP99 memoryUsageBytesP50 memoryUsageBytesP99 } dimensions { datetime scriptName status } } } } }",
+            "variables": {
+              "accountTag": "__ACCOUNT__",
+              "datetimeStart": "2026-09-28T10:15:45.000Z",
+              "datetimeEnd": "2026-09-28T10:17:15.000Z"
+            }
+          }
+          JSON
+          python - <<'PY'
+          import json, os
+          p="/tmp/query.json"
+          d=json.load(open(p))
+          d["variables"]["accountTag"]=os.environ["CLOUDFLARE_ACCOUNT_ID"]
+          json.dump(d, open(p,"w"))
+          PY
+          curl --fail-with-body --silent https://api.cloudflare.com/client/v4/graphql \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data @/tmp/query.json \
+            | jq '.data.viewer.accounts[0].workersInvocationsAdaptive
+              | map(select(.dimensions.scriptName == "lacurent-rbpe-proxy-probe"
+                        or .dimensions.scriptName == "lacurent-rbpe-live-probe"))'
