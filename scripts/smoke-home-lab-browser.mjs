@@ -176,8 +176,8 @@ try {
 
   const pvOrientation = page.locator('select[name="pv_orientation"]');
   const orientationSequence = [
-    "south","south_west","west","north_west",
-    "north","north_east","east","south_east"
+    "south_west","west","north_west","north",
+    "north_east","east","south_east","south"
   ];
   for (const orientation of orientationSequence) {
     const responsePromise = page.waitForResponse(
