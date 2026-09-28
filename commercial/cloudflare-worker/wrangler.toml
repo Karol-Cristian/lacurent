@@ -27,7 +27,7 @@ database_id = "91b70c8a-3c11-4fe0-81ed-e3b64a075118"
 
 [[services]]
 binding = "REFERENCE_RBPE"
-service = "lacurent-reference-rbpe"
+service = "lacurent-rbpe-router"
 remote = true
 
 [[routes]]

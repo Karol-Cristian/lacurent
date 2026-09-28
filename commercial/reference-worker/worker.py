@@ -8,6 +8,11 @@ from workers import Response, WorkerEntrypoint
 
 from app.engine import reference_primary_specific_energy
 from app.models import building_from_json
+from app.rbpe_service import (
+    calculate_home_lab_api_json,
+    calculate_home_lab_form_api_json,
+    calculate_home_lab_result_json,
+)
 
 
 CORS_HEADERS = {
@@ -61,6 +66,21 @@ class Default(WorkerEntrypoint):
         """Private Worker RPC entrypoint used by the main LaCurent service."""
         return _reference_comparison_payload(payload, actual_specific)
 
+    async def calculate_home_lab_json(self, payload):
+        """Run canonical Home Lab RBPE and cross RPC as a primitive JSON string."""
+        return calculate_home_lab_result_json(payload)
+
+    async def calculate_home_lab_api_json(self, payload, optimizer_candidate=False):
+        """Return the final Home Lab API payload without rebuilding it in FastAPI."""
+        return calculate_home_lab_api_json(
+            payload,
+            optimizer_candidate=bool(optimizer_candidate),
+        )
+
+    async def calculate_home_lab_form_api_json(self, encoded_form):
+        """Parse the live form and execute canonical RBPE inside this shard."""
+        return calculate_home_lab_form_api_json(str(encoded_form))
+
     async def fetch(self, request):
         path = urlparse(request.url).path
         method = str(request.method).upper()
@@ -77,11 +97,21 @@ class Default(WorkerEntrypoint):
                 }
             )
 
-        if method != "POST" or path != "/reference-comparison":
+        if method != "POST" or path not in {"/reference-comparison", "/calculate-home-lab"}:
             return _json_response({"error": "Not found"}, status=404)
 
         try:
             body = await request.json()
+            if path == "/calculate-home-lab":
+                encoded = calculate_home_lab_result_json(body.get("payload"))
+                return Response(
+                    encoded,
+                    status=200,
+                    headers={
+                        **CORS_HEADERS,
+                        "content-type": "application/json; charset=utf-8",
+                    },
+                )
             return _json_response(
                 _reference_comparison_payload(
                     body.get("payload"),
