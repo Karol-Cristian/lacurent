@@ -62,71 +62,24 @@ jobs:
           done
           exit 1
 
-      - name: Stress full live payload 96 times
+      - name: Generate canonical building payload
         run: |
           python - <<'PY'
-          import json
-          import sys
-          import time
-          import urllib.error
-          import urllib.request
-
+          import json, sys
           sys.path.insert(0, "commercial")
           from app.engine import demo_building
           from app.models import model_to_dict
-
-          base = model_to_dict(demo_building())
-          url = "https://lacurent-live-rbpe-probe.lemnarukarol.workers.dev/live-calculation"
-          orientations = [
-              "south", "south_west", "west", "north_west",
-              "north", "north_east", "east", "south_east",
-          ]
-          count = 0
-          for cycle in range(12):
-              for orientation in orientations:
-                  count += 1
-                  payload = json.loads(json.dumps(base))
-                  payload.setdefault("renewables", {}).setdefault("pv", {}).update({
-                      "enabled": True,
-                      "installed_power_kwp": 5,
-                      "orientation": orientation,
-                      "tilt_degrees": 30,
-                      "performance_ratio": 0.82,
-                  })
-                  body = json.dumps({"payload": payload}).encode("utf-8")
-                  req = urllib.request.Request(
-                      url,
-                      data=body,
-                      headers={"Content-Type": "application/json", "Accept": "application/json"},
-                  )
-                  started = time.perf_counter()
-                  try:
-                      with urllib.request.urlopen(req, timeout=30) as response:
-                          raw = response.read().decode("utf-8")
-                          data = json.loads(raw)
-                          status = response.status
-                  except urllib.error.HTTPError as exc:
-                      raw = exc.read().decode("utf-8", errors="replace")
-                      print("FAIL", count, orientation, exc.code, raw[:1200])
-                      raise
-                  elapsed_ms = round((time.perf_counter() - started) * 1000, 1)
-                  if status != 200 or not data.get("energy_class"):
-                      raise AssertionError((count, status, data))
-                  if data.get("annual_cost_lei") is None:
-                      raise AssertionError((count, "annual_cost_lei", data))
-                  if len(data.get("monthly") or []) != 12:
-                      raise AssertionError((count, "monthly", data))
-                  print(json.dumps({
-                      "count": count,
-                      "orientation": orientation,
-                      "status": status,
-                      "elapsed_ms": elapsed_ms,
-                      "energy_class": data.get("energy_class"),
-                      "annual_cost_lei": data.get("annual_cost_lei"),
-                  }))
-                  time.sleep(0.1)
-          print(json.dumps({"status": "ok", "total_requests": count}))
+          with open("/tmp/rbpe-building.json", "w", encoding="utf-8") as f:
+              json.dump(model_to_dict(demo_building()), f)
           PY
+
+      - name: Stress full live payload 96 times
+        env:
+          RBPE_BASE_URL: https://lacurent-live-rbpe-probe.lemnarukarol.workers.dev
+          RBPE_BUILDING_FILE: /tmp/rbpe-building.json
+          RBPE_CYCLES: "12"
+          RBPE_DELAY_MS: "100"
+        run: node scripts/stress-dedicated-live-rbpe.mjs
 
       - name: Delete probe
         if: always()
