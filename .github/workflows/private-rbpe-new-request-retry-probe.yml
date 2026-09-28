@@ -1,4 +1,4 @@
-name: Private RBPE HTTP Binding Probe
+name: Private RBPE Shard Router Probe
 
 on:
   push:
@@ -8,10 +8,11 @@ on:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -32,7 +33,7 @@ jobs:
           from commercial.app.main import build_input_from_form
           from commercial.app.models import model_to_json
           form = {
-              "project_name":"HTTP binding stress",
+              "project_name":"Private RBPE shard stress",
               "locality_id":"@lc2|alba_iulia|III|-18|siruta-stress|Stress%20Locality|Alba",
               "locality":"Stress Locality",
               "heated_floor_area_m2":"160","heated_volume_m3":"432",
@@ -56,17 +57,9 @@ jobs:
           print(model_to_json(build_input_from_form(form)))
           PY
 
-      - name: Deploy private RBPE
+      - name: Prepare private RBPE bundle
         run: |
           node scripts/prepare-reference-cloudflare-worker.mjs
-          python - <<'PY'
-          from pathlib import Path
-          p=Path(".wrangler/reference-rbpe-worker/wrangler.toml")
-          p.write_text(p.read_text().replace(
-              'name = "lacurent-reference-rbpe"',
-              'name = "lacurent-rbpe-http-probe"',
-          ))
-          PY
           cd .wrangler/reference-rbpe-worker
           npm install --save-dev wrangler@latest
           mkdir -p .bin
@@ -74,113 +67,229 @@ jobs:
           chmod +x .bin/wrangler
           export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
           uvx --from workers-py pywrangler sync --force
-          uvx --from workers-py pywrangler deploy
-          sleep 15
 
-      - name: Deploy JavaScript HTTP-binding proxy
+      - name: Deploy four private RBPE shards
         run: |
-          mkdir -p .wrangler/rbpe-http-proxy
-          cat > .wrangler/rbpe-http-proxy/worker.mjs <<'JS'
+          python - <<'PY'
+          from pathlib import Path
+          p=Path(".wrangler/reference-rbpe-worker/wrangler.toml")
+          original=p.read_text()
+          Path("/tmp/rbpe-wrangler-template.toml").write_text(original)
+          PY
+          cd .wrangler/reference-rbpe-worker
+          export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
+          for suffix in a b c d; do
+            python - "$suffix" <<'PY'
+          from pathlib import Path
+          import sys
+          suffix=sys.argv[1]
+          template=Path("/tmp/rbpe-wrangler-template.toml").read_text()
+          Path("wrangler.toml").write_text(
+              template.replace(
+                  'name = "lacurent-reference-rbpe"',
+                  f'name = "lacurent-rbpe-live-{suffix}"',
+              )
+          )
+          PY
+            uvx --from workers-py pywrangler deploy
+          done
+
+      - name: Deploy private shard router
+        run: |
+          mkdir -p .wrangler/rbpe-shard-router
+          cat > .wrangler/rbpe-shard-router/worker.mjs <<'JS'
+          const shardNames = ["RBPE_A","RBPE_B","RBPE_C","RBPE_D"];
+          let cursor = 0;
+          const disabledUntil = new Map();
+          const failureCounts = new Map();
+
+          async function callShard(env, key, payload) {
+            const request = new Request("https://rbpe.internal/calculate-home-lab", {
+              method: "POST",
+              headers: {
+                "content-type": "application/json",
+                "accept": "application/json"
+              },
+              body: JSON.stringify({payload})
+            });
+            const response = await env[key].fetch(request);
+            const raw = await response.text();
+            if (response.status >= 500) {
+              throw new Error("downstream_http_" + response.status);
+            }
+            return {response, raw};
+          }
+
           export default {
             async fetch(request, env) {
               const payload = await request.text();
-              try {
-                const inner = new Request("https://rbpe.internal/calculate-home-lab", {
-                  method: "POST",
-                  headers: {"content-type":"application/json","accept":"application/json"},
-                  body: JSON.stringify({payload})
-                });
-                const response = await env.RBPE.fetch(inner);
-                return new Response(response.body, {
-                  status: response.status,
-                  headers: response.headers
-                });
-              } catch (error) {
-                return Response.json(
-                  {error:"private_rbpe_binding_failure", errorType:error?.name || "Error"},
-                  {status:503}
-                );
+              const now = Date.now();
+              const start = cursor++ % shardNames.length;
+              const attempted = [];
+              let lastError = null;
+
+              // First pass respects circuit-breaker cooldown.
+              for (let offset = 0; offset < shardNames.length; offset++) {
+                const key = shardNames[(start + offset) % shardNames.length];
+                if ((disabledUntil.get(key) || 0) > now) continue;
+                attempted.push(key);
+                try {
+                  const {response, raw} = await callShard(env, key, payload);
+                  failureCounts.set(key, 0);
+                  return new Response(raw, {
+                    status: response.status,
+                    headers: {
+                      "content-type": response.headers.get("content-type") || "application/json",
+                      "cache-control": "no-store",
+                      "x-rbpe-shard": key
+                    }
+                  });
+                } catch (error) {
+                  lastError = error;
+                  const failures = (failureCounts.get(key) || 0) + 1;
+                  failureCounts.set(key, failures);
+                  disabledUntil.set(key, Date.now() + 12000);
+                }
               }
+
+              // If every shard is cooling down, try the one whose cooldown
+              // expires first. This avoids returning 503 just because all four
+              // breakers overlap by a few milliseconds.
+              if (attempted.length === 0) {
+                const key = [...shardNames].sort(
+                  (a,b) => (disabledUntil.get(a)||0) - (disabledUntil.get(b)||0)
+                )[0];
+                const waitMs = Math.max(0, (disabledUntil.get(key)||0) - Date.now());
+                if (waitMs > 0 && waitMs <= 15000) {
+                  await new Promise(resolve => setTimeout(resolve, waitMs));
+                }
+                try {
+                  const {response, raw} = await callShard(env, key, payload);
+                  disabledUntil.delete(key);
+                  failureCounts.set(key, 0);
+                  return new Response(raw, {
+                    status: response.status,
+                    headers: {
+                      "content-type": response.headers.get("content-type") || "application/json",
+                      "cache-control": "no-store",
+                      "x-rbpe-shard": key,
+                      "x-rbpe-recovered": "1"
+                    }
+                  });
+                } catch (error) {
+                  lastError = error;
+                  disabledUntil.set(key, Date.now() + 12000);
+                }
+              }
+
+              return Response.json({
+                error:"private_rbpe_all_shards_unavailable",
+                attempted,
+                errorType:lastError?.name || "Error",
+                detail:String(lastError?.message || lastError || "")
+              }, {status:503, headers:{"cache-control":"no-store"}});
             }
           };
           JS
-          cat > .wrangler/rbpe-http-proxy/wrangler.toml <<'TOML'
-          name = "lacurent-rbpe-http-proxy"
+
+          cat > .wrangler/rbpe-shard-router/wrangler.toml <<'TOML'
+          name = "lacurent-rbpe-live-router-probe"
           main = "worker.mjs"
           compatibility_date = "2026-09-27"
           workers_dev = true
 
           [[services]]
-          binding = "RBPE"
-          service = "lacurent-rbpe-http-probe"
+          binding = "RBPE_A"
+          service = "lacurent-rbpe-live-a"
+          remote = true
+
+          [[services]]
+          binding = "RBPE_B"
+          service = "lacurent-rbpe-live-b"
+          remote = true
+
+          [[services]]
+          binding = "RBPE_C"
+          service = "lacurent-rbpe-live-c"
+          remote = true
+
+          [[services]]
+          binding = "RBPE_D"
+          service = "lacurent-rbpe-live-d"
           remote = true
           TOML
-          cd .wrangler/rbpe-http-proxy
+
+          cd .wrangler/rbpe-shard-router
           npm install --save-dev wrangler@latest
           npx wrangler deploy
-          sleep 15
 
-      - name: Wait for healthy binding
+      - name: Wait for router
         run: |
           for attempt in $(seq 1 90); do
-            code="$(curl -sS -o /tmp/result.json -w '%{http_code}' -X POST \
+            code="$(curl -sS -o /tmp/router-result.json -w '%{http_code}' -X POST \
               --data-binary @/tmp/building.json \
-              https://lacurent-rbpe-http-proxy.lemnarukarol.workers.dev/ || true)"
+              https://lacurent-rbpe-live-router-probe.lemnarukarol.workers.dev/ || true)"
             if [ "$code" = "200" ]; then
-              cat /tmp/result.json
+              cat /tmp/router-result.json
               exit 0
             fi
             sleep 2
           done
-          cat /tmp/result.json || true
+          cat /tmp/router-result.json || true
           exit 1
 
-      - name: Run 240 serial calculations through HTTP binding
+      - name: Run 500 serial calculations through sharded router
         run: |
           node <<'JS'
           const fs = await import("node:fs");
           const payload = fs.readFileSync("/tmp/building.json","utf8").trim();
-          const url = "https://lacurent-rbpe-http-proxy.lemnarukarol.workers.dev/";
-          const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-          let recoveries = 0;
+          const url = "https://lacurent-rbpe-live-router-probe.lemnarukarol.workers.dev/";
+          const counts = {};
+          let recovered = 0;
+          let maxMs = 0;
 
-          async function once() {
-            const response = await fetch(url,{method:"POST",body:payload});
-            const raw = await response.text();
+          for (let i=0;i<500;i++) {
+            const started=performance.now();
+            const response=await fetch(url,{method:"POST",body:payload});
+            const raw=await response.text();
             let body=null;
             try { body=JSON.parse(raw); } catch {}
-            return {response,raw,body};
-          }
+            const elapsed=Math.round(performance.now()-started);
+            maxMs=Math.max(maxMs, elapsed);
+            const shard=response.headers.get("x-rbpe-shard") || "none";
+            counts[shard]=(counts[shard]||0)+1;
+            if (response.headers.get("x-rbpe-recovered") === "1") recovered += 1;
 
-          for (let i=0;i<240;i++) {
-            const started=performance.now();
-            let attempt=1;
-            let current=await once();
-            if (current.response.status >= 500) {
-              recoveries += 1;
-              attempt=2;
-              await sleep(750);
-              current=await once();
+            if ((i+1) % 25 === 0 || !response.ok) {
+              console.log(JSON.stringify({
+                count:i+1,status:response.status,elapsed_ms:elapsed,
+                shard,recovered,counts,
+                energy_class:body?.energy_class ?? null,
+                final_energy_kwh:body?.total_final_energy_kwh ?? null
+              }));
             }
-            console.log(JSON.stringify({
-              count:i+1,status:current.response.status,attempt,
-              elapsed_ms:Math.round(performance.now()-started),
-              energy_class:current.body?.energy_class ?? null,
-              final_energy_kwh:current.body?.total_final_energy_kwh ?? null
-            }));
-            if (!current.response.ok || !current.body?.energy_class || current.body?.total_final_energy_kwh == null) {
-              console.error(current.raw.slice(0,1500));
+            if (!response.ok || !body?.energy_class || body?.total_final_energy_kwh == null) {
+              console.error(raw.slice(0,1500));
               process.exit(1);
             }
-            await sleep(75);
+            await new Promise(resolve => setTimeout(resolve, 40));
           }
-          console.log(JSON.stringify({status:"stress-complete",logical_requests:240,recoveries}));
+
+          console.log(JSON.stringify({
+            status:"stress-complete",
+            logical_requests:500,
+            counts,
+            recovered,
+            max_elapsed_ms:maxMs
+          }));
           JS
 
       - name: Delete probes
         if: always()
         run: |
-          cd .wrangler/rbpe-http-proxy
-          npx wrangler delete --name lacurent-rbpe-http-proxy --force || true
+          cd .wrangler/rbpe-shard-router
+          npx wrangler delete --name lacurent-rbpe-live-router-probe --force || true
           cd ../reference-rbpe-worker
-          npx wrangler delete --name lacurent-rbpe-http-probe --force || true
+          for suffix in a b c d; do
+            npx wrangler delete --name "lacurent-rbpe-live-$suffix" --force || true
+          done
