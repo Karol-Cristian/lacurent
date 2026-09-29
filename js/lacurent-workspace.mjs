@@ -1,6 +1,8 @@
 import {
   BUILDING_VISUAL_TYPES,
+  CALCULATION_MODEL_VERSION,
   buildSimpleInputContract,
+  calculationInputHash,
   collectFormValues,
   applyValuesToForm,
   createScenario,
@@ -8,6 +10,7 @@ import {
   humanDiagnostic,
   loadWorkspaceState,
   readinessIssues,
+  resetWorkspaceState,
   resolveBuildingVisualType,
   saveWorkspaceState
 } from "./lacurent-contract.mjs";
@@ -174,6 +177,33 @@ function collectSynchronizedValues() {
     setHiddenValue("localityClimateZoneValue", selectedMapPoint.zone);
   }
   return collectFormValues(form);
+}
+
+function currentCalculationContract() {
+  const values = collectSynchronizedValues();
+  return buildSimpleInputContract(values, { projectId: state.projectId });
+}
+
+function currentCalculationInputHash() {
+  return calculationInputHash(currentCalculationContract());
+}
+
+function invalidateStoredResult(message = "Inputul s-a schimbat. Rezultatul anterior a fost invalidat.") {
+  const hadResult = Boolean(state.lastResult);
+  state.lastResult = null;
+  state.lastResultInputHash = null;
+  state.lastResultModelVersion = null;
+  state.resultFresh = false;
+  saveWorkspaceState(state);
+
+  if (!hadResult) return;
+  renderBlocker({});
+  renderResultCards({});
+  renderServiceChart({});
+  renderMonthlyChart({});
+  renderScenarioComparison({});
+  updateDocuments(null);
+  updateCalculationState("stale", "Necesita recalculare", message);
 }
 
 function selectedLocalityFromValues(values) {
@@ -598,43 +628,64 @@ function renderScenarioComparison(result) {
   `;
 }
 
-function renderResult(result) {
+function renderResult(result, { inputContract = currentCalculationContract(), inputHash = null } = {}) {
+  const resolvedInputHash = inputHash || calculationInputHash(inputContract);
   state.lastResult = result;
+  state.lastResultInputHash = resolvedInputHash;
+  state.lastResultModelVersion = CALCULATION_MODEL_VERSION;
   state.resultFresh = true;
   const blocking = renderBlocker(result);
   updateCalculationState(
     blocking ? "blocked" : "calculated",
     blocking ? "Calcul blocat" : "Calcul disponibil",
-    blocking ? humanDiagnostic(blocking) : "Rezultatele sunt proaspete pentru modelul curent."
+    blocking ? humanDiagnostic(blocking) : `Rezultat verificat pentru input ${resolvedInputHash.slice(-12)}.`
   );
   renderResultCards(result);
   renderServiceChart(result);
   renderMonthlyChart(result);
   renderScenarioComparison(result);
   updateDocuments(result);
-  updateOverview(collectFormValues(form));
+  updateOverview(collectSynchronizedValues());
   annexPreview.textContent = JSON.stringify({
-    inputContract: buildSimpleInputContract(collectFormValues(form), { projectId: state.projectId }),
+    calculationModelVersion: CALCULATION_MODEL_VERSION,
+    inputHash: resolvedInputHash,
+    inputContract,
     result
   }, null, 2);
   saveWorkspaceState(state);
 }
 
 function markStale() {
-  state.resultFresh = false;
-  saveWorkspaceState(state);
-  if (state.lastResult) {
-    updateCalculationState("stale", "Necesita recalculare", "Ai schimbat modelul dupa ultimul calcul.");
-    document.getElementById("professionalReportStatus").textContent = "Necesita recalculare";
-    updateOverview(collectFormValues(form));
+  if (!state.lastResult) {
+    state.resultFresh = false;
+    saveWorkspaceState(state);
+    return;
   }
+
+  const currentHash = currentCalculationInputHash();
+  const resultStillMatches =
+    state.lastResultInputHash === currentHash &&
+    state.lastResultModelVersion === CALCULATION_MODEL_VERSION;
+
+  if (!resultStillMatches) {
+    invalidateStoredResult("Inputul real al cladirii s-a schimbat. Rezultatul anterior nu mai este afisat.");
+    document.getElementById("professionalReportStatus").textContent = "Necesita recalculare";
+    updateOverview(collectSynchronizedValues());
+    return;
+  }
+
+  state.resultFresh = true;
+  saveWorkspaceState(state);
 }
 
 async function calculate() {
-  const values = collectFormValues(form);
+  const values = collectSynchronizedValues();
   const contract = buildSimpleInputContract(values, { projectId: state.projectId });
+  const inputHash = calculationInputHash(contract);
+  state.values = values;
+  saveWorkspaceState(state);
   blockerPanel.hidden = false;
-  blockerPanel.innerHTML = "<strong>Se ruleaza analiza...</strong><span>Analiza este trimisa catre serviciul de calcul.</span>";
+  blockerPanel.innerHTML = `<strong>Se ruleaza analiza...</strong><span>Input ${escapeHtml(inputHash.slice(-12))} · ${escapeHtml(CALCULATION_MODEL_VERSION)}</span>`;
   updateCalculationState("calculating", "Se calculeaza", "Astept raspunsul serviciului de calcul.");
   try {
     const response = await fetch(`${apiBase()}/api/python/calculate`, {
@@ -655,10 +706,10 @@ async function calculate() {
         chapter3: { annual: {} },
         chapter4: {},
         diagnostics: [result.diagnostic || { code: "PYTHON_ENGINE_SERVICE_UNCONFIGURED", severity: "blocking", message: result.error }]
-      });
+      }, { inputContract: contract, inputHash });
       return;
     }
-    renderResult(result.output || result);
+    renderResult(result.output || result, { inputContract: contract, inputHash });
   } catch (error) {
     renderResult({
       schemaVersion: "lacurent_engine_output_v1",
@@ -672,7 +723,7 @@ async function calculate() {
         severity: "blocking",
         message: error.message
       }]
-    });
+    }, { inputContract: contract, inputHash });
   }
 }
 
@@ -684,6 +735,13 @@ function downloadInput() {
   link.download = `${contract.project.name || "lacurent"}-input.json`;
   link.click();
   URL.revokeObjectURL(link.href);
+}
+
+function resetProject() {
+  const confirmed = window.confirm("Pornesti o casa noua? Datele locale si rezultatul memorat pe acest dispozitiv vor fi sterse.");
+  if (!confirmed) return;
+  resetWorkspaceState();
+  window.location.reload();
 }
 
 async function saveProject() {
@@ -1046,6 +1104,7 @@ function bindEvents() {
   document.getElementById("calculateBtn").addEventListener("click", calculate);
   document.getElementById("exportInputBtn")?.addEventListener("click", downloadInput);
   document.getElementById("saveProjectBtn").addEventListener("click", saveProject);
+  document.getElementById("resetProjectBtn")?.addEventListener("click", resetProject);
   document.getElementById("addScenarioBtn").addEventListener("click", () => {
     const values = collectFormValues(form);
     state.values = values;
@@ -1063,6 +1122,17 @@ async function boot() {
   setActiveSection("overview");
   refreshAll();
   updateScenarioList();
+
+  if (
+    state.lastResult &&
+    (
+      state.lastResultInputHash !== currentCalculationInputHash() ||
+      state.lastResultModelVersion !== CALCULATION_MODEL_VERSION
+    )
+  ) {
+    invalidateStoredResult("Rezultatul memorat apartinea altui input sau altei versiuni RBPE si a fost invalidat.");
+  }
+
   updateDocuments(state.lastResult);
   if (state.lastResult) {
     renderResultCards(state.lastResult);
