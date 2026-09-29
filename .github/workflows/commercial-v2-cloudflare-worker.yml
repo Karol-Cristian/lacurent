@@ -1602,10 +1602,15 @@ jobs:
               follow_redirects=False,
           )
           expected_calculator_location = apex + "/home-lab-next"
-          if status != 308 or calculator_location != expected_calculator_location:
+          resolved_calculator_location = urllib.parse.urljoin(
+              apex + "/",
+              calculator_location or "",
+          )
+          if status != 308 or resolved_calculator_location != expected_calculator_location:
               raise AssertionError(
                   "Production calculator alias redirect mismatch: "
                   f"HTTP {status}, location={calculator_location!r}, "
+                  f"resolved={resolved_calculator_location!r}, "
                   f"expected={expected_calculator_location!r}"
               )
           print("/instalatii/calculator", status, calculator_location)
