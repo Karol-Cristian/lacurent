@@ -7,15 +7,62 @@ from urllib.parse import parse_qsl
 from .engine import calculate
 from .home_lab_form import build_input_from_form
 from .home_lab_payload import embed_lab_result_payload, optimizer_candidate_payload
-from .models import BuildingInput, building_from_json, model_to_json
+from .models import BuildingInput, building_from_json, model_to_dict, model_to_json
 from .renovation import TechnicalRequirementV1, build_wall_insulation_scenario
 from .product_matching import WallInsulationProductV1, build_product_wall_insulation_scenario
+from .pricing import estimate_energy_cost
 
 
 def calculate_home_lab_result_payload(payload: str | dict[str, Any]) -> dict[str, Any]:
     """Local/test helper returning the canonical CalculationResult as a dict."""
     encoded = calculate_home_lab_result_json(payload)
     return json.loads(encoded)
+
+
+def calculate_render_context_json(payload: str | dict[str, Any]) -> str:
+    """Run canonical RBPE in a private shard and return template-ready JSON."""
+    if payload in (None, ""):
+        raise ValueError("Missing RBPE render input.")
+
+    building = building_from_json(
+        payload if isinstance(payload, str) else json.dumps(payload)
+    )
+    result = calculate(building, include_reference=False)
+    result_payload = model_to_dict(result)
+    envelope_sorted = sorted(
+        result_payload.get("envelope_contributions") or [],
+        key=lambda item: float(item.get("value") or 0),
+        reverse=True,
+    )
+    service_values = result_payload.get("final_energy_by_service") or {}
+    carrier_values = result_payload.get("final_energy_by_carrier") or {}
+    monthly_rows = result_payload.get("monthly") or []
+    context = {
+        "result": result_payload,
+        "envelope_sorted": envelope_sorted,
+        "service_max": max(service_values.values()) if service_values else 1,
+        "carrier_max": max(carrier_values.values()) if carrier_values else 1,
+        "monthly_max": max(
+            (
+                float(row.get("useful_heating_kwh") or 0)
+                + float(row.get("useful_cooling_kwh") or 0)
+                for row in monthly_rows
+            ),
+            default=1,
+        ),
+        "cost_estimate": estimate_energy_cost(result),
+        "payload": model_to_json(result.input),
+    }
+    encoded = json.dumps(
+        context,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    del context
+    del result_payload
+    del result
+    del building
+    return encoded
 
 
 def calculate_home_lab_result_json(payload: str | dict[str, Any]) -> str:
