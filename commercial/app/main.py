@@ -5466,6 +5466,10 @@ async def certificate(request: Request) -> HTMLResponse:
         {
             "result": result,
             "cost_estimate": estimate_energy_cost(result),
-            "payload": json.dumps(model_to_dict(result.input), ensure_ascii=False, default=str),
+            "payload": (
+                json.dumps(result.input, ensure_ascii=False, separators=(",", ":"), default=str)
+                if isinstance(result.input, dict)
+                else json.dumps(model_to_dict(result.input), ensure_ascii=False, default=str)
+            ),
         },
     )

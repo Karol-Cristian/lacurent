@@ -8,6 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from commercial.app.engine import calculate, demo_building, dhw_energy
+from commercial.app.models import model_to_dict
 from commercial.app.main import (
     _calculation_result_from_json,
     app,
@@ -3396,6 +3397,21 @@ def test_partner_embed_lab_calculation_returns_live_metrics() -> None:
     assert sum(row["value_w_k"] for row in payload["heat_loss_breakdown"]) > 0
     assert payload["reference"] is None
     assert payload["reference_parameters"]["u_values_w_m2k"]["exterior_wall"] > 0
+
+
+def test_certificate_accepts_lightweight_private_rbpe_result(monkeypatch: pytest.MonkeyPatch) -> None:
+    canonical = calculate(demo_building(), include_reference=False)
+    encoded = canonical.model_dump_json() if hasattr(canonical, "model_dump_json") else canonical.json()
+    lightweight = _calculation_result_from_json(encoded)
+
+    async def fake_private_calculation(request, building):
+        return lightweight
+
+    monkeypatch.setattr("commercial.app.main._canonical_calculation", fake_private_calculation)
+    response = client.post("/certificate", data={"payload": json.dumps(model_to_dict(demo_building()))})
+
+    assert response.status_code == 200
+    assert "Energy Performance Report" in response.text
 
 
 def test_private_rbpe_html_result_uses_lightweight_json_view() -> None:
