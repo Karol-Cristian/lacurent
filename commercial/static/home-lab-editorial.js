@@ -2167,6 +2167,184 @@
     };
   }
 
+  function candidateAvailableNzebPass(candidate, target = baselineResult?.nzeb_target) {
+    if (!target || !candidate) return false;
+    const primary = Number(
+      candidate.primary_specific_kwh_m2
+      ?? candidate.primarySpecificKwhM2
+    );
+    const co2 = Number(
+      candidate.co2_specific_kg_m2
+      ?? candidate.co2SpecificKgM2
+    );
+    const primaryLimit = Number(target.primary_energy_kwh_m2_year);
+    const co2Limit = Number(target.co2_kg_m2_year);
+    return [primary, co2, primaryLimit, co2Limit].every(Number.isFinite)
+      && primary <= primaryLimit + 1e-6
+      && co2 <= co2Limit + 1e-6;
+  }
+
+  function setNzebMetric(metricName, actual, limit, unit) {
+    const card = document.querySelector(`[data-nzeb-metric="${metricName}"]`);
+    const title = metricName === "primary" ? $("#edNzebPrimaryValue") : $("#edNzebCo2Value");
+    const limitNode = metricName === "primary" ? $("#edNzebPrimaryLimit") : $("#edNzebCo2Limit");
+    const bar = metricName === "primary" ? $("#edNzebPrimaryBar") : $("#edNzebCo2Bar");
+    const state = metricName === "primary" ? $("#edNzebPrimaryState") : $("#edNzebCo2State");
+    if (!card || !title || !limitNode || !bar || !state) return null;
+    const valid = Number.isFinite(Number(actual)) && Number.isFinite(Number(limit)) && Number(limit) > 0;
+    const pass = valid ? Number(actual) <= Number(limit) + 1e-6 : null;
+    card.classList.toggle("is-pass", pass === true);
+    card.classList.toggle("is-fail", pass === false);
+    title.textContent = valid ? `${fmt(actual,1)} / ${fmt(limit,1)}` : "—";
+    limitNode.textContent = valid
+      ? `Limită: ${fmt(limit,1)} ${unit}`
+      : "Limită indisponibilă";
+    const ratio = valid ? Math.min(100, Math.max(4, 100 * Number(actual) / Number(limit))) : 0;
+    bar.style.width = `${ratio}%`;
+    state.innerHTML = pass === true
+      ? '<svg><use href="#ed-i-check"></use></svg>'
+      : pass === false
+        ? '<svg><use href="#ed-i-x"></use></svg>'
+        : '<svg><use href="#ed-i-info"></use></svg>';
+    return pass;
+  }
+
+  function renderNzebStatus(result = baselineResult) {
+    const panel = $(".ed-nzeb-status-panel");
+    if (!panel) return;
+    const target = result?.nzeb_target || baselineResult?.nzeb_target || null;
+    const zone = target?.climate_zone || result?.climate_zone || "—";
+    const zoneNode = $("#edNzebZone");
+    if (zoneNode) zoneNode.textContent = zone || "—";
+
+    const primaryPass = setNzebMetric(
+      "primary",
+      result?.primary_specific_kwh_m2,
+      target?.primary_energy_kwh_m2_year,
+      "kWh/m²·an"
+    );
+    const co2Pass = setNzebMetric(
+      "co2",
+      result?.co2_specific_kg_m2,
+      target?.co2_kg_m2_year,
+      "kgCO₂/m²·an"
+    );
+
+    const rerCard = document.querySelector('[data-nzeb-metric="rer"]');
+    rerCard?.classList.remove("is-pass","is-fail");
+    rerCard?.classList.add("is-rer-pending");
+    const rerValue = $("#edNzebRerValue");
+    const rerBar = $("#edNzebRerBar");
+    const rerState = $("#edNzebRerState");
+    if (rerValue) rerValue.textContent = "— / ≥ 30%";
+    if (rerBar) rerBar.style.width = "30%";
+    if (rerState) rerState.innerHTML = '<svg><use href="#ed-i-info"></use></svg>';
+
+    const message = $("#edNzebMessage");
+    if (!message) return;
+    const constrained = nzebConstraintEnabled();
+    let text = "Completează casa pentru a verifica pragurile aplicabile.";
+    if (target && primaryPass === true && co2Pass === true) {
+      text = constrained
+        ? "Eprim și CO₂ respectă pragurile modelate. RER/SRE rămâne explicit în verificare metodologică; nu emitem încă un verdict juridic complet nZEB."
+        : "Eprim și CO₂ respectă pragurile nZEB modelate. Constrângerea nZEB este opțională și momentan dezactivată.";
+    } else if (target && (primaryPass === false || co2Pass === false)) {
+      text = constrained
+        ? "Clădirea nu respectă încă toate pragurile nZEB disponibile. TEO va căuta întâi economic, apoi va păstra și reoptimiza candidații care închid diferența Eprim/CO₂."
+        : "Clădirea depășește cel puțin un prag nZEB disponibil. Activează conformarea pentru ca TEO să trateze pragurile ca restricții.";
+    } else if (!target) {
+      text = "Pragurile nZEB nu sunt disponibile până când localitatea și zona climatică nu sunt rezolvate.";
+    }
+    message.querySelector("span").textContent = text;
+  }
+
+  function setTeoControlPhase(step, label = "") {
+    const panel = $(".ed-teo-control-panel");
+    if (!panel) return;
+    const numeric = Math.max(0, Math.min(5, Number(step) || 0));
+    panel.classList.toggle("is-running", numeric > 0 && numeric < 6);
+    panel.classList.remove("is-done");
+    document.querySelectorAll("[data-teo-step]").forEach(node => {
+      const value = Number(node.dataset.teoStep || 0);
+      node.classList.toggle("is-done", numeric > 0 && value < numeric);
+      node.classList.toggle("is-active", value === numeric);
+    });
+    const state = $("#edTeoRunState");
+    if (state) state.textContent = label || (numeric ? `Pas ${numeric}/5` : "Pregătit");
+  }
+
+  function resetTeoControlUi() {
+    const panel = $(".ed-teo-control-panel");
+    panel?.classList.remove("is-running","is-done");
+    document.querySelectorAll("[data-teo-step]").forEach(node => node.classList.remove("is-active","is-done"));
+    const state = $("#edTeoRunState");
+    if (state) state.textContent = "Pregătit";
+    if ($("#edTeoEvaluated")) $("#edTeoEvaluated").textContent = "0";
+    if ($("#edTeoCompliant")) $("#edTeoCompliant").textContent = "0";
+    if ($("#edTeoFinalists")) $("#edTeoFinalists").textContent = "0";
+    const result = $("#edTeoResult");
+    if (result) result.hidden = true;
+  }
+
+  function updateTeoStats({evaluated, compliant, finalists} = {}) {
+    if (evaluated != null && $("#edTeoEvaluated")) $("#edTeoEvaluated").textContent = fmt(evaluated);
+    if (compliant != null && $("#edTeoCompliant")) $("#edTeoCompliant").textContent = fmt(compliant);
+    if (finalists != null && $("#edTeoFinalists")) $("#edTeoFinalists").textContent = fmt(finalists);
+  }
+
+  function renderTeoResult() {
+    const root = $("#edTeoResult");
+    if (!root || !optimizationResult) return;
+    const opt = optimizationResult.optimization || {};
+    const engineering = opt.engineeringSpec || {};
+    const env = engineering.envelope || {};
+    const ventilation = engineering.ventilation || {};
+    const heat = engineering.heating || {};
+    const pv = engineering.pv || {};
+    const rows = [];
+    const add = (icon, label, value, muted = false) => rows.push(
+      `<div class="ed-teo-measure"><svg><use href="#${icon}"></use></svg><b>${escapeHtml(label)}</b><span class="${muted ? "is-muted" : ""}">${escapeHtml(value)}</span></div>`
+    );
+    const wallCm = Number(env.wall?.equivalent_insulation_thickness_cm || 0);
+    const roofCm = Number(env.roof?.equivalent_insulation_thickness_cm || 0);
+    add("ed-i-wall","Pereți",wallCm > .05 ? `+${fmt(wallCm,1)} cm izolație` : "Fără intervenție", wallCm <= .05);
+    add("ed-i-roof","Acoperiș / pod",roofCm > .05 ? `+${fmt(roofCm,1)} cm izolație` : "Fără intervenție", roofCm <= .05);
+    const hrv = Number(ventilation.heat_recovery_efficiency || 0);
+    add("ed-i-air","Ventilație",hrv > .01 ? `HRV ${fmt(hrv * 100,0)}%` : "Fără intervenție", hrv <= .01);
+    const branch = String(heat.technology_branch || heat.generator_type || "sistem existent");
+    add("ed-i-heat","Încălzire",`${branch} · ${fmt(heat.design_required_power_kw || 0,1)} kW`,false);
+    const pvAdded = Number(pv.added_power_kwp || 0);
+    add("ed-i-pv","Fotovoltaice",pvAdded > .01 ? `+${fmt(pvAdded,1)} kWp (total ${fmt(pv.installed_power_kwp || 0,1)})` : "Fără intervenție", pvAdded <= .01);
+    $("#edTeoMeasures").innerHTML = rows.join("");
+
+    $("#edTeoCapex").textContent = money(opt.capexLei);
+    $("#edTeoSaving").textContent = opt.annualSavingLei == null ? "—" : `${money(opt.annualSavingLei)}/an`;
+    $("#edTeoPayback").textContent = opt.paybackYears == null ? "—" : `${fmt(opt.paybackYears,1)} ani`;
+
+    const badge = $("#edTeoComplianceBadge");
+    const selected = opt.parametricEvaluation || {};
+    const availablePass = candidateAvailableNzebPass(selected);
+    if (badge) {
+      badge.classList.toggle("is-pending", nzebConstraintEnabled() && availablePass);
+      badge.classList.toggle("is-fail", nzebConstraintEnabled() && !availablePass);
+      badge.innerHTML = nzebConstraintEnabled()
+        ? availablePass
+          ? '<svg><use href="#ed-i-info"></use></svg> EP + CO₂ conforme · RER de verificat'
+          : '<svg><use href="#ed-i-x"></use></svg> Prag nZEB disponibil neatins'
+        : '<svg><use href="#ed-i-check"></use></svg> Optim economic';
+    }
+    root.hidden = false;
+    const panel = $(".ed-teo-control-panel");
+    panel?.classList.remove("is-running");
+    panel?.classList.add("is-done");
+    const state = $("#edTeoRunState");
+    if (state) state.textContent = "Finalizat";
+    document.querySelectorAll("[data-teo-step]").forEach(node => {
+      node.classList.remove("is-active");
+      node.classList.add("is-done");
+    });
+  }
+
   function paintBaselineSummary(result, statusText = "Estimare pentru configurația curentă.") {
     if (!result) return;
     const energyClass = String(result.energy_class || "—").trim().toUpperCase() || "—";
@@ -2189,6 +2367,7 @@
     baselineBar.classList.remove("is-updating");
     if (priceDialog?.open) renderPriceReferences(result);
     if (classDialog?.open) renderClassReference(result);
+    renderNzebStatus(result);
   }
 
   function baselineSummaryReady() {
