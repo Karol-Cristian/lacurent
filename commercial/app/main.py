@@ -22,7 +22,11 @@ from .home_lab_images import HOME_LAB_IMAGE_BYTES
 from .home_lab_payload import embed_lab_result_payload, optimizer_candidate_payload
 from .methodology import climate_data, methodology, resolve_locality
 from .models import BuildingInput, building_from_json, model_to_dict, model_to_json
-from .rbpe_service import calculate_home_lab_api_json
+from .rbpe_service import (
+    build_product_wall_insulation_scenario_json,
+    build_wall_insulation_scenario_json,
+    calculate_home_lab_api_json,
+)
 from .optimization import (
     CandidateEvaluationV1,
     OptimizationCandidateRequestV1,
@@ -2173,16 +2177,57 @@ async def energy_prices_api() -> JSONResponse:
 
 
 @app.post("/api/scenarios/wall-insulation")
-async def wall_insulation_scenario_api(payload: WallInsulationScenarioRequestV1) -> JSONResponse:
+async def wall_insulation_scenario_api(
+    payload: WallInsulationScenarioRequestV1,
+    request: Request,
+) -> Response:
+    """Execute the two-pass wall scenario outside the public Worker budget."""
+    baseline_json = model_to_json(payload.baseline)
     try:
-        bundle = build_wall_insulation_scenario(
-            payload.baseline,
-            added_insulation_thickness_mm=payload.added_insulation_thickness_mm,
-            insulation_lambda_w_mk=payload.insulation_lambda_w_mk,
-        )
+        env = request.scope.get("env")
+        if env is not None:
+            service = getattr(env, "REFERENCE_RBPE", None)
+            if service is None:
+                raise HTTPException(
+                    status_code=503,
+                    detail="Serviciul privat RBPE nu este disponibil.",
+                )
+            raw_json = await service.build_wall_insulation_scenario_json(
+                baseline_json,
+                float(payload.added_insulation_thickness_mm),
+                float(payload.insulation_lambda_w_mk),
+            )
+            if not isinstance(raw_json, str):
+                raw_json = str(raw_json)
+        else:
+            raw_json = build_wall_insulation_scenario_json(
+                baseline_json,
+                added_insulation_thickness_mm=payload.added_insulation_thickness_mm,
+                insulation_lambda_w_mk=payload.insulation_lambda_w_mk,
+            )
+    except HTTPException:
+        raise
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    return JSONResponse(model_to_dict(bundle))
+    except Exception as exc:
+        print(
+            "[LaCurent] private wall scenario failed "
+            f"type={type(exc).__name__} detail={str(exc)[:300]}"
+        )
+        return JSONResponse(
+            {"error": "Scenariul de izolație este temporar indisponibil."},
+            status_code=503,
+            headers={"Cache-Control": "no-store"},
+        )
+
+    return Response(
+        raw_json,
+        media_type="application/json",
+        headers={
+            "Cache-Control": "no-store",
+            "X-LaCurent-RBPE": "private-sharded-wall-scenario",
+        },
+    )
 
 
 @app.post("/api/products/wall-insulation/match")
@@ -2202,16 +2247,57 @@ async def wall_insulation_product_match_api(
 @app.post("/api/scenarios/wall-insulation/product")
 async def wall_insulation_product_scenario_api(
     payload: WallInsulationProductScenarioRequestV1,
-) -> JSONResponse:
+    request: Request,
+) -> Response:
+    """Execute product-backed wall scenario outside the public Worker budget."""
+    baseline_json = model_to_json(payload.baseline)
+    requirement_json = model_to_json(payload.requirement)
+    product_json = model_to_json(payload.product)
     try:
-        response = build_product_wall_insulation_scenario(
-            payload.baseline,
-            payload.requirement,
-            payload.product,
-        )
+        env = request.scope.get("env")
+        if env is not None:
+            service = getattr(env, "REFERENCE_RBPE", None)
+            if service is None:
+                raise HTTPException(
+                    status_code=503,
+                    detail="Serviciul privat RBPE nu este disponibil.",
+                )
+            raw_json = await service.build_product_wall_insulation_scenario_json(
+                baseline_json,
+                requirement_json,
+                product_json,
+            )
+            if not isinstance(raw_json, str):
+                raw_json = str(raw_json)
+        else:
+            raw_json = build_product_wall_insulation_scenario_json(
+                baseline_json,
+                requirement_json,
+                product_json,
+            )
+    except HTTPException:
+        raise
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    return JSONResponse(model_to_dict(response))
+    except Exception as exc:
+        print(
+            "[LaCurent] private product wall scenario failed "
+            f"type={type(exc).__name__} detail={str(exc)[:300]}"
+        )
+        return JSONResponse(
+            {"error": "Scenariul comercial de izolație este temporar indisponibil."},
+            status_code=503,
+            headers={"Cache-Control": "no-store"},
+        )
+
+    return Response(
+        raw_json,
+        media_type="application/json",
+        headers={
+            "Cache-Control": "no-store",
+            "X-LaCurent-RBPE": "private-sharded-wall-product-scenario",
+        },
+    )
 
 
 @app.get("/health")

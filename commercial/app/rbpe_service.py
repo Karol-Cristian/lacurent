@@ -8,6 +8,8 @@ from .engine import calculate
 from .home_lab_form import build_input_from_form
 from .home_lab_payload import embed_lab_result_payload, optimizer_candidate_payload
 from .models import BuildingInput, building_from_json, model_to_json
+from .renovation import TechnicalRequirementV1, build_wall_insulation_scenario
+from .product_matching import WallInsulationProductV1, build_product_wall_insulation_scenario
 
 
 def calculate_home_lab_result_payload(payload: str | dict[str, Any]) -> dict[str, Any]:
@@ -109,4 +111,70 @@ def calculate_home_lab_form_api_json(encoded_form: str) -> str:
     )
     del building
     del form
+    return encoded
+
+def build_wall_insulation_scenario_json(
+    payload: str | dict[str, Any],
+    *,
+    added_insulation_thickness_mm: float,
+    insulation_lambda_w_mk: float,
+) -> str:
+    """Execute the two-pass renovation scenario inside the private RBPE shard."""
+    if payload in (None, ""):
+        raise ValueError("Missing wall-insulation baseline input.")
+
+    building = building_from_json(
+        payload if isinstance(payload, str) else json.dumps(payload)
+    )
+    bundle = build_wall_insulation_scenario(
+        building,
+        added_insulation_thickness_mm=float(added_insulation_thickness_mm),
+        insulation_lambda_w_mk=float(insulation_lambda_w_mk),
+    )
+    encoded = model_to_json(bundle)
+    del bundle
+    del building
+    return encoded
+
+
+def build_product_wall_insulation_scenario_json(
+    payload: str | dict[str, Any],
+    requirement_payload: str | dict[str, Any],
+    product_payload: str | dict[str, Any],
+) -> str:
+    """Execute product-backed wall scenario inside the private RBPE shard."""
+    if payload in (None, ""):
+        raise ValueError("Missing product-scenario baseline input.")
+
+    building = building_from_json(
+        payload if isinstance(payload, str) else json.dumps(payload)
+    )
+    requirement = TechnicalRequirementV1.model_validate_json(requirement_payload) if isinstance(
+        requirement_payload, str
+    ) and hasattr(TechnicalRequirementV1, "model_validate_json") else TechnicalRequirementV1(
+        **(
+            json.loads(requirement_payload)
+            if isinstance(requirement_payload, str)
+            else requirement_payload
+        )
+    )
+    product = WallInsulationProductV1.model_validate_json(product_payload) if isinstance(
+        product_payload, str
+    ) and hasattr(WallInsulationProductV1, "model_validate_json") else WallInsulationProductV1(
+        **(
+            json.loads(product_payload)
+            if isinstance(product_payload, str)
+            else product_payload
+        )
+    )
+    response = build_product_wall_insulation_scenario(
+        building,
+        requirement,
+        product,
+    )
+    encoded = model_to_json(response)
+    del response
+    del product
+    del requirement
+    del building
     return encoded

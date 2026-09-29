@@ -20,6 +20,16 @@ async function callRpc(env, key, method, args) {
   if (method === "reference_comparison") {
     return await binding.reference_comparison(args[0], args[1]);
   }
+  if (method === "build_wall_insulation_scenario_json") {
+    return await binding.build_wall_insulation_scenario_json(
+      args[0], args[1], args[2],
+    );
+  }
+  if (method === "build_product_wall_insulation_scenario_json") {
+    return await binding.build_product_wall_insulation_scenario_json(
+      args[0], args[1], args[2],
+    );
+  }
   throw new Error("unsupported_rpc_method");
 }
 
@@ -93,6 +103,30 @@ export default class extends WorkerEntrypoint {
       this.env,
       "reference_comparison",
       [payload, actualSpecific],
+    );
+  }
+
+  async build_wall_insulation_scenario_json(
+    payload,
+    addedInsulationThicknessMm,
+    insulationLambdaWMk,
+  ) {
+    return routeRpc(
+      this.env,
+      "build_wall_insulation_scenario_json",
+      [payload, addedInsulationThicknessMm, insulationLambdaWMk],
+    );
+  }
+
+  async build_product_wall_insulation_scenario_json(
+    payload,
+    requirementPayload,
+    productPayload,
+  ) {
+    return routeRpc(
+      this.env,
+      "build_product_wall_insulation_scenario_json",
+      [payload, requirementPayload, productPayload],
     );
   }
 

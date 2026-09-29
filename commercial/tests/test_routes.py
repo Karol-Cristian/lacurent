@@ -788,6 +788,8 @@ def test_private_rbpe_topology_is_minimal_sharded_and_service_bound() -> None:
     assert "import fastapi" not in worker.lower()
     assert "async def reference_comparison(" in worker
     assert "async def calculate_home_lab_form_api_json(" in worker
+    assert "async def build_wall_insulation_scenario_json(" in worker
+    assert "async def build_product_wall_insulation_scenario_json(" in worker
     assert 'compatibility_flags = ["python_workers", "enable_weak_ref"]' in shard_wrangler
     assert 'workers_dev = false' in shard_wrangler
     assert "lacurent-reference-rbpe" in shard_wrangler
@@ -797,6 +799,8 @@ def test_private_rbpe_topology_is_minimal_sharded_and_service_bound() -> None:
     for suffix in ("a", "b", "c", "d"):
         assert f'service = "lacurent-rbpe-shard-{suffix}"' in router_wrangler
     assert "calculate_home_lab_form_api_json" in router
+    assert "build_wall_insulation_scenario_json" in router
+    assert "build_product_wall_insulation_scenario_json" in router
     assert "disabledUntil" in router
 
     assert 'binding = "RBPE_ROUTER"' in gateway_wrangler
