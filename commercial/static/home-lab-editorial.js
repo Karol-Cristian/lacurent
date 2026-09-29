@@ -3256,6 +3256,8 @@
       "Căutarea TEO combină explorarea globală Halton cu două runde de rafinare locală în jurul zonelor economice/Pareto promițătoare.",
       "λ-urile afișate pentru anvelopă sunt valorile de calcul/reference folosite la transformarea R↔grosime; în această versiune TEO optimizează R și U rezultat, nu λ ca material comercial independent.",
       "Valorile ψ provin din modelul clădirii și sunt raportate inginerește; optimizarea explicită a punților termice va necesita o variabilă TEO separată.",
+      "RER Home Lab este un indicator tehnic conservator pe perimetrul explicit al serviciilor reglementate: include fPren/fPnren pentru energia livrată, PV onsite autoconsumat reglementat și solar termic utilizat la ACM; exclude exportul PV, consumul casnic și, până la validarea metodei generale, energia de mediu a pompelor de căldură.",
+      "Un rezultat tehnic nZEB nu este promovat ca verdict juridic: garanțiile de origine și orice cerință suplimentară 2026 stabilită oficial trebuie verificate documentar.",
     ];
     for (const row of (verifiedRows || [])) {
       for (const warning of (row?.warnings || [])) {
@@ -3681,6 +3683,37 @@
         ` : ""}
       </section>
     `;
+
+    const nzebTarget = baselineResult?.nzeb_target || null;
+    const rerTotal = Number(
+      parametric.rerPercent
+      ?? scenario.rer_percent
+      ?? 0
+    );
+    const rerOnsite = Number(
+      parametric.onsiteRenewablePercent
+      ?? scenario.onsite_renewable_percent
+      ?? 0
+    );
+    const nzebTechnicalPass = Boolean(
+      nzebTarget
+      && candidateAvailableNzebPass(parametric, nzebTarget)
+    );
+    if (nzebTarget) {
+      html += `
+        <section class="ed-report-section">
+          <h2>nZEB · verificare tehnică modelată</h2>
+          <p>Home Lab verifică numeric partea pe care o poate demonstra din model. Garanțiile de origine și orice cerință suplimentară 2026 stabilită prin act oficial rămân verificări documentare externe.</p>
+          <div class="ed-metrics">
+            ${metric("Eprim final", parametric.primarySpecificKwhM2 == null ? "—" : fmt(parametric.primarySpecificKwhM2,1) + " / " + fmt(nzebTarget.primary_energy_kwh_m2_year,1) + " kWh/m²·an")}
+            ${metric("CO₂ final", parametric.co2SpecificKgM2 == null ? "—" : fmt(parametric.co2SpecificKgM2,1) + " / " + fmt(nzebTarget.co2_kg_m2_year,1) + " kgCO₂/m²·an")}
+            ${metric("RER tehnic", fmt(rerTotal,1) + "% / ≥" + fmt(nzebTarget.renewable_total_minimum_percent ?? 30,0) + "%")}
+            ${metric("SRE onsite", fmt(rerOnsite,1) + "% / ≥" + fmt(nzebTarget.renewable_onsite_minimum_percent ?? 10,0) + "%")}
+          </div>
+          <p class="ed-hint"><b>Status:</b> ${nzebTechnicalPass ? "pragurile tehnice modelate sunt atinse" : "cel puțin un prag tehnic modelat nu este atins"}. Pentru conformare juridică completă, dovada pentru minimum ${fmt(nzebTarget.renewable_guarantee_of_origin_minimum_percent ?? 20,0)}% prin garanții de origine se verifică separat.</p>
+        </section>
+      `;
+    }
 
     const env = engineering.envelope || {};
     const bridges = engineering.thermal_bridges || {};
