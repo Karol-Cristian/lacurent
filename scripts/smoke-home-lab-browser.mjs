@@ -490,8 +490,10 @@ try {
   // before the expensive smoke optimization.
   const constructionYear = page.locator('[name="construction_year"]');
   const originalYear = await constructionYear.inputValue();
-  await constructionYear.fill("2026");
-  await constructionYear.dispatchEvent("input");
+  await constructionYear.evaluate((field) => {
+    field.value = "2026";
+    field.dispatchEvent(new Event("input", {bubbles:true}));
+  });
   const newBuildNzeb = await page.evaluate(() => ({
     enabled:document.querySelector("#edNzebConstraintValue")?.value,
     mandatory:document.querySelector("#edNzebConstraintToggle")?.classList.contains("is-mandatory"),
@@ -509,8 +511,10 @@ try {
     throw new Error("2026 nZEB lock contract failed: " + JSON.stringify(newBuildNzeb));
   }
 
-  await constructionYear.fill(originalYear || "2005");
-  await constructionYear.dispatchEvent("input");
+  await constructionYear.evaluate((field, value) => {
+    field.value = value || "2005";
+    field.dispatchEvent(new Event("input", {bubbles:true}));
+  }, originalYear);
   const nzebToggle = page.locator("#edNzebConstraintToggle");
   if ((await page.locator("#edNzebConstraintValue").inputValue()) === "1") {
     await nzebToggle.click();
