@@ -86,6 +86,7 @@ from .heating_catalog_store import (
     clear_heating_optimizer_runtime_caches,
     read_heating_commercial_candidate_catalog_from_d1,
     read_heating_public_catalog_from_d1,
+    read_heating_public_products_from_d1,
     seed_heating_branch_catalog_payload,
     seed_heating_catalog_payload,
     seed_heating_catalog_summary_payload,
@@ -1944,6 +1945,34 @@ async def _public_heating_catalog(request: Request) -> dict[str, Any]:
     return seed_heating_public_catalog_payload()
 
 
+async def _public_heating_products_only(request: Request) -> dict[str, Any]:
+    """Return only the product rows needed to render /produse.
+
+    Keep COP operating maps and seasonal tables on the dedicated API path. The
+    HTML catalog never consumes them, and materializing them here raises the
+    public Pyodide isolate peak for no user-visible benefit.
+    """
+
+    env = request.scope.get("env")
+    db = getattr(env, "DB", None) if env is not None else None
+    if db is not None:
+        payload = await read_heating_public_products_from_d1(db)
+        if payload is not None:
+            return payload
+
+    payload = seed_heating_public_catalog_payload()
+    payload["heat_pump_performance_points"] = []
+    payload["heat_pump_seasonal_performance"] = []
+    payload["parametric_heating_nodes"] = []
+    stats = dict(payload.get("catalog_stats") or {})
+    stats["performance_points"] = 0
+    stats["seasonal_points"] = 0
+    stats["parametric_nodes"] = 0
+    payload["catalog_stats"] = stats
+    payload["catalog_mode"] = "seed_public_products_only"
+    return payload
+
+
 async def _optimizer_heating_catalog_summary(request: Request) -> dict[str, Any]:
     """Return product/branch metadata without loading the 1000-node dense grid."""
     env = request.scope.get("env")
@@ -2366,11 +2395,13 @@ async def index(request: Request) -> HTMLResponse:
 
 @app.get("/produse", response_class=HTMLResponse)
 async def product_catalog_page(request: Request) -> HTMLResponse:
-    catalog = await _public_heating_catalog(request)
+    catalog = await _public_heating_products_only(request)
+    context = _public_catalog_context(catalog)
+    del catalog
     return templates.TemplateResponse(
         request,
         "product_catalog.html",
-        {"request": request, **_public_catalog_context(catalog)},
+        {"request": request, **context},
     )
 
 
