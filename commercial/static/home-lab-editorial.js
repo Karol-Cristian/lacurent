@@ -1052,13 +1052,41 @@
     nzebConstraintToggle.classList.toggle("is-mandatory", mandatory);
     nzebConstraintToggle.setAttribute("aria-pressed", enabled ? "true" : "false");
     nzebConstraintToggle.setAttribute("aria-disabled", mandatory ? "true" : "false");
+    nzebConstraintToggle.title = mandatory
+      ? "Conformarea nZEB este blocată activ pentru o casă nouă."
+      : enabled
+        ? "Dezactivează ținta nZEB pentru această analiză."
+        : "Activează ținta nZEB pentru această analiză.";
+
+    const badge = $("#edNzebMandatoryBadge");
+    if (badge) {
+      badge.textContent = mandatory ? "OBLIGATORIU" : (enabled ? "ACTIV" : "OPȚIONAL");
+    }
+
     const note = $("#edNzebLegalNote");
     if (note) {
       note.querySelector("span").textContent = mandatory
         ? "Pentru o casă cu anul construcției după 2020, Home Lab activează conformarea ca regulă de siguranță. Anul este un proxy de produs; statutul juridic real depinde de autorizația clădirii."
-        : "Pentru clădirile existente, ținta nZEB poate fi activată opțional. Home Lab nu transformă această alegere într-un certificat legal.";
-    }
-    renderNzebStatus(baselineResult);
+        : enabled
+          ? "Ținta nZEB este activă pentru această analiză. TEO o tratează ca o constrângere tehnică, nu ca pe un certificat legal."
+          : "Pentru clădirile existente, ținta nZEB este opțională și poate fi activată aici.";
+
+    const step3 = $("#edTeoStep3Label");
+    const step4 = $("#edTeoStep4Label");
+    const compliantLabel = $("#edTeoCompliantLabel");
+    if (step3) step3.innerHTML = enabled
+      ? "Caut<br>frontiera nZEB"
+      : "Construiesc<br>frontiera Pareto";
+    if (step4) step4.innerHTML = enabled
+      ? "Reoptimizez<br>soluțiile conforme"
+      : "Rafinez<br>candidații economici";
+    if (compliantLabel) compliantLabel.textContent = enabled
+      ? "soluții conforme*"
+      : "candidați fezabili";
+
+    renderNzebStatus(
+      optimizationResult ? optimizationSummaryForPersistentBar() : baselineResult
+    );
   }
 
   function syncGoalField() {
@@ -2241,6 +2269,12 @@
   function renderNzebStatus(result = baselineResult) {
     const panel = $(".ed-nzeb-status-panel");
     if (!panel) return;
+    const scope = $("#edNzebScopeLabel");
+    if (scope) {
+      scope.textContent = result?._summary_scope === "teo_final"
+        ? "După optimizarea TEO"
+        : "Situație inițială";
+    }
     const target = result?.nzeb_target || baselineResult?.nzeb_target || null;
     const zone = target?.climate_zone || result?.climate_zone || "—";
     const zoneNode = $("#edNzebZone");
@@ -2381,23 +2415,63 @@
     const opt = optimizationResult.optimization || {};
     const engineering = opt.engineeringSpec || {};
     const env = engineering.envelope || {};
+    const bridges = engineering.thermal_bridges || {};
     const ventilation = engineering.ventilation || {};
     const heat = engineering.heating || {};
     const pv = engineering.pv || {};
+    const solarThermal = engineering.solar_thermal || {};
     const rows = [];
     const add = (icon, label, value, muted = false) => rows.push(
       `<div class="ed-teo-measure"><svg><use href="#${icon}"></use></svg><b>${escapeHtml(label)}</b><span class="${muted ? "is-muted" : ""}">${escapeHtml(value)}</span></div>`
     );
+
     const wallCm = Number(env.wall?.equivalent_insulation_thickness_cm || 0);
     const roofCm = Number(env.roof?.equivalent_insulation_thickness_cm || 0);
+    const floorCm = Number(env.floor?.equivalent_insulation_thickness_cm || 0);
     add("ed-i-wall","Pereți",wallCm > .05 ? `+${fmt(wallCm,1)} cm izolație` : "Fără intervenție", wallCm <= .05);
     add("ed-i-roof","Acoperiș / pod",roofCm > .05 ? `+${fmt(roofCm,1)} cm izolație` : "Fără intervenție", roofCm <= .05);
+    add("ed-i-floor","Pardoseală",floorCm > .05 ? `+${fmt(floorCm,1)} cm izolație` : "Fără intervenție", floorCm <= .05);
+
+    const windowFraction = Number(env.windows?.replacement_fraction || 0);
+    const windowU = Number(env.windows?.final_u_w_m2k || 0);
+    add(
+      "ed-i-window",
+      "Ferestre",
+      windowFraction > .005
+        ? `${fmt(windowFraction * 100,0)}% înlocuire · Uw ${fmt(windowU,2)}`
+        : `Fără înlocuire · Uw ${fmt(windowU,2)}`,
+      windowFraction <= .005
+    );
+
+    const psiMean = Number(bridges.weighted_mean_psi_w_mk);
+    add(
+      "ed-i-bridge",
+      "Punți termice",
+      Number.isFinite(psiMean)
+        ? `ψ mediu ${fmt(psiMean,3)} W/mK`
+        : "Nemodificate",
+      !bridges.optimized
+    );
+
     const hrv = Number(ventilation.heat_recovery_efficiency || 0);
-    add("ed-i-air","Ventilație",hrv > .01 ? `HRV ${fmt(hrv * 100,0)}%` : "Fără intervenție", hrv <= .01);
+    add("ed-i-air","Ventilație",hrv > .01 ? `HRV ${fmt(hrv * 100,0)}% · ACH ${fmt(ventilation.air_changes_per_hour || 0,2)}` : "Fără intervenție", hrv <= .01);
+
     const branch = String(heat.technology_branch || heat.generator_type || "sistem existent");
     add("ed-i-heat","Încălzire",`${branch} · ${fmt(heat.design_required_power_kw || 0,1)} kW`,false);
+
     const pvAdded = Number(pv.added_power_kwp || 0);
-    add("ed-i-pv","Fotovoltaice",pvAdded > .01 ? `+${fmt(pvAdded,1)} kWp (total ${fmt(pv.installed_power_kwp || 0,1)})` : "Fără intervenție", pvAdded <= .01);
+    add("ed-i-pv","Fotovoltaice",pvAdded > .01 ? `+${fmt(pvAdded,1)} kWp · total ${fmt(pv.installed_power_kwp || 0,1)} kWp` : "Fără intervenție", pvAdded <= .01);
+
+    const solarAdded = Number(solarThermal.added_area_m2 || 0);
+    add(
+      "ed-i-solar",
+      "Solar termic",
+      solarAdded > .01
+        ? `+${fmt(solarAdded,1)} m² · total ${fmt(solarThermal.collector_area_m2 || 0,1)} m²`
+        : "Fără intervenție",
+      solarAdded <= .01
+    );
+
     $("#edTeoMeasures").innerHTML = rows.join("");
 
     $("#edTeoCapex").textContent = money(opt.capexLei);
@@ -3447,6 +3521,11 @@
         enabled:nzebConstraintEnabled(),
         target:lastPlan?.kernel?.compliance_target || baselineResult?.nzeb_target || null,
       };
+      if (compliancePolicy.enabled && !compliancePolicy.target) {
+        throw new Error(
+          "Ținta nZEB este activă, dar pragurile normative nu au putut fi determinate pentru localitatea/clădirea selectată."
+        );
+      }
       log(
         compliancePolicy.enabled
           ? "CONSTRAINT · nZEB activ: TEO explorează economic, apoi reoptimizează în domeniul Eprim + CO₂ + SRE onsite. RER total este calculat, iar garanțiile de origine rămân dovadă externă."
