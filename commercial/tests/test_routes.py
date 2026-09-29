@@ -170,8 +170,8 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'data-page="run"' in page.text
     assert 'data-page="report"' in page.text
     assert 'data-page="renewables"' in page.text
-    assert "/static/home-lab-editorial.css?v=23" in page.text
-    assert "/static/home-lab-editorial.js?v=51" in page.text
+    assert "/static/home-lab-editorial.css?v=24" in page.text
+    assert "/static/home-lab-editorial.js?v=52" in page.text
     assert "/static/home-lab-3d.js" not in page.text
     assert 'id="edBaselineClass"' in page.text
     assert 'id="edClassReferenceOpen"' in page.text
@@ -189,6 +189,14 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'id="edNzebRerValue"' in page.text
     assert '≥30% total · ≥10% onsite · ≥20% GO' in page.text
     assert 'id="edTeoSteps"' in page.text
+    assert 'id="edTeoStep3Label"' in page.text
+    assert 'id="edTeoStep4Label"' in page.text
+    assert 'id="edTeoCompliantLabel"' in page.text
+    assert 'id="edNzebScopeLabel"' in page.text
+    assert 'id="ed-i-floor"' in page.text
+    assert 'id="ed-i-window"' in page.text
+    assert 'id="ed-i-bridge"' in page.text
+    assert 'id="ed-i-solar"' in page.text
     assert 'data-teo-step="5"' in page.text
     assert 'id="edTeoResult"' in page.text
     assert 'id="openReportFromGoal"' in page.text
@@ -296,6 +304,13 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert "nZEB tehnic modelat · dovadă GO necesară" in js.text
     assert "function syncNzebPolicy(" in js.text
     assert "function renderTeoResult(" in js.text
+    assert '"Pardoseală"' in js.text
+    assert '"Ferestre"' in js.text
+    assert '"Punți termice"' in js.text
+    assert '"Solar termic"' in js.text
+    assert "frontiera Pareto" in js.text
+    assert "candidații economici" in js.text
+    assert "Ținta nZEB este activă, dar pragurile normative" in js.text
     assert "compliancePolicy" in js.text
     assert "availableCompliantCount" in js.text
     assert "Shortlist canonic selectat local:" in js.text
