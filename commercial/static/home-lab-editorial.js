@@ -3708,7 +3708,12 @@
 
   $("#runAnalysis").addEventListener("click", runAnalysis);
   $("#openReport").addEventListener("click", () => showPage("report"));
-  $("#reportBack").addEventListener("click", () => showPage("done"));
+  $("#openReportFromGoal")?.addEventListener("click", () => {
+    if (!optimizationResult) return;
+    renderReport();
+    showPage("report");
+  });
+  $("#reportBack").addEventListener("click", () => showPage("goal"));
   $("#tryAgain").addEventListener("click", () => showPage("goal"));
 
   function openLog() {
@@ -3785,6 +3790,8 @@
     });
 
   syncGoalField();
+  syncNzebPolicy();
+  resetTeoControlUi();
   updateGeometryDisplay(true);
   applyHeatingDefaults();
 
@@ -3795,6 +3802,7 @@
     updateGeometryDisplay(false);
     syncGoalField();
     syncChoiceGroupSelections();
+    syncNzebPolicy();
   } else {
     syncRenewableVisibility();
   }
