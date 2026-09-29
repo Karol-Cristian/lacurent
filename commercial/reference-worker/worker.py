@@ -90,11 +90,15 @@ class Default(WorkerEntrypoint):
         insulation_lambda_w_mk,
     ):
         """Execute the two-pass renovation scenario within the shard budget."""
-        return build_wall_insulation_scenario_json(
-            payload,
-            added_insulation_thickness_mm=float(added_insulation_thickness_mm),
-            insulation_lambda_w_mk=float(insulation_lambda_w_mk),
-        )
+        gc.collect()
+        try:
+            return build_wall_insulation_scenario_json(
+                payload,
+                added_insulation_thickness_mm=float(added_insulation_thickness_mm),
+                insulation_lambda_w_mk=float(insulation_lambda_w_mk),
+            )
+        finally:
+            gc.collect()
 
     async def build_product_wall_insulation_scenario_json(
         self,
@@ -103,11 +107,15 @@ class Default(WorkerEntrypoint):
         product_payload,
     ):
         """Execute product-backed scenario within the shard budget."""
-        return build_product_wall_insulation_scenario_json(
-            payload,
-            requirement_payload,
-            product_payload,
-        )
+        gc.collect()
+        try:
+            return build_product_wall_insulation_scenario_json(
+                payload,
+                requirement_payload,
+                product_payload,
+            )
+        finally:
+            gc.collect()
 
     async def fetch(self, request):
         path = urlparse(request.url).path

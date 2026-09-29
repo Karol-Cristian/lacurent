@@ -49,6 +49,29 @@ def test_wall_scenario_releases_baseline_graph_before_scenario_graph() -> None:
     assert section.count("gc.collect()") >= 2
 
 
+def test_private_wall_scenario_rpcs_collect_heap_before_and_after() -> None:
+    source = Path("commercial/reference-worker/worker.py").read_text(encoding="utf-8")
+    generic = source.split(
+        "async def build_wall_insulation_scenario_json(",
+        1,
+    )[1].split(
+        "async def build_product_wall_insulation_scenario_json(",
+        1,
+    )[0]
+    product = source.split(
+        "async def build_product_wall_insulation_scenario_json(",
+        1,
+    )[1].split(
+        "async def fetch(",
+        1,
+    )[0]
+
+    assert generic.count("gc.collect()") >= 2
+    assert "finally:" in generic
+    assert product.count("gc.collect()") >= 2
+    assert "finally:" in product
+
+
 def test_wall_scenario_skips_unused_reference_recalculations(monkeypatch) -> None:
     real_calculate = renovation_module.calculate
     include_reference_flags: list[bool] = []
