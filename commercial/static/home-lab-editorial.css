@@ -1947,8 +1947,18 @@ body{
   .ed-goal-back{padding:0 9px}
   .ed-goal-back span{display:none}
   .ed-nzeb-status-panel,.ed-teo-control-panel{padding:13px}
-  .ed-nzeb-status-panel>header{align-items:flex-start}
-  .ed-nzeb-status-panel h2 small{font-size:10px}
+  .ed-nzeb-status-panel>header{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    align-items:start;
+    gap:8px;
+  }
+  .ed-nzeb-status-panel h2 small{
+    display:block;
+    margin-top:2px;
+    font-size:10px;
+    white-space:nowrap;
+  }
   .ed-zone-chip{font-size:8px}
   .ed-zone-chip b{min-width:35px;height:27px}
   .ed-nzeb-status-grid{grid-template-columns:1fr;gap:7px}
@@ -1972,6 +1982,13 @@ body{
   .ed-teo-stats span{font-size:8px}
   .ed-teo-result>header{align-items:flex-start}
   .ed-teo-result h3{font-size:15px}
+  .ed-teo-compliance-badge{
+    max-width:54%;
+    white-space:normal;
+    text-align:right;
+    line-height:1.25;
+    justify-content:flex-end;
+  }
   .ed-teo-result-grid{grid-template-columns:1fr;gap:9px}
   .ed-teo-economics{min-height:82px;padding:8px}
   .ed-teo-economics svg{width:23px;height:23px}
