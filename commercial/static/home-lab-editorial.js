@@ -98,6 +98,7 @@
   let mapPinch = null;
   let autosaveTimer = 0;
   let draftDirty = false;
+  let suppressLocalAutosave = false;
   const MAP_MIN_ZOOM = 1;
   const MAP_MAX_ZOOM = 6;
   const mapView = {zoom:1, centerX:null, centerY:null};
@@ -190,7 +191,7 @@
   }
 
   function persistEditorialDraft({force = false} = {}) {
-    if (!localAutosaveAllowed()) return false;
+    if (suppressLocalAutosave || !localAutosaveAllowed()) return false;
     if (!force && !draftDirty) return false;
     try {
       const current = JSON.parse(localStorage.getItem(storageKey) || "null");
@@ -223,6 +224,9 @@
   function startNewHouse() {
     const confirmed = window.confirm("Pornești o casă nouă? Datele salvate local și override-urile tehnice de pe acest dispozitiv vor fi șterse.");
     if (!confirmed) return;
+    suppressLocalAutosave = true;
+    draftDirty = false;
+    window.clearTimeout(autosaveTimer);
     clearEditorialLocalState();
     window.location.reload();
   }
