@@ -43,7 +43,7 @@
   const classReferenceBody = $("#edClassReferenceBody");
   const stageEls = Object.fromEntries([...document.querySelectorAll("[data-run-stage]")].map(el => [el.dataset.runStage, el]));
 
-  const DEFAULT_FAVICON_HREF = "/static/favicon.svg?v=4";
+  const DEFAULT_FAVICON_HREF = "/static/favicon.svg?v=5";
   const ENERGY_CLASS_FAVICON_COLORS = Object.freeze({
     "A+":"#009c57",
     "A":"#00a651",
