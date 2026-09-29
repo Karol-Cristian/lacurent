@@ -2167,6 +2167,16 @@
         ?? scenario.co2_specific_kg_m2
         ?? baselineResult?.co2_specific_kg_m2
         ?? null,
+      rer_percent:
+        parametric.rerPercent
+        ?? scenario.rer_percent
+        ?? baselineResult?.rer_percent
+        ?? null,
+      onsite_renewable_percent:
+        parametric.onsiteRenewablePercent
+        ?? scenario.onsite_renewable_percent
+        ?? baselineResult?.onsite_renewable_percent
+        ?? null,
       price_reference_rows:finalPriceRows.length ? finalPriceRows : fallbackPriceRows,
       _summary_scope:"teo_final",
     };
@@ -2182,11 +2192,26 @@
       candidate.co2_specific_kg_m2
       ?? candidate.co2SpecificKgM2
     );
+    const rer = Number(
+      candidate.rer_percent
+      ?? candidate.rerPercent
+    );
+    const onsite = Number(
+      candidate.onsite_renewable_percent
+      ?? candidate.onsiteRenewablePercent
+    );
     const primaryLimit = Number(target.primary_energy_kwh_m2_year);
     const co2Limit = Number(target.co2_kg_m2_year);
-    return [primary, co2, primaryLimit, co2Limit].every(Number.isFinite)
+    const rerMinimum = Number(target.renewable_total_minimum_percent ?? 30);
+    const onsiteMinimum = Number(target.renewable_onsite_minimum_percent ?? 10);
+    return [
+      primary, co2, rer, onsite,
+      primaryLimit, co2Limit, rerMinimum, onsiteMinimum
+    ].every(Number.isFinite)
       && primary <= primaryLimit + 1e-6
-      && co2 <= co2Limit + 1e-6;
+      && co2 <= co2Limit + 1e-6
+      && rer + 1e-6 >= rerMinimum
+      && onsite + 1e-6 >= onsiteMinimum;
   }
 
   function setNzebMetric(metricName, actual, limit, unit) {
@@ -2236,27 +2261,70 @@
     );
 
     const rerCard = document.querySelector('[data-nzeb-metric="rer"]');
-    rerCard?.classList.remove("is-pass","is-fail");
-    rerCard?.classList.add("is-rer-pending");
+    rerCard?.classList.remove("is-pass","is-fail","is-rer-pending");
     const rerValue = $("#edNzebRerValue");
     const rerBar = $("#edNzebRerBar");
     const rerState = $("#edNzebRerState");
-    if (rerValue) rerValue.textContent = "— / ≥ 30%";
-    if (rerBar) rerBar.style.width = "30%";
-    if (rerState) rerState.innerHTML = '<svg><use href="#ed-i-info"></use></svg>';
+    const rer = Number(
+      result?.rer_percent
+      ?? result?.renewable_share?.rer_percent
+    );
+    const onsite = Number(
+      result?.onsite_renewable_percent
+      ?? result?.renewable_share?.onsite_percent
+    );
+    const rerMinimum = Number(target?.renewable_total_minimum_percent ?? 30);
+    const onsiteMinimum = Number(target?.renewable_onsite_minimum_percent ?? 10);
+    const goMinimum = Number(
+      target?.renewable_guarantee_of_origin_minimum_percent ?? 20
+    );
+    const rerValid = [rer, onsite, rerMinimum, onsiteMinimum].every(Number.isFinite);
+    const rerPass = rerValid
+      ? rer + 1e-6 >= rerMinimum && onsite + 1e-6 >= onsiteMinimum
+      : null;
+    rerCard?.classList.toggle("is-pass", rerPass === true);
+    rerCard?.classList.toggle("is-fail", rerPass === false);
+    rerCard?.classList.toggle("is-rer-pending", rerPass === null);
+    if (rerValue) {
+      rerValue.textContent = rerValid
+        ? `${fmt(rer,1)}% · onsite ${fmt(onsite,1)}%`
+        : "—";
+    }
+    if (rerBar) {
+      rerBar.style.width = rerValid
+        ? `${Math.min(100, Math.max(4, 100 * rer / Math.max(rerMinimum, 1)))}%`
+        : "0%";
+    }
+    if (rerState) {
+      rerState.innerHTML = rerPass === true
+        ? '<svg><use href="#ed-i-info"></use></svg>'
+        : rerPass === false
+          ? '<svg><use href="#ed-i-x"></use></svg>'
+          : '<svg><use href="#ed-i-info"></use></svg>';
+    }
+    const rerLimit = $("#edNzebRerLimit");
+    if (rerLimit) {
+      rerLimit.textContent = `Țintă modelată: ≥${fmt(rerMinimum,0)}% total · ≥${fmt(onsiteMinimum,0)}% onsite · ≥${fmt(goMinimum,0)}% GO de dovedit`;
+    }
 
     const message = $("#edNzebMessage");
     if (!message) return;
     const constrained = nzebConstraintEnabled();
+    const technicalPass = (
+      target
+      && primaryPass === true
+      && co2Pass === true
+      && rerPass === true
+    );
     let text = "Completează casa pentru a verifica pragurile aplicabile.";
-    if (target && primaryPass === true && co2Pass === true) {
+    if (technicalPass) {
       text = constrained
-        ? "Eprim și CO₂ respectă pragurile modelate. RER/SRE rămâne explicit în verificare metodologică; nu emitem încă un verdict juridic complet nZEB."
-        : "Eprim și CO₂ respectă pragurile nZEB modelate. Constrângerea nZEB este opțională și momentan dezactivată.";
-    } else if (target && (primaryPass === false || co2Pass === false)) {
+        ? `TEO poate verifica tehnic Eprim, CO₂, RER ≥${fmt(rerMinimum,0)}% și partea onsite ≥${fmt(onsiteMinimum,0)}%. Conformarea juridică completă rămâne condiționată de dovada pentru ≥${fmt(goMinimum,0)}% prin garanții de origine și de orice prag suplimentar 2026 stabilit oficial.`
+        : "Indicatorii tehnici nZEB modelați sunt atinși, dar constrângerea nZEB este momentan dezactivată.";
+    } else if (target && [primaryPass, co2Pass, rerPass].some(value => value === false)) {
       text = constrained
-        ? "Clădirea nu respectă încă toate pragurile nZEB disponibile. TEO va căuta întâi economic, apoi va păstra și reoptimiza candidații care închid diferența Eprim/CO₂."
-        : "Clădirea depășește cel puțin un prag nZEB disponibil. Activează conformarea pentru ca TEO să trateze pragurile ca restricții.";
+        ? "Clădirea nu respectă încă toate pragurile tehnice modelate. TEO caută economic, apoi reoptimizează numai în domeniul Eprim + CO₂ + RER total + SRE onsite eligibil."
+        : "Cel puțin un prag tehnic nZEB modelat nu este atins. Activează conformarea pentru a-l trata drept restricție.";
     } else if (!target) {
       text = "Pragurile nZEB nu sunt disponibile până când localitatea și zona climatică nu sunt rezolvate.";
     }
@@ -2339,8 +2407,8 @@
       badge.classList.toggle("is-fail", nzebConstraintEnabled() && !availablePass);
       badge.innerHTML = nzebConstraintEnabled()
         ? availablePass
-          ? '<svg><use href="#ed-i-info"></use></svg> EP + CO₂ conforme · RER de verificat'
-          : '<svg><use href="#ed-i-x"></use></svg> Prag nZEB disponibil neatins'
+          ? '<svg><use href="#ed-i-info"></use></svg> nZEB tehnic modelat · dovadă GO necesară'
+          : '<svg><use href="#ed-i-x"></use></svg> Prag tehnic nZEB neatins'
         : '<svg><use href="#ed-i-check"></use></svg> Optim economic';
     }
     root.hidden = false;
@@ -3223,8 +3291,14 @@
         paretoScope:"verified_parametric_teo_only",
         compliancePolicy:compliancePolicy || {enabled:false,target:null},
         availableCompliantFinalists:Number(selection.availableCompliantCount || 0),
+        technicalNzebPass:Boolean(
+          compliancePolicy?.enabled
+          && candidateAvailableNzebPass(selected, compliancePolicy?.target)
+        ),
         fullLegalNzebCompliance:false,
-        rerStatus:compliancePolicy?.enabled ? "pending_methodology" : "not_requested",
+        rerStatus:compliancePolicy?.enabled
+          ? "bounded_technical_model_go_evidence_required"
+          : "not_requested",
         heatingBranches:branches,
         technicalHeatingAlternatives:[],
         rawSolution:selected?.parameters || {},
@@ -3236,6 +3310,9 @@
           primarySpecificKwhM2:Number(selected?.primary_specific_kwh_m2 || 0),
           co2TotalKg:Number(selected?.co2_total_kg || 0),
           co2SpecificKgM2:Number(selected?.co2_specific_kg_m2 || 0),
+          rerPercent:Number(selected?.rer_percent || 0),
+          onsiteRenewablePercent:Number(selected?.onsite_renewable_percent || 0),
+          rerStatus:selected?.rer_status || null,
           energyClass:selected?.energy_class,
           designHeatLoadKw:selected?.design_heat_load_kw ?? null,
         },
@@ -3247,6 +3324,9 @@
           finalEnergyKwh:Number(selected?.final_energy_kwh || 0),
           primarySpecificKwhM2:Number(selected?.primary_specific_kwh_m2 || 0),
           co2SpecificKgM2:Number(selected?.co2_specific_kg_m2 || 0),
+          rerPercent:Number(selected?.rer_percent || 0),
+          onsiteRenewablePercent:Number(selected?.onsite_renewable_percent || 0),
+          rerStatus:selected?.rer_status || null,
           energyClass:selected?.energy_class,
           designHeatLoadKw:selected?.design_heat_load_kw ?? null,
         },
@@ -3359,7 +3439,7 @@
       };
       log(
         compliancePolicy.enabled
-          ? "CONSTRAINT · nZEB activ: TEO explorează economic, apoi prioritizează și reoptimizează candidații care satisfac Eprim + CO₂; RER rămâne pending."
+          ? "CONSTRAINT · nZEB activ: TEO explorează economic, apoi reoptimizează în domeniul Eprim + CO₂ + RER total + SRE onsite. Garanțiile de origine rămân dovadă externă."
           : "CONSTRAINT · nZEB dezactivat: TEO optimizează strict obiectivul economic ales."
       );
       log(`TEO V4 local: ${searchPointCount * branchIds.length} evaluări planificate în browser, fără request HTTP per candidat.`);
@@ -3518,6 +3598,8 @@
         ...(baselineResult || {}),
         primary_specific_kwh_m2:opt.parametricEvaluation?.primarySpecificKwhM2,
         co2_specific_kg_m2:opt.parametricEvaluation?.co2SpecificKgM2,
+        rer_percent:opt.parametricEvaluation?.rerPercent,
+        onsite_renewable_percent:opt.parametricEvaluation?.onsiteRenewablePercent,
       };
       renderNzebStatus(finalSummary);
       log("UI · rezultatul TEO rămâne pe pagina 5; raportul complet este disponibil în pasul 6.");
