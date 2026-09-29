@@ -162,7 +162,7 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'data-page="report"' in page.text
     assert 'data-page="renewables"' in page.text
     assert "/static/home-lab-editorial.css?v=21" in page.text
-    assert "/static/home-lab-editorial.js?v=44" in page.text
+    assert "/static/home-lab-editorial.js?v=45" in page.text
     assert "/static/home-lab-3d.js" not in page.text
     assert 'id="edBaselineClass"' in page.text
     assert 'id="edClassReferenceOpen"' in page.text
@@ -265,7 +265,7 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert "ENERGY_CLASS_FAVICON_COLORS" in js.text
     assert "function setEnergyClassFavicon(" in js.text
     assert "setEnergyClassFavicon(energyClass)" in js.text
-    assert 'DEFAULT_FAVICON_HREF = "/static/favicon.svg?v=4"' in js.text
+    assert 'DEFAULT_FAVICON_HREF = "/static/favicon.svg?v=5"' in js.text
     assert 'baselineHeatingDemand.textContent' in js.text
     assert 'baselineCoolingDemand.textContent' in js.text
     assert 'baselineFinalEnergy.textContent' in js.text
@@ -585,7 +585,7 @@ def test_company_home_is_commercial_landing() -> None:
     assert "Energia ta și bugetul tău merită luate în serios." in response.text
     assert 'href="/home-lab-next"' in response.text
     assert "/static/lacurent-landing.css?v=3" in response.text
-    assert 'href="/static/favicon.svg?v=4"' in response.text
+    assert 'href="/static/favicon.svg?v=5"' in response.text
     assert 'class="lc-snap-page"' in response.text
     assert 'href="/produse"' in response.text
     assert "produse reale" in response.text
@@ -634,8 +634,9 @@ def test_favicon_route_and_asset_are_available() -> None:
     assert "<svg" in asset.text
     assert "LaCurent" in asset.text
     assert "optimization mark" in asset.text
-    assert "#7ed0bd" in asset.text
-    assert "#f2b84b" in asset.text
+    assert "#e9f8f4" in asset.text
+    assert "#0f9e83" in asset.text
+    assert "#ffc857" in asset.text
 
 
 def test_installations_landing_is_retired_and_redirects_to_home_lab() -> None:
