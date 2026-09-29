@@ -1004,7 +1004,7 @@ def test_heating_demand_is_independent_of_heating_energy_carrier() -> None:
 
 def test_methodology_no_longer_uses_synthetic_daily_weather_profile() -> None:
     cfg = methodology()
-    assert cfg["version"] == "lacurent-commercial-v2.10"
+    assert cfg["version"] == "lacurent-commercial-v2.11"
     assert "representative_diurnal_amplitude_c" not in cfg.get("cooling", {})
     assert "24 h" not in " ".join(cfg["assumptions"])
     assert "Mc 001-2022" in cfg["monthly_method"]["model"]
