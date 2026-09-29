@@ -291,9 +291,29 @@ def build_teo_v4_kernel(
             # general RER perimeter/export method as not fully verified.
             # TEO therefore carries the target and its status, but never
             # upgrades an EP+CO2 pass to a legal-compliance claim by itself.
-            "renewable_minimum_percent": 30.0,
+            "renewable_total_minimum_percent": float(
+                nzeb_registry.get("renewable_total_minimum_percent", 30.0)
+            ),
+            "renewable_onsite_minimum_percent": float(
+                nzeb_registry.get("renewable_onsite_minimum_percent", 10.0)
+            ),
+            "renewable_guarantee_of_origin_minimum_percent": float(
+                nzeb_registry.get(
+                    "renewable_guarantee_of_origin_minimum_percent",
+                    20.0,
+                )
+            ),
             "renewable_requirement_status": nzeb_registry.get(
                 "renewable_requirement_status"
+            ),
+            "renewable_calculation_source": nzeb_registry.get(
+                "renewable_calculation_source"
+            ),
+            "renewable_legal_source": nzeb_registry.get(
+                "renewable_legal_source"
+            ),
+            "renewable_2026_onsite_nearby_status": nzeb_registry.get(
+                "renewable_2026_onsite_nearby_status"
             ),
             "envelope_u_max_w_m2k": nzeb_registry.get(
                 "residential_envelope_u_max_w_m2k", {}
@@ -313,7 +333,7 @@ def build_teo_v4_kernel(
     ]
 
     return {
-        "version": "teo-v4-browser-kernel-2",
+        "version": "teo-v4-browser-kernel-3",
         "area_m2": float(baseline.heated_floor_area_m2),
         "volume_m3": float(baseline.heated_volume_m3),
         "indoor_temperature_c": float(baseline.indoor_design_temperature_c),
