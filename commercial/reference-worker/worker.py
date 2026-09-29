@@ -9,6 +9,8 @@ from workers import Response, WorkerEntrypoint
 from app.engine import reference_primary_specific_energy
 from app.models import building_from_json
 from app.rbpe_service import (
+    build_product_wall_insulation_scenario_json,
+    build_wall_insulation_scenario_json,
     calculate_home_lab_api_json,
     calculate_home_lab_form_api_json,
     calculate_home_lab_result_json,
@@ -80,6 +82,32 @@ class Default(WorkerEntrypoint):
     async def calculate_home_lab_form_api_json(self, encoded_form):
         """Parse the live form and execute canonical RBPE inside this shard."""
         return calculate_home_lab_form_api_json(str(encoded_form))
+
+    async def build_wall_insulation_scenario_json(
+        self,
+        payload,
+        added_insulation_thickness_mm,
+        insulation_lambda_w_mk,
+    ):
+        """Execute the two-pass renovation scenario within the shard budget."""
+        return build_wall_insulation_scenario_json(
+            payload,
+            added_insulation_thickness_mm=float(added_insulation_thickness_mm),
+            insulation_lambda_w_mk=float(insulation_lambda_w_mk),
+        )
+
+    async def build_product_wall_insulation_scenario_json(
+        self,
+        payload,
+        requirement_payload,
+        product_payload,
+    ):
+        """Execute product-backed scenario within the shard budget."""
+        return build_product_wall_insulation_scenario_json(
+            payload,
+            requirement_payload,
+            product_payload,
+        )
 
     async def fetch(self, request):
         path = urlparse(request.url).path
