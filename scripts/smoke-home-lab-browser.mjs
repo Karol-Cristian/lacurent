@@ -127,6 +127,7 @@ try {
     );
   }
 
+  await statePage.locator("#heatedArea").fill("130");
   statePage.once("dialog", dialog => dialog.accept());
   await Promise.all([
     statePage.waitForNavigation({waitUntil:"domcontentloaded", timeout:15000}),
