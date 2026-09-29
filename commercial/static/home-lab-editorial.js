@@ -4,8 +4,12 @@
   if (!root || !form) return;
 
   const $ = selector => document.querySelector(selector);
-  const storageKey = `lacurent-home-lab-editorial-v1:${root.dataset.partnerId || "official"}`;
+  const EDITORIAL_DRAFT_VERSION = 2;
+  const CALCULATION_MODEL_VERSION = "rbpe-editorial-2026-09-29.1";
+  const storageKey = `lacurent-home-lab-editorial-v2:${root.dataset.partnerId || "official"}`;
   const storageHistoryKey = `${storageKey}:history`;
+  const legacyStorageKey = `lacurent-home-lab-editorial-v1:${root.dataset.partnerId || "official"}`;
+  const legacyStorageHistoryKey = `${legacyStorageKey}:history`;
   const classicStorageKey = `lacurent-home-lab-next-v1:${root.dataset.partnerId || "official"}`;
   const localAutosaveAllowed = () => window.LaCurentPrivacy?.allowsLocalAutosave?.() === true;
   const pages = [...root.querySelectorAll("[data-page]")];
@@ -82,6 +86,7 @@
   let baselineSummaryTimer = 0;
   let baselineSummaryController = null;
   let baselineSummaryRevision = 0;
+  let baselineInputFingerprint = "";
   let locationData = null;
   let localities = [];
   let localityMap = new Map();
@@ -128,19 +133,27 @@
       }
     });
     return {
-      version:1,
+      version:EDITORIAL_DRAFT_VERSION,
+      calculationModelVersion:CALCULATION_MODEL_VERSION,
       fields,
       savedAt:new Date().toISOString(),
     };
   }
 
-  function draftLooksUsable(draft) {
+  function draftHasFields(draft) {
     return Boolean(
       draft
-      && draft.version === 1
       && draft.fields
       && typeof draft.fields === "object"
       && Object.keys(draft.fields).length >= 5
+    );
+  }
+
+  function draftLooksUsable(draft) {
+    return Boolean(
+      draftHasFields(draft)
+      && draft.version === EDITORIAL_DRAFT_VERSION
+      && draft.calculationModelVersion === CALCULATION_MODEL_VERSION
     );
   }
 
@@ -197,6 +210,23 @@
     autosaveTimer = window.setTimeout(() => persistEditorialDraft(), delay);
   }
 
+  function clearEditorialLocalState() {
+    [
+      storageKey,
+      storageHistoryKey,
+      legacyStorageKey,
+      legacyStorageHistoryKey,
+      classicStorageKey,
+    ].forEach(key => localStorage.removeItem(key));
+  }
+
+  function startNewHouse() {
+    const confirmed = window.confirm("Pornești o casă nouă? Datele salvate local și override-urile tehnice de pe acest dispozitiv vor fi șterse.");
+    if (!confirmed) return;
+    clearEditorialLocalState();
+    window.location.reload();
+  }
+
   function resolvePersistedField(key) {
     if (key.startsWith("id:")) return document.getElementById(key.slice(3));
     if (key.startsWith("name:")) {
@@ -206,12 +236,21 @@
     return null;
   }
 
-  function applyEditorialDraft(draft) {
-    if (!draft || draft.version !== 1 || !draft.fields || typeof draft.fields !== "object") return false;
+  function applyEditorialDraft(draft, {preserveOverrides = true} = {}) {
+    if (!draftHasFields(draft)) return false;
     let applied = false;
     Object.entries(draft.fields).forEach(([key, saved]) => {
       const field = resolvePersistedField(key);
       if (!field || !isPersistableField(field) || !saved || typeof saved !== "object") return;
+
+      const isGeometryOverride = field.dataset.geomAuto !== undefined;
+      const isAdvancedOverride = field.matches?.("[data-optional-advanced]");
+      if (!preserveOverrides && (isGeometryOverride || isAdvancedOverride)) {
+        if (isGeometryOverride) field.dataset.geomAuto = "true";
+        if (isAdvancedOverride) field.dataset.advancedAuto = "true";
+        return;
+      }
+
       if (field.type === "checkbox" || field.type === "radio") {
         field.checked = Boolean(saved.checked);
       } else if (Object.prototype.hasOwnProperty.call(saved, "value")) {
@@ -221,10 +260,10 @@
         }
         field.value = String(saved.value);
       }
-      if (saved.geomAuto !== undefined && field.dataset.geomAuto !== undefined) {
+      if (preserveOverrides && saved.geomAuto !== undefined && field.dataset.geomAuto !== undefined) {
         field.dataset.geomAuto = String(saved.geomAuto);
       }
-      if (saved.advancedAuto !== undefined) {
+      if (preserveOverrides && saved.advancedAuto !== undefined) {
         field.dataset.advancedAuto = String(saved.advancedAuto);
       }
       applied = true;
@@ -266,18 +305,10 @@
       setMigratedField('[name="dhw_occupants"]', state.occupants);
       setMigratedField("#windowArea", state.windows);
 
-      const geometryOverrides = [
-        ["#wallArea", state.wallAreaOverride],
-        ["#roofArea", state.topAreaOverride],
-        ["#floorArea", state.floorAreaOverride],
-        ["#heatedVolume", state.volumeOverride],
-      ];
-      geometryOverrides.forEach(([selector,value]) => {
-        if (value === undefined || value === null) return;
-        setMigratedField(selector, value);
-        const field = document.querySelector(selector);
-        if (field?.dataset.geomAuto !== undefined) field.dataset.geomAuto = "false";
-      });
+      // Legacy geometry overrides are intentionally not migrated. They lived in
+      // collapsed UI and could make two visually identical houses send different
+      // RBPE payloads on different devices. Geometry is recomputed from the
+      // visible house dimensions during the v2 migration.
 
       setMigratedField("#wallStructure", state.wallStructure);
       setMigratedField("#wallStructureThickness", state.wallStructureThickness);
@@ -318,24 +349,46 @@
     }
   }
 
+  function migrateLegacyEditorialDraft() {
+    try {
+      const legacyDraft = JSON.parse(localStorage.getItem(legacyStorageKey) || "null");
+      if (!draftHasFields(legacyDraft)) return false;
+      const applied = applyEditorialDraft(legacyDraft, {preserveOverrides:false});
+      if (!applied) return false;
+      draftDirty = true;
+      persistEditorialDraft({force:true});
+      localStorage.removeItem(legacyStorageKey);
+      localStorage.removeItem(legacyStorageHistoryKey);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   function restoreEditorialDraft() {
     if (!localAutosaveAllowed()) return false;
     try {
       const ownDraft = JSON.parse(localStorage.getItem(storageKey) || "null");
-      if (draftLooksUsable(ownDraft) && applyEditorialDraft(ownDraft)) {
+      if (draftLooksUsable(ownDraft) && applyEditorialDraft(ownDraft, {preserveOverrides:true})) {
         preserveDraftInHistory(ownDraft);
         draftDirty = false;
         return true;
       }
+      if (draftHasFields(ownDraft) && applyEditorialDraft(ownDraft, {preserveOverrides:false})) {
+        draftDirty = true;
+        persistEditorialDraft({force:true});
+        return true;
+      }
       const history = readDraftHistory();
       for (let index = history.length - 1; index >= 0; index -= 1) {
-        if (applyEditorialDraft(history[index])) {
+        if (applyEditorialDraft(history[index], {preserveOverrides:true})) {
           localStorage.setItem(storageKey, JSON.stringify(history[index]));
           draftDirty = false;
           return true;
         }
       }
     } catch (_) {}
+    if (migrateLegacyEditorialDraft()) return true;
     return migrateClassicDraft();
   }
 
@@ -1568,6 +1621,7 @@
     if (event.detail?.localAutosave === true) persistEditorialDraft({force:true});
   });
   window.addEventListener("pagehide", () => persistEditorialDraft());
+  $("#edNewHouse")?.addEventListener("click", startNewHouse);
 
   ["#heatedArea","#heatedLevels","#averageHeight","#windowArea"].forEach(selector => {
     $(selector).addEventListener("input", () => { updateGeometryDisplay(false); });
@@ -1624,6 +1678,31 @@
     // parse and cache the ~6.5 MB Romanian locality registry on every isolate.
     data.set("locality_id", climateTokenForSelectedLocality());
     return data;
+  }
+
+  function calculationInputFingerprint(data) {
+    const entries = [...data.entries()]
+      .map(([key,value]) => [String(key), String(value)])
+      .sort((a,b) => a[0] === b[0] ? a[1].localeCompare(b[1]) : a[0].localeCompare(b[0]));
+    const canonical = JSON.stringify({
+      calculationModelVersion:CALCULATION_MODEL_VERSION,
+      entries,
+    });
+    const bytes = new TextEncoder().encode(canonical);
+    let hash = 0xcbf29ce484222325n;
+    const prime = 0x100000001b3n;
+    const mask = 0xffffffffffffffffn;
+    for (const byte of bytes) {
+      hash ^= BigInt(byte);
+      hash = (hash * prime) & mask;
+    }
+    return `rbpe:${CALCULATION_MODEL_VERSION}:${hash.toString(16).padStart(16, "0")}:${bytes.length}`;
+  }
+
+  function shortInputFingerprint(value) {
+    const parts = String(value || "").split(":");
+    const hash = parts.length >= 3 ? parts[2] : "";
+    return hash ? hash.slice(-8).toUpperCase() : "—";
   }
 
   function formObject() {
@@ -2102,16 +2181,19 @@
     baselineStatus.textContent = "Actualizare…";
     try {
       syncTechnicalForm();
+      const payload = baseFormData();
+      const inputFingerprint = calculationInputFingerprint(payload);
       const response = await fetch("/api/home-lab-next/calculate", {
         method:"POST",
-        body:baseFormData(),
+        body:payload,
         headers:{"Accept":"application/json"},
         signal:baselineSummaryController.signal,
       });
       const data = await readJson(response);
       if (revision !== baselineSummaryRevision) return;
       baselineResult = data;
-      paintBaselineSummary(data);
+      baselineInputFingerprint = inputFingerprint;
+      paintBaselineSummary(data, `Estimare curentă · Input ${shortInputFingerprint(inputFingerprint)}`);
     } catch (error) {
       if (error?.name === "AbortError" || revision !== baselineSummaryRevision) return;
       baselineBar.classList.remove("is-updating");
@@ -2967,15 +3049,18 @@
     try {
       stage("baseline","active","rulează");
       log("Construiesc modelul termic al casei actuale din setul complet de inputuri Home Lab.");
+      const baselinePayload = baseFormData();
+      baselineInputFingerprint = calculationInputFingerprint(baselinePayload);
+      log(`INPUT RBPE · ${shortInputFingerprint(baselineInputFingerprint)} · model ${CALCULATION_MODEL_VERSION}`);
       baselineResult = await postForm(
         "/api/home-lab-next/calculate",
-        baseFormData(),
+        baselinePayload,
         // A Cloudflare 500/1101 at baseline can mean the current Python
         // isolate is already resource-exhausted. Immediate retry against the
         // same isolate only raises peak pressure and hides the first failure.
         {stageName:"baseline", runId, retries:0}
       );
-      paintBaselineSummary(baselineResult, "Baseline folosit în optimizare.");
+      paintBaselineSummary(baselineResult, `Baseline optimizare · Input ${shortInputFingerprint(baselineInputFingerprint)}`);
       stage("baseline","done","gata");
       log(`Baseline gata: ${fmt(baselineResult.final_energy_kwh)} kWh/an · necesar ${fmt(baselineResult.design_heat_load_kw,1)} kW.`);
       log(`WORKER FLOW · pauză ${(TEO_SERVER_PROFILE.cooldownMs / 1000).toFixed(1)} s înainte de PLAN pentru a reduce presiunea cumulată pe Python Worker.`);
