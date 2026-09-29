@@ -3690,6 +3690,7 @@
         co2_specific_kg_m2:opt.parametricEvaluation?.co2SpecificKgM2,
         rer_percent:opt.parametricEvaluation?.rerPercent,
         onsite_renewable_percent:opt.parametricEvaluation?.onsiteRenewablePercent,
+        _summary_scope:"teo_final",
       };
       renderNzebStatus(finalSummary);
       log("UI · rezultatul TEO rămâne pe pagina 5; raportul complet este disponibil în pasul 6.");
