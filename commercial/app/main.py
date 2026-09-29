@@ -26,6 +26,7 @@ from .rbpe_service import (
     build_product_wall_insulation_scenario_json,
     build_wall_insulation_scenario_json,
     calculate_home_lab_api_json,
+    calculate_render_context_json,
 )
 from .optimization import (
     CandidateEvaluationV1,
@@ -1328,6 +1329,51 @@ def result_context(result: Any) -> dict[str, Any]:
     }
 
 
+async def _private_rbpe_render_context(
+    request: Request,
+    building: BuildingInput,
+) -> dict[str, Any]:
+    """Keep canonical RBPE physics outside the public commercial Worker."""
+    payload = model_to_json(building)
+    env = request.scope.get("env")
+    if env is not None:
+        service = getattr(env, "REFERENCE_RBPE", None)
+        if service is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Serviciul privat RBPE nu este disponibil.",
+            )
+        raw_json = await service.calculate_render_context_json(payload)
+        if not isinstance(raw_json, str):
+            raw_json = str(raw_json)
+    else:
+        raw_json = calculate_render_context_json(payload)
+
+    context = json.loads(raw_json)
+    if not isinstance(context, dict) or not isinstance(context.get("result"), dict):
+        raise ValueError("Contextul privat RBPE este invalid.")
+    return context
+
+
+async def _private_rbpe_api_json(
+    request: Request,
+    building: BuildingInput,
+) -> str:
+    """Return the compact Home Lab payload from the private RBPE shards."""
+    payload = model_to_json(building)
+    env = request.scope.get("env")
+    if env is not None:
+        service = getattr(env, "REFERENCE_RBPE", None)
+        if service is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Serviciul privat RBPE nu este disponibil.",
+            )
+        raw_json = await service.calculate_home_lab_api_json(payload, False)
+        return raw_json if isinstance(raw_json, str) else str(raw_json)
+    return calculate_home_lab_api_json(payload, optimizer_candidate=False)
+
+
 def calculator_context(error: str | None = None, values: dict[str, Any] | None = None) -> dict[str, Any]:
     return {
         "values": values or default_form_values(),
@@ -1348,17 +1394,9 @@ async def render_calculation_from_form(
         values[key] = _checked(form, key)
     extra = page_context or {}
     try:
-        # A completed optimizer run must not leave a cached full
-        # CalculationResult resident while the next baseline allocates another
-        # full engine graph. Clear legacy optimizer baseline state before every
-        # ordinary Home Lab calculation to cap cross-run peak memory.
         clear_baseline_evaluation_cache()
-        gc.collect()
         building = build_input_from_form(form)
-        # One canonical RBPE pass per HTTP request. The exact reference-house
-        # comparison is loaded through /api/reference-comparison so Cloudflare
-        # never has to execute actual + reference RBPE inside one request budget.
-        result = calculate(building, include_reference=False)
+        private_context = await _private_rbpe_render_context(request, building)
     except Exception as exc:
         return templates.TemplateResponse(
             request,
@@ -1374,7 +1412,7 @@ async def render_calculation_from_form(
     return templates.TemplateResponse(
         request,
         "results.html",
-        {"request": request, **result_context(result), **extra},
+        {"request": request, **private_context, **extra},
     )
 
 
@@ -5339,17 +5377,24 @@ async def partner_embed_calculator(request: Request, partner_id: str) -> HTMLRes
 
 
 @app.post("/embed/{partner_id}/lab-calculate")
-async def partner_embed_lab_calculate(request: Request, partner_id: str) -> JSONResponse:
+async def partner_embed_lab_calculate(request: Request, partner_id: str) -> Response:
     embed_partner(partner_id)
     form = dict(await request.form())
     try:
         building = build_input_from_form(form)
-        # The legacy embedded live dashboard does not consume the computed
-        # reference-building comparison. Avoid a second full engine pass.
-        result = calculate(building, include_reference=False)
+        raw_json = await _private_rbpe_api_json(request, building)
+    except HTTPException as exc:
+        return JSONResponse({"error": str(exc.detail)}, status_code=exc.status_code)
     except Exception as exc:
         return JSONResponse({"error": user_error(exc)}, status_code=422)
-    return JSONResponse(embed_lab_result_payload(result))
+    return Response(
+        raw_json,
+        media_type="application/json",
+        headers={
+            "Cache-Control": "no-store",
+            "X-LaCurent-RBPE": "private-sharded-legacy-embed",
+        },
+    )
 
 
 @app.post("/embed/{partner_id}/calculate", response_class=HTMLResponse)
@@ -5360,18 +5405,22 @@ async def partner_embed_calculate(request: Request, partner_id: str) -> HTMLResp
 @app.get("/embed/{partner_id}/demo", response_class=HTMLResponse)
 async def partner_embed_demo(request: Request, partner_id: str) -> HTMLResponse:
     page = embed_page_context(partner_id)
-    result = calculate(demo_building(), include_reference=False)
+    private_context = await _private_rbpe_render_context(request, demo_building())
     return templates.TemplateResponse(
         request,
         "results.html",
-        {"request": request, **result_context(result), **page},
+        {"request": request, **private_context, **page},
     )
 
 
 @app.get("/demo", response_class=HTMLResponse)
 async def demo(request: Request) -> HTMLResponse:
-    result = calculate(demo_building(), include_reference=False)
-    return templates.TemplateResponse(request, "results.html", result_context(result))
+    private_context = await _private_rbpe_render_context(request, demo_building())
+    return templates.TemplateResponse(
+        request,
+        "results.html",
+        {"request": request, **private_context},
+    )
 
 
 @app.post("/certificate", response_class=HTMLResponse)
@@ -5380,7 +5429,7 @@ async def certificate(request: Request) -> HTMLResponse:
     payload = form.get("payload")
     try:
         building = building_from_json(str(payload))
-        result = calculate(building, include_reference=False)
+        private_context = await _private_rbpe_render_context(request, building)
     except Exception as exc:
         return templates.TemplateResponse(
             request,
@@ -5393,8 +5442,9 @@ async def certificate(request: Request) -> HTMLResponse:
         request,
         "certificate.html",
         {
-            "result": result,
-            "cost_estimate": estimate_energy_cost(result),
-            "payload": json.dumps(model_to_dict(result.input), ensure_ascii=False, default=str),
+            "request": request,
+            "result": private_context["result"],
+            "cost_estimate": private_context["cost_estimate"],
+            "payload": private_context["payload"],
         },
     )
