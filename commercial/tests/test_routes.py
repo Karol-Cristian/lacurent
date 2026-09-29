@@ -3328,12 +3328,12 @@ def test_home_lab_3d_is_visible_from_first_paint_without_2d_house_flash() -> Non
     assert "display: none" in source
 
 
-def test_embed_loader_supports_deferred_next_mounts() -> None:
+def test_embed_loader_supports_deferred_mounts_without_retired_classic_path() -> None:
     response = client.get("/static/embed-loader.js")
     assert response.status_code == 200
-    assert 'host.dataset.path' in response.text
-    assert 'path === "next"' in response.text
     assert 'host.dataset.deferred === "true"' in response.text
+    assert "/next" not in response.text
+    assert "always mount the" in response.text
     assert "window.LaCurentEmbed" in response.text
     assert "publicApi.mount" in response.text
 
