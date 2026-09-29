@@ -2326,7 +2326,7 @@
       text = constrained
         ? `TEO poate verifica tehnic Eprim, CO₂ și partea SRE onsite ≥${fmt(onsiteMinimum,0)}%. RER modelat este ${fmt(rer,1)}%; cerința totală ≥${fmt(rerMinimum,0)}% se închide juridic numai împreună cu dovada pentru ≥${fmt(goMinimum,0)}% prin garanții de origine și cu orice prag suplimentar 2026 stabilit oficial.`
         : "Indicatorii tehnici nZEB modelați sunt atinși, dar constrângerea nZEB este momentan dezactivată.";
-    } else if (target && [primaryPass, co2Pass, rerPass].some(value => value === false)) {
+    } else if (target && [primaryPass, co2Pass, onsitePass].some(value => value === false)) {
       text = constrained
         ? "Clădirea nu respectă încă toate pragurile tehnice pe care TEO le poate proiecta. TEO caută economic, apoi reoptimizează în domeniul Eprim + CO₂ + SRE onsite; RER total și dovada GO rămân raportate separat."
         : "Cel puțin un prag tehnic nZEB modelat nu este atins. Activează conformarea pentru a-l trata drept restricție.";
