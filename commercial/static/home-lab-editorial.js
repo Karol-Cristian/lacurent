@@ -3277,14 +3277,19 @@
 
   async function runAnalysis() {
     syncTechnicalForm();
+    syncGoalField();
+    syncNzebPolicy();
     if (!validatePage("goal")) return;
     resetRunUi();
+    resetTeoControlUi();
     baselineResult = null;
     optimizationResult = null;
     lastPlan = null;
     branchResults = [];
     const runId = makeOptimizerRunId();
-    showPage("run");
+    const runButton = $("#runAnalysis");
+    if (runButton) runButton.disabled = true;
+    setTeoControlPhase(1,"Analizez configurația");
     log(`RUN · ${runId}`);
 
     try {
@@ -3303,6 +3308,7 @@
       );
       paintBaselineSummary(baselineResult, `Baseline optimizare · Input ${shortInputFingerprint(baselineInputFingerprint)}`);
       stage("baseline","done","gata");
+      setTeoControlPhase(2,"Pregătesc explorarea");
       log(`Baseline gata: ${fmt(baselineResult.final_energy_kwh)} kWh/an · necesar ${fmt(baselineResult.design_heat_load_kw,1)} kW.`);
       log(`WORKER FLOW · pauză ${(TEO_SERVER_PROFILE.cooldownMs / 1000).toFixed(1)} s înainte de PLAN pentru a reduce presiunea cumulată pe Python Worker.`);
       await sleep(TEO_SERVER_PROFILE.cooldownMs);
@@ -3337,6 +3343,15 @@
         annual_bill_target_lei:Number(formPayload._annual_bill_target_lei || 0),
         max_payback_years:Number(formPayload._max_payback_years || 0),
       };
+      const compliancePolicy = {
+        enabled:nzebConstraintEnabled(),
+        target:lastPlan?.kernel?.compliance_target || baselineResult?.nzeb_target || null,
+      };
+      log(
+        compliancePolicy.enabled
+          ? "CONSTRAINT · nZEB activ: TEO explorează economic, apoi prioritizează și reoptimizează candidații care satisfac Eprim + CO₂; RER rămâne pending."
+          : "CONSTRAINT · nZEB dezactivat: TEO optimizează strict obiectivul economic ales."
+      );
       log(`TEO V4 local: ${searchPointCount * branchIds.length} evaluări planificate în browser, fără request HTTP per candidat.`);
       const localSearch = await runTeoV4Worker({
         kernel:lastPlan.kernel,
@@ -3346,6 +3361,7 @@
         mode:lastPlan.economicMode || formPayload._optimization_mode || "auto_economic",
         goals,
         baselineAnnualBillLei:Number(baselineResult?.annual_cost_lei || 0),
+        compliancePolicy,
       });
       const candidateRows = Array.isArray(localSearch.candidateRows)
         ? localSearch.candidateRows
@@ -3364,6 +3380,12 @@
       if (!candidateRows.length) {
         throw new Error("TEO V4 nu a produs candidați valizi pentru verificarea canonică.");
       }
+      updateTeoStats({
+        evaluated:branchFastEvaluations,
+        compliant:Number(localSearch.availableCompliantCount || 0),
+        finalists:Number(localSearch.verificationCount || localSearch.verificationRows?.length || 0),
+      });
+      setTeoControlPhase(compliancePolicy.enabled ? 4 : 3, compliancePolicy.enabled ? "Reoptimizez soluțiile conforme" : "Construiesc frontiera");
       stage("branches","done",`${branchFastEvaluations} evaluări locale`);
       log(
         `TEO V4 local gata în ${Number(localSearch.calculationTimeMs || 0).toFixed(1)} ms · ${localSourceCandidateCount} candidați valizi · ${refinementEvaluations} evaluări de rafinare · frontiera locală ${Number(localSearch.frontierCount || 0)} · ${candidateRows.length} candidați diverși trimiși la verificare.`
@@ -3379,6 +3401,8 @@
       log(
         `Shortlist canonic selectat local: ${targets.length} finaliști din ${candidateRows.length} candidați diverși · Pareto ${Number(localSearch.frontierCount || 0)} · fără request Python pentru ranking.`
       );
+      updateTeoStats({finalists:targets.length});
+      setTeoControlPhase(5,"Verific finalistul cu RBPE");
 
       const verifiedRows = [];
       let verifyFailures = 0;
@@ -3417,6 +3441,7 @@
             targets,
             mode:lastPlan.economicMode || formPayload._optimization_mode || "auto_economic",
             goals,
+            compliancePolicy,
             maxVerifications:verifyLimit,
           });
           log(
@@ -3465,6 +3490,7 @@
         refinementEvaluations,
         browserSearchMethod,
         adaptiveVerification,
+        compliancePolicy,
         runId,
       });
       stage("finalize","done","gata");
@@ -3472,18 +3498,29 @@
       log(`Finalizat: ${opt.evaluatedCandidates || 0} candidați economici · ${opt.fullEngineVerifications || 0} verificări complete · status economic ${opt.economicStatus || "necunoscut"}.`);
 
       renderReport();
-      const doneBits = [];
-      if (opt.evaluatedCandidates != null) doneBits.push(`${opt.evaluatedCandidates} candidați evaluați`);
-      if (opt.fullEngineVerifications != null) doneBits.push(`${opt.fullEngineVerifications} verificări finale`);
-      $("#doneMeta").textContent = doneBits.length ? doneBits.join(" · ") + "." : "Configurațiile au fost evaluate și rezultatul a fost verificat.";
-      showPage("done");
+      renderTeoResult();
+      renderProgressHistory();
+      const finalSummary = {
+        ...(baselineResult || {}),
+        primary_specific_kwh_m2:opt.parametricEvaluation?.primarySpecificKwhM2,
+        co2_specific_kg_m2:opt.parametricEvaluation?.co2SpecificKgM2,
+      };
+      renderNzebStatus(finalSummary);
+      log("UI · rezultatul TEO rămâne pe pagina 5; raportul complet este disponibil în pasul 6.");
     } catch (error) {
       Object.entries(stageEls).forEach(([name, el]) => {
         if (el.classList.contains("is-active")) stage(name,"error","eroare");
       });
       log("EROARE · " + (error?.message || String(error)));
-      $("#errorText").textContent = error?.message || "A apărut o eroare neașteptată.";
-      showPage("error");
+      const panel = $(".ed-teo-control-panel");
+      panel?.classList.remove("is-running","is-done");
+      const state = $("#edTeoRunState");
+      if (state) state.textContent = "Eroare";
+      const message = $("#edNzebMessage");
+      if (message) message.querySelector("span").textContent = error?.message || "Optimizarea TEO nu a putut fi finalizată.";
+      showPage("goal");
+    } finally {
+      if (runButton) runButton.disabled = false;
     }
   }
 
