@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import math
 from pathlib import Path
 
@@ -8,8 +9,9 @@ from fastapi.testclient import TestClient
 from commercial.app import renovation as renovation_module
 from commercial.app.engine import calculate, demo_building
 from commercial.app.main import app
-from commercial.app.models import BuildingInput, model_to_dict
+from commercial.app.models import BuildingInput, model_to_dict, model_to_json
 from commercial.app.renovation import build_wall_insulation_scenario
+from commercial.app.rbpe_service import build_wall_insulation_scenario_json
 
 
 client = TestClient(app)
@@ -192,3 +194,54 @@ def test_wall_insulation_scenario_api_validates_material_inputs() -> None:
         },
     )
     assert response.status_code == 422
+
+
+
+def test_private_rbpe_wall_scenario_json_matches_direct_builder() -> None:
+    building = demo_building()
+    direct = build_wall_insulation_scenario(
+        building,
+        added_insulation_thickness_mm=100,
+        insulation_lambda_w_mk=0.040,
+    )
+    encoded = build_wall_insulation_scenario_json(
+        model_to_json(building),
+        added_insulation_thickness_mm=100,
+        insulation_lambda_w_mk=0.040,
+    )
+    private_payload = json.loads(encoded)
+
+    assert private_payload == model_to_dict(direct)
+    assert private_payload["scenario"]["delta_vs_baseline"]["final_energy"]["delta"] < 0
+
+
+def test_wall_scenario_api_source_offloads_physics_to_private_rbpe() -> None:
+    source = Path("commercial/app/main.py").read_text(encoding="utf-8")
+    section = source.split(
+        '@app.post("/api/scenarios/wall-insulation")',
+        1,
+    )[1].split(
+        '@app.post("/api/products/wall-insulation/match")',
+        1,
+    )[0]
+
+    assert 'getattr(env, "REFERENCE_RBPE", None)' in section
+    assert "service.build_wall_insulation_scenario_json" in section
+    assert 'X-LaCurent-RBPE' in section
+    assert "build_wall_insulation_scenario(" not in section
+
+
+def test_product_wall_scenario_api_source_offloads_physics_to_private_rbpe() -> None:
+    source = Path("commercial/app/main.py").read_text(encoding="utf-8")
+    section = source.split(
+        '@app.post("/api/scenarios/wall-insulation/product")',
+        1,
+    )[1].split(
+        '@app.get("/health")',
+        1,
+    )[0]
+
+    assert 'getattr(env, "REFERENCE_RBPE", None)' in section
+    assert "service.build_product_wall_insulation_scenario_json" in section
+    assert 'private-sharded-wall-product-scenario' in section
+    assert "build_product_wall_insulation_scenario(" not in section
