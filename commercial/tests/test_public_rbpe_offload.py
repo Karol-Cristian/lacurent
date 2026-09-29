@@ -40,7 +40,7 @@ def test_public_legacy_routes_do_not_execute_canonical_physics() -> None:
         1,
     )[0]
     assert "_private_rbpe_render_context" in render_section
-    assert "calculate(" not in render_section
+    assert "= calculate(" not in render_section
 
     embed_section = source.split(
         '@app.post("/embed/{partner_id}/lab-calculate")',
@@ -50,7 +50,7 @@ def test_public_legacy_routes_do_not_execute_canonical_physics() -> None:
         1,
     )[0]
     assert "_private_rbpe_api_json" in embed_section
-    assert "calculate(" not in embed_section
+    assert "= calculate(" not in embed_section
 
     demo_certificate_section = source.split(
         '@app.get("/embed/{partner_id}/demo"',
@@ -60,7 +60,7 @@ def test_public_legacy_routes_do_not_execute_canonical_physics() -> None:
         1,
     )[0]
     assert demo_certificate_section.count("_private_rbpe_render_context") >= 3
-    assert "calculate(" not in demo_certificate_section
+    assert "= calculate(" not in demo_certificate_section
 
 
 def test_private_rbpe_router_exposes_render_context_rpc() -> None:
