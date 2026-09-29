@@ -2508,7 +2508,7 @@
         reject(new Error("Browserul nu suportă Web Worker pentru TEO V4."));
         return;
       }
-      const worker = new Worker("/static/teo-v4-worker.js?v=5");
+      const worker = new Worker("/static/teo-v4-worker.js?v=6");
       let settled = false;
       const finish = (fn, value) => {
         if (settled) return;
@@ -2826,6 +2826,9 @@
       primary_specific_kwh_m2:Number(candidate?.primary_specific_kwh_m2 || 0),
       co2_total_kg:Number(candidate?.co2_total_kg || 0),
       co2_specific_kg_m2:Number(candidate?.co2_specific_kg_m2 || 0),
+      rer_percent:Number(candidate?.rer_percent || 0),
+      onsite_renewable_percent:Number(candidate?.onsite_renewable_percent || 0),
+      rer_status:candidate?.rer_status || null,
       energy_class:candidate?.energy_class || "—",
       design_heat_load_kw:candidate?.design_heat_load_kw ?? null,
       annual_fuel_use:{},
