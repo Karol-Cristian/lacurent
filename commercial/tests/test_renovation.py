@@ -15,6 +15,21 @@ from commercial.app.renovation import build_wall_insulation_scenario
 client = TestClient(app)
 
 
+def test_private_rbpe_router_exposes_wall_scenario_rpc_contract() -> None:
+    reference_worker = Path("commercial/reference-worker/worker.py").read_text(
+        encoding="utf-8"
+    )
+    router = Path("commercial/rbpe-router/worker.mjs").read_text(encoding="utf-8")
+
+    for method in (
+        "build_wall_insulation_scenario_json",
+        "build_product_wall_insulation_scenario_json",
+    ):
+        assert f"async def {method}" in reference_worker
+        assert f'if (method === "{method}")' in router
+        assert f"async {method}(" in router
+
+
 def test_wall_scenario_releases_baseline_graph_before_scenario_graph() -> None:
     source = Path("commercial/app/renovation.py").read_text(encoding="utf-8")
     section = source.split(
