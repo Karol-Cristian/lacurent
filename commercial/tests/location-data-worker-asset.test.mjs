@@ -54,6 +54,31 @@ test("Cloudflare location asset preserves every registry byte and full payload",
 });
 
 
+test("Cloudflare worker bundle publishes the solar thermal GLB byte-for-byte", () => {
+  const source = path.join(
+    repoRoot,
+    "commercial",
+    "static",
+    "assets",
+    "solar-thermal-roof-collector.glb",
+  );
+  const bundled = path.join(
+    repoRoot,
+    ".wrangler",
+    "commercial-v2-worker",
+    "public",
+    "static",
+    "assets",
+    "solar-thermal-roof-collector.glb",
+  );
+
+  assert.ok(fs.existsSync(source), "source solar-thermal GLB is missing");
+  assert.ok(fs.existsSync(bundled), "prepared Cloudflare static asset is missing");
+  assert.ok(fs.statSync(source).size > 1024, "solar-thermal GLB is unexpectedly small");
+  assert.deepEqual(fs.readFileSync(bundled), fs.readFileSync(source));
+});
+
+
 test("Home Lab calculation gateway normalizes browser FormData for RBPE shards", async () => {
   const multipart = new FormData();
   multipart.set("locality_id", "@lc2|cluj_napoca|III|-18|siruta-54984|Cluj-Napoca|Cluj");
