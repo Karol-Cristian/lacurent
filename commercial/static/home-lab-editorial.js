@@ -43,6 +43,46 @@
   const classReferenceBody = $("#edClassReferenceBody");
   const stageEls = Object.fromEntries([...document.querySelectorAll("[data-run-stage]")].map(el => [el.dataset.runStage, el]));
 
+  const DEFAULT_FAVICON_HREF = "/static/favicon.svg?v=4";
+  const ENERGY_CLASS_FAVICON_COLORS = Object.freeze({
+    "A+":"#009c57",
+    "A":"#00a651",
+    "B":"#50b848",
+    "C":"#bfd730",
+    "D":"#fff200",
+    "E":"#fdb913",
+    "F":"#f37021",
+    "G":"#ed1c24",
+  });
+
+  function setEnergyClassFavicon(value) {
+    const energyClass = String(value || "").trim().toUpperCase();
+    const color = ENERGY_CLASS_FAVICON_COLORS[energyClass];
+    let icon = document.querySelector('link[rel~="icon"]');
+    if (!icon) {
+      icon = document.createElement("link");
+      icon.rel = "icon";
+      document.head.appendChild(icon);
+    }
+    icon.type = "image/svg+xml";
+    if (!color) {
+      icon.href = DEFAULT_FAVICON_HREF;
+      return;
+    }
+
+    const darkText = ["B","C","D","E"].includes(energyClass);
+    const fontSize = energyClass.length > 1 ? 31 : 39;
+    const svg =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">' +
+      '<rect width="64" height="64" rx="15" fill="' + color + '"/>' +
+      '<rect x="3" y="3" width="58" height="58" rx="12" fill="none" stroke="rgba(255,255,255,.72)" stroke-width="2"/>' +
+      '<text x="32" y="34" text-anchor="middle" dominant-baseline="middle" ' +
+      'font-family="Arial,Helvetica,sans-serif" font-size="' + fontSize + '" font-weight="800" ' +
+      'fill="' + (darkText ? "#102219" : "#ffffff") + '">' + energyClass + '</text>' +
+      '</svg>';
+    icon.href = "data:image/svg+xml," + encodeURIComponent(svg);
+  }
+
   const WALL_STRUCTURE_PRESETS = Object.freeze({
     unknown:{lambda:null,defaultThicknessCm:30,fallbackU:1.30},
     solid_brick:{lambda:0.72,defaultThicknessCm:30},
@@ -2147,6 +2187,7 @@
     } else {
       delete baselineClass.dataset.energyClass;
     }
+    setEnergyClassFavicon(energyClass);
     baselineCost.textContent = result.annual_cost_lei == null ? "—" : money(result.annual_cost_lei) + "/an";
     baselineHeatingDemand.textContent =
       result.annual_heating_demand_kwh == null ? "—" : energy(result.annual_heating_demand_kwh);
@@ -2168,6 +2209,7 @@
     if (!localityToken) {
       baselineClass.textContent = "—";
       delete baselineClass.dataset.energyClass;
+      setEnergyClassFavicon("");
       baselineCost.textContent = "—";
       baselineHeatingDemand.textContent = "—";
       baselineCoolingDemand.textContent = "—";
