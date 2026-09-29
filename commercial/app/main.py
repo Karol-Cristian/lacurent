@@ -26,6 +26,7 @@ from .rbpe_service import (
     build_product_wall_insulation_scenario_json,
     build_wall_insulation_scenario_json,
     calculate_home_lab_api_json,
+    calculate_render_context_json,
 )
 from .optimization import (
     CandidateEvaluationV1,
@@ -182,33 +183,40 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 
-@app.middleware("http")
-async def collect_python_worker_garbage(request: Request, call_next: Any) -> Any:
-    """Keep long-lived Cloudflare Python isolates below their memory ceiling.
+def _needs_public_heap_reclaim(request: Request) -> bool:
+    """Collect only around routes that materialize a full HTML result context.
 
-    A post-request collection alone is too late for sequential heavy requests:
-    while call_next is unwinding, the just-built response may still keep the
-    endpoint graph reachable. Once that response is released there is no
-    guaranteed collection before the next request starts allocating. Collect
-    both before and after dynamic requests so request N+1 starts from reclaimed
-    Python heap instead of inheriting request N's unreachable graph.
+    Full-heap collection on every dynamic request becomes CPU-expensive in a
+    long-lived Pyodide isolate and can itself trigger Cloudflare 1102 on cheap
+    routes. Compact JSON RPC routes and ordinary pages do not build the large
+    result graph and should not pay that cost.
     """
 
     path = request.url.path
-    dynamic_request = not path.startswith(
-        (
-            "/static/",
-            "/home-lab-assets/",
-            "/api/optimization/home-lab/v4/flow/",
-            "/api/home-lab-next/calculate",
+    method = request.method.upper()
+    if path in {"/calculate", "/demo", "/certificate"}:
+        return True
+    if not path.startswith("/embed/"):
+        return False
+    if method == "GET" and path.endswith("/demo"):
+        return True
+    if method == "POST" and path.endswith("/calculate"):
+        return not (
+            path.endswith("/lab-calculate")
+            or path.endswith("/next/calculate")
         )
-    )
-    if dynamic_request:
+    return False
+
+
+@app.middleware("http")
+async def collect_python_worker_garbage(request: Request, call_next: Any) -> Any:
+    heavy_render_request = _needs_public_heap_reclaim(request)
+    if heavy_render_request:
         gc.collect()
     try:
         return await call_next(request)
     finally:
-        if dynamic_request:
+        if heavy_render_request:
             gc.collect()
 
 
@@ -1355,6 +1363,29 @@ def _calculation_result_from_json(payload: str) -> Any:
     return _result_view(json.loads(payload))
 
 
+async def _private_rbpe_render_context(
+    request: Request,
+    building: BuildingInput,
+) -> dict[str, Any]:
+    """Return template-ready canonical RBPE context from the private shards."""
+    payload = model_to_json(building)
+    env = request.scope.get("env")
+    if env is not None:
+        service = getattr(env, "REFERENCE_RBPE", None)
+        if service is None:
+            raise RuntimeError("Private RBPE service binding is unavailable.")
+        raw_json = await service.calculate_render_context_json(payload)
+        if not isinstance(raw_json, str):
+            raw_json = str(raw_json)
+    else:
+        raw_json = calculate_render_context_json(payload)
+
+    context = json.loads(raw_json)
+    if not isinstance(context, dict) or not isinstance(context.get("result"), dict):
+        raise ValueError("Private RBPE render context is invalid.")
+    return context
+
+
 async def _canonical_calculation(
     request: Request,
     building: BuildingInput,
@@ -1404,7 +1435,7 @@ async def render_calculation_from_form(
         # One canonical RBPE pass per HTTP request. The exact reference-house
         # comparison is loaded through /api/reference-comparison so Cloudflare
         # never has to execute actual + reference RBPE inside one request budget.
-        result = await _canonical_calculation(request, building)
+        private_context = await _private_rbpe_render_context(request, building)
     except Exception as exc:
         return templates.TemplateResponse(
             request,
@@ -1420,7 +1451,7 @@ async def render_calculation_from_form(
     return templates.TemplateResponse(
         request,
         "results.html",
-        {"request": request, **result_context(result), **extra},
+        {"request": request, **private_context, **extra},
     )
 
 
@@ -5431,18 +5462,22 @@ async def partner_embed_calculate(request: Request, partner_id: str) -> HTMLResp
 @app.get("/embed/{partner_id}/demo", response_class=HTMLResponse)
 async def partner_embed_demo(request: Request, partner_id: str) -> HTMLResponse:
     page = embed_page_context(partner_id)
-    result = await _canonical_calculation(request, demo_building())
+    private_context = await _private_rbpe_render_context(request, demo_building())
     return templates.TemplateResponse(
         request,
         "results.html",
-        {"request": request, **result_context(result), **page},
+        {"request": request, **private_context, **page},
     )
 
 
 @app.get("/demo", response_class=HTMLResponse)
 async def demo(request: Request) -> HTMLResponse:
-    result = await _canonical_calculation(request, demo_building())
-    return templates.TemplateResponse(request, "results.html", result_context(result))
+    private_context = await _private_rbpe_render_context(request, demo_building())
+    return templates.TemplateResponse(
+        request,
+        "results.html",
+        {"request": request, **private_context},
+    )
 
 
 @app.post("/certificate", response_class=HTMLResponse)
@@ -5451,7 +5486,7 @@ async def certificate(request: Request) -> HTMLResponse:
     payload = form.get("payload")
     try:
         building = building_from_json(str(payload))
-        result = await _canonical_calculation(request, building)
+        private_context = await _private_rbpe_render_context(request, building)
     except Exception as exc:
         return templates.TemplateResponse(
             request,
@@ -5464,12 +5499,9 @@ async def certificate(request: Request) -> HTMLResponse:
         request,
         "certificate.html",
         {
-            "result": result,
-            "cost_estimate": estimate_energy_cost(result),
-            "payload": (
-                json.dumps(result.input, ensure_ascii=False, separators=(",", ":"), default=str)
-                if isinstance(result.input, dict)
-                else json.dumps(model_to_dict(result.input), ensure_ascii=False, default=str)
-            ),
+            "request": request,
+            "result": private_context["result"],
+            "cost_estimate": private_context["cost_estimate"],
+            "payload": private_context["payload"],
         },
     )

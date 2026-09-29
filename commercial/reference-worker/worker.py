@@ -14,6 +14,7 @@ from app.rbpe_service import (
     calculate_home_lab_api_json,
     calculate_home_lab_form_api_json,
     calculate_home_lab_result_json,
+    calculate_render_context_json,
 )
 
 
@@ -71,6 +72,10 @@ class Default(WorkerEntrypoint):
     async def calculate_home_lab_json(self, payload):
         """Run canonical Home Lab RBPE and cross RPC as a primitive JSON string."""
         return calculate_home_lab_result_json(payload)
+
+    async def calculate_render_context_json(self, payload):
+        """Return a template-ready legacy result context as primitive JSON."""
+        return calculate_render_context_json(payload)
 
     async def calculate_home_lab_api_json(self, payload, optimizer_candidate=False):
         """Return the final Home Lab API payload without rebuilding it in FastAPI."""

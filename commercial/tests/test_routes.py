@@ -2409,9 +2409,10 @@ def test_reference_worker_bundles_rbpe_data_files() -> None:
 def test_worker_memory_guard_and_v3_verification_use_bounded_state() -> None:
     source = Path("commercial/app/main.py").read_text(encoding="utf-8")
     assert "async def collect_python_worker_garbage(" in source
-    assert '"/static/"' in source
-    assert '"/home-lab-assets/"' in source
-    assert '"/api/optimization/home-lab/v4/flow/"' in source
+    assert "def _needs_public_heap_reclaim(" in source
+    assert 'path in {"/calculate", "/demo", "/certificate"}' in source
+    assert 'path.endswith("/lab-calculate")' in source
+    assert 'path.endswith("/next/calculate")' in source
 
     middleware_section = source.split(
         "async def collect_python_worker_garbage(",
@@ -2421,12 +2422,12 @@ def test_worker_memory_guard_and_v3_verification_use_bounded_state() -> None:
         1,
     )[0]
     pre_collect = middleware_section.index(
-        "if dynamic_request:\n        gc.collect()"
+        "if heavy_render_request:\n        gc.collect()"
     )
     call_next = middleware_section.index("return await call_next(request)")
     finally_block = middleware_section.index("finally:")
     assert pre_collect < call_next < finally_block
-    assert middleware_section.count("gc.collect()") >= 2
+    assert middleware_section.count("gc.collect()") == 2
 
     verify_section = source.split(
         "async def home_lab_optimization_v3_verify_api",
@@ -3399,16 +3400,24 @@ def test_partner_embed_lab_calculation_returns_live_metrics() -> None:
     assert payload["reference_parameters"]["u_values_w_m2k"]["exterior_wall"] > 0
 
 
-def test_certificate_accepts_lightweight_private_rbpe_result(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_certificate_accepts_private_rbpe_render_context(monkeypatch: pytest.MonkeyPatch) -> None:
     canonical = calculate(demo_building(), include_reference=False)
-    encoded = canonical.model_dump_json() if hasattr(canonical, "model_dump_json") else canonical.json()
-    lightweight = _calculation_result_from_json(encoded)
+    private_context = {
+        **result_context(canonical),
+        "result": model_to_dict(canonical),
+    }
 
-    async def fake_private_calculation(request, building):
-        return lightweight
+    async def fake_private_render_context(request, building):
+        return private_context
 
-    monkeypatch.setattr("commercial.app.main._canonical_calculation", fake_private_calculation)
-    response = client.post("/certificate", data={"payload": json.dumps(model_to_dict(demo_building()))})
+    monkeypatch.setattr(
+        "commercial.app.main._private_rbpe_render_context",
+        fake_private_render_context,
+    )
+    response = client.post(
+        "/certificate",
+        data={"payload": json.dumps(model_to_dict(demo_building()))},
+    )
 
     assert response.status_code == 200
     assert "Energy Performance Report" in response.text
@@ -3432,19 +3441,19 @@ def test_private_rbpe_html_result_uses_lightweight_json_view() -> None:
     assert payload["project_name"] == canonical.input.project_name
 
 
-def test_html_calculation_routes_delegate_canonical_rbpe_to_private_service() -> None:
+def test_html_calculation_routes_use_private_render_context() -> None:
     source = Path("commercial/app/main.py").read_text(encoding="utf-8")
 
     helper_section = source.split(
-        "async def _canonical_calculation",
+        "async def _private_rbpe_render_context",
         1,
     )[1].split(
-        "def calculator_context",
+        "async def _canonical_calculation",
         1,
     )[0]
     assert 'getattr(env, "REFERENCE_RBPE", None)' in helper_section
-    assert "await service.calculate_home_lab_json(model_to_json(building))" in helper_section
-    assert "return calculate(building, include_reference=False)" in helper_section
+    assert "await service.calculate_render_context_json(payload)" in helper_section
+    assert "raw_json = calculate_render_context_json(payload)" in helper_section
 
     calculate_section = source.split(
         "async def render_calculation_from_form",
@@ -3453,7 +3462,7 @@ def test_html_calculation_routes_delegate_canonical_rbpe_to_private_service() ->
         '@app.get("/api/location-data")',
         1,
     )[0]
-    assert "await _canonical_calculation(request, building)" in calculate_section
+    assert "await _private_rbpe_render_context(request, building)" in calculate_section
     assert "calculate(building, include_reference=False)" not in calculate_section
 
     demo_section = source.split(
@@ -3463,13 +3472,13 @@ def test_html_calculation_routes_delegate_canonical_rbpe_to_private_service() ->
         '@app.post("/certificate"',
         1,
     )[0]
-    assert "await _canonical_calculation(request, demo_building())" in demo_section
+    assert "await _private_rbpe_render_context(request, demo_building())" in demo_section
 
     certificate_section = source.split(
         "async def certificate(request: Request)",
         1,
     )[1]
-    assert "await _canonical_calculation(request, building)" in certificate_section
+    assert "await _private_rbpe_render_context(request, building)" in certificate_section
 
 def test_public_then_partner_calculation_sequence_stays_healthy() -> None:
     data = demo_form_data()
@@ -3850,3 +3859,25 @@ def test_home_lab_solar_thermal_glb_asset_is_bundled() -> None:
     magic, version, length = struct.unpack("<4sII", response.content[:12])
     assert (magic, version) == (b"glTF", 2)
     assert length == len(response.content)
+
+
+def test_private_render_context_rpc_is_wired_through_router() -> None:
+    rbpe = Path("commercial/app/rbpe_service.py").read_text(encoding="utf-8")
+    shard = Path("commercial/reference-worker/worker.py").read_text(encoding="utf-8")
+    router = Path("commercial/rbpe-router/worker.mjs").read_text(encoding="utf-8")
+
+    assert "def calculate_render_context_json(" in rbpe
+    assert "estimate_energy_cost(result)" in rbpe
+    assert "async def calculate_render_context_json(" in shard
+    assert 'method === "calculate_render_context_json"' in router
+    assert 'routeRpc(this.env, "calculate_render_context_json", [payload])' in router
+
+
+def test_compact_partner_next_route_does_not_trigger_full_heap_collection() -> None:
+    source = Path("commercial/app/main.py").read_text(encoding="utf-8")
+    helper = source.split("def _needs_public_heap_reclaim(", 1)[1].split(
+        '@app.middleware("http")', 1
+    )[0]
+
+    assert 'path.endswith("/next/calculate")' in helper
+    assert 'path.endswith("/lab-calculate")' in helper
