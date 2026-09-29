@@ -387,6 +387,71 @@ try {
   await page.locator('[data-page="renewables"] [data-next]').click();
   await expectVisible('[data-page="goal"].is-active');
 
+  // Visual contract for the approved TEO control-center composition.
+  const goalDesktopLayout = await page.evaluate(() => {
+    const grid = document.querySelector(".ed-goal-control-center");
+    const root = document.documentElement;
+    if (!(grid instanceof HTMLElement)) return null;
+    const style = getComputedStyle(grid);
+    const rect = grid.getBoundingClientRect();
+    return {
+      columns:style.gridTemplateColumns.split(" ").filter(Boolean).length,
+      left:rect.left,
+      right:rect.right,
+      viewport:innerWidth,
+      horizontalOverflow:root.scrollWidth > innerWidth + 1,
+    };
+  });
+  if (!goalDesktopLayout ||
+      goalDesktopLayout.columns !== 2 ||
+      goalDesktopLayout.left < -1 ||
+      goalDesktopLayout.right > goalDesktopLayout.viewport + 1 ||
+      goalDesktopLayout.horizontalOverflow) {
+    throw new Error(
+      "Editorial desktop TEO control-center visual contract failed: " +
+      JSON.stringify(goalDesktopLayout)
+    );
+  }
+
+  const goalDesktopViewport = page.viewportSize();
+  await page.setViewportSize({width:390,height:844});
+  const goalMobileLayout = await page.evaluate(() => {
+    const grid = document.querySelector(".ed-goal-control-center");
+    const title = document.querySelector("#edNzebStatusTitle");
+    const root = document.documentElement;
+    if (!(grid instanceof HTMLElement) || !(title instanceof HTMLElement)) return null;
+    const gridStyle = getComputedStyle(grid);
+    const rect = grid.getBoundingClientRect();
+    const titleRect = title.getBoundingClientRect();
+    return {
+      columns:gridStyle.gridTemplateColumns.split(" ").filter(Boolean).length,
+      left:rect.left,
+      right:rect.right,
+      titleRight:titleRect.right,
+      viewport:innerWidth,
+      horizontalOverflow:root.scrollWidth > innerWidth + 1,
+    };
+  });
+  if (!goalMobileLayout ||
+      goalMobileLayout.columns !== 1 ||
+      goalMobileLayout.left < -1 ||
+      goalMobileLayout.right > goalMobileLayout.viewport + 1 ||
+      goalMobileLayout.titleRight > goalMobileLayout.viewport + 1 ||
+      goalMobileLayout.horizontalOverflow) {
+    throw new Error(
+      "Editorial mobile TEO control-center visual contract failed: " +
+      JSON.stringify(goalMobileLayout)
+    );
+  }
+  if (goalDesktopViewport) {
+    await page.setViewportSize(goalDesktopViewport);
+  }
+
+  const liveRerText = String(await page.locator("#edNzebRerValue").innerText()).trim();
+  if (!liveRerText || liveRerText === "—") {
+    throw new Error("Editorial nZEB panel did not render the bounded RER indicator.");
+  }
+
   const editorialProductRequests = [];
   const productRequestListener = request => {
     try {
@@ -424,6 +489,17 @@ try {
     throw new Error("Editorial TEO result must remain on page 5 after optimization.");
   }
   await expectVisible("#edTeoResult");
+  const teoComplianceText = String(
+    await page.locator("#edTeoComplianceBadge").innerText()
+  ).trim();
+  if (!teoComplianceText ||
+      (!teoComplianceText.includes("dovadă GO") &&
+       !teoComplianceText.includes("Optim economic"))) {
+    throw new Error(
+      "Editorial TEO result lost the renewable-evidence boundary: " +
+      teoComplianceText
+    );
+  }
   if (editorialProductRequests.length) {
     throw new Error(
       "Editorial TEO unexpectedly entered PRODUCT discretization: " +
@@ -472,6 +548,9 @@ try {
     );
   }
   if (!editorialReportText.includes("Optim TEO · specificație inginerească") ||
+      !editorialReportText.includes("nZEB · verificare tehnică modelată") ||
+      !editorialReportText.includes("RER tehnic") ||
+      !editorialReportText.includes("garanții de origine") ||
       !editorialReportText.includes("Discretizare comercială") ||
       !editorialReportText.includes("CAPEX parametric estimat")) {
     throw new Error(
