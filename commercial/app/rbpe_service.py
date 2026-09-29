@@ -8,6 +8,8 @@ from .engine import calculate
 from .home_lab_form import build_input_from_form
 from .home_lab_payload import embed_lab_result_payload, optimizer_candidate_payload
 from .models import BuildingInput, building_from_json, model_to_json
+from .product_matching import WallInsulationProductV1, build_product_wall_insulation_scenario
+from .renovation import TechnicalRequirementV1, build_wall_insulation_scenario
 
 
 def calculate_home_lab_result_payload(payload: str | dict[str, Any]) -> dict[str, Any]:
