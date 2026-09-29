@@ -452,6 +452,86 @@ try {
     throw new Error("Editorial nZEB panel did not render the bounded RER indicator.");
   }
 
+  // Each economic objective must alter only its own TEO parameter.
+  const objectiveState = async () => page.evaluate(() => ({
+    mode:document.querySelector('[name="_optimization_mode"]')?.value || "",
+    budgetDisabled:Boolean(document.querySelector("#edGoalBudget")?.disabled),
+    budgetName:document.querySelector("#edGoalBudget")?.getAttribute("name") || "",
+    paybackDisabled:Boolean(document.querySelector("#edGoalPayback")?.disabled),
+    paybackName:document.querySelector("#edGoalPayback")?.getAttribute("name") || "",
+  }));
+  let objective = await objectiveState();
+  if (objective.mode !== "auto_economic" || !objective.budgetDisabled || !objective.paybackDisabled) {
+    throw new Error("Default TEO objective wiring is invalid: " + JSON.stringify(objective));
+  }
+
+  await page.locator('[data-choice-group="_optimization_mode"] [data-value="investment_budget"]').click();
+  objective = await objectiveState();
+  if (objective.mode !== "investment_budget" ||
+      objective.budgetDisabled ||
+      objective.budgetName !== "_investment_budget_lei" ||
+      !objective.paybackDisabled) {
+    throw new Error("Budget TEO objective wiring is invalid: " + JSON.stringify(objective));
+  }
+
+  await page.locator('[data-choice-group="_optimization_mode"] [data-value="max_payback_years"]').click();
+  objective = await objectiveState();
+  if (objective.mode !== "max_payback_years" ||
+      !objective.budgetDisabled ||
+      objective.paybackDisabled ||
+      objective.paybackName !== "_max_payback_years") {
+    throw new Error("Payback TEO objective wiring is invalid: " + JSON.stringify(objective));
+  }
+
+  await page.locator('[data-choice-group="_optimization_mode"] [data-value="auto_economic"]').click();
+
+  // A 2026 house must lock the nZEB rule in the Objectives page; an older
+  // existing house can explicitly disable it. Restore the original state
+  // before the expensive smoke optimization.
+  const constructionYear = page.locator('[name="construction_year"]');
+  const originalYear = await constructionYear.inputValue();
+  await constructionYear.fill("2026");
+  await constructionYear.dispatchEvent("input");
+  const newBuildNzeb = await page.evaluate(() => ({
+    enabled:document.querySelector("#edNzebConstraintValue")?.value,
+    mandatory:document.querySelector("#edNzebConstraintToggle")?.classList.contains("is-mandatory"),
+    ariaDisabled:document.querySelector("#edNzebConstraintToggle")?.getAttribute("aria-disabled"),
+    badge:String(document.querySelector("#edNzebMandatoryBadge")?.textContent || "").trim(),
+    step3:String(document.querySelector("#edTeoStep3Label")?.textContent || "").trim(),
+    compliantLabel:String(document.querySelector("#edTeoCompliantLabel")?.textContent || "").trim(),
+  }));
+  if (newBuildNzeb.enabled !== "1" ||
+      !newBuildNzeb.mandatory ||
+      newBuildNzeb.ariaDisabled !== "true" ||
+      newBuildNzeb.badge !== "OBLIGATORIU" ||
+      !/frontiera nZEB/i.test(newBuildNzeb.step3) ||
+      !/soluții conforme/i.test(newBuildNzeb.compliantLabel)) {
+    throw new Error("2026 nZEB lock contract failed: " + JSON.stringify(newBuildNzeb));
+  }
+
+  await constructionYear.fill(originalYear || "2005");
+  await constructionYear.dispatchEvent("input");
+  const nzebToggle = page.locator("#edNzebConstraintToggle");
+  if ((await page.locator("#edNzebConstraintValue").inputValue()) === "1") {
+    await nzebToggle.click();
+  }
+  const existingNzeb = await page.evaluate(() => ({
+    enabled:document.querySelector("#edNzebConstraintValue")?.value,
+    mandatory:document.querySelector("#edNzebConstraintToggle")?.classList.contains("is-mandatory"),
+    badge:String(document.querySelector("#edNzebMandatoryBadge")?.textContent || "").trim(),
+    step3:String(document.querySelector("#edTeoStep3Label")?.textContent || "").trim(),
+    step4:String(document.querySelector("#edTeoStep4Label")?.textContent || "").trim(),
+    compliantLabel:String(document.querySelector("#edTeoCompliantLabel")?.textContent || "").trim(),
+  }));
+  if (existingNzeb.enabled !== "0" ||
+      existingNzeb.mandatory ||
+      existingNzeb.badge !== "OPȚIONAL" ||
+      !/frontiera Pareto/i.test(existingNzeb.step3) ||
+      !/candidații economici/i.test(existingNzeb.step4) ||
+      !/candidați fezabili/i.test(existingNzeb.compliantLabel)) {
+    throw new Error("Existing-home optional nZEB contract failed: " + JSON.stringify(existingNzeb));
+  }
+
   const editorialProductRequests = [];
   const productRequestListener = request => {
     try {
@@ -489,6 +569,29 @@ try {
     throw new Error("Editorial TEO result must remain on page 5 after optimization.");
   }
   await expectVisible("#edTeoResult");
+  const teoMeasureLabels = await page.locator("#edTeoMeasures .ed-teo-measure b").allInnerTexts();
+  const requiredMeasureLabels = [
+    "Pereți",
+    "Acoperiș / pod",
+    "Pardoseală",
+    "Ferestre",
+    "Punți termice",
+    "Ventilație",
+    "Încălzire",
+    "Fotovoltaice",
+    "Solar termic",
+  ];
+  if (requiredMeasureLabels.some(label => !teoMeasureLabels.includes(label))) {
+    throw new Error(
+      "Page 5 TEO result is missing approved measure rows: " +
+      JSON.stringify(teoMeasureLabels)
+    );
+  }
+  const teoScopeLabel = String(await page.locator("#edNzebScopeLabel").innerText()).trim();
+  if (teoScopeLabel !== "După optimizarea TEO") {
+    throw new Error("nZEB summary did not switch from baseline to TEO result scope: " + teoScopeLabel);
+  }
+
   const teoComplianceText = String(
     await page.locator("#edTeoComplianceBadge").innerText()
   ).trim();
