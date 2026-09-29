@@ -73,6 +73,21 @@ fs.copyFileSync(path.join(configRoot, "worker.py"), path.join(srcDir, "worker.py
 fs.copyFileSync(path.join(configRoot, "pyproject.toml"), path.join(outputDir, "pyproject.toml"));
 
 const publicDir = path.join(outputDir, "public");
+const solarThermalAssetSource = path.join(
+  commercialRoot,
+  "static",
+  "assets",
+  "solar-thermal-roof-collector.glb",
+);
+const solarThermalAssetTarget = path.join(
+  publicDir,
+  "static",
+  "assets",
+  "solar-thermal-roof-collector.glb",
+);
+fs.mkdirSync(path.dirname(solarThermalAssetTarget), { recursive: true });
+fs.copyFileSync(solarThermalAssetSource, solarThermalAssetTarget);
+
 const locationDataManifest = buildLocationPayload({
   registryPath: path.join(commercialRoot, "data", "localities.json"),
   climateZonesPath: path.join(commercialRoot, "data", "winter-climate-zones.geojson"),
