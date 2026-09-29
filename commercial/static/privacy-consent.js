@@ -6,6 +6,7 @@
   const LOCAL_DRAFT_PREFIXES = [
     "lacurent-home-lab-next-v1:",
     "lacurent-home-lab-editorial-v1:",
+    "lacurent-home-lab-editorial-v2:",
     "lacurent-calculator-draft-v1",
   ];
 

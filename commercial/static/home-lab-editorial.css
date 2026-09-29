@@ -29,6 +29,12 @@ button{cursor:pointer}
 .ed-progress{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px}
 .ed-progress i{width:34px;height:1px;background:var(--line)}
 .ed-progress span:first-child{color:var(--ink);font-variant-numeric:tabular-nums}
+.ed-new-house{
+  appearance:none;border:1px solid var(--line);background:#fff;color:var(--muted);
+  border-radius:10px;padding:7px 10px;font-size:11px;font-weight:700;white-space:nowrap;
+  flex:0 0 auto
+}
+.ed-new-house:hover{color:var(--ink);background:var(--soft)}
 .ed-shell{min-height:calc(100vh - 72px)}
 .ed-page{display:none;min-height:calc(100vh - 72px);padding:74px 24px 96px}
 .ed-page.is-active{display:flex;justify-content:center;align-items:flex-start}
@@ -539,6 +545,7 @@ button{cursor:pointer}
   .ed-mark{width:28px;height:28px}
   .ed-progress{font-size:11px}
   .ed-progress i{width:18px}
+  .ed-new-house{padding:6px 8px;font-size:10px}
   .ed-baseline-bar{top:56px;min-height:38px}
   .ed-baseline-inner{
     width:100%;
