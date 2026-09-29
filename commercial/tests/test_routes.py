@@ -389,6 +389,8 @@ def test_editorial_baseline_cost_opens_exact_price_reference_dialog() -> None:
 
 def test_teo_v4_plan_builds_thousands_of_browser_points_without_server_candidate_evaluations() -> None:
     data = demo_form_data()
+    # Exercise the source-backed nZEB target path as well as the browser kernel.
+    data["locality_id"] = "siruta-54984"
     data.update(
         {
             "_optimization_mode": "auto_economic",
