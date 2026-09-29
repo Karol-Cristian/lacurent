@@ -2424,13 +2424,13 @@
     baselineSummaryTimer = window.setTimeout(refreshBaselineSummary, delay);
   }
 
-  function runTeoV4Worker({kernel, searchSpec, searchBounds, branchIds, mode, goals, baselineAnnualBillLei}) {
+  function runTeoV4Worker({kernel, searchSpec, searchBounds, branchIds, mode, goals, baselineAnnualBillLei, compliancePolicy}) {
     return new Promise((resolve, reject) => {
       if (!("Worker" in window)) {
         reject(new Error("Browserul nu suportă Web Worker pentru TEO V4."));
         return;
       }
-      const worker = new Worker("/static/teo-v4-worker.js?v=4");
+      const worker = new Worker("/static/teo-v4-worker.js?v=5");
       let settled = false;
       const finish = (fn, value) => {
         if (settled) return;
@@ -2451,11 +2451,14 @@
           const phase = String(message.phase || "global");
           if (phase === "refine") {
             stage("branches","active",`refine ${completed}/${total}`);
+            setTeoControlPhase(completed >= total ? 4 : 3, completed >= total ? "Reoptimizare conformă" : "Frontieră nZEB");
             log(
               `TEO refine local · rundă ${completed}/${total} · ramură ${branchIndex}/${branchCount} · ${Number(message.refinementEvaluations || 0)} evaluări locale suplimentare.`
             );
           } else {
             stage("branches","active",`${completed} / ${total}`);
+            setTeoControlPhase(2,"Explorare economică");
+            updateTeoStats({evaluated:completed});
             if (completed === total || completed % 1000 === 0) {
               log(
                 `TEO V4 global · ${completed}/${total} evaluări · ramură ${branchIndex}/${branchCount} · ${Number(message.accepted || 0)} candidați valizi.`
@@ -2481,6 +2484,7 @@
         mode,
         goals,
         baselineAnnualBillLei,
+        compliancePolicy,
       });
     });
   }
@@ -2567,8 +2571,17 @@
     return 0;
   }
 
-  function selectOptimizationCandidateLocal(candidates, mode, goals) {
-    const unique = uniqueCandidatesLocal(candidates);
+  function selectOptimizationCandidateLocal(candidates, mode, goals, compliancePolicy = null) {
+    const allUnique = uniqueCandidatesLocal(candidates);
+    const target = compliancePolicy?.target || null;
+    const complianceEnabled = Boolean(compliancePolicy?.enabled && target);
+    const compliant = complianceEnabled
+      ? allUnique.filter(candidate => candidateAvailableNzebPass(candidate, target))
+      : [];
+    if (complianceEnabled && !compliant.length) {
+      throw new Error("Niciun finalist verificat RBPE nu respectă simultan pragurile nZEB disponibile pentru Eprim și CO₂.");
+    }
+    const unique = complianceEnabled ? compliant : allUnique;
     const frontier = paretoFrontierLocal(unique);
     if (!unique.length) throw new Error("Nu există finaliști locali pentru selecția economică.");
 
@@ -2643,7 +2656,11 @@
       candidateCount:unique.length,
       feasibleCount:feasible.length,
       paretoCount:frontier.length,
-      rationale,
+      rationale:complianceEnabled
+        ? `Conformarea disponibilă (Eprim + CO₂) este tratată ca restricție; dintre candidații verificați care o respectă, ${rationale}`
+        : rationale,
+      complianceEnabled,
+      availableCompliantCount:compliant.length,
     };
   }
 
@@ -2857,6 +2874,7 @@
     targets,
     mode,
     goals,
+    compliancePolicy,
     maxVerifications,
   }) {
     const count = Number(verifiedRows?.length || 0);
@@ -2872,7 +2890,8 @@
       selection = selectOptimizationCandidateLocal(
         verifiedRows.map(row => row?.candidate).filter(Boolean),
         mode,
-        goals
+        goals,
+        compliancePolicy
       );
     } catch (_) {
       return {
@@ -3092,6 +3111,7 @@
     refinementEvaluations,
     browserSearchMethod,
     adaptiveVerification,
+    compliancePolicy,
     runId,
   }) {
     const verifiedCandidates = (verifiedRows || [])
@@ -3100,7 +3120,8 @@
     const selection = selectOptimizationCandidateLocal(
       verifiedCandidates,
       mode,
-      goals
+      goals,
+      compliancePolicy
     );
     const selected = selection.selected;
     const selectedVerifiedRow = (verifiedRows || []).find(
@@ -3190,6 +3211,10 @@
         feasibleCandidates:Number(feasibleTotal || selection.feasibleCount || 0),
         paretoSolutions:Number(selection.paretoCount || 0),
         paretoScope:"verified_parametric_teo_only",
+        compliancePolicy:compliancePolicy || {enabled:false,target:null},
+        availableCompliantFinalists:Number(selection.availableCompliantCount || 0),
+        fullLegalNzebCompliance:false,
+        rerStatus:compliancePolicy?.enabled ? "pending_methodology" : "not_requested",
         heatingBranches:branches,
         technicalHeatingAlternatives:[],
         rawSolution:selected?.parameters || {},
