@@ -64,6 +64,90 @@ async function expectVisible(selector) {
 }
 
 try {
+  // Cross-device determinism regression: a legacy Editorial draft may contain
+  // hidden manual geometry/advanced overrides that are not obvious in the
+  // simple UI. The v2 migration must keep visible inputs but discard those
+  // hidden overrides before RBPE receives the form.
+  const statePage = await browser.newPage({viewport:{width:1280,height:900}});
+  await statePage.addInitScript(() => {
+    if (sessionStorage.getItem("lacurent-editorial-determinism-smoke-seeded") === "1") return;
+    sessionStorage.setItem("lacurent-editorial-determinism-smoke-seeded", "1");
+    localStorage.setItem("lacurent-privacy-v1", JSON.stringify({
+      version:1,
+      decided:true,
+      localAutosave:true,
+      analytics:false,
+      marketing:false,
+      decidedAt:"2026-09-29T00:00:00.000Z",
+    }));
+    localStorage.setItem("lacurent-home-lab-editorial-v1:official", JSON.stringify({
+      version:1,
+      fields:{
+        "id:heatedArea":{value:"120"},
+        "id:heatedLevels":{value:"2"},
+        "id:averageHeight":{value:"2.6"},
+        "id:windowArea":{value:"20"},
+        "id:wallArea":{value:"999",geomAuto:"false"},
+        "id:advWallU":{value:"9.99",advancedAuto:"false"},
+      },
+      savedAt:"2026-09-28T12:00:00.000Z",
+    }));
+    localStorage.setItem("lacurent-home-lab-editorial-v1:official:history", "[]");
+    localStorage.setItem("lacurent-home-lab-next-v1:official", JSON.stringify({
+      homeState:{wallAreaOverride:888,topAreaOverride:777,floorAreaOverride:666,volumeOverride:555},
+    }));
+  });
+  await statePage.goto(baseUrl + "/home-lab-next", {waitUntil:"networkidle", timeout:30000});
+  await statePage.locator("[data-editorial-lab]").waitFor({state:"visible", timeout:15000});
+  const migratedEditorialState = await statePage.evaluate(() => {
+    const current = JSON.parse(localStorage.getItem("lacurent-home-lab-editorial-v2:official") || "null");
+    const wall = document.querySelector("#wallArea");
+    const advancedWallU = document.querySelector("#advWallU");
+    return {
+      legacyDraft:localStorage.getItem("lacurent-home-lab-editorial-v1:official"),
+      legacyHistory:localStorage.getItem("lacurent-home-lab-editorial-v1:official:history"),
+      current,
+      wallValue:wall?.value || "",
+      wallAuto:wall?.dataset?.geomAuto || "",
+      advancedWallUValue:advancedWallU?.value || "",
+      advancedWallUAuto:advancedWallU?.dataset?.advancedAuto || "",
+    };
+  });
+  if (migratedEditorialState.legacyDraft !== null ||
+      migratedEditorialState.legacyHistory !== null ||
+      migratedEditorialState.current?.version !== 2 ||
+      migratedEditorialState.current?.calculationModelVersion !== "rbpe-editorial-2026-09-29.1" ||
+      migratedEditorialState.wallValue === "999" ||
+      migratedEditorialState.wallAuto !== "true" ||
+      migratedEditorialState.advancedWallUValue === "9.99" ||
+      migratedEditorialState.advancedWallUAuto !== "true") {
+    throw new Error(
+      "Editorial v1 migration preserved hidden calculation overrides: " +
+      JSON.stringify(migratedEditorialState)
+    );
+  }
+
+  statePage.once("dialog", dialog => dialog.accept());
+  await Promise.all([
+    statePage.waitForNavigation({waitUntil:"domcontentloaded", timeout:15000}),
+    statePage.locator("#edNewHouse").click(),
+  ]);
+  await statePage.locator("[data-editorial-lab]").waitFor({state:"visible", timeout:15000});
+  const resetEditorialState = await statePage.evaluate(() => ({
+    current:localStorage.getItem("lacurent-home-lab-editorial-v2:official"),
+    currentHistory:localStorage.getItem("lacurent-home-lab-editorial-v2:official:history"),
+    legacy:localStorage.getItem("lacurent-home-lab-editorial-v1:official"),
+    legacyHistory:localStorage.getItem("lacurent-home-lab-editorial-v1:official:history"),
+    classic:localStorage.getItem("lacurent-home-lab-next-v1:official"),
+  }));
+  if (Object.values(resetEditorialState).some(value => value !== null)) {
+    throw new Error(
+      "Editorial clean-house reset left calculation state behind: " +
+      JSON.stringify(resetEditorialState)
+    );
+  }
+  await statePage.close();
+
   await page.goto(baseUrl + "/home-lab-next", {waitUntil:"networkidle", timeout:30000});
 
   const editorialPrivacyFirstUse = page.locator("[data-lacurent-first-use-consent]");
