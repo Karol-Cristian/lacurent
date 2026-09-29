@@ -579,7 +579,11 @@ function candidateCompliance(kernel, indicators, rer) {
   const onsiteShortfall = onsiteMinimum > EPS
     ? Math.max((onsiteMinimum - onsitePercent) / onsiteMinimum, 0)
     : 0;
-  const technicalPass = primaryPass && co2Pass && rerPass && onsitePass;
+  // The building-side constraint is the part TEO can actually design:
+  // Eprim, CO2 and the minimum onsite renewable share. The remaining legal
+  // renewable share is explicitly tied to guarantees-of-origin evidence and
+  // must not be fabricated as a building-physics decision variable.
+  const technicalPass = primaryPass && co2Pass && onsitePass;
   return {
     available:true,
     availablePass:technicalPass,
@@ -597,9 +601,10 @@ function candidateCompliance(kernel, indicators, rer) {
     guaranteeOfOriginMinimumPercent:goMinimum,
     guaranteeOfOriginEvidenceRequired:true,
     distanceToAvailableCompliance:round(
-      Math.max(primaryRatio - 1, co2Ratio - 1, rerShortfall, onsiteShortfall, 0),
+      Math.max(primaryRatio - 1, co2Ratio - 1, onsiteShortfall, 0),
       6
     ),
+    modeledRerShortfall:round(rerShortfall, 6),
     rerStatus:String(rer?.status || "unavailable"),
     rerMethodologyStatus:String(target.renewable_requirement_status || ""),
     // The optimizer can verify the technical modeled perimeter, but not legal
