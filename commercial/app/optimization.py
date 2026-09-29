@@ -121,6 +121,9 @@ class CandidateEvaluationV1(BaseModel):
     primary_specific_kwh_m2: float
     co2_total_kg: float
     co2_specific_kg_m2: float
+    rer_percent: float | None = None
+    onsite_renewable_percent: float | None = None
+    rer_status: str | None = None
     energy_class: str
     resulting_configuration: BuildingInput | None = None
     cost_breakdown: list[CostLineV1] = Field(default_factory=list)
@@ -747,6 +750,12 @@ def evaluate_parametric_candidate(
         ),
         co2_total_kg=round(float(candidate_result.co2.total_kg), 3),
         co2_specific_kg_m2=round(float(candidate_result.co2.specific_kg_m2), 3),
+        rer_percent=round(float(candidate_result.renewable_share.rer_percent), 3),
+        onsite_renewable_percent=round(
+            float(candidate_result.renewable_share.onsite_percent),
+            3,
+        ),
+        rer_status=candidate_result.renewable_share.status,
         energy_class=candidate_result.energy_class,
         resulting_configuration=candidate_building,
         cost_breakdown=cost_lines,
