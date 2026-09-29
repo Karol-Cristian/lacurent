@@ -2266,7 +2266,12 @@
   function setTeoControlPhase(step, label = "") {
     const panel = $(".ed-teo-control-panel");
     if (!panel) return;
-    const numeric = Math.max(0, Math.min(5, Number(step) || 0));
+    const requested = Math.max(0, Math.min(5, Number(step) || 0));
+    const activeValues = [...document.querySelectorAll("[data-teo-step]")]
+      .filter(node => node.classList.contains("is-active") || node.classList.contains("is-done"))
+      .map(node => Number(node.dataset.teoStep || 0));
+    const currentMax = activeValues.length ? Math.max(...activeValues) : 0;
+    const numeric = requested > 0 ? Math.max(requested, currentMax) : 0;
     panel.classList.toggle("is-running", numeric > 0 && numeric < 6);
     panel.classList.remove("is-done");
     document.querySelectorAll("[data-teo-step]").forEach(node => {
