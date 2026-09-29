@@ -2210,7 +2210,6 @@
     ].every(Number.isFinite)
       && primary <= primaryLimit + 1e-6
       && co2 <= co2Limit + 1e-6
-      && rer + 1e-6 >= rerMinimum
       && onsite + 1e-6 >= onsiteMinimum;
   }
 
@@ -2279,12 +2278,18 @@
       target?.renewable_guarantee_of_origin_minimum_percent ?? 20
     );
     const rerValid = [rer, onsite, rerMinimum, onsiteMinimum].every(Number.isFinite);
-    const rerPass = rerValid
-      ? rer + 1e-6 >= rerMinimum && onsite + 1e-6 >= onsiteMinimum
+    const rerTotalPass = rerValid
+      ? rer + 1e-6 >= rerMinimum
       : null;
-    rerCard?.classList.toggle("is-pass", rerPass === true);
-    rerCard?.classList.toggle("is-fail", rerPass === false);
-    rerCard?.classList.toggle("is-rer-pending", rerPass === null);
+    const onsitePass = rerValid
+      ? onsite + 1e-6 >= onsiteMinimum
+      : null;
+    rerCard?.classList.toggle("is-pass", rerTotalPass === true && onsitePass === true);
+    rerCard?.classList.toggle("is-fail", onsitePass === false);
+    rerCard?.classList.toggle(
+      "is-rer-pending",
+      rerValid === false || (onsitePass === true && rerTotalPass === false)
+    );
     if (rerValue) {
       rerValue.textContent = rerValid
         ? `${fmt(rer,1)}% · onsite ${fmt(onsite,1)}%`
@@ -2296,10 +2301,10 @@
         : "0%";
     }
     if (rerState) {
-      rerState.innerHTML = rerPass === true
-        ? '<svg><use href="#ed-i-info"></use></svg>'
-        : rerPass === false
-          ? '<svg><use href="#ed-i-x"></use></svg>'
+      rerState.innerHTML = onsitePass === false
+        ? '<svg><use href="#ed-i-x"></use></svg>'
+        : rerTotalPass === true && onsitePass === true
+          ? '<svg><use href="#ed-i-info"></use></svg>'
           : '<svg><use href="#ed-i-info"></use></svg>';
     }
     const rerLimit = $("#edNzebRerLimit");
@@ -2314,16 +2319,16 @@
       target
       && primaryPass === true
       && co2Pass === true
-      && rerPass === true
+      && onsitePass === true
     );
     let text = "Completează casa pentru a verifica pragurile aplicabile.";
     if (technicalPass) {
       text = constrained
-        ? `TEO poate verifica tehnic Eprim, CO₂, RER ≥${fmt(rerMinimum,0)}% și partea onsite ≥${fmt(onsiteMinimum,0)}%. Conformarea juridică completă rămâne condiționată de dovada pentru ≥${fmt(goMinimum,0)}% prin garanții de origine și de orice prag suplimentar 2026 stabilit oficial.`
+        ? `TEO poate verifica tehnic Eprim, CO₂ și partea SRE onsite ≥${fmt(onsiteMinimum,0)}%. RER modelat este ${fmt(rer,1)}%; cerința totală ≥${fmt(rerMinimum,0)}% se închide juridic numai împreună cu dovada pentru ≥${fmt(goMinimum,0)}% prin garanții de origine și cu orice prag suplimentar 2026 stabilit oficial.`
         : "Indicatorii tehnici nZEB modelați sunt atinși, dar constrângerea nZEB este momentan dezactivată.";
     } else if (target && [primaryPass, co2Pass, rerPass].some(value => value === false)) {
       text = constrained
-        ? "Clădirea nu respectă încă toate pragurile tehnice modelate. TEO caută economic, apoi reoptimizează numai în domeniul Eprim + CO₂ + RER total + SRE onsite eligibil."
+        ? "Clădirea nu respectă încă toate pragurile tehnice pe care TEO le poate proiecta. TEO caută economic, apoi reoptimizează în domeniul Eprim + CO₂ + SRE onsite; RER total și dovada GO rămân raportate separat."
         : "Cel puțin un prag tehnic nZEB modelat nu este atins. Activează conformarea pentru a-l trata drept restricție.";
     } else if (!target) {
       text = "Pragurile nZEB nu sunt disponibile până când localitatea și zona climatică nu sunt rezolvate.";
@@ -3444,7 +3449,7 @@
       };
       log(
         compliancePolicy.enabled
-          ? "CONSTRAINT · nZEB activ: TEO explorează economic, apoi reoptimizează în domeniul Eprim + CO₂ + RER total + SRE onsite. Garanțiile de origine rămân dovadă externă."
+          ? "CONSTRAINT · nZEB activ: TEO explorează economic, apoi reoptimizează în domeniul Eprim + CO₂ + SRE onsite. RER total este calculat, iar garanțiile de origine rămân dovadă externă."
           : "CONSTRAINT · nZEB dezactivat: TEO optimizează strict obiectivul economic ales."
       );
       log(`TEO V4 local: ${searchPointCount * branchIds.length} evaluări planificate în browser, fără request HTTP per candidat.`);
@@ -3710,7 +3715,7 @@
             ${metric("RER tehnic", fmt(rerTotal,1) + "% / ≥" + fmt(nzebTarget.renewable_total_minimum_percent ?? 30,0) + "%")}
             ${metric("SRE onsite", fmt(rerOnsite,1) + "% / ≥" + fmt(nzebTarget.renewable_onsite_minimum_percent ?? 10,0) + "%")}
           </div>
-          <p class="ed-hint"><b>Status:</b> ${nzebTechnicalPass ? "pragurile tehnice modelate sunt atinse" : "cel puțin un prag tehnic modelat nu este atins"}. Pentru conformare juridică completă, dovada pentru minimum ${fmt(nzebTarget.renewable_guarantee_of_origin_minimum_percent ?? 20,0)}% prin garanții de origine se verifică separat.</p>
+          <p class="ed-hint"><b>Status:</b> ${nzebTechnicalPass ? "pragurile tehnice controlabile de TEO sunt atinse" : "cel puțin un prag tehnic controlabil de TEO nu este atins"}. RER total este raportat separat; pentru conformare juridică completă, dovada pentru minimum ${fmt(nzebTarget.renewable_guarantee_of_origin_minimum_percent ?? 20,0)}% prin garanții de origine se verifică separat.</p>
         </section>
       `;
     }
