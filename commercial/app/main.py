@@ -1325,20 +1325,40 @@ def result_context(result: Any) -> dict[str, Any]:
         "carrier_max": carrier_max,
         "monthly_max": monthly_max,
         "cost_estimate": estimate_energy_cost(result),
-        "payload": model_to_json(result.input),
+        "payload": (
+            json.dumps(result.input, ensure_ascii=False, separators=(",", ":"))
+            if isinstance(result.input, dict)
+            else model_to_json(result.input)
+        ),
     }
 
 
-def _calculation_result_from_json(payload: str) -> CalculationResult:
-    if hasattr(CalculationResult, "model_validate_json"):
-        return CalculationResult.model_validate_json(payload)
-    return CalculationResult.parse_raw(payload)
+class _ResultView(dict):
+    """Lightweight attribute-access view over canonical RBPE JSON."""
+
+    def __getattr__(self, name: str) -> Any:
+        try:
+            return self[name]
+        except KeyError as exc:
+            raise AttributeError(name) from exc
+
+
+def _result_view(value: Any) -> Any:
+    if isinstance(value, dict):
+        return _ResultView({key: _result_view(item) for key, item in value.items()})
+    if isinstance(value, list):
+        return [_result_view(item) for item in value]
+    return value
+
+
+def _calculation_result_from_json(payload: str) -> Any:
+    return _result_view(json.loads(payload))
 
 
 async def _canonical_calculation(
     request: Request,
     building: BuildingInput,
-) -> CalculationResult:
+) -> Any:
     """Execute canonical RBPE outside the public Cloudflare Python isolate."""
     env = request.scope.get("env")
     if env is not None:

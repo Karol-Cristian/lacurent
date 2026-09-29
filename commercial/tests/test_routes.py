@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -7,7 +8,12 @@ import pytest
 from fastapi.testclient import TestClient
 
 from commercial.app.engine import calculate, demo_building, dhw_energy
-from commercial.app.main import app, build_input_from_form
+from commercial.app.main import (
+    _calculation_result_from_json,
+    app,
+    build_input_from_form,
+    result_context,
+)
 from commercial.app import methodology as methodology_module
 from commercial.app.pricing import _firewood_reference
 from commercial.app.simulation_facts import FACT_SCENARIOS, _build_fact
@@ -3376,6 +3382,24 @@ def test_partner_embed_lab_calculation_returns_live_metrics() -> None:
     assert sum(row["value_w_k"] for row in payload["heat_loss_breakdown"]) > 0
     assert payload["reference"] is None
     assert payload["reference_parameters"]["u_values_w_m2k"]["exterior_wall"] > 0
+
+
+def test_private_rbpe_html_result_uses_lightweight_json_view() -> None:
+    canonical = calculate(demo_building(), include_reference=False)
+    encoded = canonical.model_dump_json() if hasattr(canonical, "model_dump_json") else canonical.json()
+    view = _calculation_result_from_json(encoded)
+
+    assert isinstance(view, dict)
+    assert view.primary_energy.specific_kwh_m2 == pytest.approx(
+        canonical.primary_energy.specific_kwh_m2
+    )
+    assert view.input.project_name == canonical.input.project_name
+    assert len(view.monthly) == 12
+
+    context = result_context(view)
+    assert context["cost_estimate"]["priced_total_lei"] >= 0
+    payload = json.loads(context["payload"])
+    assert payload["project_name"] == canonical.input.project_name
 
 
 def test_html_calculation_routes_delegate_canonical_rbpe_to_private_service() -> None:
