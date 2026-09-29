@@ -12,6 +12,8 @@ from app.rbpe_service import (
     calculate_home_lab_api_json,
     calculate_home_lab_form_api_json,
     calculate_home_lab_result_json,
+    build_product_wall_insulation_scenario_json,
+    build_wall_insulation_scenario_json,
 )
 
 
@@ -80,6 +82,32 @@ class Default(WorkerEntrypoint):
     async def calculate_home_lab_form_api_json(self, encoded_form):
         """Parse the live form and execute canonical RBPE inside this shard."""
         return calculate_home_lab_form_api_json(str(encoded_form))
+
+    async def build_wall_insulation_scenario_json(
+        self,
+        baseline_json,
+        added_insulation_thickness_mm,
+        insulation_lambda_w_mk,
+    ):
+        """Run the canonical generic wall scenario in this RBPE shard."""
+        return build_wall_insulation_scenario_json(
+            baseline_json,
+            float(added_insulation_thickness_mm),
+            float(insulation_lambda_w_mk),
+        )
+
+    async def build_product_wall_insulation_scenario_json(
+        self,
+        baseline_json,
+        requirement_json,
+        product_json,
+    ):
+        """Run the canonical product-backed wall scenario in this RBPE shard."""
+        return build_product_wall_insulation_scenario_json(
+            baseline_json,
+            requirement_json,
+            product_json,
+        )
 
     async def fetch(self, request):
         path = urlparse(request.url).path
