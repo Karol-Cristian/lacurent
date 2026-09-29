@@ -185,6 +185,7 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'id="edNzebPrimaryValue"' in page.text
     assert 'id="edNzebCo2Value"' in page.text
     assert 'id="edNzebRerValue"' in page.text
+    assert '≥30% total · ≥10% onsite · ≥20% GO' in page.text
     assert 'id="edTeoSteps"' in page.text
     assert 'data-teo-step="5"' in page.text
     assert 'id="edTeoResult"' in page.text
@@ -288,6 +289,9 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert "DEFAULT_INFILTRATION_ACH = 0.15" in js.text
     assert "function optimizationSummaryForPersistentBar()" in js.text
     assert "function renderNzebStatus(" in js.text
+    assert "renewable_total_minimum_percent" in js.text
+    assert "onsite_renewable_percent" in js.text
+    assert "nZEB tehnic modelat · dovadă GO necesară" in js.text
     assert "function syncNzebPolicy(" in js.text
     assert "function renderTeoResult(" in js.text
     assert "compliancePolicy" in js.text
@@ -416,11 +420,15 @@ def test_teo_v4_plan_builds_thousands_of_browser_points_without_server_candidate
     assert payload["refinementStrategy"] == "halton_global_plus_two_local_coordinate_rounds"
     assert payload["runBranchIds"]
     kernel = payload["kernel"]
-    assert kernel["version"] == "teo-v4-browser-kernel-2"
+    assert kernel["version"] == "teo-v4-browser-kernel-3"
     assert kernel["compliance_target"]["primary_energy_kwh_m2_year"] > 0
     assert kernel["compliance_target"]["co2_kg_m2_year"] > 0
-    assert kernel["compliance_target"]["renewable_minimum_percent"] == 30.0
+    assert kernel["compliance_target"]["renewable_total_minimum_percent"] == 30.0
+    assert kernel["compliance_target"]["renewable_onsite_minimum_percent"] == 10.0
+    assert kernel["compliance_target"]["renewable_guarantee_of_origin_minimum_percent"] == 20.0
     assert "renewable_requirement_status" in kernel["compliance_target"]
+    assert kernel["carrier_factors"]["electricity"]["renewable_primary_energy_factor"] == 0.5
+    assert kernel["carrier_factors"]["electricity"]["nonrenewable_primary_energy_factor"] == 2.0
     assert kernel["branches"]
     assert len(kernel["monthly"]) == 12
     assert kernel["cost_catalog"]
@@ -445,6 +453,10 @@ def test_teo_v4_plan_builds_thousands_of_browser_points_without_server_candidate
     assert "function verificationPlanRows(" in worker.text
     assert "function radicalInverse(" in worker.text
     assert "LOCAL_REFINEMENT_ROUNDS" in worker.text
+    assert "function renewableShare(" in worker.text
+    assert "renewable_total_minimum_percent" in worker.text
+    assert "renewable_onsite_minimum_percent" in worker.text
+    assert "guaranteeOfOriginEvidenceRequired:true" in worker.text
 
 
 
@@ -1448,6 +1460,9 @@ def test_home_lab_next_calculation_reuses_existing_energy_engine() -> None:
     )
     assert payload["heat_loss_w_k"] > 0
     assert payload["energy_class"]
+    assert payload["rer_percent"] >= 0
+    assert payload["onsite_renewable_percent"] >= 0
+    assert payload["renewable_share"]["status"] == "bounded_conservative_technical_lower_bound_not_certificate"
     assert "annual_cost_lei" in payload
     assert payload["price_retrieved_on"]
     class_reference = payload["energy_class_reference"]
@@ -1702,6 +1717,8 @@ def test_home_lab_next_optimizer_candidate_returns_compact_metrics_only() -> Non
         "final_energy_kwh",
         "primary_specific_kwh_m2",
         "co2_specific_kg_m2",
+        "rer_percent",
+        "onsite_renewable_percent",
         "annual_cost_lei",
     }
     assert payload["final_energy_kwh"] > 0
@@ -2094,6 +2111,12 @@ def test_home_lab_next_exposes_source_backed_nzeb_target() -> None:
     assert "Tabel 2.4" in target["envelope_source"]
     assert target["envelope_u_max_w_m2k"]["exterior_wall"] == 0.25
     assert target["envelope_u_max_w_m2k"]["roof"] == 0.15
+    assert target["renewable_total_minimum_percent"] == 30.0
+    assert target["renewable_onsite_minimum_percent"] == 10.0
+    assert target["renewable_guarantee_of_origin_minimum_percent"] == 20.0
+    assert "Legea nr. 372/2005" in target["renewable_legal_source"]
+    assert payload["rer_percent"] >= 0
+    assert payload["onsite_renewable_percent"] >= 0
     assert payload["co2_specific_kg_m2"] >= 0
     assert payload["methodology_version"]
     assert payload["methodology_source"]
