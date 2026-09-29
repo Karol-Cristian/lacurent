@@ -503,6 +503,44 @@ function primaryAndCo2(kernel, carriers) {
   };
 }
 
+function candidateCompliance(kernel, indicators) {
+  const target = kernel?.compliance_target || null;
+  if (!target) {
+    return {
+      available:false,
+      availablePass:false,
+      primaryPass:null,
+      co2Pass:null,
+      distanceToAvailableCompliance:null,
+      rerStatus:"unavailable",
+      fullLegalCompliance:false,
+    };
+  }
+  const primaryLimit = num(target.primary_energy_kwh_m2_year, Infinity);
+  const co2Limit = num(target.co2_kg_m2_year, Infinity);
+  const primary = num(indicators?.primarySpecific, Infinity);
+  const co2 = num(indicators?.co2Specific, Infinity);
+  const primaryRatio = primaryLimit > EPS ? primary / primaryLimit : Infinity;
+  const co2Ratio = co2Limit > EPS ? co2 / co2Limit : Infinity;
+  const primaryPass = primaryRatio <= 1.000001;
+  const co2Pass = co2Ratio <= 1.000001;
+  const renewableStatus = String(target.renewable_requirement_status || "");
+  return {
+    available:true,
+    availablePass:primaryPass && co2Pass,
+    primaryPass,
+    co2Pass,
+    primaryRatio:round(primaryRatio, 6),
+    co2Ratio:round(co2Ratio, 6),
+    distanceToAvailableCompliance:round(Math.max(primaryRatio, co2Ratio, 1) - 1, 6),
+    renewableMinimumPercent:num(target.renewable_minimum_percent, 30),
+    rerStatus:renewableStatus ? "pending_methodology" : "unavailable",
+    rerMethodologyStatus:renewableStatus || null,
+    // Never turn the currently available EP+CO2 gate into a legal nZEB verdict.
+    fullLegalCompliance:false,
+  };
+}
+
 function energyClass(kernel, primarySpecific) {
   const labels = ["A+", "A", "B", "C", "D", "E", "F"];
   const thresholds = kernel.energy_class_thresholds || [];
@@ -549,6 +587,7 @@ function evaluate(kernel, branch, measures, baselineBill, id) {
   if (bill == null || !Number.isFinite(bill)) return null;
   const indicators = primaryAndCo2(kernel, energy.net);
   if (!indicators) return null;
+  const compliance = candidateCompliance(kernel, indicators);
 
   const saving = baselineBill - bill;
   const payback = capex > EPS && saving > EPS ? capex / saving : null;
@@ -573,6 +612,7 @@ function evaluate(kernel, branch, measures, baselineBill, id) {
       co2_total_kg:round(indicators.co2Total, 3),
       co2_specific_kg_m2:round(indicators.co2Specific, 3),
       energy_class:energyClass(kernel, indicators.primarySpecific),
+      compliance,
       cost_catalog_version:kernel.cost_catalog?.catalog_version || null,
       cost_source:"teo_v4_browser_surrogate",
       commercialization_status:capex > EPS ? "pending_product_catalog" : "raw_only"
@@ -634,18 +674,23 @@ function evenlySample(rows, limit) {
   return out;
 }
 
-function shortlist(rows, mode, goals) {
+function shortlist(rows, mode, goals, compliancePolicy = null) {
   const selected = new Map();
-  const frontier = paretoRows(rows);
+  const complianceEnabled = Boolean(compliancePolicy?.enabled);
+  const compliantRows = complianceEnabled
+    ? workingRows.filter(row => row?.candidate?.compliance?.availablePass === true)
+    : [];
+  const workingRows = complianceEnabled && compliantRows.length ? compliantRows : rows;
+  const frontier = paretoRows(workingRows);
   evenlySample(frontier, 256).forEach(row => selected.set(row.candidate.candidate_id, row));
 
-  addTop(selected, rows, (a,b) => num(a.candidate.annual_bill_lei) - num(b.candidate.annual_bill_lei), 40);
-  addTop(selected, rows, (a,b) => num(b.candidate.annual_saving_lei) - num(a.candidate.annual_saving_lei), 40);
-  addTop(selected, rows.filter(r => r.candidate.annual_saving_lei > 0), (a,b) =>
+  addTop(selected, workingRows, (a,b) => num(a.candidate.annual_bill_lei) - num(b.candidate.annual_bill_lei), 40);
+  addTop(selected, workingRows, (a,b) => num(b.candidate.annual_saving_lei) - num(a.candidate.annual_saving_lei), 40);
+  addTop(selected, workingRows.filter(r => r.candidate.annual_saving_lei > 0), (a,b) =>
     num(a.candidate.payback_years, Infinity) - num(b.candidate.payback_years, Infinity), 40);
 
   for (const years of AUTO_HORIZONS) {
-    addTop(selected, rows, (a,b) => {
+    addTop(selected, workingRows, (a,b) => {
       const na = num(a.candidate.annual_saving_lei) * years - num(a.candidate.capex_lei);
       const nb = num(b.candidate.annual_saving_lei) * years - num(b.candidate.capex_lei);
       return nb - na;
@@ -653,7 +698,7 @@ function shortlist(rows, mode, goals) {
   }
 
   if (mode === "auto_economic") {
-    const regretPool = frontier.length ? frontier : rows;
+    const regretPool = frontier.length ? frontier : workingRows;
     const regretMetrics = robustRegretMetricsRows(regretPool);
     addTop(selected, regretPool, (a,b) => {
       const am = regretMetrics.get(String(a.candidate.candidate_id));
@@ -667,24 +712,24 @@ function shortlist(rows, mode, goals) {
     }, 64);
   }
 
-  const branchIds = [...new Set(rows.map(row => row.branchId))];
+  const branchIds = [...new Set(workingRows.map(row => row.branchId))];
   for (const branchId of branchIds) {
-    const branchRows = rows.filter(row => row.branchId === branchId);
+    const branchRows = workingRows.filter(row => row.branchId === branchId);
     addTop(selected, branchRows, (a,b) => num(a.candidate.annual_bill_lei) - num(b.candidate.annual_bill_lei), 20);
     addTop(selected, branchRows, (a,b) => num(a.candidate.capex_lei) - num(b.candidate.capex_lei), 12);
   }
 
   if (mode === "investment_budget") {
     const budget = num(goals.investment_budget_lei, Infinity);
-    addTop(selected, rows.filter(r => num(r.candidate.capex_lei) <= budget + 0.01),
+    addTop(selected, workingRows.filter(r => num(r.candidate.capex_lei) <= budget + 0.01),
       (a,b) => num(a.candidate.annual_bill_lei) - num(b.candidate.annual_bill_lei), 64);
   } else if (mode === "annual_bill_target") {
     const target = num(goals.annual_bill_target_lei, -Infinity);
-    addTop(selected, rows.filter(r => num(r.candidate.annual_bill_lei) <= target + 0.01),
+    addTop(selected, workingRows.filter(r => num(r.candidate.annual_bill_lei) <= target + 0.01),
       (a,b) => num(a.candidate.capex_lei) - num(b.candidate.capex_lei), 64);
   } else if (mode === "max_payback_years") {
     const limit = num(goals.max_payback_years, -Infinity);
-    addTop(selected, rows.filter(r => r.candidate.payback_years != null && num(r.candidate.payback_years) <= limit + 1e-6),
+    addTop(selected, workingRows.filter(r => r.candidate.payback_years != null && num(r.candidate.payback_years) <= limit + 1e-6),
       (a,b) => num(b.candidate.annual_saving_lei) - num(a.candidate.annual_saving_lei), 64);
   }
 
@@ -697,7 +742,7 @@ function shortlist(rows, mode, goals) {
     });
     output = [...keep.values()];
   }
-  return {rows:output, frontierCount:frontier.length};
+  return {rows:output, frontierCount:frontier.length, availableCompliantCount:compliantRows.length};
 }
 
 
@@ -981,15 +1026,26 @@ function hasSearchBounds(bounds) {
   );
 }
 
-function refinementSeeds(rows, mode, goals, count) {
+function refinementSeeds(rows, mode, goals, count, compliancePolicy = null) {
   const chosen = new Map();
-  const frontier = paretoRows(rows);
+  const complianceEnabled = Boolean(compliancePolicy?.enabled);
+  const compliant = complianceEnabled
+    ? rows.filter(row => row?.candidate?.compliance?.availablePass === true)
+    : [];
+  const seedPool = complianceEnabled && compliant.length ? compliant : rows;
+  const frontier = paretoRows(seedPool);
   evenlySample(frontier, Math.min(4, count)).forEach(row => {
     chosen.set(row.candidate.candidate_id, row);
   });
 
-  let ranked = rows.slice();
-  if (mode === "auto_economic") {
+  let ranked = seedPool.slice();
+  if (complianceEnabled && !compliant.length) {
+    ranked.sort((left, right) =>
+      num(left?.candidate?.compliance?.distanceToAvailableCompliance, Infinity)
+      - num(right?.candidate?.compliance?.distanceToAvailableCompliance, Infinity)
+      || objectiveSeedSorter(mode, goals)(left, right)
+    );
+  } else if (mode === "auto_economic") {
     const pool = frontier.length ? frontier : rows;
     const metrics = robustRegretMetricsRows(pool);
     ranked = pool.slice().sort((left, right) => {
@@ -1019,13 +1075,14 @@ function refineBranch({
   bounds,
   mode,
   goals,
+  compliancePolicy,
   seen,
   roundIndex,
   baselineBill,
 }) {
   const cfg = LOCAL_REFINEMENT_ROUNDS[roundIndex];
   if (!cfg || !hasSearchBounds(bounds) || !rows.length) return {rows:[], attempts:0};
-  const seeds = refinementSeeds(rows, mode, goals, cfg.seedCount);
+  const seeds = refinementSeeds(rows, mode, goals, cfg.seedCount, compliancePolicy);
   const generated = [];
   let ordinal = 0;
   let attempts = 0;
@@ -1156,6 +1213,7 @@ self.onmessage = event => {
           bounds:searchBounds,
           mode:data.mode || "auto_economic",
           goals:data.goals || {},
+          compliancePolicy:data.compliancePolicy || null,
           seen,
           roundIndex,
           baselineBill,
@@ -1191,7 +1249,12 @@ self.onmessage = event => {
       });
     }
 
-    const reduced = shortlist(allRows, data.mode || "auto_economic", data.goals || {});
+    const reduced = shortlist(
+      allRows,
+      data.mode || "auto_economic",
+      data.goals || {},
+      data.compliancePolicy || null
+    );
     const verificationPlan = verificationPlanRows(
       reduced.rows,
       data.mode || "auto_economic",
@@ -1206,6 +1269,12 @@ self.onmessage = event => {
       verificationCount:verificationPlan.requestedCount,
       verificationStrategy:"browser_rank_plus_pareto_v4",
       sourceCandidateCount:allRows.length,
+      availableCompliantCount:allRows.filter(
+        row => row?.candidate?.compliance?.availablePass === true
+      ).length,
+      shortlistedAvailableCompliantCount:Number(reduced.availableCompliantCount || 0),
+      compliancePolicyEnabled:Boolean(data.compliancePolicy?.enabled),
+      complianceTarget:kernel.compliance_target || null,
       frontierCount:verificationPlan.frontierCount,
       branchStats,
       fastEvaluations:total,
