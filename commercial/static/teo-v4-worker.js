@@ -381,6 +381,7 @@ function renewableAndCarriers(kernel, measures, branch, balance) {
   const auxiliary = num(branch.heating_auxiliary_kwh_year);
 
   let dhwFinal = 0;
+  let solarThermalUsed = 0;
   let pvSelf = 0;
   let pvRegulatedSelf = 0;
   let pvHouseholdSelf = 0;
@@ -406,6 +407,7 @@ function renewableAndCarriers(kernel, measures, branch, balance) {
     const thermalHsol = num(renew.solar_thermal_hsol_kwh_m2_month?.[i]);
     const thermalAvailable = thermalHsol * thermalArea * thermalEfficiency;
     const thermalUsed = Math.min(thermalAvailable, row.dhwUseful);
+    solarThermalUsed += thermalUsed;
     const dhwBackupUseful = Math.max(row.dhwUseful - thermalUsed, 0);
     const monthDhwFinal = dhwBackupUseful * num(branch.dhw_final_per_useful);
     dhwFinal += monthDhwFinal;
@@ -455,7 +457,8 @@ function renewableAndCarriers(kernel, measures, branch, balance) {
     householdGridImport,
     heatingFinal,
     coolingFinal,
-    dhwFinal
+    dhwFinal,
+    solarThermalUsed
   };
 }
 
@@ -503,7 +506,44 @@ function primaryAndCo2(kernel, carriers) {
   };
 }
 
-function candidateCompliance(kernel, indicators) {
+function renewableShare(kernel, energy) {
+  let deliveredRenewable = 0;
+  let nonrenewable = 0;
+  for (const [carrier, valueRaw] of Object.entries(energy?.net || {})) {
+    const value = Math.max(num(valueRaw), 0);
+    if (value <= EPS) continue;
+    const factors = kernel.carrier_factors?.[carrier];
+    if (!factors) return null;
+    const fRen = Number(factors.renewable_primary_energy_factor);
+    const fNren = Number(factors.nonrenewable_primary_energy_factor);
+    if (!Number.isFinite(fRen) || !Number.isFinite(fNren)) return null;
+    deliveredRenewable += value * fRen;
+    nonrenewable += value * fNren;
+  }
+  // Same bounded RBPE perimeter as the canonical engine. PV household use and
+  // exported PV are excluded; solar thermal is credited only when it serves DHW.
+  const pvOnsite = Math.max(num(energy?.pvRegulatedSelf), 0);
+  const solarOnsite = Math.max(num(energy?.solarThermalUsed), 0);
+  const onsiteRenewable = pvOnsite + solarOnsite;
+  const renewablePrimary = deliveredRenewable + onsiteRenewable;
+  const totalPrimary = renewablePrimary + nonrenewable;
+  return {
+    status:"bounded_conservative_technical_lower_bound_not_certificate",
+    renewablePrimary:round(renewablePrimary, 4),
+    nonrenewablePrimary:round(nonrenewable, 4),
+    totalPrimary:round(totalPrimary, 4),
+    rerPercent:round(totalPrimary > EPS ? 100 * renewablePrimary / totalPrimary : 0, 4),
+    onsitePercent:round(totalPrimary > EPS ? 100 * onsiteRenewable / totalPrimary : 0, 4),
+    deliveredRenewablePrimary:round(deliveredRenewable, 4),
+    onsiteRenewablePrimary:round(onsiteRenewable, 4),
+    pvRegulatedPrimary:round(pvOnsite, 4),
+    solarThermalPrimary:round(solarOnsite, 4),
+    pvExportedExcluded:round(Math.max(num(energy?.pvExport), 0), 4),
+    pvHouseholdExcluded:round(Math.max(num(energy?.pvHouseholdSelf), 0), 4),
+  };
+}
+
+function candidateCompliance(kernel, indicators, rer) {
   const target = kernel?.compliance_target || null;
   if (!target) {
     return {
@@ -511,6 +551,8 @@ function candidateCompliance(kernel, indicators) {
       availablePass:false,
       primaryPass:null,
       co2Pass:null,
+      rerPass:null,
+      onsitePass:null,
       distanceToAvailableCompliance:null,
       rerStatus:"unavailable",
       fullLegalCompliance:false,
@@ -518,25 +560,50 @@ function candidateCompliance(kernel, indicators) {
   }
   const primaryLimit = num(target.primary_energy_kwh_m2_year, Infinity);
   const co2Limit = num(target.co2_kg_m2_year, Infinity);
+  const rerMinimum = num(target.renewable_total_minimum_percent, 30);
+  const onsiteMinimum = num(target.renewable_onsite_minimum_percent, 10);
+  const goMinimum = num(target.renewable_guarantee_of_origin_minimum_percent, 20);
   const primary = num(indicators?.primarySpecific, Infinity);
   const co2 = num(indicators?.co2Specific, Infinity);
+  const rerPercent = num(rer?.rerPercent, -Infinity);
+  const onsitePercent = num(rer?.onsitePercent, -Infinity);
   const primaryRatio = primaryLimit > EPS ? primary / primaryLimit : Infinity;
   const co2Ratio = co2Limit > EPS ? co2 / co2Limit : Infinity;
   const primaryPass = primaryRatio <= 1.000001;
   const co2Pass = co2Ratio <= 1.000001;
-  const renewableStatus = String(target.renewable_requirement_status || "");
+  const rerPass = rerPercent + 1e-6 >= rerMinimum;
+  const onsitePass = onsitePercent + 1e-6 >= onsiteMinimum;
+  const rerShortfall = rerMinimum > EPS
+    ? Math.max((rerMinimum - rerPercent) / rerMinimum, 0)
+    : 0;
+  const onsiteShortfall = onsiteMinimum > EPS
+    ? Math.max((onsiteMinimum - onsitePercent) / onsiteMinimum, 0)
+    : 0;
+  const technicalPass = primaryPass && co2Pass && rerPass && onsitePass;
   return {
     available:true,
-    availablePass:primaryPass && co2Pass,
+    availablePass:technicalPass,
+    technicalPass,
     primaryPass,
     co2Pass,
+    rerPass,
+    onsitePass,
     primaryRatio:round(primaryRatio, 6),
     co2Ratio:round(co2Ratio, 6),
-    distanceToAvailableCompliance:round(Math.max(primaryRatio, co2Ratio, 1) - 1, 6),
-    renewableMinimumPercent:num(target.renewable_minimum_percent, 30),
-    rerStatus:renewableStatus ? "pending_methodology" : "unavailable",
-    rerMethodologyStatus:renewableStatus || null,
-    // Never turn the currently available EP+CO2 gate into a legal nZEB verdict.
+    rerPercent:round(rerPercent, 4),
+    onsitePercent:round(onsitePercent, 4),
+    rerMinimumPercent:rerMinimum,
+    onsiteMinimumPercent:onsiteMinimum,
+    guaranteeOfOriginMinimumPercent:goMinimum,
+    guaranteeOfOriginEvidenceRequired:true,
+    distanceToAvailableCompliance:round(
+      Math.max(primaryRatio - 1, co2Ratio - 1, rerShortfall, onsiteShortfall, 0),
+      6
+    ),
+    rerStatus:String(rer?.status || "unavailable"),
+    rerMethodologyStatus:String(target.renewable_requirement_status || ""),
+    // The optimizer can verify the technical modeled perimeter, but not legal
+    // guarantees-of-origin evidence or a future 2026 HG threshold.
     fullLegalCompliance:false,
   };
 }
@@ -587,7 +654,9 @@ function evaluate(kernel, branch, measures, baselineBill, id) {
   if (bill == null || !Number.isFinite(bill)) return null;
   const indicators = primaryAndCo2(kernel, energy.net);
   if (!indicators) return null;
-  const compliance = candidateCompliance(kernel, indicators);
+  const rer = renewableShare(kernel, energy);
+  if (!rer) return null;
+  const compliance = candidateCompliance(kernel, indicators, rer);
 
   const saving = baselineBill - bill;
   const payback = capex > EPS && saving > EPS ? capex / saving : null;
@@ -611,6 +680,9 @@ function evaluate(kernel, branch, measures, baselineBill, id) {
       primary_specific_kwh_m2:round(indicators.primarySpecific, 3),
       co2_total_kg:round(indicators.co2Total, 3),
       co2_specific_kg_m2:round(indicators.co2Specific, 3),
+      rer_percent:round(rer.rerPercent, 3),
+      onsite_renewable_percent:round(rer.onsitePercent, 3),
+      rer_status:rer.status,
       energy_class:energyClass(kernel, indicators.primarySpecific),
       compliance,
       cost_catalog_version:kernel.cost_catalog?.catalog_version || null,
