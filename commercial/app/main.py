@@ -2617,23 +2617,6 @@ async def home_lab_editorial(request: Request) -> HTMLResponse:
     )
 
 
-@app.get("/home-lab-classic", response_class=HTMLResponse)
-async def home_lab_classic(request: Request) -> HTMLResponse:
-    """Previous Home Lab UI retained as a rollback and regression surface."""
-    return templates.TemplateResponse(
-        request,
-        "home_lab_next.html",
-        {
-            "request": request,
-            **calculator_context(),
-            "partner": None,
-            "embed_mode": False,
-            "calculate_url": "/api/home-lab-next/calculate",
-            "energy_overview": home_lab_price_overview(),
-        },
-    )
-
-
 async def home_lab_next_calculation(request: Request) -> Response:
     form = dict(await request.form())
     # Reference RBPE is a separate on-demand comparison. Ordinary live and
@@ -5405,29 +5388,6 @@ async def embed_integration(request: Request) -> HTMLResponse:
             "demo_partner": embed_partner("demo-store"),
         },
     )
-
-
-@app.get("/embed/{partner_id}/next", response_class=HTMLResponse)
-async def partner_embed_home_lab_next(request: Request, partner_id: str) -> HTMLResponse:
-    partner = embed_partner(partner_id)
-    return templates.TemplateResponse(
-        request,
-        "home_lab_next.html",
-        {
-            "request": request,
-            **calculator_context(),
-            "partner": partner,
-            "embed_mode": True,
-            "calculate_url": f"/embed/{partner_id}/next/calculate",
-            "energy_overview": home_lab_price_overview(),
-        },
-    )
-
-
-@app.post("/embed/{partner_id}/next/calculate")
-async def partner_embed_home_lab_next_calculate(request: Request, partner_id: str) -> JSONResponse:
-    embed_partner(partner_id)
-    return await home_lab_next_calculation(request)
 
 
 @app.get("/embed/{partner_id}", response_class=HTMLResponse)
