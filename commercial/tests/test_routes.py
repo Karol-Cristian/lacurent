@@ -137,6 +137,7 @@ def test_dhw_expert_override_preserves_explicit_carrier_and_efficiency() -> None
     assert building.dhw.cop is None
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_exposes_explicit_dhw_source_selection() -> None:
     page = client.get("/home-lab-classic")
     assert page.status_code == 200
@@ -155,6 +156,7 @@ def test_home_lab_exposes_explicit_dhw_source_selection() -> None:
     assert 'homeState.dhwSystem = $("#hlnHomeDhwSystem").value' in js.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report() -> None:
     primary = client.get("/home-lab-next")
     assert primary.status_code == 200
@@ -520,6 +522,7 @@ def test_commercial_pages_expose_legal_links_and_privacy_controls_where_needed()
     assert "/static/privacy-consent.js?v=privacy1" in calculator.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_local_persistence_and_analytics_are_consent_gated() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
@@ -725,6 +728,7 @@ def test_simulation_fact_is_derived_from_real_engine_runs() -> None:
     assert fact["methodology_version"]
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_energy_calculator_alias_goes_straight_to_home_lab() -> None:
     response = client.get("/instalatii/calculator", follow_redirects=False)
     assert response.status_code == 308
@@ -1036,6 +1040,7 @@ def test_store_demo_forces_full_width_embed_container() -> None:
     assert "embed-loader.js?v=embed8" in response.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_partner_embed_integration_page_recommends_home_lab_next() -> None:
     response = client.get("/embed")
     assert response.status_code == 200
@@ -1060,6 +1065,7 @@ def test_invalid_roof_vs_walls_fact_is_retired() -> None:
     assert "podul-trebuie-izolat-intotdeauna-primul" not in sitemap.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
@@ -1089,6 +1095,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'aria-label="Casă cu zone de îmbunătățire"' not in response.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_persistent_summary_stays_bound_to_current_result_and_status() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
@@ -1179,6 +1186,7 @@ def test_home_lab_persistent_summary_stays_bound_to_current_result_and_status() 
     assert 'root.querySelectorAll("[data-hln-editor-open]").forEach' in js.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_energy_strip_labels_references_and_sen_source() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
@@ -1304,6 +1312,7 @@ def test_home_lab_energy_strip_labels_references_and_sen_source() -> None:
     assert response.text.count('value="reference_mc001" disabled') == 4
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_mobile_status_stays_in_topbar_flow() -> None:
     response = client.get("/static/home-lab-next.css?v=next26")
     assert response.status_code == 200
@@ -1312,6 +1321,7 @@ def test_home_lab_mobile_status_stays_in_topbar_flow() -> None:
 
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_geometry_and_roi_rounding_share_one_geometry_model() -> None:
     js = client.get("/static/home-lab-next.js")
     assert js.status_code == 200
@@ -1328,6 +1338,7 @@ def test_home_lab_geometry_and_roi_rounding_share_one_geometry_model() -> None:
 
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_3d_pauses_hidden_scenes_and_optimizer_rendering() -> None:
     response = client.get("/static/home-lab-3d.js")
     assert response.status_code == 200
@@ -1338,6 +1349,7 @@ def test_home_lab_3d_pauses_hidden_scenes_and_optimizer_rendering() -> None:
     assert 'this.mode === "report" ? 40 : 30' in response.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_roi_reconciles_visible_capex_and_avoids_request_bursts() -> None:
     response = client.get("/static/home-lab-next.js")
     assert response.status_code == 200
@@ -1372,6 +1384,7 @@ def test_home_lab_roi_reconciles_visible_capex_and_avoids_request_bursts() -> No
     assert "concurență ${adaptiveBranchParallelism}/${configuredBranchParallelism}" in source
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_exposes_four_single_constraint_parametric_objectives() -> None:
     response = client.get("/static/home-lab-next.js")
     assert response.status_code == 200
@@ -1394,6 +1407,7 @@ def test_home_lab_exposes_four_single_constraint_parametric_objectives() -> None
     assert 'const buttons = $("[data-hln-smart-config]")' not in source
     assert 'const buttons = $$("[data-hln-smart-config]")' in source
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_payback_optimizer_applies_threshold_to_complete_packages_not_components() -> None:
     response = client.get("/static/home-lab-next.js")
     assert response.status_code == 200
@@ -1435,6 +1449,7 @@ def test_browser_404_uses_branded_lacurent_error_page() -> None:
     assert response.headers["cache-control"] == "no-store"
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_partner_home_lab_next_route_is_embeddable_and_partner_scoped() -> None:
     response = client.get("/embed/demo-store/next")
     assert response.status_code == 200
@@ -1443,6 +1458,34 @@ def test_partner_home_lab_next_route_is_embeddable_and_partner_scoped() -> None:
     assert 'data-calculate-url="/embed/demo-store/next/calculate"' in response.text
     assert "Partener Demo" in response.text
     assert "/static/embed-runtime.js?v=embed2" in response.text
+
+
+def test_retired_classic_3d_home_lab_is_not_exposed_in_production() -> None:
+    classic = client.get("/home-lab-classic")
+    assert classic.status_code == 404
+
+    partner_classic = client.get("/embed/demo-store/next")
+    assert partner_classic.status_code == 404
+
+    partner_classic_calculate = client.post(
+        "/embed/demo-store/next/calculate",
+        data=demo_form_data(),
+    )
+    assert partner_classic_calculate.status_code == 404
+
+
+def test_embed_integration_points_only_to_maintained_embed_surface() -> None:
+    response = client.get("/embed")
+    assert response.status_code == 200
+    assert 'href="/embed/demo-store"' in response.text
+    assert 'data-path="lab"' in response.text
+    assert 'href="/embed/demo-store/next"' not in response.text
+    assert 'data-path="next"' not in response.text
+
+    loader = client.get("/static/embed-loader.js")
+    assert loader.status_code == 200
+    assert "/next" not in loader.text
+    assert "always mount the" in loader.text
 
 
 def test_home_lab_next_calculation_reuses_existing_energy_engine() -> None:
@@ -1727,6 +1770,7 @@ def test_home_lab_next_optimizer_candidate_returns_compact_metrics_only() -> Non
     assert payload["annual_cost_lei"] is not None
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_partner_home_lab_next_calculation_reuses_existing_energy_engine() -> None:
     response = client.post("/embed/demo-store/next/calculate", data=demo_form_data())
     assert response.status_code == 200
@@ -2505,6 +2549,7 @@ def test_home_lab_next_calculation_is_single_pass_without_reference_engine_recur
     assert "include_reference=True" not in engine_section
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_next_optimizer_uses_compact_cached_candidates() -> None:
     response = client.get("/static/home-lab-next.js")
     assert response.status_code == 200
@@ -2525,6 +2570,7 @@ def test_home_lab_next_optimizer_uses_compact_cached_candidates() -> None:
     assert "alreadyAtTarget" in response.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_next_live_calculation_avoids_startup_request_storms_and_hangs() -> None:
     response = client.get("/static/home-lab-next.js")
     assert response.status_code == 200
@@ -2541,6 +2587,7 @@ def test_home_lab_next_live_calculation_avoids_startup_request_storms_and_hangs(
     assert 'cta.disabled = state !== "error"' in js
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_next_roi_uses_catalog_without_homeowner_price_form() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
@@ -2689,6 +2736,7 @@ def test_roi_cost_basis_coalesces_concurrent_d1_bootstrap_and_reads(monkeypatch)
     assert db.run_calls == 4
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_next_optimizer_and_report_styles_are_present() -> None:
     response = client.get("/static/home-lab-next.css")
     assert response.status_code == 200
@@ -2706,6 +2754,7 @@ def test_home_lab_next_optimizer_and_report_styles_are_present() -> None:
     assert "@media print" in response.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_next_semantic_delta_colors_are_present() -> None:
     response = client.get("/static/home-lab-next.css")
     assert response.status_code == 200
@@ -2717,6 +2766,7 @@ def test_home_lab_next_semantic_delta_colors_are_present() -> None:
     assert ".hln-dock-compare strong b.is-bad" in response.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_next_map_and_renovation_compare_styles_are_present() -> None:
     response = client.get("/static/home-lab-next.css")
     assert response.status_code == 200
@@ -2727,12 +2777,14 @@ def test_home_lab_next_map_and_renovation_compare_styles_are_present() -> None:
     assert ".hln-dock-compare article.is-renovation" in response.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_next_hidden_sections_cannot_be_overridden_by_layout_css() -> None:
     response = client.get("/static/home-lab-next.css")
     assert response.status_code == 200
     assert ".hln-app [hidden]{display:none!important}" in response.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     response = client.get("/static/home-lab-next.js")
     assert response.status_code == 200
@@ -2966,6 +3018,7 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert 'href="#hln-i-' in response.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_envelope_editor_exposes_structure_and_material_inputs() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
@@ -2994,6 +3047,7 @@ def test_home_lab_envelope_editor_exposes_structure_and_material_inputs() -> Non
     assert 'value="wood_fiber"' in html
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_3d_reflects_selected_house_systems() -> None:
     response = client.get("/static/home-lab-3d.js")
     assert response.status_code == 200
@@ -3049,6 +3103,7 @@ def test_home_lab_3d_reflects_selected_house_systems() -> None:
     assert "ray.intersectObjects(roofCandidates, true)" in response.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_3d_uses_one_capacity_scaled_pv_field_and_visible_primary_chimney_smoke() -> None:
     response = client.get("/static/home-lab-3d.js")
     assert response.status_code == 200
@@ -3084,6 +3139,7 @@ def test_home_lab_3d_uses_one_capacity_scaled_pv_field_and_visible_primary_chimn
     assert "Math.sin(Math.PI * t) * 0.78" in source
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_3d_orientation_is_semantic_and_independent_from_camera_orbit() -> None:
     js = client.get("/static/home-lab-3d.js")
     assert js.status_code == 200
@@ -3100,6 +3156,7 @@ def test_home_lab_3d_orientation_is_semantic_and_independent_from_camera_orbit()
     assert "this.rebuildRenovationLayer(part)" not in source
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_3d_compass_has_visible_orientation_arrow() -> None:
     css = client.get("/static/home-lab-3d.css")
     assert css.status_code == 200
@@ -3110,6 +3167,7 @@ def test_home_lab_3d_compass_has_visible_orientation_arrow() -> None:
     assert "cursor: crosshair" in source
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_mobile_house_first_controls_keep_context_visible() -> None:
     css = client.get("/static/home-lab-next.css")
     assert css.status_code == 200
@@ -3133,6 +3191,7 @@ def test_home_lab_mobile_house_first_controls_keep_context_visible() -> None:
 
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_issue_359_adaptive_intro_contract() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
@@ -3162,6 +3221,7 @@ def test_home_lab_issue_359_adaptive_intro_contract() -> None:
     assert "introCollapsedScreens" not in source.split("localStorage.setItem", 1)[1].split("));", 1)[0]
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_hud_exposes_useful_heating_and_cooling_demand() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
@@ -3185,6 +3245,7 @@ def test_home_lab_hud_exposes_useful_heating_and_cooling_demand() -> None:
     assert ".hln-live-cooling-card" in css.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_mobile_declutter_contract() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
@@ -3209,6 +3270,7 @@ def test_home_lab_mobile_declutter_contract() -> None:
     assert semantic.json()["parts"]["windows"]["anchor"] == [0.43, 0.44, 0.14]
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_gameified_controls_are_separate_from_technical_mode() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
@@ -3256,6 +3318,7 @@ def test_home_lab_gameified_controls_are_separate_from_technical_mode() -> None:
     assert ".hln-3d-add-rail" in css3d.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_3d_is_visible_from_first_paint_without_2d_house_flash() -> None:
     css = client.get("/static/home-lab-3d.css")
     assert css.status_code == 200
@@ -3610,6 +3673,7 @@ def test_embed_integration_documents_mobile_focus_opt_out() -> None:
     assert "prima interacțiune" in response.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_normal_calculator_does_not_get_embed_frame_policy() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
@@ -3851,6 +3915,7 @@ def test_embed_language_switch_keeps_ro_en_controls_and_reversible_translation_c
     assert "window.lacurentSetLanguage = setLanguage" in script.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_report_3d_stage_is_contained_by_positioned_wrapper() -> None:
     response = client.get("/static/home-lab-next.css")
     assert response.status_code == 200
@@ -3858,6 +3923,7 @@ def test_home_lab_report_3d_stage_is_contained_by_positioned_wrapper() -> None:
     assert ".hln-report-3d-wrap{position:relative;" in css
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_report_exposes_heating_branch_traceability() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
@@ -3870,6 +3936,7 @@ def test_home_lab_report_exposes_heating_branch_traceability() -> None:
     assert "rejected_for_capacity" in js.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_heating_branch_report_uses_explicit_verdict_labels() -> None:
     response = client.get("/static/home-lab-next.js")
     assert response.status_code == 200
@@ -3882,6 +3949,7 @@ def test_heating_branch_report_uses_explicit_verdict_labels() -> None:
     assert "nu a fost selectată" in source
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_next_uses_transient_retry_asset_version() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
@@ -3928,6 +3996,7 @@ def test_compact_partner_next_route_does_not_trigger_full_heap_collection() -> N
     assert 'path.endswith("/lab-calculate")' in helper
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_next_economic_optimizer_uses_v4_browser_worker() -> None:
     response = client.get("/static/home-lab-next.js")
     assert response.status_code == 200
