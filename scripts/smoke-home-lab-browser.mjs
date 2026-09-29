@@ -127,6 +127,8 @@ try {
     );
   }
 
+  await statePage.locator('[data-page="intro"] [data-next]').click();
+  await statePage.locator('[data-page="house"].is-active').waitFor({state:"visible", timeout:15000});
   await statePage.locator("#heatedArea").fill("130");
   statePage.once("dialog", dialog => dialog.accept());
   await Promise.all([
