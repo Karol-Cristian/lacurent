@@ -8,6 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from commercial.app.engine import calculate, demo_building, dhw_energy
+from commercial.app.models import model_to_dict
 from commercial.app.main import (
     _calculation_result_from_json,
     app,
