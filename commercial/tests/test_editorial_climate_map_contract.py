@@ -68,4 +68,4 @@ def test_editorial_map_supports_zoom_pan_and_progressive_localities() -> None:
 def test_editorial_template_busts_map_asset_cache() -> None:
     template = (TEMPLATES / "home_lab_editorial.html").read_text(encoding="utf-8")
     assert "/static/home-lab-editorial.css?v=23" in template
-    assert "/static/home-lab-editorial.js?v=50" in template
+    assert "/static/home-lab-editorial.js?v=51" in template
