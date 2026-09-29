@@ -22,7 +22,11 @@ from .home_lab_images import HOME_LAB_IMAGE_BYTES
 from .home_lab_payload import embed_lab_result_payload, optimizer_candidate_payload
 from .methodology import climate_data, methodology, resolve_locality
 from .models import BuildingInput, building_from_json, model_to_dict, model_to_json
-from .rbpe_service import calculate_home_lab_api_json
+from .rbpe_service import (
+    calculate_home_lab_api_json,
+    build_product_wall_insulation_scenario_json,
+    build_wall_insulation_scenario_json,
+)
 from .optimization import (
     CandidateEvaluationV1,
     OptimizationCandidateRequestV1,
