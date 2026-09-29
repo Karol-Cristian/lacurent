@@ -14,6 +14,9 @@ async function callRpc(env, key, method, args) {
   if (method === "calculate_home_lab_json") {
     return await binding.calculate_home_lab_json(args[0]);
   }
+  if (method === "calculate_render_context_json") {
+    return await binding.calculate_render_context_json(args[0]);
+  }
   if (method === "calculate_home_lab_form_api_json") {
     return await binding.calculate_home_lab_form_api_json(args[0]);
   }
@@ -88,6 +91,10 @@ export default class extends WorkerEntrypoint {
 
   async calculate_home_lab_json(payload) {
     return routeRpc(this.env, "calculate_home_lab_json", [payload]);
+  }
+
+  async calculate_render_context_json(payload) {
+    return routeRpc(this.env, "calculate_render_context_json", [payload]);
   }
 
   async calculate_home_lab_form_api_json(encodedForm) {
