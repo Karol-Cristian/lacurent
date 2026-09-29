@@ -628,6 +628,25 @@ class RenewableEnergyResult(BaseModel):
     plane_model: str
 
 
+class RenewableShareResult(BaseModel):
+    status: Literal["bounded_conservative_technical_lower_bound_not_certificate"]
+    renewable_primary_kwh: float = 0
+    nonrenewable_primary_kwh: float = 0
+    total_primary_kwh: float = 0
+    rer_percent: float = 0
+    onsite_renewable_primary_kwh: float = 0
+    onsite_percent: float = 0
+    delivered_renewable_primary_kwh: float = 0
+    pv_regulated_primary_kwh: float = 0
+    solar_thermal_primary_kwh: float = 0
+    pv_exported_kwh_excluded: float = 0
+    pv_household_self_consumed_kwh_excluded: float = 0
+    heat_pump_ambient_status: str
+    perimeter: str
+    source: str
+    warnings: list[str] = Field(default_factory=list)
+
+
 class CalculationResult(BaseModel):
     input: BuildingInput
     climate: dict
@@ -653,6 +672,7 @@ class CalculationResult(BaseModel):
     total_service_final_energy_kwh: float
     total_final_energy_kwh: float
     renewables: RenewableEnergyResult
+    renewable_share: RenewableShareResult
     primary_energy: IndicatorResult
     co2: Co2Result
     energy_class: Literal["A+", "A", "B", "C", "D", "E", "F", "G"]
