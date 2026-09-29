@@ -1070,6 +1070,7 @@
         : enabled
           ? "Ținta nZEB este activă pentru această analiză. TEO o tratează ca o constrângere tehnică, nu ca pe un certificat legal."
           : "Pentru clădirile existente, ținta nZEB este opțională și poate fi activată aici.";
+    }
 
     const step3 = $("#edTeoStep3Label");
     const step4 = $("#edTeoStep4Label");
