@@ -112,7 +112,7 @@
   function isPersistableField(field) {
     if (!field || field.disabled) return false;
     if (field.type === "hidden") {
-      return field.id === "localityId" || field.name === "_optimization_mode";
+      return field.id === "localityId" || field.name === "_optimization_mode" || field.name === "_nzeb_constraint";
     }
     return Boolean(field.id || field.name);
   }
@@ -1027,35 +1027,64 @@
     });
   });
 
-  const goalWrap = $("#goalValueWrap");
-  const goalValue = $("#goalValue");
-  const goalLabel = $("#goalValueLabel");
-  const goalUnit = $("#goalValueUnit");
+  const goalBudget = $("#edGoalBudget");
+  const goalPayback = $("#edGoalPayback");
+  const goalBudgetWrap = $("#edGoalBudgetWrap");
+  const goalPaybackWrap = $("#edGoalPaybackWrap");
+  const nzebConstraintToggle = $("#edNzebConstraintToggle");
+  const nzebConstraintValue = $("#edNzebConstraintValue");
+
+  function isNewBuildYearProxy() {
+    const year = Number(form.elements["construction_year"]?.value || 0);
+    return Number.isFinite(year) && year >= 2021;
+  }
+
+  function nzebConstraintEnabled() {
+    return String(nzebConstraintValue?.value || "0") === "1";
+  }
+
+  function syncNzebPolicy() {
+    if (!nzebConstraintToggle || !nzebConstraintValue) return;
+    const mandatory = isNewBuildYearProxy();
+    if (mandatory) nzebConstraintValue.value = "1";
+    const enabled = nzebConstraintEnabled();
+    nzebConstraintToggle.classList.toggle("is-enabled", enabled);
+    nzebConstraintToggle.classList.toggle("is-mandatory", mandatory);
+    nzebConstraintToggle.setAttribute("aria-pressed", enabled ? "true" : "false");
+    nzebConstraintToggle.setAttribute("aria-disabled", mandatory ? "true" : "false");
+    const note = $("#edNzebLegalNote");
+    if (note) {
+      note.querySelector("span").textContent = mandatory
+        ? "Pentru o casă cu anul construcției după 2020, Home Lab activează conformarea ca regulă de siguranță. Anul este un proxy de produs; statutul juridic real depinde de autorizația clădirii."
+        : "Pentru clădirile existente, ținta nZEB poate fi activată opțional. Home Lab nu transformă această alegere într-un certificat legal.";
+    }
+    renderNzebStatus(baselineResult);
+  }
 
   function syncGoalField() {
     const mode = form.elements["_optimization_mode"].value;
-    goalValue.removeAttribute("name");
-    goalWrap.hidden = mode === "auto_economic";
-    if (mode === "investment_budget") {
-      goalValue.name = "_investment_budget_lei";
-      goalLabel.textContent = "Buget maxim";
-      goalUnit.textContent = "lei";
-      goalValue.step = "1000"; goalValue.min = "1000"; goalValue.removeAttribute("max");
-      if (!goalValue.value) goalValue.value = "50000";
-    } else if (mode === "annual_bill_target") {
-      goalValue.name = "_annual_bill_target_lei";
-      goalLabel.textContent = "Factură anuală țintă";
-      goalUnit.textContent = "lei/an";
-      goalValue.step = "100"; goalValue.min = "0"; goalValue.removeAttribute("max");
-      if (!goalValue.value) goalValue.value = "3000";
-    } else if (mode === "max_payback_years") {
-      goalValue.name = "_max_payback_years";
-      goalLabel.textContent = "Recuperare în maximum";
-      goalUnit.textContent = "ani";
-      goalValue.step = "0.5"; goalValue.min = "0.5"; goalValue.max = "50";
-      if (!goalValue.value) goalValue.value = "10";
+    if (goalBudget) {
+      goalBudget.disabled = mode !== "investment_budget";
+      goalBudget.name = mode === "investment_budget" ? "_investment_budget_lei" : "";
     }
+    if (goalPayback) {
+      goalPayback.disabled = mode !== "max_payback_years";
+      goalPayback.name = mode === "max_payback_years" ? "_max_payback_years" : "";
+    }
+    goalBudgetWrap?.classList.toggle("is-inactive", mode !== "investment_budget");
+    goalPaybackWrap?.classList.toggle("is-inactive", mode !== "max_payback_years");
   }
+
+  nzebConstraintToggle?.addEventListener("click", () => {
+    if (isNewBuildYearProxy()) return;
+    nzebConstraintValue.value = nzebConstraintEnabled() ? "0" : "1";
+    syncNzebPolicy();
+    markDraftDirty();
+    scheduleEditorialDraftSave();
+  });
+
+  form.elements["construction_year"]?.addEventListener("change", syncNzebPolicy);
+  form.elements["construction_year"]?.addEventListener("input", syncNzebPolicy);
 
   function walkMapCoordinates(value, visit) {
     if (Array.isArray(value) && value.length >= 2 && Number.isFinite(value[0]) && Number.isFinite(value[1])) {
