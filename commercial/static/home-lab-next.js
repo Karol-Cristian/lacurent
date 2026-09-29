@@ -246,7 +246,7 @@
   const LIVE_REQUEST_TIMEOUT_MS = 8000;
   const OPTIMIZER_REQUEST_TIMEOUT_MS = 30000;
   const OPTIMIZER_V2_TIMEOUT_MS = 45000;
-  const OPTIMIZER_BACKEND_V3 = true;
+  const OPTIMIZER_BACKEND_V4 = true;
   const optimizerCandidateCache = new Map();
   const OPTIMIZER_CANDIDATE_CACHE_MAX = 192;
   let homeResultState = homeResult ? "stale" : "empty";
@@ -2356,6 +2356,70 @@
     node.classList.toggle("is-warn", kind === "warn");
   }
 
+  function runHomeLabNextTeoV4Worker(
+    {kernel, searchSpec, searchBounds, branchIds, mode, goals, baselineAnnualBillLei},
+    parentSignal = null,
+    onProgress = null
+  ) {
+    return new Promise((resolve, reject) => {
+      if (!("Worker" in window)) {
+        reject(new Error("Browserul nu suportă Web Worker pentru TEO V4."));
+        return;
+      }
+
+      const worker = new Worker("/static/teo-v4-worker.js?v=4");
+      let settled = false;
+      let onAbort = null;
+      const cleanup = () => {
+        if (parentSignal && onAbort) parentSignal.removeEventListener("abort", onAbort);
+        worker.terminate();
+      };
+      const finish = (fn, value) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        fn(value);
+      };
+      onAbort = () => {
+        const abortError = new Error("Optimizer oprit");
+        abortError.name = "AbortError";
+        finish(reject, abortError);
+      };
+      if (parentSignal?.aborted) {
+        onAbort();
+        return;
+      }
+      if (parentSignal) parentSignal.addEventListener("abort", onAbort, {once:true});
+
+      worker.onerror = event => {
+        finish(reject, new Error(event?.message || "TEO V4 Web Worker a eșuat."));
+      };
+      worker.onmessage = event => {
+        const message = event.data || {};
+        if (message.type === "progress") {
+          if (typeof onProgress === "function") onProgress(message);
+          return;
+        }
+        if (message.type === "error") {
+          finish(reject, new Error(message.message || "TEO V4 Web Worker a eșuat."));
+          return;
+        }
+        if (message.type === "done") finish(resolve, message);
+      };
+
+      worker.postMessage({
+        type:"run",
+        kernel,
+        searchSpec,
+        branchIds,
+        searchBounds,
+        mode,
+        goals,
+        baselineAnnualBillLei,
+      });
+    });
+  }
+
   function optimizerConsoleElapsed() {
     if (!optimizerConsoleStartedAt) return "00:00.0";
     const elapsedMs = Math.max(0, Date.now() - optimizerConsoleStartedAt);
@@ -2808,7 +2872,7 @@
     setOptimizerBusy(true);
     setStatus(settings.working);
     setOptimizationNote(
-      `<strong>${escapeHtml(settings.label)}</strong><span>Optimizer V3: căutare multidimensională sharded, verificare canonică și produse în work-unit-uri separate.</span>`
+      `<strong>${escapeHtml(settings.label)}</strong><span>TEO V4: căutare exhaustivă în Web Worker, verificare canonică pe finaliști și mapare comercială separată.</span>`
     );
 
     const optimizerBody = () => {
@@ -2824,69 +2888,64 @@
     try {
       let transientRetries = 0;
 
-      if (OPTIMIZER_BACKEND_V3) {
-        appendOptimizerConsole("info","V3","UI orchestrator: plan → căutare sharded → verificări canonice → produse → raport.");
-        appendOptimizerConsole("info","MATH","Planul V3 nu rulează fizică: generează axe deterministe + Halton pe 7 dimensiuni; toate evaluările sunt mutate în batch-uri Worker CPU-safe.");
+      if (OPTIMIZER_BACKEND_V4) {
+        appendOptimizerConsole("info","V4","UI orchestrator: plan compact → căutare locală Web Worker → verificări canonice → produse → raport.");
+        appendOptimizerConsole("info","MATH","TEO V4 reconstruiește în browser aceeași grilă axe + Halton și rulează rafinare locală; Python primește doar finaliștii.");
 
         const planCallV3 = await fetchOptimizerWithRetry(
-          "/api/optimization/home-lab/v3/plan",
+          "/api/optimization/home-lab/v4/plan",
           {method:"POST", body:optimizerBody()},
           optimizerAbortController?.signal || null,
-          OPTIMIZER_REQUEST_TIMEOUT_MS,
+          OPTIMIZER_V2_TIMEOUT_MS,
           3
         );
         transientRetries += Math.max(0, Number(planCallV3.attemptCount || 1) - 1);
         if (runToken !== optimizerRunToken) return;
         if (!planCallV3.response.ok || !planCallV3.payload || planCallV3.payload.error) {
-          throw new Error(planCallV3.payload?.error || ("Planul V3 indisponibil (HTTP " + (planCallV3.response.status || "?") + ")."));
+          throw new Error(planCallV3.payload?.error || ("Planul TEO V4 este indisponibil (HTTP " + (planCallV3.response.status || "?") + ")."));
         }
 
         const planV3 = planCallV3.payload;
         const allBranchesV3 = Array.isArray(planV3.branches) ? planV3.branches : [];
         const runnableIdsV3 = Array.isArray(planV3.runBranchIds) ? planV3.runBranchIds : [];
-        const technicalIdsV3 = Array.isArray(planV3.technicalPreviewBranchIds) ? planV3.technicalPreviewBranchIds : [];
-        const searchPointsV3 = Array.isArray(planV3.searchPoints) ? planV3.searchPoints : [];
-        const batchSizeV3 = Math.max(1, Math.min(8, Number(planV3.branchBatchSize || 8)));
-        if (!runnableIdsV3.length || !searchPointsV3.length) {
-          throw new Error("Optimizerul V3 nu a construit un spațiu economic valid.");
+        const technicalIdsV3 = allBranchesV3
+          .filter(item => !item?.economic_eligible)
+          .map(item => String(item?.branch_id || ""))
+          .filter(Boolean);
+        const searchPointCountV3 = Number(planV3.searchPointCount || 0);
+        const batchSizeV3 = 0;
+        if (
+          !runnableIdsV3.length
+          || !searchPointCountV3
+          || !planV3.kernel
+          || !planV3.searchSpec
+        ) {
+          throw new Error("TEO V4 nu a construit kernelul sau specificația locală de căutare.");
         }
 
         const branchByIdV3 = new Map(allBranchesV3.map(item => [String(item.branch_id || ""), item]));
         const formObjectV3 = Object.fromEntries(
           Array.from(optimizerBody().entries()).map(([key, value]) => [key, typeof value === "string" ? value : String(value)])
         );
-        const runIdV3 = String(planV3.runId || ("v3-" + Date.now()));
-        const branchTasksV3 = [];
-        for (const branchIdRawV3 of runnableIdsV3) {
-          const branchIdV3 = String(branchIdRawV3);
-          for (let offsetV3 = 0; offsetV3 < searchPointsV3.length; offsetV3 += batchSizeV3) {
-            branchTasksV3.push({
-              branchId:branchIdV3,
-              batch:searchPointsV3.slice(offsetV3, offsetV3 + batchSizeV3),
-              batchIndex:Math.floor(offsetV3 / batchSizeV3) + 1,
-              batchCount:Math.ceil(searchPointsV3.length / batchSizeV3),
-            });
-          }
-        }
-
+        const runIdV3 = String(planV3.runId || ("v4-" + Date.now()));
         let completedRequestsV3 = 1;
-        let plannedRequestsV3 = 2 + branchTasksV3.length;
+        let plannedRequestsV3 = 2;
         let backendElapsedMsV3 = Number(planV3.calculationTimeMs || 0);
         let branchFastEvaluationsV3 = 0;
         const candidateRowsV3 = [];
         const branchStatsV3 = new Map();
+
         setOptimizerConsoleProgress(
           completedRequestsV3,
           plannedRequestsV3,
-          "PLAN · " + searchPointsV3.length + " puncte · " + branchTasksV3.length + " batch-uri"
+          "PLAN V4 · " + searchPointCountV3 + " puncte/ramură · execuție locală"
         );
         appendOptimizerConsole(
           "ok","PLAN",
-          Number(planV3.deterministicAxisPoints || planV3.baseShortlistSize || 0) + " axe deterministe + " +
-          Number(planV3.lowDiscrepancyPoints || 0) + " low-discrepancy → " +
-          searchPointsV3.length + " puncte de căutare · 0 evaluări în plan · batch " + batchSizeV3 + "."
+          Number(planV3.deterministicAxisPoints || 0) + " puncte axe + " +
+          Number(planV3.lowDiscrepancyPoints || 0) + " Halton → " +
+          searchPointCountV3 + " puncte/ramură · 0 request-uri HTTP per candidat."
         );
-
         for (const technicalIdV3 of technicalIdsV3) {
           const branchV3 = branchByIdV3.get(String(technicalIdV3));
           appendOptimizerConsole("info","TECH",(branchV3?.label || technicalIdV3) + " · alternativă tehnică fără cost comercial complet; nu intră în winner.");
@@ -2907,67 +2966,68 @@
           await Promise.all(runners);
         };
 
-        await runPoolV3(branchTasksV3, async (taskV3, taskIndexV3) => {
-          if (runToken !== optimizerRunToken) return;
-          const branchV3 = branchByIdV3.get(taskV3.branchId);
-          appendOptimizerConsole(
-            "info","SEARCH",
-            (taskIndexV3 + 1) + "/" + branchTasksV3.length + " · " +
-            (branchV3?.label || taskV3.branchId) + " · batch " +
-            taskV3.batchIndex + "/" + taskV3.batchCount + " · " + taskV3.batch.length + " stări"
-          );
-          const branchCallV3 = await fetchOptimizerWithRetry(
-            "/api/optimization/home-lab/v3/branch",
-            {
-              method:"POST",
-              headers:{"Content-Type":"application/json"},
-              body:JSON.stringify({
-                form:formObjectV3,
-                runId:runIdV3,
-                branchId:taskV3.branchId,
-                batch:taskV3.batch,
-                baselineAnnualBillLei:Number(homeResult?.annual_cost_lei || 0),
-              }),
-            },
-            optimizerAbortController?.signal || null,
-            OPTIMIZER_REQUEST_TIMEOUT_MS,
-            3,
-            false
-          );
-          transientRetries += Math.max(0, Number(branchCallV3.attemptCount || 1) - 1);
-          if (runToken !== optimizerRunToken) return;
-          if (!branchCallV3.response.ok || !branchCallV3.payload || branchCallV3.payload.error) {
-            throw new Error(branchCallV3.payload?.error || ((branchV3?.label || taskV3.branchId) + ": HTTP " + (branchCallV3.response.status || "?")));
+        appendOptimizerConsole(
+          "info","SEARCH",
+          "Rulez " + (searchPointCountV3 * runnableIdsV3.length) +
+          " evaluări parametrice în Web Worker; serverul nu este interogat per candidat."
+        );
+        const goalsV4 = {
+          investment_budget_lei:Number(formObjectV3._investment_budget_lei || 0),
+          annual_bill_target_lei:Number(formObjectV3._annual_bill_target_lei || 0),
+          max_payback_years:Number(formObjectV3._max_payback_years || 0),
+        };
+        const localSearchV4 = await runHomeLabNextTeoV4Worker(
+          {
+            kernel:planV3.kernel,
+            searchSpec:planV3.searchSpec || {},
+            searchBounds:planV3.searchBounds || {},
+            branchIds:runnableIdsV3,
+            mode:planV3.economicMode || settings.backendMode || "auto_economic",
+            goals:goalsV4,
+            baselineAnnualBillLei:Number(homeResult?.annual_cost_lei || 0),
+          },
+          optimizerAbortController?.signal || null,
+          message => {
+            const completed = Number(message.completed || 0);
+            const total = Number(message.total || 0);
+            const phase = String(message.phase || "global");
+            setStatus(
+              phase === "refine"
+                ? "TEO V4 · rafinare locală " + completed + "/" + total
+                : "TEO V4 · căutare locală " + completed + "/" + total
+            );
+            if (
+              phase === "refine"
+              || completed === total
+              || (completed > 0 && completed % 1000 === 0)
+            ) {
+              appendOptimizerConsole(
+                "info",
+                phase === "refine" ? "REFINE" : "SEARCH",
+                completed + "/" + total + " evaluări locale · ramura " +
+                Number(message.branchIndex || 0) + "/" + Number(message.branchCount || 0)
+              );
+            }
           }
-          const payloadV3 = branchCallV3.payload;
-          const candidatesV3 = Array.isArray(payloadV3.candidates) ? payloadV3.candidates : [];
-          for (const candidateV3 of candidatesV3) {
-            candidateRowsV3.push({branchId:taskV3.branchId, candidate:candidateV3});
-          }
-          const statsV3 = branchStatsV3.get(taskV3.branchId) || {
-            branchId:taskV3.branchId,
-            evaluatedCandidates:0,
-            acceptedCandidates:0,
-            feasibleCandidates:0,
-            calculationTimeMs:0,
-          };
-          statsV3.evaluatedCandidates += Number(payloadV3.fastEvaluations || 0);
-          statsV3.acceptedCandidates += candidatesV3.length;
-          statsV3.feasibleCandidates += Number(payloadV3.branch?.feasible_candidates || 0);
-          statsV3.calculationTimeMs += Number(payloadV3.calculationTimeMs || 0);
-          branchStatsV3.set(taskV3.branchId, statsV3);
-          branchFastEvaluationsV3 += Number(payloadV3.fastEvaluations || 0);
-          backendElapsedMsV3 += Number(payloadV3.calculationTimeMs || 0);
-          completedRequestsV3 += 1;
-          setOptimizerConsoleProgress(
-            completedRequestsV3,
-            plannedRequestsV3,
-            candidateRowsV3.length + " candidați fast"
-          );
-        }, 2);
+        );
+        if (runToken !== optimizerRunToken) return;
 
+        for (const row of (Array.isArray(localSearchV4.candidateRows) ? localSearchV4.candidateRows : [])) {
+          candidateRowsV3.push(row);
+        }
+        for (const stats of (Array.isArray(localSearchV4.branchStats) ? localSearchV4.branchStats : [])) {
+          branchStatsV3.set(String(stats.branchId || ""), stats);
+        }
+        branchFastEvaluationsV3 = Number(localSearchV4.fastEvaluations || 0);
+        backendElapsedMsV3 += Number(localSearchV4.calculationTimeMs || 0);
+        appendOptimizerConsole(
+          "ok","SEARCH",
+          branchFastEvaluationsV3 + " evaluări locale · " +
+          Number(localSearchV4.refinementEvaluations || 0) + " rafinări · " +
+          candidateRowsV3.length + " candidați diverși pentru verificarea canonică."
+        );
         if (!candidateRowsV3.length) {
-          throw new Error("Optimizerul V3 nu a produs niciun candidat economic.");
+          throw new Error("TEO V4 nu a produs niciun candidat economic.");
         }
 
         appendOptimizerConsole("info","RANK","Construiesc frontiera globală și bugetul adaptiv de verificare.");
@@ -2991,7 +3051,7 @@
         const verifyPlanV3 = verifyPlanCallV3.payload;
         const verifyTargetsV3 = Array.isArray(verifyPlanV3.targets) ? verifyPlanV3.targets : [];
         if (!verifyTargetsV3.length) {
-          throw new Error("Optimizerul V3 nu a selectat finaliști pentru verificarea canonică.");
+          throw new Error("TEO V4 nu a selectat finaliști pentru verificarea canonică.");
         }
         plannedRequestsV3 += verifyTargetsV3.length * 2 + 1;
         setOptimizerConsoleProgress(
@@ -3082,7 +3142,7 @@
               branchFastEvaluations:branchFastEvaluationsV3,
               priorCalculationTimeMs:backendElapsedMsV3,
               sourceCandidateCount:Number(verifyPlanV3.sourceCandidateCount || candidateRowsV3.length),
-              searchPointCount:searchPointsV3.length,
+              searchPointCount:searchPointCountV3,
               branchBatchSize:batchSizeV3,
               verificationFrontierCount:Number(verifyPlanV3.frontierCount || 0),
             }),
@@ -3119,7 +3179,7 @@
         persist();
         renderAll();
         emitVisualState("optimizer");
-        setStatus("Optimizare V3 calculată", "ok");
+        setStatus("Optimizare TEO V4 calculată", "ok");
 
         const commercialNoteV3 = optimizationMeta.commercialReady
           ? "Soluția este implementabilă în forma raportată."
@@ -3128,15 +3188,15 @@
         const elapsedV3 = Number(optimizationMeta.calculationTimeMs);
         const elapsedTextV3 = Number.isFinite(elapsedV3) ? " · " + fmt(elapsedV3 / 1000, 1) + " s backend cumulat" : "";
         setOptimizationNote(
-          "<strong>" + escapeHtml(optimizationMeta.label || settings.label) + " · V3 sharded</strong>" +
+          "<strong>" + escapeHtml(optimizationMeta.label || settings.label) + " · V4 browser</strong>" +
           "<span>CAPEX " + fmt(optimizationMeta.capexLei) + " lei · economie anuală " + fmt(optimizationMeta.annualSavingLei) + " lei/an · " +
           (optimizationMeta.paybackYears == null ? "fără amortizare pozitivă" : "amortizare " + fmt(optimizationMeta.paybackYears,1) + " ani") + " · " + escapeHtml(heatingChoiceV3) + ".</span>" +
           "<small>" + fastCountV3 + " evaluări fast · " + fullCountV3 + " verificări canonice · " +
-          searchPointsV3.length + " puncte/ramură · batch " + batchSizeV3 + elapsedTextV3 + ". " + escapeHtml(commercialNoteV3) + "</small>",
+          searchPointCountV3 + " puncte/ramură · Web Worker local" + elapsedTextV3 + ". " + escapeHtml(commercialNoteV3) + "</small>",
           Number(optimizationMeta.annualSavingLei) > 0 ? "good" : "warn"
         );
-        appendOptimizerConsole("ok","DONE","V3 finalizat · " + completedRequestsV3 + " requesturi · " + transientRetries + " retry-uri tranzitorii.");
-        finishOptimizerConsole("done","V3 · " + fastCountV3 + " fast · " + fullCountV3 + " full · fără 3+3 în finalize");
+        appendOptimizerConsole("ok","DONE","TEO V4 finalizat · " + completedRequestsV3 + " requesturi server · " + transientRetries + " retry-uri tranzitorii.");
+        finishOptimizerConsole("done","TEO V4 · " + fastCountV3 + " local · " + fullCountV3 + " full · search în browser");
         showScreen("report");
         return;
       }

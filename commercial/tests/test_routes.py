@@ -1049,7 +1049,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'id="hln-i-wall"' in response.text
     assert 'id="hln-i-money"' in response.text
     assert "/static/home-lab-next.css?v=next363-useful-demand" in response.text
-    assert "/static/home-lab-next.js?v=next73-useful-demand" in response.text
+    assert "/static/home-lab-next.js?v=next74-teo-v4-browser" in response.text
     assert "/static/home-lab-3d.css?v=3d31" in response.text
     assert 'aria-label="Schiță conceptuală a casei"' not in response.text
     assert 'aria-label="Casă cu zone de îmbunătățire"' not in response.text
@@ -3093,7 +3093,7 @@ def test_home_lab_issue_359_adaptive_intro_contract() -> None:
     assert response.status_code == 200
     assert response.text.count('class="hln-screen-intro-copy"') == 2
     assert "/static/home-lab-next.css?v=next363-useful-demand" in response.text
-    assert "/static/home-lab-next.js?v=next73-useful-demand" in response.text
+    assert "/static/home-lab-next.js?v=next74-teo-v4-browser" in response.text
 
     css = client.get("/static/home-lab-next.css")
     assert css.status_code == 200
@@ -3840,7 +3840,7 @@ def test_heating_branch_report_uses_explicit_verdict_labels() -> None:
 def test_home_lab_next_uses_transient_retry_asset_version() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
-    assert "/static/home-lab-next.js?v=next73-useful-demand" in response.text
+    assert "/static/home-lab-next.js?v=next74-teo-v4-browser" in response.text
 
 
 
@@ -3881,3 +3881,22 @@ def test_compact_partner_next_route_does_not_trigger_full_heap_collection() -> N
 
     assert 'path.endswith("/next/calculate")' in helper
     assert 'path.endswith("/lab-calculate")' in helper
+
+
+def test_home_lab_next_economic_optimizer_uses_v4_browser_worker() -> None:
+    response = client.get("/static/home-lab-next.js")
+    assert response.status_code == 200
+    source = response.text
+
+    assert "const OPTIMIZER_BACKEND_V4 = true;" in source
+    assert "const OPTIMIZER_BACKEND_V3 = true;" not in source
+    assert 'new Worker("/static/teo-v4-worker.js?v=4")' in source
+    assert '"/api/optimization/home-lab/v4/plan"' in source
+    assert "runHomeLabNextTeoV4Worker" in source
+    assert "searchPointCountV3 * runnableIdsV3.length" in source
+    assert "serverul nu este interogat per candidat" in source
+    assert '"/api/optimization/home-lab/v3/verify"' in source
+    assert '"/api/optimization/home-lab/v3/product"' in source
+    assert '"/api/optimization/home-lab/v3/finalize"' in source
+    assert "Optimizare TEO V4 calculată" in source
+    assert "V4 browser" in source
