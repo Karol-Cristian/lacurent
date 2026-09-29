@@ -1641,6 +1641,51 @@ def seed_heating_public_catalog_payload() -> dict[str, Any]:
     }
 
 
+async def read_heating_public_products_from_d1(
+    db: Any,
+) -> dict[str, Any] | None:
+    """Read only product rows required by the public /produse page.
+
+    The marketplace page renders product identity, sizing and price metadata.
+    It does not consume COP operating-point or seasonal-performance tables, so
+    materializing those D1 result sets in the public Python Worker is pure
+    transient memory pressure.
+    """
+
+    try:
+        products_result = await db.prepare(
+            """
+            SELECT id, external_id, technology_id, technology_label, label,
+                   system_type, generator_type, carrier, cost_profile,
+                   rated_power_kw, efficiency, scop, equipment_price_lei,
+                   installation_allowance_lei, source_kind, source_url, confidence,
+                   requires_hydronic, requires_existing_gas,
+                   requires_existing_high_power_electric,
+                   requires_existing_biomass_infrastructure, capacity_basis, note,
+                   catalog_version, observed_on
+            FROM heating_products
+            WHERE active = 1
+            ORDER BY technology_id, rated_power_kw, equipment_price_lei, id
+            """
+        ).run()
+        products = _d1_rows(products_result)
+        if not products:
+            return None
+
+        payload = _catalog_payload_from_rows(
+            products,
+            [],
+            [],
+            [],
+            source="d1",
+        )
+        payload["catalog_mode"] = "persistent_d1_public_products_only"
+        payload["catalog_stats"]["loaded_products"] = len(products)
+        return payload
+    except Exception:
+        return None
+
+
 async def read_heating_public_catalog_from_d1(
     db: Any,
 ) -> dict[str, Any] | None:
