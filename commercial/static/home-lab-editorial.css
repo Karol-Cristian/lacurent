@@ -1996,3 +1996,58 @@ body{
   .ed-teo-economics strong{font-size:13px}
   .ed-teo-report-button{width:100%;margin-top:9px}
 }
+
+
+/* Editorial v24: final fidelity pass for the approved Objectives / TEO page. */
+.ed-goal-choice-list>button .ed-goal-choice-icon{color:#23395f}
+.ed-goal-choice-list>button.is-selected .ed-goal-choice-icon{color:#126ce5}
+.ed-nzeb-goal-copy em{
+  display:inline-flex;
+  background:#edf3fb;
+  color:#5c7191;
+}
+.ed-nzeb-goal-card.is-enabled .ed-nzeb-goal-copy em{
+  background:#e6f8ed;
+  color:#0b9446;
+}
+.ed-nzeb-goal-card.is-mandatory .ed-nzeb-goal-copy em{
+  background:#13b85d;
+  color:#fff;
+}
+.ed-nzeb-goal-card.is-mandatory{
+  cursor:not-allowed;
+}
+.ed-nzeb-scope-label{
+  margin:4px 0 0;
+  color:#6f819b;
+  font-size:10px;
+  font-weight:650;
+  letter-spacing:.01em;
+}
+.ed-nzeb-status-panel:has(#edNzebScopeLabel){
+  overflow:hidden;
+}
+.ed-teo-measures{
+  grid-template-columns:1fr;
+}
+.ed-teo-measure{
+  grid-template-columns:27px minmax(105px,.68fr) minmax(145px,1.32fr);
+}
+.ed-teo-measure span{
+  text-align:right;
+}
+.ed-teo-result-grid{
+  align-items:start;
+}
+@media(max-width:720px){
+  .ed-nzeb-scope-label{font-size:9px}
+  .ed-teo-measure{
+    grid-template-columns:24px minmax(88px,.62fr) minmax(125px,1.38fr);
+    gap:6px;
+    font-size:9.5px;
+  }
+  .ed-teo-measure span{
+    white-space:normal;
+    line-height:1.25;
+  }
+}
