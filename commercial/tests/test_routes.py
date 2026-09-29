@@ -3355,6 +3355,20 @@ def test_home_lab_restored_heating_profiles_and_solar_controls_reach_engine() ->
     assert double_response.json()["final_energy_kwh"] != payload["final_energy_kwh"]
 
 
+def test_partner_embed_lab_calculation_reuses_private_compact_payload_route() -> None:
+    source = Path("commercial/app/main.py").read_text(encoding="utf-8")
+    section = source.split(
+        "async def partner_embed_lab_calculate",
+        1,
+    )[1].split(
+        '@app.post("/embed/{partner_id}/calculate"',
+        1,
+    )[0]
+    assert "return await home_lab_next_calculation(request)" in section
+    assert "_canonical_calculation" not in section
+    assert "calculate(building" not in section
+
+
 def test_partner_embed_lab_calculation_returns_live_metrics() -> None:
     data = demo_form_data()
     data.update(
