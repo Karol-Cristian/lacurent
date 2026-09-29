@@ -312,6 +312,19 @@ try {
     );
   }
 
+  const liveFavicon = await page.evaluate(() => ({
+    energyClass:String(document.querySelector("#edBaselineClass")?.textContent || "").trim(),
+    href:document.querySelector('link[rel~="icon"]')?.getAttribute("href") || "",
+  }));
+  if (!/^(A\+|[A-G])$/.test(liveFavicon.energyClass) ||
+      !liveFavicon.href.startsWith("data:image/svg+xml,") ||
+      !decodeURIComponent(liveFavicon.href).includes(">" + liveFavicon.energyClass + "<")) {
+    throw new Error(
+      "Editorial favicon does not reflect the live energy class: " +
+      JSON.stringify(liveFavicon)
+    );
+  }
+
   const desktopEnergyHud = await page.evaluate(() => {
     const group = document.querySelector(".ed-baseline-energy-group");
     if (!(group instanceof HTMLElement)) return null;
