@@ -1,5 +1,5 @@
 {
-  "version": "lacurent-commercial-v2.10",
+  "version": "lacurent-commercial-v2.11",
   "scope": "Bilanț lunar rezidențial simplificat, compatibil cu structura metodei lunare Mc 001-2022 / SR EN ISO 52016-1 pentru necesarul de încălzire și răcire, cu ipoteze explicite pentru intrările care nu sunt încă determinate complet normativ.",
   "internal_gains_w_m2": {
     "residential_individual": 2.4,
@@ -253,24 +253,33 @@
     "natural_gas": {
       "label": "Gaz natural",
       "primary_energy_factor": 1.17,
+      "renewable_primary_energy_factor": 0.0,
+      "nonrenewable_primary_energy_factor": 1.17,
       "co2_kg_per_kwh_final": 0.202,
       "source": "Setul existent din proiect mc001PrimaryEnergyAndCO2Factors.mjs, MC001-2022 tabelele 5.17 și 5.18."
     },
     "electricity": {
       "label": "Electricitate din rețea",
       "primary_energy_factor": 2.5,
+      "renewable_primary_energy_factor": 0.5,
+      "nonrenewable_primary_energy_factor": 2.0,
       "co2_kg_per_kwh_final": 0.107,
       "source": "Setul existent din proiect mc001PrimaryEnergyAndCO2Factors.mjs, MC001-2022 tabelele 5.17 și 5.18."
     },
     "district_heat": {
       "label": "Termoficare / cogenerare la distanță",
       "primary_energy_factor": 0.92,
+      "renewable_primary_energy_factor": 0.0,
+      "nonrenewable_primary_energy_factor": 0.92,
       "co2_kg_per_kwh_final": 0.22,
       "source": "Setul existent din proiect mc001PrimaryEnergyAndCO2Factors.mjs, MC001-2022 tabelele 5.17 și 5.18."
     },
     "biomass": {
       "label": "Biomasă - lemn / brichete / peleți",
       "primary_energy_factor": 1.08,
+      "renewable_primary_energy_factor": 0.8,
+      "nonrenewable_primary_energy_factor": 0.28,
+      "rer_factor_status": "conservative_generic_biomass_uses_pellet_factors",
       "co2_kg_per_kwh_final": 0.039,
       "source": "Setul existent din proiect mc001PrimaryEnergyAndCO2Factors.mjs, MC001-2022 tabelele 5.17 și 5.18."
     }
@@ -433,7 +442,13 @@
       "exterior_door": 1.3
     },
     "envelope_source": "MC001-2022, Tabel 2.4; pragul generic de pardoseală 0,20 W/(m²K) este alegerea conservatoare Light pentru placa spre exterior/sol când tipul exact al planșeului nu este încă modelat.",
-    "renewable_requirement_status": "RER contribution is not yet fully verified by the Light Engine; nZEB optimizer must not claim legal compliance solely from primary-energy and CO2 thresholds."
+    "renewable_total_minimum_percent": 30.0,
+    "renewable_onsite_minimum_percent": 10.0,
+    "renewable_guarantee_of_origin_minimum_percent": 20.0,
+    "renewable_calculation_source": "MC001-2022 §5.4.2.9, relația (5.16), plus Tabel 5.17 pentru fPren/fPnren/fPtot.",
+    "renewable_legal_source": "Legea nr. 372/2005, forma modificată prin Legea nr. 238/2024: minimum 30% SRE, din care minimum 10% la fața locului și minimum 20% energie regenerabilă certificată prin garanții de origine.",
+    "renewable_2026_onsite_nearby_status": "Legea prevede stabilirea prin hotărâre a Guvernului, începând cu 2026, a unei proporții minime SRE la fața locului sau în apropiere. Home Lab nu inventează un prag suplimentar până când valoarea aplicabilă este introdusă dintr-o sursă oficială verificată.",
+    "renewable_requirement_status": "Home Lab calculează un RER tehnic conservator pe un perimetru explicit: energie finală reglementată livrată ponderată cu fPren/fPnren, plus PV autoconsumat pentru servicii reglementate și solar termic utilizat pentru ACM; exportul PV și autoconsumul casnic sunt excluse. Energia de mediu a pompelor de căldură este exclusă conservator până la validarea metodei generale. Conformarea juridică completă rămâne condiționată de dovada garanțiilor de origine și de orice prag 2026 stabilit prin HG."
   },
   "assumptions": [
     "Lanțul simplificat de încălzire separă emisia, distribuția, stocarea, reglajul, generatorul și energia auxiliară. Structura urmează MC001-2022 Capitolul 3, dar presetările Light pentru factori și SCOP sunt estimări LaCurent și nu valori normative MC001.",
@@ -557,6 +572,18 @@
       "default_tilt_degrees": 45,
       "target_service": "dhw",
       "status": "LaCurent Light monthly useful-yield assumption; user-overridable"
+    },
+    "rer": {
+      "id": "home_lab_bounded_rer_v1",
+      "formula": "RER = EPren,RER / EPtot",
+      "source": "MC001-2022 §5.4.2.9 relația (5.16) și Tabel 5.17",
+      "perimeter": "servicii energetice reglementate Home Lab; energie livrată netă pe vector + PV onsite autoconsumat de servicii reglementate + solar termic utilizat pentru ACM",
+      "excluded": [
+        "PV exportat",
+        "PV autoconsumat de consumul casnic nereglementat",
+        "energia de mediu a pompelor de căldură până la validarea metodei generale RER"
+      ],
+      "status": "bounded_conservative_technical_lower_bound_not_certificate"
     }
   },
   "renovation_targets": {
