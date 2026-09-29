@@ -47,3 +47,8 @@ def test_editorial_exposes_exact_rbpe_input_identity_and_clean_reset():
     # persistence code after the deploy.
     assert "/static/home-lab-editorial.js?v=43" in template
     assert "/static/home-lab-editorial.css?v=21" in template
+
+
+def test_privacy_opt_out_clears_editorial_v2_storage():
+    privacy_source = (ROOT / "commercial" / "static" / "privacy-consent.js").read_text(encoding="utf-8")
+    assert '"lacurent-home-lab-editorial-v2:"' in privacy_source
