@@ -7,10 +7,50 @@
   <title>Home Lab Editorial — experiment | LaCurent</title>
   <meta name="robots" content="noindex,nofollow">
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=6">
-  <link rel="stylesheet" href="/static/home-lab-editorial.css?v=21">
+  <link rel="stylesheet" href="/static/home-lab-editorial.css?v=22">
   <link rel="stylesheet" href="/static/privacy-consent.css?v=privacy1">
 </head>
 <body>
+  <svg class="ed-icon-sprite" aria-hidden="true">
+    <defs>
+      <linearGradient id="ed-leaf-green" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#8ce64a"/>
+        <stop offset=".42" stop-color="#29c562"/>
+        <stop offset="1" stop-color="#087f43"/>
+      </linearGradient>
+      <linearGradient id="ed-leaf-highlight" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#ffffff" stop-opacity=".62"/>
+        <stop offset=".62" stop-color="#ffffff" stop-opacity="0"/>
+      </linearGradient>
+      <filter id="ed-leaf-shadow" x="-35%" y="-35%" width="170%" height="170%">
+        <feDropShadow dx="0" dy="2.5" stdDeviation="2.4" flood-color="#0a6638" flood-opacity=".22"/>
+      </filter>
+    </defs>
+    <symbol id="ed-i-coins" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="6.5" ry="3"/><path d="M5.5 5.5v4c0 1.7 2.9 3 6.5 3s6.5-1.3 6.5-3v-4M5.5 9.5v4c0 1.7 2.9 3 6.5 3s6.5-1.3 6.5-3v-4M5.5 13.5v4c0 1.7 2.9 3 6.5 3s6.5-1.3 6.5-3v-4"/></symbol>
+    <symbol id="ed-i-target" viewBox="0 0 24 24"><circle cx="11" cy="13" r="8"/><circle cx="11" cy="13" r="4"/><path d="m11 13 8-8M15 5h4v4"/></symbol>
+    <symbol id="ed-i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5h4"/></symbol>
+    <symbol id="ed-i-bolt" viewBox="0 0 24 24"><path d="m13 2-8 12h6l-1 8 9-13h-6Z"/></symbol>
+    <symbol id="ed-i-cloud" viewBox="0 0 24 24"><path d="M7.2 18h10.4a4.4 4.4 0 0 0 .2-8.8A6.1 6.1 0 0 0 6.4 8a5 5 0 0 0 .8 10Z"/></symbol>
+    <symbol id="ed-i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></symbol>
+    <symbol id="ed-i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.6 2.7L16.5 9"/></symbol>
+    <symbol id="ed-i-x" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6m0-6-6 6"/></symbol>
+    <symbol id="ed-i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.4 1A7.5 7.5 0 0 0 14.4 5L14 2.5h-4L9.6 5a7.5 7.5 0 0 0-2.1 1.9l-2.4-1-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.4-1A7.5 7.5 0 0 0 9.6 19l.4 2.5h4l.4-2.5a7.5 7.5 0 0 0 2.1-1.9l2.4 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2Z"/></symbol>
+    <symbol id="ed-i-star" viewBox="0 0 24 24"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z"/></symbol>
+    <symbol id="ed-i-wallet" viewBox="0 0 24 24"><path d="M4 7.5h15v11H4z"/><path d="M5 7.5V5h11v2.5M15 12h5v3h-5a1.5 1.5 0 0 1 0-3Z"/></symbol>
+    <symbol id="ed-i-bars" viewBox="0 0 24 24"><path d="M5 19V12h3v7M10.5 19V8h3v11M16 19V4h3v15"/></symbol>
+    <symbol id="ed-i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></symbol>
+    <symbol id="ed-i-wall" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 10h16M4 15h16M9 5v5m6 0v5m-6 0v4m6-4v4"/></symbol>
+    <symbol id="ed-i-roof" viewBox="0 0 24 24"><path d="m3 13 9-9 9 9M6 10v10h12V10"/></symbol>
+    <symbol id="ed-i-air" viewBox="0 0 24 24"><path d="M3 8h10.5a2.5 2.5 0 1 0-2.3-3.5M3 12h15a3 3 0 1 1-2.8 4M3 16h7"/></symbol>
+    <symbol id="ed-i-heat" viewBox="0 0 24 24"><path d="M12 21c4.2 0 7-2.7 7-6.4 0-4-3-7-6.3-10.6.1 3-1.3 4.5-2.7 5.8-.9-.8-1.7-1.9-2-3.2C5.6 9.3 5 11.6 5 14c0 4 2.8 7 7 7Z"/></symbol>
+    <symbol id="ed-i-pv" viewBox="0 0 24 24"><path d="M5 7h14l2 11H3L5 7Z"/><path d="M12 7v11M4 13h16M9 18l-1 3m7-3 1 3"/></symbol>
+    <symbol id="ed-i-leaf-premium" viewBox="0 0 64 64">
+      <path filter="url(#ed-leaf-shadow)" fill="url(#ed-leaf-green)" d="M55 7C33 8 16 16 10 31 4 46 14 56 28 53 44 50 54 31 55 7Z"/>
+      <path fill="url(#ed-leaf-highlight)" d="M49 12C31 14 18 20 13 32c-2 5-2 9 0 12 7-16 19-24 36-32Z"/>
+      <path d="M8 58c9-18 21-31 39-42" fill="none" stroke="#0b713c" stroke-width="2.8" stroke-linecap="round"/>
+      <path d="M21 44c4-1 8-1 12 0M27 35c4-1 9-1 13 0M34 27c3 0 6 0 9 1M18 48c0-4 1-8 3-11M25 39c0-4 1-8 3-11M33 31c0-3 1-6 2-9" fill="none" stroke="#b8f078" stroke-opacity=".72" stroke-width="1.25" stroke-linecap="round"/>
+    </symbol>
+  </svg>
   <header class="ed-header">
     <a class="ed-brand" href="/home-lab-editorial" aria-label="LaCurent Home Lab">
       <span class="ed-mark">LC</span>
@@ -483,28 +523,142 @@
         </div>
       </section>
 
-      <section class="ed-page" data-page="goal" data-label="Obiectiv">
-        <div class="ed-form-page">
-          <p class="ed-eyebrow">05 · Obiectiv</p>
-          <h2>Ce vrei să optimizeze?</h2>
-          <p class="ed-hint">Casa de bază este acum definită cu aceeași granularitate ca în Home Lab. Alegi doar regula economică.</p>
+      <section class="ed-page ed-goal-page" data-page="goal" data-label="Obiectiv">
+        <div class="ed-form-page ed-goal-control-center">
+          <section class="ed-goal-objectives-card" aria-labelledby="edGoalTitle">
+            <header class="ed-goal-card-head">
+              <h2 id="edGoalTitle">Obiective optimizare</h2>
+              <p>Alege obiectivul TEO și, dacă este cazul, activează conformarea nZEB.</p>
+            </header>
 
-          <div class="ed-choice-list" data-choice-group="_optimization_mode">
-            <button type="button" class="is-selected" data-value="auto_economic"><b>Cea mai bună soluție economică</b><span>Compară automat orizonturile economice disponibile.</span></button>
-            <button type="button" data-value="investment_budget"><b>Buget maxim</b><span>Caută cea mai bună soluție în limita investiției.</span></button>
-            <button type="button" data-value="annual_bill_target"><b>Factură anuală țintă</b><span>Caută configurația necesară pentru factura dorită.</span></button>
-            <button type="button" data-value="max_payback_years"><b>Recuperare maximă</b><span>Limitează perioada de recuperare a investiției.</span></button>
+            <div class="ed-goal-choice-list" data-choice-group="_optimization_mode">
+              <button type="button" class="is-selected" data-value="auto_economic">
+                <span class="ed-goal-radio" aria-hidden="true"><i></i></span>
+                <span class="ed-goal-choice-icon is-blue"><svg><use href="#ed-i-coins"></use></svg></span>
+                <span class="ed-goal-choice-copy"><b>Optim economic</b><small>Cea mai bună soluție economică (ROI global)</small></span>
+                <span class="ed-goal-info" title="TEO compară beneficiul economic pe mai multe orizonturi."><svg><use href="#ed-i-info"></use></svg></span>
+              </button>
+              <button type="button" data-value="investment_budget">
+                <span class="ed-goal-radio" aria-hidden="true"><i></i></span>
+                <span class="ed-goal-choice-icon"><svg><use href="#ed-i-target"></use></svg></span>
+                <span class="ed-goal-choice-copy"><b>ROI pentru buget</b><small>Cea mai bună soluție în limita bugetului meu</small></span>
+                <span class="ed-goal-info" title="TEO maximizează economia anuală fără să depășească bugetul ales."><svg><use href="#ed-i-info"></use></svg></span>
+              </button>
+              <button type="button" data-value="max_payback_years">
+                <span class="ed-goal-radio" aria-hidden="true"><i></i></span>
+                <span class="ed-goal-choice-icon"><svg><use href="#ed-i-clock"></use></svg></span>
+                <span class="ed-goal-choice-copy"><b>ROI pentru timp</b><small>Cea mai bună soluție cu o perioadă de recuperare țintă</small></span>
+                <span class="ed-goal-info" title="TEO păstrează soluțiile care se recuperează în intervalul ales."><svg><use href="#ed-i-info"></use></svg></span>
+              </button>
+            </div>
+            <input type="hidden" name="_optimization_mode" value="auto_economic">
+
+            <button type="button" class="ed-nzeb-goal-card is-enabled" id="edNzebConstraintToggle" aria-pressed="true">
+              <span class="ed-goal-radio" aria-hidden="true"><i></i></span>
+              <span class="ed-premium-leaf"><svg><use href="#ed-i-leaf-premium"></use></svg></span>
+              <span class="ed-nzeb-goal-copy">
+                <span><b>Conform nZEB / MC 001</b><em id="edNzebMandatoryBadge">OBLIGATORIU</em></span>
+                <small>TEO caută numai soluții care respectă criteriile nZEB disponibile în model (Eprim, CO₂ și verificările metodologice disponibile).</small>
+              </span>
+              <span class="ed-goal-info"><svg><use href="#ed-i-info"></use></svg></span>
+              <span class="ed-nzeb-legal-note" id="edNzebLegalNote"><svg><use href="#ed-i-info"></use></svg><span>Pentru o clădire nouă, conformarea este tratată ca o constrângere. Anul construcției este folosit doar ca indiciu de produs; statutul juridic real depinde de autorizare.</span></span>
+            </button>
+            <input type="hidden" name="_nzeb_constraint" id="edNzebConstraintValue" value="1">
+
+            <section class="ed-goal-parameters">
+              <h3><svg><use href="#ed-i-gear"></use></svg> Parametri opționali</h3>
+              <label class="ed-goal-param" id="edGoalBudgetWrap">
+                <span><svg><use href="#ed-i-wallet"></use></svg> Buget maxim</span>
+                <span class="ed-goal-param-input"><input id="edGoalBudget" type="number" min="1000" max="500000" step="1000" value="50000"><em>lei</em></span>
+              </label>
+              <label class="ed-goal-param" id="edGoalPaybackWrap">
+                <span><svg><use href="#ed-i-clock"></use></svg> Perioadă de amortizare țintă</span>
+                <span class="ed-goal-param-input"><input id="edGoalPayback" type="number" min="1" max="30" step="0.5" value="10"><em>ani</em></span>
+              </label>
+            </section>
+
+            <div class="ed-goal-actions">
+              <button type="button" class="ed-goal-back ed-back" data-back>← <span>Înapoi</span></button>
+              <button type="button" class="ed-goal-run ed-primary" id="runAnalysis">Rulează optimizarea TEO <svg><use href="#ed-i-arrow"></use></svg></button>
+            </div>
+          </section>
+
+          <div class="ed-goal-teo-column">
+            <section class="ed-nzeb-status-panel" aria-labelledby="edNzebStatusTitle">
+              <header>
+                <div><h2 id="edNzebStatusTitle">Stare conformare nZEB <small>(MC 001-2022)</small></h2></div>
+                <div class="ed-zone-chip">Zona climatică: <b id="edNzebZone">—</b><span class="ed-goal-info" title="Zona climatică este preluată din localitatea selectată."><svg><use href="#ed-i-info"></use></svg></span></div>
+              </header>
+              <div class="ed-nzeb-status-grid">
+                <article class="ed-nzeb-metric" data-nzeb-metric="primary">
+                  <div class="ed-nzeb-metric-top"><span class="ed-nzeb-metric-icon is-bolt"><svg><use href="#ed-i-bolt"></use></svg></span><b>Energie primară</b><span class="ed-goal-info"><svg><use href="#ed-i-info"></use></svg></span></div>
+                  <p><strong id="edNzebPrimaryValue">—</strong><span> kWh/m²·an</span><i id="edNzebPrimaryState" class="ed-metric-state"><svg><use href="#ed-i-info"></use></svg></i></p>
+                  <div class="ed-nzeb-bar"><i id="edNzebPrimaryBar"></i></div>
+                  <small id="edNzebPrimaryLimit">Limită: —</small>
+                </article>
+                <article class="ed-nzeb-metric" data-nzeb-metric="co2">
+                  <div class="ed-nzeb-metric-top"><span class="ed-nzeb-metric-icon is-cloud"><svg><use href="#ed-i-cloud"></use></svg></span><b>Emisii CO₂</b><span class="ed-goal-info"><svg><use href="#ed-i-info"></use></svg></span></div>
+                  <p><strong id="edNzebCo2Value">—</strong><span> kgCO₂/m²·an</span><i id="edNzebCo2State" class="ed-metric-state"><svg><use href="#ed-i-info"></use></svg></i></p>
+                  <div class="ed-nzeb-bar"><i id="edNzebCo2Bar"></i></div>
+                  <small id="edNzebCo2Limit">Limită: —</small>
+                </article>
+                <article class="ed-nzeb-metric is-rer-pending" data-nzeb-metric="rer">
+                  <div class="ed-nzeb-metric-top"><span class="ed-nzeb-metric-icon is-leaf"><svg><use href="#ed-i-leaf-premium"></use></svg></span><b>Surse regenerabile (SRE)</b><span class="ed-goal-info"><svg><use href="#ed-i-info"></use></svg></span></div>
+                  <p><strong id="edNzebRerValue">— / ≥ 30%</strong><i id="edNzebRerState" class="ed-metric-state is-pending"><svg><use href="#ed-i-info"></use></svg></i></p>
+                  <div class="ed-nzeb-bar"><i id="edNzebRerBar"></i></div>
+                  <small id="edNzebRerLimit">RER general este încă în validare metodologică</small>
+                </article>
+              </div>
+              <div class="ed-nzeb-status-message" id="edNzebMessage">
+                <svg><use href="#ed-i-info"></use></svg>
+                <span>Completează casa pentru a verifica pragurile aplicabile.</span>
+              </div>
+            </section>
+
+            <section class="ed-teo-control-panel" aria-labelledby="edTeoTitle">
+              <header class="ed-teo-title-row">
+                <div>
+                  <span class="ed-teo-spinner" id="edTeoSpinner" aria-hidden="true"></span>
+                  <div><h2 id="edTeoTitle">Optimizare TEO</h2><p>TEO explorează spațiul tehnic, caută frontiera nZEB și verifică finalistul cu RBPE.</p></div>
+                </div>
+                <span class="ed-teo-run-state" id="edTeoRunState">Pregătit</span>
+              </header>
+
+              <div class="ed-teo-steps" id="edTeoSteps">
+                <div data-teo-step="1"><b>1</b><span>Analizez<br>configurația actuală</span></div>
+                <i></i>
+                <div data-teo-step="2"><b>2</b><span>Explorez<br>optimum-ul economic</span></div>
+                <i></i>
+                <div data-teo-step="3"><b>3</b><span>Caut<br>frontiera nZEB</span></div>
+                <i></i>
+                <div data-teo-step="4"><b>4</b><span>Reoptimizez<br>soluțiile conforme</span></div>
+                <i></i>
+                <div data-teo-step="5"><b>5</b><span>Verific finalistul<br>cu RBPE</span></div>
+              </div>
+
+              <div class="ed-teo-stats">
+                <div><svg><use href="#ed-i-gear"></use></svg><strong id="edTeoEvaluated">0</strong><span>scenarii evaluate</span></div>
+                <i></i>
+                <div><svg class="is-green"><use href="#ed-i-check"></use></svg><strong id="edTeoCompliant">0</strong><span>soluții conforme*</span></div>
+                <i></i>
+                <div><svg><use href="#ed-i-star"></use></svg><strong id="edTeoFinalists">0</strong><span>soluții finaliste</span></div>
+              </div>
+              <p class="ed-teo-stats-note">* „conforme” în timpul căutării înseamnă criteriile nZEB disponibile în model; RER rămâne marcat separat până la validarea metodologică.</p>
+
+              <div class="ed-teo-result" id="edTeoResult" hidden>
+                <header><h3>Rezultatul optimizării TEO</h3><span class="ed-teo-compliance-badge" id="edTeoComplianceBadge"><svg><use href="#ed-i-check"></use></svg> Candidat nZEB</span></header>
+                <div class="ed-teo-result-grid">
+                  <div class="ed-teo-measures" id="edTeoMeasures"></div>
+                  <div class="ed-teo-economics">
+                    <div><svg><use href="#ed-i-coins"></use></svg><span>CAPEX</span><strong id="edTeoCapex">—</strong></div>
+                    <div><svg><use href="#ed-i-bars"></use></svg><span>Economie anuală</span><strong id="edTeoSaving">—</strong></div>
+                    <div><svg><use href="#ed-i-clock"></use></svg><span>Recuperare</span><strong id="edTeoPayback">—</strong></div>
+                  </div>
+                </div>
+                <button type="button" class="ed-teo-report-button" id="openReportFromGoal">Vezi raportul complet <svg><use href="#ed-i-arrow"></use></svg></button>
+              </div>
+            </section>
           </div>
-          <input type="hidden" name="_optimization_mode" value="auto_economic">
-
-          <div class="ed-conditional" id="goalValueWrap" hidden>
-            <label class="ed-field ed-wide">
-              <span id="goalValueLabel">Valoare</span>
-              <div><input id="goalValue" type="number" min="0" step="100"><em id="goalValueUnit">lei</em></div>
-            </label>
-          </div>
-
-          <div class="ed-actions"><button type="button" class="ed-back" data-back>Înapoi</button><button type="button" class="ed-primary" id="runAnalysis">Rulează analiza <span>→</span></button></div>
         </div>
       </section>
     </form>
@@ -623,6 +777,6 @@
   {% include "_legal_footer.html" %}
   {% include "_privacy_controls.html" %}
   <script src="/static/privacy-consent.js?v=privacy2"></script>
-  <script src="/static/home-lab-editorial.js?v=46"></script>
+  <script src="/static/home-lab-editorial.js?v=47"></script>
 </body>
 </html>
