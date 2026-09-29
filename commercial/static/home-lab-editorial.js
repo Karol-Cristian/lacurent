@@ -1683,7 +1683,11 @@
   function calculationInputFingerprint(data) {
     const entries = [...data.entries()]
       .map(([key,value]) => [String(key), String(value)])
-      .sort((a,b) => a[0] === b[0] ? a[1].localeCompare(b[1]) : a[0].localeCompare(b[0]));
+      .sort((a,b) => {
+        if (a[0] !== b[0]) return a[0] < b[0] ? -1 : 1;
+        if (a[1] !== b[1]) return a[1] < b[1] ? -1 : 1;
+        return 0;
+      });
     const canonical = JSON.stringify({
       calculationModelVersion:CALCULATION_MODEL_VERSION,
       entries,
