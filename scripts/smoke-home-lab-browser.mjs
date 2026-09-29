@@ -497,6 +497,20 @@ try {
     null,
     {timeout:30000}
   );
+  await page.waitForFunction(
+    () => {
+      const scene = window.__homeLab3D?.[0];
+      return Boolean(
+        scene?.experimentLayers?.get?.("pv") &&
+        scene?.experimentLayers?.get?.("solarThermal") &&
+        scene?.experimentLayers?.get?.("heatPump") &&
+        scene?.equipmentLayers?.get?.("ac") &&
+        scene?.equipmentLayers?.get?.("chimneySmoke")
+      );
+    },
+    null,
+    {timeout:30000}
+  );
   const roofVisualCalibration = await page.evaluate(() => {
     const scene = window.__homeLab3D[0];
     scene.applyVisualState({
