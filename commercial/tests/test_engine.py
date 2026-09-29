@@ -1313,6 +1313,138 @@ def test_tilted_solar_plane_uses_source_horizontal_and_vertical_endpoints() -> N
     assert horizontal["plane_model"] == "linear_horizontal_to_vertical_source_interpolation"
 
 
+def test_bounded_rer_uses_source_backed_renewable_and_nonrenewable_primary_factors() -> None:
+    result = calculate(
+        simple_building(
+            heating={
+                "system_type": "electric_resistance",
+                "efficiency": 1.0,
+                "carrier": "electricity",
+            },
+            dhw={
+                "enabled": True,
+                "occupants": 3,
+                "efficiency": 1.0,
+                "carrier": "electricity",
+            },
+        ),
+        include_reference=False,
+    )
+
+    # MC001 Tabel 5.17 electricity factors used by the commercial registry:
+    # fPren=0.5, fPnren=2.0, fPtot=2.5 -> RER lower-bound = 20%.
+    assert_close(result.renewable_share.rer_percent, 20.0)
+    assert_close(result.renewable_share.onsite_percent, 0.0)
+    assert (
+        result.renewable_share.status
+        == "bounded_conservative_technical_lower_bound_not_certificate"
+    )
+
+
+def test_bounded_rer_counts_only_regulated_onsite_pv_and_excludes_household_and_export() -> None:
+    common = {
+        "heating": {
+            "system_type": "electric_resistance",
+            "efficiency": 1.0,
+            "carrier": "electricity",
+        },
+        "dhw": {
+            "enabled": True,
+            "occupants": 3,
+            "efficiency": 1.0,
+            "carrier": "electricity",
+        },
+    }
+    regulated_only = calculate(
+        simple_building(
+            **common,
+            renewables={
+                "pv": {
+                    "enabled": True,
+                    "installed_power_kwp": 5.0,
+                    "orientation": "south",
+                    "tilt_degrees": 30,
+                    "performance_ratio": 0.82,
+                    "household_electricity_kwh_year": 0,
+                }
+            },
+        ),
+        include_reference=False,
+    )
+    with_household = calculate(
+        simple_building(
+            **common,
+            renewables={
+                "pv": {
+                    "enabled": True,
+                    "installed_power_kwp": 5.0,
+                    "orientation": "south",
+                    "tilt_degrees": 30,
+                    "performance_ratio": 0.82,
+                    "household_electricity_kwh_year": 6000,
+                }
+            },
+        ),
+        include_reference=False,
+    )
+
+    assert regulated_only.renewable_share.onsite_percent > 0
+    assert regulated_only.renewable_share.rer_percent > 20
+    assert_close(
+        regulated_only.renewable_share.rer_percent,
+        with_household.renewable_share.rer_percent,
+    )
+    assert_close(
+        regulated_only.renewable_share.onsite_percent,
+        with_household.renewable_share.onsite_percent,
+    )
+    assert with_household.renewable_share.pv_household_self_consumed_kwh_excluded > 0
+    assert with_household.renewable_share.pv_exported_kwh_excluded >= 0
+
+
+def test_bounded_rer_counts_solar_thermal_only_when_used_for_dhw() -> None:
+    baseline = calculate(simple_building(), include_reference=False)
+    solar = calculate(
+        simple_building(
+            renewables={
+                "solar_thermal": {
+                    "enabled": True,
+                    "collector_area_m2": 4.0,
+                    "orientation": "south",
+                    "tilt_degrees": 45,
+                    "system_efficiency": 0.45,
+                }
+            }
+        ),
+        include_reference=False,
+    )
+
+    assert solar.renewable_share.solar_thermal_primary_kwh > 0
+    assert solar.renewable_share.onsite_percent > baseline.renewable_share.onsite_percent
+    assert solar.renewable_share.rer_percent > baseline.renewable_share.rer_percent
+
+
+def test_bounded_rer_marks_heat_pump_ambient_energy_as_conservative_exclusion() -> None:
+    result = calculate(
+        simple_building(
+            heating={
+                "system_type": "heat_pump",
+                "scop": 3.2,
+                "carrier": "electricity",
+            }
+        ),
+        include_reference=False,
+    )
+
+    assert result.renewable_share.heat_pump_ambient_status.startswith(
+        "excluded_conservative"
+    )
+    assert any(
+        "pompei de căldură" in warning
+        for warning in result.renewable_share.warnings
+    )
+
+
 def test_photovoltaic_generation_uses_zone_orientation_and_reduces_grid_electricity() -> None:
     common = {
         "heating": {"system_type": "heat_pump", "scop": 3.2, "carrier": "electricity"},
