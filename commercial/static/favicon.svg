@@ -1,7 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="LaCurent optimization mark">
-  <rect x="1" y="1" width="62" height="62" rx="15" fill="#e9f8f4" stroke="#b8ddd4" stroke-width="2"/>
-  <circle cx="32" cy="32" r="19" fill="none" stroke="#0f9e83" stroke-width="5.5"/>
-  <circle cx="32" cy="32" r="8" fill="#ffc857"/>
-  <path d="M14 43 25 32l8 6 16-19" fill="none" stroke="#0e3443" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M39 19h10v10" fill="none" stroke="#0e3443" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="LaCurent LC mark">
+  <rect x="2" y="2" width="60" height="60" rx="18" fill="#ffffff" stroke="#15212d" stroke-width="2.5"/>
+  <text x="32" y="34" text-anchor="middle" dominant-baseline="middle"
+        font-family="Arial,Helvetica,sans-serif" font-size="23" font-weight="800"
+        letter-spacing="-1.4" fill="#15212d">LC</text>
 </svg>
