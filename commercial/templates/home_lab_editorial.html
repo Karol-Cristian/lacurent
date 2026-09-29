@@ -553,12 +553,12 @@
             </div>
             <input type="hidden" name="_optimization_mode" value="auto_economic">
 
-            <button type="button" class="ed-nzeb-goal-card is-enabled" id="edNzebConstraintToggle" aria-pressed="true">
+            <button type="button" class="ed-nzeb-goal-card" id="edNzebConstraintToggle" aria-pressed="false">
               <span class="ed-goal-radio" aria-hidden="true"><i></i></span>
               <span class="ed-premium-leaf"><svg><use href="#ed-i-leaf-premium"></use></svg></span>
               <span class="ed-nzeb-goal-copy">
                 <span><b>Conform nZEB / MC 001</b><em id="edNzebMandatoryBadge">OBLIGATORIU</em></span>
-                <small>TEO caută numai soluții care respectă criteriile nZEB disponibile în model (Eprim, CO₂ și verificările metodologice disponibile).</small>
+                <small>TEO poate impune Eprim, CO₂, RER total și ponderea SRE onsite. Dovada prin garanții de origine rămâne document extern.</small>
               </span>
               <span class="ed-goal-info"><svg><use href="#ed-i-info"></use></svg></span>
               <span class="ed-nzeb-legal-note" id="edNzebLegalNote"><svg><use href="#ed-i-info"></use></svg><span>Pentru o clădire nouă, conformarea este tratată ca o constrângere. Anul construcției este folosit doar ca indiciu de produs; statutul juridic real depinde de autorizare.</span></span>
@@ -604,9 +604,9 @@
                 </article>
                 <article class="ed-nzeb-metric is-rer-pending" data-nzeb-metric="rer">
                   <div class="ed-nzeb-metric-top"><span class="ed-nzeb-metric-icon is-leaf"><svg><use href="#ed-i-leaf-premium"></use></svg></span><b>Surse regenerabile (SRE)</b><span class="ed-goal-info"><svg><use href="#ed-i-info"></use></svg></span></div>
-                  <p><strong id="edNzebRerValue">— / ≥ 30%</strong><i id="edNzebRerState" class="ed-metric-state is-pending"><svg><use href="#ed-i-info"></use></svg></i></p>
+                  <p><strong id="edNzebRerValue">—</strong><i id="edNzebRerState" class="ed-metric-state is-pending"><svg><use href="#ed-i-info"></use></svg></i></p>
                   <div class="ed-nzeb-bar"><i id="edNzebRerBar"></i></div>
-                  <small id="edNzebRerLimit">RER general este încă în validare metodologică</small>
+                  <small id="edNzebRerLimit">Țintă: ≥30% total · ≥10% onsite · ≥20% GO de dovedit</small>
                 </article>
               </div>
               <div class="ed-nzeb-status-message" id="edNzebMessage">
@@ -643,7 +643,7 @@
                 <i></i>
                 <div><svg><use href="#ed-i-star"></use></svg><strong id="edTeoFinalists">0</strong><span>soluții finaliste</span></div>
               </div>
-              <p class="ed-teo-stats-note">* „conforme” în timpul căutării înseamnă criteriile nZEB disponibile în model; RER rămâne marcat separat până la validarea metodologică.</p>
+              <p class="ed-teo-stats-note">* „conforme” în căutarea TEO = Eprim + CO₂ + RER tehnic ≥30% + SRE onsite ≥10%. Garanțiile de origine și orice prag suplimentar 2026 se verifică documentar separat.</p>
 
               <div class="ed-teo-result" id="edTeoResult" hidden>
                 <header><h3>Rezultatul optimizării TEO</h3><span class="ed-teo-compliance-badge" id="edTeoComplianceBadge"><svg><use href="#ed-i-check"></use></svg> Candidat nZEB</span></header>
