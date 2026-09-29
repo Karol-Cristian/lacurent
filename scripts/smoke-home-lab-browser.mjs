@@ -400,23 +400,30 @@ try {
   await page.locator("#runAnalysis").click();
   await page.waitForFunction(
     () => {
-      const done = document.querySelector('[data-page="done"]');
-      const error = document.querySelector('[data-page="error"]');
-      return done?.classList.contains("is-active") || error?.classList.contains("is-active");
+      const result = document.querySelector("#edTeoResult");
+      const state = String(document.querySelector("#edTeoRunState")?.textContent || "").trim();
+      return (result && !result.hasAttribute("hidden")) || state === "Eroare";
     },
     null,
     {timeout:180000}
   );
   page.off("request", productRequestListener);
 
-  if (await page.locator('[data-page="error"].is-active').count()) {
-    const editorialError = await page.locator("#errorText").innerText();
+  const editorialTeoState = String(
+    await page.locator("#edTeoRunState").innerText()
+  ).trim();
+  if (editorialTeoState === "Eroare") {
+    const editorialError = await page.locator("#edNzebMessage").innerText();
     const editorialLog = await page.locator("#runLog").innerText();
     throw new Error(
       "Editorial adaptive TEO flow failed: " + editorialError +
       " log=" + editorialLog
     );
   }
+  if (!(await page.locator('[data-page="goal"].is-active').count())) {
+    throw new Error("Editorial TEO result must remain on page 5 after optimization.");
+  }
+  await expectVisible("#edTeoResult");
   if (editorialProductRequests.length) {
     throw new Error(
       "Editorial TEO unexpectedly entered PRODUCT discretization: " +
@@ -438,7 +445,7 @@ try {
     );
   }
 
-  await page.locator("#openReport").click();
+  await page.locator("#openReportFromGoal").click();
   await expectVisible('[data-page="report"].is-active');
   const editorialReportText = await page.locator("#reportBody").innerText();
   const editorialHudStatus = await page.locator("#edBaselineStatus").innerText();
