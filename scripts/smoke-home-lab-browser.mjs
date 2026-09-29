@@ -312,17 +312,11 @@ try {
     );
   }
 
-  const liveFavicon = await page.evaluate(() => ({
-    energyClass:String(document.querySelector("#edBaselineClass")?.textContent || "").trim(),
-    href:document.querySelector('link[rel~="icon"]')?.getAttribute("href") || "",
-  }));
-  if (!/^(A\+|[A-G])$/.test(liveFavicon.energyClass) ||
-      !liveFavicon.href.startsWith("data:image/svg+xml,") ||
-      !decodeURIComponent(liveFavicon.href).includes(">" + liveFavicon.energyClass + "<")) {
-    throw new Error(
-      "Editorial favicon does not reflect the live energy class: " +
-      JSON.stringify(liveFavicon)
-    );
+  const liveFaviconHref = await page.evaluate(
+    () => document.querySelector('link[rel~="icon"]')?.getAttribute("href") || ""
+  );
+  if (liveFaviconHref !== "/static/favicon.svg?v=6") {
+    throw new Error("Editorial must keep the unified LC favicon: " + liveFaviconHref);
   }
 
   const desktopEnergyHud = await page.evaluate(() => {
