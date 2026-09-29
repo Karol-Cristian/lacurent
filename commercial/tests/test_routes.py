@@ -527,8 +527,23 @@ def test_public_product_routes_do_not_load_optimizer_planning_catalog() -> None:
         '@app.get("/catalog")',
         1,
     )[0]
-    assert "_public_heating_catalog(request)" in page_section
+    assert "_public_heating_products_only(request)" in page_section
+    assert "_public_heating_catalog(request)" not in page_section
     assert "_optimizer_heating_catalog(request)" not in page_section
+
+    store = Path("commercial/app/heating_catalog_store.py").read_text(
+        encoding="utf-8"
+    )
+    products_only_section = store.split(
+        "async def read_heating_public_products_from_d1(",
+        1,
+    )[1].split(
+        "async def read_heating_public_catalog_from_d1(",
+        1,
+    )[0]
+    assert "FROM heating_products" in products_only_section
+    assert "heat_pump_performance_points" not in products_only_section
+    assert "heat_pump_seasonal_performance" not in products_only_section
 
 
 def test_landing_uses_compact_heating_summary_not_full_catalog() -> None:
