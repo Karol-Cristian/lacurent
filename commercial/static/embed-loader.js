@@ -21,7 +21,6 @@
     host.style.boxSizing = "border-box";
 
     const iframe = document.createElement("iframe");
-    const path = (host.dataset.path || "").trim();
     // The old 3D "next" surface is retired. Keep the attribute tolerant for
     // partner snippets already copied from older docs, but always mount the
     // maintained embed experience.
