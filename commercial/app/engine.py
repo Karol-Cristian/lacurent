@@ -34,6 +34,7 @@ from .models import (
     MonthlyRenewableBalance,
     PhotovoltaicResult,
     RenewableEnergyResult,
+    RenewableShareResult,
     SolarThermalResult,
     TransmissionComponent,
     TransmissionComponentsResult,
@@ -1353,6 +1354,116 @@ def co2_emissions(carrier_totals: dict[str, float], area_m2: float) -> Co2Result
     return Co2Result(total_kg=_round(total), specific_kg_m2=_round(total / area_m2, 2))
 
 
+def renewable_share(
+    building: BuildingInput,
+    carrier_totals: dict[str, float],
+    renewables: RenewableEnergyResult,
+) -> RenewableShareResult:
+    """Return a bounded, conservative RER indicator for the Home Lab perimeter.
+
+    The calculation follows MC001 relation (5.16) only where the perimeter is
+    explicit in the current model:
+      * delivered regulated energy uses the reviewed Tabel 5.17 fPren/fPnren;
+      * onsite PV counts only regulated self-consumption (not household demand);
+      * solar thermal counts only useful heat actually used for DHW;
+      * PV export is excluded from EPren,RER.
+
+    Ambient/geothermal heat extracted by heat pumps is deliberately not
+    reconstructed from COP here. That contribution remains excluded until the
+    general Chapter 4 / RER perimeter is validated, making this a lower-bound
+    technical indicator rather than a certificate claim.
+    """
+
+    delivered_renewable = 0.0
+    nonrenewable = 0.0
+    warnings: list[str] = []
+    for carrier, value_raw in carrier_totals.items():
+        value = max(float(value_raw), 0.0)
+        if value <= 1e-12:
+            continue
+        factors = carrier_factors(carrier)
+        renewable_factor = factors.get("renewable_primary_energy_factor")
+        nonrenewable_factor = factors.get("nonrenewable_primary_energy_factor")
+        if renewable_factor is None or nonrenewable_factor is None:
+            raise ValueError(
+                f"Sursa de energie „{carrier}” nu are fPren/fPnren pentru RER."
+            )
+        delivered_renewable += value * float(renewable_factor)
+        nonrenewable += value * float(nonrenewable_factor)
+        if factors.get("rer_factor_status"):
+            warnings.append(str(factors["rer_factor_status"]))
+
+    pv_regulated = max(
+        float(renewables.pv.regulated_self_consumed_kwh),
+        0.0,
+    )
+    solar_thermal = max(
+        float(renewables.solar_thermal.used_for_dhw_kwh),
+        0.0,
+    )
+    onsite_renewable = pv_regulated + solar_thermal
+    renewable_primary = delivered_renewable + onsite_renewable
+    total_primary = renewable_primary + nonrenewable
+    rer_percent = (
+        100.0 * renewable_primary / total_primary
+        if total_primary > 1e-12
+        else 0.0
+    )
+    onsite_percent = (
+        100.0 * onsite_renewable / total_primary
+        if total_primary > 1e-12
+        else 0.0
+    )
+
+    details = building.heating.details
+    generator = (
+        details.generator_type.value
+        if details is not None and details.generator_type is not None
+        else ""
+    )
+    heat_pump = (
+        building.heating.system_type == HeatingSystemType.heat_pump
+        or generator.startswith("heat_pump_")
+    )
+    ambient_status = (
+        "excluded_conservative_lower_bound_pending_general_mc001_rer_validation"
+        if heat_pump
+        else "not_applicable"
+    )
+    if heat_pump:
+        warnings.append(
+            "Energia regenerabilă din mediul pompei de căldură este exclusă conservator din RER Home Lab până la validarea metodei generale MC001 pentru acest perimetru."
+        )
+
+    return RenewableShareResult(
+        status="bounded_conservative_technical_lower_bound_not_certificate",
+        renewable_primary_kwh=_round(renewable_primary),
+        nonrenewable_primary_kwh=_round(nonrenewable),
+        total_primary_kwh=_round(total_primary),
+        rer_percent=_round(rer_percent, 2),
+        onsite_renewable_primary_kwh=_round(onsite_renewable),
+        onsite_percent=_round(onsite_percent, 2),
+        delivered_renewable_primary_kwh=_round(delivered_renewable),
+        pv_regulated_primary_kwh=_round(pv_regulated),
+        solar_thermal_primary_kwh=_round(solar_thermal),
+        pv_exported_kwh_excluded=_round(renewables.pv.exported_kwh),
+        pv_household_self_consumed_kwh_excluded=_round(
+            renewables.pv.household_self_consumed_kwh
+        ),
+        heat_pump_ambient_status=ambient_status,
+        perimeter=(
+            "servicii energetice reglementate Home Lab: energie livrată netă "
+            "+ PV onsite autoconsumat reglementat + solar termic utilizat ACM; "
+            "PV casnic și export exclus"
+        ),
+        source=(
+            "MC001-2022 §5.4.2.9 relația (5.16) + Tabel 5.17; "
+            "perimetru Home Lab explicit și conservator"
+        ),
+        warnings=list(dict.fromkeys(warnings)),
+    )
+
+
 def classify_energy(building: BuildingInput, specific_primary_kwh_m2: float) -> str:
     thresholds = methodology()["energy_class_thresholds"][building.building_type.value]["total_primary_kwh_m2"]
     labels = ["A+", "A", "B", "C", "D", "E", "F"]
@@ -1547,6 +1658,7 @@ def calculate(building: BuildingInput, *, include_reference: bool = True) -> Cal
         additional_electricity_kwh=heating_system.auxiliary_electricity_kwh,
     )
     by_carrier = net_final_energy_by_carrier(gross_by_carrier, renewables)
+    rer = renewable_share(building, by_carrier, renewables)
     primary = primary_energy(by_carrier, building.heated_floor_area_m2)
     co2 = co2_emissions(by_carrier, building.heated_floor_area_m2)
     energy_class = classify_energy(building, primary.specific_kwh_m2)
@@ -1591,6 +1703,7 @@ def calculate(building: BuildingInput, *, include_reference: bool = True) -> Cal
         total_service_final_energy_kwh=_round(sum(by_service.values())),
         total_final_energy_kwh=_round(sum(by_carrier.values())),
         renewables=renewables,
+        renewable_share=rer,
         primary_energy=primary,
         co2=co2,
         energy_class=energy_class,
