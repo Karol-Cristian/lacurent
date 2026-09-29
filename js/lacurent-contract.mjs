@@ -1,5 +1,8 @@
 const SIMPLE_SCHEMA_VERSION = "lacurent_simple_input_v1";
-const STORAGE_KEY = "lacurent_workspace_simple_v1";
+const WORKSPACE_SCHEMA_VERSION = 2;
+const CALCULATION_MODEL_VERSION = "rbpe-2026-09-29.1";
+const STORAGE_KEY = "lacurent_workspace_simple_v2";
+const LEGACY_STORAGE_KEYS = Object.freeze(["lacurent_workspace_simple_v1"]);
 
 const BUILDING_VISUAL_TYPES = Object.freeze({
   "house-single-storey": { type: "single_family_house", levels: 1, label: "Casa parter", silhouette: "single" },
@@ -16,6 +19,39 @@ function readNumber(value) {
   if (value === "" || value === null || value === undefined) return undefined;
   const number = Number(value);
   return Number.isFinite(number) ? number : undefined;
+}
+
+function canonicalize(value) {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value && typeof value === "object") {
+    return Object.keys(value).sort().reduce((result, key) => {
+      result[key] = canonicalize(value[key]);
+      return result;
+    }, {});
+  }
+  return value;
+}
+
+function calculationRelevantInput(input) {
+  const relevant = structuredClone(input || {});
+  delete relevant.project;
+  return relevant;
+}
+
+export function calculationInputHash(input) {
+  const canonical = JSON.stringify(canonicalize({
+    calculationModelVersion: CALCULATION_MODEL_VERSION,
+    input: calculationRelevantInput(input)
+  }));
+  const bytes = new TextEncoder().encode(canonical);
+  let hash = 0xcbf29ce484222325n;
+  const prime = 0x100000001b3n;
+  const mask = 0xffffffffffffffffn;
+  for (const byte of bytes) {
+    hash ^= BigInt(byte);
+    hash = (hash * prime) & mask;
+  }
+  return `rbpe:${CALCULATION_MODEL_VERSION}:${hash.toString(16).padStart(16, "0")}:${bytes.length}`;
 }
 
 function writeNested(target, path, value) {
@@ -38,10 +74,14 @@ function generatedId() {
 
 export function emptyWorkspaceState() {
   return {
+    workspaceSchemaVersion: WORKSPACE_SCHEMA_VERSION,
+    calculationModelVersion: CALCULATION_MODEL_VERSION,
     projectId: generatedId(),
     values: {},
     scenarios: [],
     lastResult: null,
+    lastResultInputHash: null,
+    lastResultModelVersion: null,
     resultFresh: false
   };
 }
@@ -252,18 +292,52 @@ export function humanDiagnostic(diagnostic) {
 }
 
 export function saveWorkspaceState(state) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  const snapshot = {
+    ...state,
+    workspaceSchemaVersion: WORKSPACE_SCHEMA_VERSION,
+    calculationModelVersion: CALCULATION_MODEL_VERSION
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
 }
 
 export function loadWorkspaceState() {
   try {
-    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
-    return parsed && typeof parsed === "object" ? parsed : emptyWorkspaceState();
+    let parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      parsed.workspaceSchemaVersion === WORKSPACE_SCHEMA_VERSION &&
+      parsed.calculationModelVersion === CALCULATION_MODEL_VERSION
+    ) {
+      return {
+        ...emptyWorkspaceState(),
+        ...parsed,
+        workspaceSchemaVersion: WORKSPACE_SCHEMA_VERSION,
+        calculationModelVersion: CALCULATION_MODEL_VERSION
+      };
+    }
+
+    for (const legacyKey of LEGACY_STORAGE_KEYS) {
+      if (parsed) break;
+      parsed = JSON.parse(localStorage.getItem(legacyKey) || "null");
+    }
+
+    const migrated = emptyWorkspaceState();
+    if (parsed && typeof parsed === "object" && parsed.values && typeof parsed.values === "object") {
+      migrated.values = parsed.values;
+    }
+    return migrated;
   } catch {
     return emptyWorkspaceState();
   }
 }
 
-export { SIMPLE_SCHEMA_VERSION, STORAGE_KEY };
+export function resetWorkspaceState() {
+  localStorage.removeItem(STORAGE_KEY);
+  LEGACY_STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));
+  return emptyWorkspaceState();
+}
+
+export { SIMPLE_SCHEMA_VERSION, WORKSPACE_SCHEMA_VERSION, CALCULATION_MODEL_VERSION, STORAGE_KEY };
 export { BUILDING_VISUAL_TYPES };
 
