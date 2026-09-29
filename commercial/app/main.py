@@ -1329,6 +1329,31 @@ def result_context(result: Any) -> dict[str, Any]:
     }
 
 
+def _calculation_result_from_json(payload: str) -> CalculationResult:
+    if hasattr(CalculationResult, "model_validate_json"):
+        return CalculationResult.model_validate_json(payload)
+    return CalculationResult.parse_raw(payload)
+
+
+async def _canonical_calculation(
+    request: Request,
+    building: BuildingInput,
+) -> CalculationResult:
+    """Execute canonical RBPE outside the public Cloudflare Python isolate."""
+    env = request.scope.get("env")
+    if env is not None:
+        service = getattr(env, "REFERENCE_RBPE", None)
+        if service is None:
+            raise RuntimeError("Private RBPE service binding is unavailable.")
+        raw_json = await service.calculate_home_lab_json(model_to_json(building))
+        if not isinstance(raw_json, str):
+            raw_json = str(raw_json)
+        return _calculation_result_from_json(raw_json)
+
+    # Uvicorn/unit-test fallback only. Production always has REFERENCE_RBPE.
+    return calculate(building, include_reference=False)
+
+
 def calculator_context(error: str | None = None, values: dict[str, Any] | None = None) -> dict[str, Any]:
     return {
         "values": values or default_form_values(),
@@ -1359,7 +1384,7 @@ async def render_calculation_from_form(
         # One canonical RBPE pass per HTTP request. The exact reference-house
         # comparison is loaded through /api/reference-comparison so Cloudflare
         # never has to execute actual + reference RBPE inside one request budget.
-        result = calculate(building, include_reference=False)
+        result = await _canonical_calculation(request, building)
     except Exception as exc:
         return templates.TemplateResponse(
             request,
@@ -5377,7 +5402,7 @@ async def partner_embed_lab_calculate(request: Request, partner_id: str) -> JSON
         building = build_input_from_form(form)
         # The legacy embedded live dashboard does not consume the computed
         # reference-building comparison. Avoid a second full engine pass.
-        result = calculate(building, include_reference=False)
+        result = await _canonical_calculation(request, building)
     except Exception as exc:
         return JSONResponse({"error": user_error(exc)}, status_code=422)
     return JSONResponse(embed_lab_result_payload(result))
@@ -5391,7 +5416,7 @@ async def partner_embed_calculate(request: Request, partner_id: str) -> HTMLResp
 @app.get("/embed/{partner_id}/demo", response_class=HTMLResponse)
 async def partner_embed_demo(request: Request, partner_id: str) -> HTMLResponse:
     page = embed_page_context(partner_id)
-    result = calculate(demo_building(), include_reference=False)
+    result = await _canonical_calculation(request, demo_building())
     return templates.TemplateResponse(
         request,
         "results.html",
@@ -5401,7 +5426,7 @@ async def partner_embed_demo(request: Request, partner_id: str) -> HTMLResponse:
 
 @app.get("/demo", response_class=HTMLResponse)
 async def demo(request: Request) -> HTMLResponse:
-    result = calculate(demo_building(), include_reference=False)
+    result = await _canonical_calculation(request, demo_building())
     return templates.TemplateResponse(request, "results.html", result_context(result))
 
 
@@ -5411,7 +5436,7 @@ async def certificate(request: Request) -> HTMLResponse:
     payload = form.get("payload")
     try:
         building = building_from_json(str(payload))
-        result = calculate(building, include_reference=False)
+        result = await _canonical_calculation(request, building)
     except Exception as exc:
         return templates.TemplateResponse(
             request,

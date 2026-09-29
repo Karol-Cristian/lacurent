@@ -3378,18 +3378,29 @@ def test_partner_embed_lab_calculation_returns_live_metrics() -> None:
     assert payload["reference_parameters"]["u_values_w_m2k"]["exterior_wall"] > 0
 
 
-def test_html_calculation_routes_run_one_rbpe_pass_per_request() -> None:
+def test_html_calculation_routes_delegate_canonical_rbpe_to_private_service() -> None:
     source = Path("commercial/app/main.py").read_text(encoding="utf-8")
+
+    helper_section = source.split(
+        "async def _canonical_calculation",
+        1,
+    )[1].split(
+        "def calculator_context",
+        1,
+    )[0]
+    assert 'getattr(env, "REFERENCE_RBPE", None)' in helper_section
+    assert "await service.calculate_home_lab_json(model_to_json(building))" in helper_section
+    assert "return calculate(building, include_reference=False)" in helper_section
 
     calculate_section = source.split(
         "async def render_calculation_from_form",
         1,
     )[1].split(
-        '@app.post("/api/reference-comparison")',
+        '@app.get("/api/location-data")',
         1,
     )[0]
-    assert "calculate(building, include_reference=False)" in calculate_section
-    assert "result = calculate(building)" not in calculate_section
+    assert "await _canonical_calculation(request, building)" in calculate_section
+    assert "calculate(building, include_reference=False)" not in calculate_section
 
     demo_section = source.split(
         "async def demo(request: Request)",
@@ -3398,14 +3409,13 @@ def test_html_calculation_routes_run_one_rbpe_pass_per_request() -> None:
         '@app.post("/certificate"',
         1,
     )[0]
-    assert "calculate(demo_building(), include_reference=False)" in demo_section
+    assert "await _canonical_calculation(request, demo_building())" in demo_section
 
     certificate_section = source.split(
         "async def certificate(request: Request)",
         1,
     )[1]
-    assert "calculate(building, include_reference=False)" in certificate_section
-
+    assert "await _canonical_calculation(request, building)" in certificate_section
 
 def test_public_then_partner_calculation_sequence_stays_healthy() -> None:
     data = demo_form_data()
