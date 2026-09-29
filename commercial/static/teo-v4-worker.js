@@ -678,7 +678,7 @@ function shortlist(rows, mode, goals, compliancePolicy = null) {
   const selected = new Map();
   const complianceEnabled = Boolean(compliancePolicy?.enabled);
   const compliantRows = complianceEnabled
-    ? workingRows.filter(row => row?.candidate?.compliance?.availablePass === true)
+    ? rows.filter(row => row?.candidate?.compliance?.availablePass === true)
     : [];
   const workingRows = complianceEnabled && compliantRows.length ? compliantRows : rows;
   const frontier = paretoRows(workingRows);
@@ -1046,7 +1046,7 @@ function refinementSeeds(rows, mode, goals, count, compliancePolicy = null) {
       || objectiveSeedSorter(mode, goals)(left, right)
     );
   } else if (mode === "auto_economic") {
-    const pool = frontier.length ? frontier : rows;
+    const pool = frontier.length ? frontier : seedPool;
     const metrics = robustRegretMetricsRows(pool);
     ranked = pool.slice().sort((left, right) => {
       const lm = metrics.get(String(left.candidate.candidate_id));
