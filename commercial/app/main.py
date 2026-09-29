@@ -5415,17 +5415,12 @@ async def partner_embed_calculator(request: Request, partner_id: str) -> HTMLRes
 
 
 @app.post("/embed/{partner_id}/lab-calculate")
-async def partner_embed_lab_calculate(request: Request, partner_id: str) -> JSONResponse:
+async def partner_embed_lab_calculate(request: Request, partner_id: str) -> Response:
     embed_partner(partner_id)
-    form = dict(await request.form())
-    try:
-        building = build_input_from_form(form)
-        # The legacy embedded live dashboard does not consume the computed
-        # reference-building comparison. Avoid a second full engine pass.
-        result = await _canonical_calculation(request, building)
-    except Exception as exc:
-        return JSONResponse({"error": user_error(exc)}, status_code=422)
-    return JSONResponse(embed_lab_result_payload(result))
+    # This dashboard consumes the same compact canonical payload as Home Lab
+    # live calculations. Keep the full CalculationResult inside the private
+    # RBPE shard instead of reconstructing it in the public Worker.
+    return await home_lab_next_calculation(request)
 
 
 @app.post("/embed/{partner_id}/calculate", response_class=HTMLResponse)
