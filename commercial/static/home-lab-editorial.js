@@ -508,7 +508,7 @@
     stepNumber.textContent = stepNumbers[name] || "—";
     stepName.textContent = stepNames[name] || name;
     renderProgressHistory();
-    if (name === "report" && optimizationResult) {
+    if ((name === "report" || name === "goal") && optimizationResult) {
       paintBaselineSummary(
         optimizationSummaryForPersistentBar(),
         "Rezultat TEO verificat · după intervenții."
@@ -2162,6 +2162,11 @@
             : null
         ),
       primary_specific_kwh_m2:primarySpecific,
+      co2_specific_kg_m2:
+        parametric.co2SpecificKgM2
+        ?? scenario.co2_specific_kg_m2
+        ?? baselineResult?.co2_specific_kg_m2
+        ?? null,
       price_reference_rows:finalPriceRows.length ? finalPriceRows : fallbackPriceRows,
       _summary_scope:"teo_final",
     };
@@ -3498,6 +3503,10 @@
       log(`Finalizat: ${opt.evaluatedCandidates || 0} candidați economici · ${opt.fullEngineVerifications || 0} verificări complete · status economic ${opt.economicStatus || "necunoscut"}.`);
 
       renderReport();
+      paintBaselineSummary(
+        optimizationSummaryForPersistentBar(),
+        "Rezultat TEO verificat · după intervenții."
+      );
       renderTeoResult();
       renderProgressHistory();
       const finalSummary = {
