@@ -112,3 +112,64 @@ def calculate_home_lab_form_api_json(encoded_form: str) -> str:
     del building
     del form
     return encoded
+
+
+def _model_from_json(model_type, payload):
+    if payload in (None, ""):
+        raise ValueError("Missing RBPE scenario input.")
+    encoded = payload if isinstance(payload, str) else json.dumps(payload)
+    if hasattr(model_type, "model_validate_json"):
+        return model_type.model_validate_json(encoded)
+    return model_type.parse_raw(encoded)
+
+
+def build_wall_insulation_scenario_json(
+    payload: str | dict[str, Any],
+    added_insulation_thickness_mm: float,
+    insulation_lambda_w_mk: float,
+) -> str:
+    """Run the canonical two-pass wall scenario inside a private RBPE shard."""
+    if payload in (None, ""):
+        raise ValueError("Missing wall-insulation baseline input.")
+
+    building = building_from_json(
+        payload if isinstance(payload, str) else json.dumps(payload)
+    )
+    result = build_wall_insulation_scenario(
+        building,
+        added_insulation_thickness_mm=float(added_insulation_thickness_mm),
+        insulation_lambda_w_mk=float(insulation_lambda_w_mk),
+    )
+    encoded = model_to_json(result)
+    del result
+    del building
+    return encoded
+
+
+def build_product_wall_insulation_scenario_json(
+    baseline_payload: str | dict[str, Any],
+    requirement_payload: str | dict[str, Any],
+    product_payload: str | dict[str, Any],
+) -> str:
+    """Run the canonical product-backed wall scenario inside a private RBPE shard."""
+    if baseline_payload in (None, ""):
+        raise ValueError("Missing wall-product baseline input.")
+
+    building = building_from_json(
+        baseline_payload
+        if isinstance(baseline_payload, str)
+        else json.dumps(baseline_payload)
+    )
+    requirement = _model_from_json(TechnicalRequirementV1, requirement_payload)
+    product = _model_from_json(WallInsulationProductV1, product_payload)
+    result = build_product_wall_insulation_scenario(
+        building,
+        requirement,
+        product,
+    )
+    encoded = model_to_json(result)
+    del result
+    del product
+    del requirement
+    del building
+    return encoded
