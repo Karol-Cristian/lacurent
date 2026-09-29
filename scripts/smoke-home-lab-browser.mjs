@@ -1159,7 +1159,19 @@ try {
   await page.waitForFunction(
     () => document.querySelector('[data-hln-screen="home"]')?.classList.contains("is-intro-collapsed")
   );
-  await page.waitForTimeout(280);
+  await page.waitForFunction(
+    () => {
+      const screen = document.querySelector('[data-hln-screen="home"]');
+      const heading = screen?.querySelector(".hln-screen-heading");
+      const visual = screen?.querySelector(".hln-house-visual");
+      return (
+        (heading?.getBoundingClientRect().height ?? Infinity) <= 2
+        && (visual?.getBoundingClientRect().height ?? 0) >= 465
+      );
+    },
+    null,
+    {timeout:2000}
+  );
   const mobileIntroAfter = await page.evaluate(() => {
     const screen = document.querySelector('[data-hln-screen="home"]');
     const heading = screen?.querySelector(".hln-screen-heading");
