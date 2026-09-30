@@ -130,7 +130,7 @@ _roi_cost_basis_cached_payload: dict[str, Any] | None = None
 _roi_cost_basis_cache_expires_at = 0.0
 _roi_cost_basis_retry_after = 0.0
 
-TEO_FLOW_MAX_VERIFICATIONS = 3
+TEO_FLOW_MAX_VERIFICATIONS = 8  # diagnostic branch: audit adaptive stop against all 8 finalists
 TEO_FLOW_COOLDOWN_MS = 1800
 TEO_FLOW_LEASE_MS = 30000
 _teo_flow_schema_lock = asyncio.Lock()
