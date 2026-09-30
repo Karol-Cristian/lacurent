@@ -1924,6 +1924,18 @@
       return;
     }
 
+    if (summary.suppressed) {
+      homes.textContent = `<${impactNumber(summary.minimumCohortSize || 10, 0)}`;
+      energyNode.textContent = "—";
+      moneyNode.textContent = "—";
+      capexNode.textContent = "—";
+      paybackNode.textContent = "—";
+      if (note) {
+        note.textContent = `Valorile agregate devin publice după minimum ${impactNumber(summary.minimumCohortSize || 10, 0)} case salvate, pentru a evita expunerea unui cohort prea mic.`;
+      }
+      return;
+    }
+
     homes.textContent = impactNumber(summary.savedHouses, 0);
     energyNode.textContent = impactNumber(Number(summary.potentialSavingKwhYear || 0) / 1000, 1);
     moneyNode.textContent = impactNumber(summary.potentialSavingLeiYear, 0);
