@@ -82,7 +82,7 @@ jobs:
       - name: Diagnose production TEO report determinism
         env:
           HOME_LAB_BASE_URL: https://lacurent.com
-          TEO_SOAK_RUNS: 6
+          TEO_SOAK_RUNS: 20
           TEO_DIAGNOSTIC_ONLY: 1
         run: |
           node scripts/soak-teo-production.mjs
