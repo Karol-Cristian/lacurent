@@ -1,6 +1,8 @@
 import { chromium } from "playwright";
 
 const baseUrl = process.env.HOME_LAB_BASE_URL || process.env.STAGING_URL;
+const adaptiveAudit = process.env.TEO_ADAPTIVE_AUDIT === "1";
+const adaptiveAuditQuery = adaptiveAudit ? "?teo_audit=1" : "";
 if (!baseUrl) throw new Error("HOME_LAB_BASE_URL or STAGING_URL is required");
 
 const browser = await chromium.launch({headless:true});
@@ -151,7 +153,7 @@ try {
   }
   await statePage.close();
 
-  await page.goto(baseUrl + "/home-lab-next", {waitUntil:"networkidle", timeout:30000});
+  await page.goto(baseUrl + "/home-lab-next" + adaptiveAuditQuery, {waitUntil:"networkidle", timeout:30000});
 
   const editorialPrivacyFirstUse = page.locator("[data-lacurent-first-use-consent]");
   if (await editorialPrivacyFirstUse.isVisible()) {
@@ -573,6 +575,13 @@ try {
     throw new Error("Editorial TEO result must remain on page 5 after optimization.");
   }
   await expectVisible("#edTeoResult");
+  if (adaptiveAudit) {
+    const audit = await page.evaluate(() => window.__TEO_ADAPTIVE_AUDIT__ || null);
+    console.log("TEO_ADAPTIVE_AUDIT_RESULT=" + JSON.stringify(audit));
+    if (!audit || audit.status !== "complete" || audit.fullVerifiedCount !== 8) {
+      throw new Error("Adaptive early-stop audit did not complete all 8 finalists: " + JSON.stringify(audit));
+    }
+  }
   const teoMeasureLabels = await page.locator("#edTeoMeasures .ed-teo-measure b").allInnerTexts();
   const requiredMeasureLabels = [
     "Pereți",
