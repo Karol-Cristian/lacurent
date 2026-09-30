@@ -85,5 +85,5 @@ def test_editorial_locality_combobox_supports_keyboard_navigation() -> None:
 
 def test_editorial_template_busts_map_asset_cache() -> None:
     template = (TEMPLATES / "home_lab_editorial.html").read_text(encoding="utf-8")
-    assert "/static/home-lab-editorial.css?v=30" in template
-    assert "/static/home-lab-editorial.js?v=59" in template
+    assert "/static/home-lab-editorial.css?v=31" in template
+    assert "/static/home-lab-editorial.js?v=60" in template
