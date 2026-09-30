@@ -21,10 +21,10 @@
     host.style.boxSizing = "border-box";
 
     const iframe = document.createElement("iframe");
-    const path = (host.dataset.path || "").trim();
-    iframe.src = path === "next"
-      ? `${embedOrigin}/embed/${encodeURIComponent(partner)}/next`
-      : `${embedOrigin}/embed/${encodeURIComponent(partner)}`;
+    // The old 3D "next" surface is retired. Keep the attribute tolerant for
+    // partner snippets already copied from older docs, but always mount the
+    // maintained embed experience.
+    iframe.src = `${embedOrigin}/embed/${encodeURIComponent(partner)}`;
     iframe.title = host.dataset.title || "Calculator energetic";
     iframe.loading = host.dataset.loading || "lazy";
     iframe.referrerPolicy = "strict-origin-when-cross-origin";

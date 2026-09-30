@@ -269,6 +269,59 @@ def build_teo_v4_kernel(
     capacity_class = monthly_cfg["default_effective_internal_heat_capacity_class"]
     physical_mapping = method["reference_building"]["physical_mapping"]
 
+    climate_zone = str(climate.get("climate_zone") or "")
+    nzeb_registry = method.get("nzeb_targets", {})
+    nzeb_value = (
+        nzeb_registry.get("values", {})
+        .get(climate_zone, {})
+        .get(baseline.building_type.value)
+        if climate_zone
+        else None
+    )
+    compliance_target = None
+    if nzeb_value:
+        compliance_target = {
+            "target_kind": "new_nzeb",
+            "climate_zone": climate_zone,
+            "primary_energy_kwh_m2_year": float(
+                nzeb_value["primary_energy_kwh_m2_year"]
+            ),
+            "co2_kg_m2_year": float(nzeb_value["co2_kg_m2_year"]),
+            # The 30% target is known, but the repository still marks the
+            # general RER perimeter/export method as not fully verified.
+            # TEO therefore carries the target and its status, but never
+            # upgrades an EP+CO2 pass to a legal-compliance claim by itself.
+            "renewable_total_minimum_percent": float(
+                nzeb_registry.get("renewable_total_minimum_percent", 30.0)
+            ),
+            "renewable_onsite_minimum_percent": float(
+                nzeb_registry.get("renewable_onsite_minimum_percent", 10.0)
+            ),
+            "renewable_guarantee_of_origin_minimum_percent": float(
+                nzeb_registry.get(
+                    "renewable_guarantee_of_origin_minimum_percent",
+                    20.0,
+                )
+            ),
+            "renewable_requirement_status": nzeb_registry.get(
+                "renewable_requirement_status"
+            ),
+            "renewable_calculation_source": nzeb_registry.get(
+                "renewable_calculation_source"
+            ),
+            "renewable_legal_source": nzeb_registry.get(
+                "renewable_legal_source"
+            ),
+            "renewable_2026_onsite_nearby_status": nzeb_registry.get(
+                "renewable_2026_onsite_nearby_status"
+            ),
+            "envelope_u_max_w_m2k": nzeb_registry.get(
+                "residential_envelope_u_max_w_m2k", {}
+            ),
+            "source": nzeb_registry.get("source"),
+            "source_status": nzeb_registry.get("source_status"),
+        }
+
     branches = [
         _branch_profile(
             baseline,
@@ -280,12 +333,13 @@ def build_teo_v4_kernel(
     ]
 
     return {
-        "version": "teo-v4-browser-kernel-1",
+        "version": "teo-v4-browser-kernel-3",
         "area_m2": float(baseline.heated_floor_area_m2),
         "volume_m3": float(baseline.heated_volume_m3),
         "indoor_temperature_c": float(baseline.indoor_design_temperature_c),
         "annual_outdoor_temperature_c": float(result.annual_outdoor_temperature_c),
         "winter_design_temperature_c": climate.get("winter_design_temperature_c"),
+        "compliance_target": compliance_target,
         "envelope": envelope_rows,
         "thermal_bridges": bridge_rows,
         "geometry": model_to_dict(result.envelope_geometry),

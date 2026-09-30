@@ -20,6 +20,8 @@ def optimizer_candidate_payload(result: Any) -> dict[str, Any]:
         "final_energy_kwh": float(result.total_final_energy_kwh),
         "primary_specific_kwh_m2": float(result.primary_energy.specific_kwh_m2),
         "co2_specific_kg_m2": float(result.co2.specific_kg_m2),
+        "rer_percent": float(result.renewable_share.rer_percent),
+        "onsite_renewable_percent": float(result.renewable_share.onsite_percent),
         "annual_cost_lei": float(cost["priced_total_lei"]) if cost.get("complete") else None,
     }
 
@@ -147,6 +149,22 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
                 {
                     "envelope_source": registry.get("envelope_source"),
                     "renewable_requirement_status": registry.get("renewable_requirement_status"),
+                    "renewable_total_minimum_percent": registry.get(
+                        "renewable_total_minimum_percent"
+                    ),
+                    "renewable_onsite_minimum_percent": registry.get(
+                        "renewable_onsite_minimum_percent"
+                    ),
+                    "renewable_guarantee_of_origin_minimum_percent": registry.get(
+                        "renewable_guarantee_of_origin_minimum_percent"
+                    ),
+                    "renewable_calculation_source": registry.get(
+                        "renewable_calculation_source"
+                    ),
+                    "renewable_legal_source": registry.get("renewable_legal_source"),
+                    "renewable_2026_onsite_nearby_status": registry.get(
+                        "renewable_2026_onsite_nearby_status"
+                    ),
                     "envelope_u_max_w_m2k": registry.get(
                         "residential_envelope_u_max_w_m2k", {}
                     ),
@@ -257,6 +275,9 @@ def embed_lab_result_payload(result: Any) -> dict[str, Any]:
             for key, value in result.final_energy_by_carrier.items()
         },
         "renewables": model_to_dict(result.renewables),
+        "renewable_share": model_to_dict(result.renewable_share),
+        "rer_percent": float(result.renewable_share.rer_percent),
+        "onsite_renewable_percent": float(result.renewable_share.onsite_percent),
         "pv_economics": cost.get("pv_economics") or {},
         "heating_system": model_to_dict(result.heating_system),
         "annual_fuel_use": annual_fuel_use,

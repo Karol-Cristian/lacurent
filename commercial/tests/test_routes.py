@@ -137,6 +137,7 @@ def test_dhw_expert_override_preserves_explicit_carrier_and_efficiency() -> None
     assert building.dhw.cop is None
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_exposes_explicit_dhw_source_selection() -> None:
     page = client.get("/home-lab-classic")
     assert page.status_code == 200
@@ -155,6 +156,7 @@ def test_home_lab_exposes_explicit_dhw_source_selection() -> None:
     assert 'homeState.dhwSystem = $("#hlnHomeDhwSystem").value' in js.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report() -> None:
     primary = client.get("/home-lab-next")
     assert primary.status_code == 200
@@ -168,8 +170,8 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'data-page="run"' in page.text
     assert 'data-page="report"' in page.text
     assert 'data-page="renewables"' in page.text
-    assert "/static/home-lab-editorial.css?v=21" in page.text
-    assert "/static/home-lab-editorial.js?v=46" in page.text
+    assert "/static/home-lab-editorial.css?v=24" in page.text
+    assert "/static/home-lab-editorial.js?v=52" in page.text
     assert "/static/home-lab-3d.js" not in page.text
     assert 'id="edBaselineClass"' in page.text
     assert 'id="edClassReferenceOpen"' in page.text
@@ -180,6 +182,25 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'id="edBaselineCoolingDemand"' in page.text
     assert 'id="edBaselineFinalEnergy"' in page.text
     assert 'id="edBaselinePrimaryEnergy"' in page.text
+    assert 'class="ed-form-page ed-goal-control-center"' in page.text
+    assert 'id="edNzebConstraintValue"' in page.text
+    assert 'id="edNzebPrimaryValue"' in page.text
+    assert 'id="edNzebCo2Value"' in page.text
+    assert 'id="edNzebRerValue"' in page.text
+    assert '≥30% total · ≥10% onsite · ≥20% GO' in page.text
+    assert 'id="edTeoSteps"' in page.text
+    assert 'id="edTeoStep3Label"' in page.text
+    assert 'id="edTeoStep4Label"' in page.text
+    assert 'id="edTeoCompliantLabel"' in page.text
+    assert 'id="edNzebScopeLabel"' in page.text
+    assert 'id="ed-i-floor"' in page.text
+    assert 'id="ed-i-window"' in page.text
+    assert 'id="ed-i-bridge"' in page.text
+    assert 'id="ed-i-solar"' in page.text
+    assert 'data-teo-step="5"' in page.text
+    assert 'id="edTeoResult"' in page.text
+    assert 'id="openReportFromGoal"' in page.text
+    assert 'id="ed-i-leaf-premium"' in page.text
     assert 'title="Necesar anual util pentru încălzire">QH,nd</abbr>' in page.text
     assert 'title="Necesar anual util pentru răcire">QC,nd</abbr>' in page.text
     assert 'title="Energie finală anuală">Efinal</abbr>' in page.text
@@ -277,9 +298,24 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert '["QH,nd", "Necesar util anual de încălzire"' in js.text
     assert "DEFAULT_INFILTRATION_ACH = 0.15" in js.text
     assert "function optimizationSummaryForPersistentBar()" in js.text
+    assert "function renderNzebStatus(" in js.text
+    assert "renewable_total_minimum_percent" in js.text
+    assert "onsite_renewable_percent" in js.text
+    assert "nZEB tehnic modelat · dovadă GO necesară" in js.text
+    assert "function syncNzebPolicy(" in js.text
+    assert "function renderTeoResult(" in js.text
+    assert '"Pardoseală"' in js.text
+    assert '"Ferestre"' in js.text
+    assert '"Punți termice"' in js.text
+    assert '"Solar termic"' in js.text
+    assert "frontiera Pareto" in js.text
+    assert "candidații economici" in js.text
+    assert "Ținta nZEB este activă, dar pragurile normative" in js.text
+    assert "compliancePolicy" in js.text
+    assert "availableCompliantCount" in js.text
     assert "Shortlist canonic selectat local:" in js.text
     assert '"/api/optimization/home-lab/v3/verification-plan"' not in js.text
-    assert 'new Worker("/static/teo-v4-worker.js?v=4")' in js.text
+    assert 'new Worker("/static/teo-v4-worker.js?v=6")' in js.text
     assert '"Rezultat TEO verificat · după intervenții."' in js.text
     assert 'envelopeFamily("wall", "exterior_wall", "wall_added_r_m2k_w")' in js.text
     assert "Fără înlocuire TEO" in js.text
@@ -302,7 +338,7 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert "function selectLocality(" in js.text
     assert '"/api/home-lab-next/calculate"' in js.text
     assert '"/api/optimization/home-lab/v4/plan"' in js.text
-    assert '"/static/teo-v4-worker.js?v=4"' in js.text
+    assert '"/static/teo-v4-worker.js?v=6"' in js.text
     assert '"/api/optimization/home-lab/v3/verify"' in js.text
     assert "function climateTokenForSelectedLocality()" in js.text
     assert "return `@lc2|" in js.text
@@ -314,8 +350,9 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'commercializationStatus:"deferred_after_teo"' in js.text
     assert "buildBrowserFinalization" in js.text
     assert "finalizeHttpRequests:0" in js.text
-    assert 'showPage("done");' in js.text
-    assert '$("#openReport").addEventListener("click", () => showPage("report"));' in js.text
+    assert 'renderTeoResult();' in js.text
+    assert 'showPage("done");' not in js.text
+    assert '$("#openReportFromGoal")?.addEventListener("click"' in js.text
 
 
 def test_compact_browser_climate_token_preserves_selected_locality_without_registry(
@@ -373,6 +410,8 @@ def test_editorial_baseline_cost_opens_exact_price_reference_dialog() -> None:
 
 def test_teo_v4_plan_builds_thousands_of_browser_points_without_server_candidate_evaluations() -> None:
     data = demo_form_data()
+    # Exercise the source-backed nZEB target path as well as the browser kernel.
+    data["locality_id"] = "@lc2|alba_iulia|III|-18|siruta-123|Ora%C8%99%20Test|Satu%20Mare"
     data.update(
         {
             "_optimization_mode": "auto_economic",
@@ -398,7 +437,15 @@ def test_teo_v4_plan_builds_thousands_of_browser_points_without_server_candidate
     assert payload["refinementStrategy"] == "halton_global_plus_two_local_coordinate_rounds"
     assert payload["runBranchIds"]
     kernel = payload["kernel"]
-    assert kernel["version"] == "teo-v4-browser-kernel-1"
+    assert kernel["version"] == "teo-v4-browser-kernel-3"
+    assert kernel["compliance_target"]["primary_energy_kwh_m2_year"] > 0
+    assert kernel["compliance_target"]["co2_kg_m2_year"] > 0
+    assert kernel["compliance_target"]["renewable_total_minimum_percent"] == 30.0
+    assert kernel["compliance_target"]["renewable_onsite_minimum_percent"] == 10.0
+    assert kernel["compliance_target"]["renewable_guarantee_of_origin_minimum_percent"] == 20.0
+    assert "renewable_requirement_status" in kernel["compliance_target"]
+    assert kernel["carrier_factors"]["electricity"]["renewable_primary_energy_factor"] == 0.5
+    assert kernel["carrier_factors"]["electricity"]["nonrenewable_primary_energy_factor"] == 2.0
     assert kernel["branches"]
     assert len(kernel["monthly"]) == 12
     assert kernel["cost_catalog"]
@@ -423,6 +470,10 @@ def test_teo_v4_plan_builds_thousands_of_browser_points_without_server_candidate
     assert "function verificationPlanRows(" in worker.text
     assert "function radicalInverse(" in worker.text
     assert "LOCAL_REFINEMENT_ROUNDS" in worker.text
+    assert "function renewableShare(" in worker.text
+    assert "renewable_total_minimum_percent" in worker.text
+    assert "renewable_onsite_minimum_percent" in worker.text
+    assert "guaranteeOfOriginEvidenceRequired:true" in worker.text
 
 
 
@@ -486,6 +537,7 @@ def test_commercial_pages_expose_legal_links_and_privacy_controls_where_needed()
     assert "/static/privacy-consent.js?v=privacy1" in calculator.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_local_persistence_and_analytics_are_consent_gated() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
@@ -691,6 +743,7 @@ def test_simulation_fact_is_derived_from_real_engine_runs() -> None:
     assert fact["methodology_version"]
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_energy_calculator_alias_goes_straight_to_home_lab() -> None:
     response = client.get("/instalatii/calculator", follow_redirects=False)
     assert response.status_code == 308
@@ -1002,6 +1055,7 @@ def test_store_demo_forces_full_width_embed_container() -> None:
     assert "embed-loader.js?v=embed8" in response.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_partner_embed_integration_page_recommends_home_lab_next() -> None:
     response = client.get("/embed")
     assert response.status_code == 200
@@ -1026,6 +1080,7 @@ def test_invalid_roof_vs_walls_fact_is_retired() -> None:
     assert "podul-trebuie-izolat-intotdeauna-primul" not in sitemap.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
@@ -1055,6 +1110,7 @@ def test_home_lab_next_route_exposes_premium_house_first_flow() -> None:
     assert 'aria-label="Casă cu zone de îmbunătățire"' not in response.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_persistent_summary_stays_bound_to_current_result_and_status() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
@@ -1145,6 +1201,7 @@ def test_home_lab_persistent_summary_stays_bound_to_current_result_and_status() 
     assert 'root.querySelectorAll("[data-hln-editor-open]").forEach' in js.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_energy_strip_labels_references_and_sen_source() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
@@ -1270,6 +1327,7 @@ def test_home_lab_energy_strip_labels_references_and_sen_source() -> None:
     assert response.text.count('value="reference_mc001" disabled') == 4
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_mobile_status_stays_in_topbar_flow() -> None:
     response = client.get("/static/home-lab-next.css?v=next26")
     assert response.status_code == 200
@@ -1278,6 +1336,7 @@ def test_home_lab_mobile_status_stays_in_topbar_flow() -> None:
 
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_geometry_and_roi_rounding_share_one_geometry_model() -> None:
     js = client.get("/static/home-lab-next.js")
     assert js.status_code == 200
@@ -1294,6 +1353,7 @@ def test_home_lab_geometry_and_roi_rounding_share_one_geometry_model() -> None:
 
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_3d_pauses_hidden_scenes_and_optimizer_rendering() -> None:
     response = client.get("/static/home-lab-3d.js")
     assert response.status_code == 200
@@ -1304,6 +1364,7 @@ def test_home_lab_3d_pauses_hidden_scenes_and_optimizer_rendering() -> None:
     assert 'this.mode === "report" ? 40 : 30' in response.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_roi_reconciles_visible_capex_and_avoids_request_bursts() -> None:
     response = client.get("/static/home-lab-next.js")
     assert response.status_code == 200
@@ -1338,6 +1399,7 @@ def test_home_lab_roi_reconciles_visible_capex_and_avoids_request_bursts() -> No
     assert "concurență ${adaptiveBranchParallelism}/${configuredBranchParallelism}" in source
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_exposes_four_single_constraint_parametric_objectives() -> None:
     response = client.get("/static/home-lab-next.js")
     assert response.status_code == 200
@@ -1360,6 +1422,7 @@ def test_home_lab_exposes_four_single_constraint_parametric_objectives() -> None
     assert 'const buttons = $("[data-hln-smart-config]")' not in source
     assert 'const buttons = $$("[data-hln-smart-config]")' in source
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_payback_optimizer_applies_threshold_to_complete_packages_not_components() -> None:
     response = client.get("/static/home-lab-next.js")
     assert response.status_code == 200
@@ -1401,6 +1464,7 @@ def test_browser_404_uses_branded_lacurent_error_page() -> None:
     assert response.headers["cache-control"] == "no-store"
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_partner_home_lab_next_route_is_embeddable_and_partner_scoped() -> None:
     response = client.get("/embed/demo-store/next")
     assert response.status_code == 200
@@ -1409,6 +1473,34 @@ def test_partner_home_lab_next_route_is_embeddable_and_partner_scoped() -> None:
     assert 'data-calculate-url="/embed/demo-store/next/calculate"' in response.text
     assert "Partener Demo" in response.text
     assert "/static/embed-runtime.js?v=embed2" in response.text
+
+
+def test_retired_classic_3d_home_lab_is_not_exposed_in_production() -> None:
+    classic = client.get("/home-lab-classic")
+    assert classic.status_code == 404
+
+    partner_classic = client.get("/embed/demo-store/next")
+    assert partner_classic.status_code == 404
+
+    partner_classic_calculate = client.post(
+        "/embed/demo-store/next/calculate",
+        data=demo_form_data(),
+    )
+    assert partner_classic_calculate.status_code == 404
+
+
+def test_embed_integration_points_only_to_maintained_embed_surface() -> None:
+    response = client.get("/embed")
+    assert response.status_code == 200
+    assert 'href="/embed/demo-store"' in response.text
+    assert 'data-path="lab"' in response.text
+    assert 'href="/embed/demo-store/next"' not in response.text
+    assert 'data-path="next"' not in response.text
+
+    loader = client.get("/static/embed-loader.js")
+    assert loader.status_code == 200
+    assert "/next" not in loader.text
+    assert "always mount the" in loader.text
 
 
 def test_home_lab_next_calculation_reuses_existing_energy_engine() -> None:
@@ -1426,6 +1518,9 @@ def test_home_lab_next_calculation_reuses_existing_energy_engine() -> None:
     )
     assert payload["heat_loss_w_k"] > 0
     assert payload["energy_class"]
+    assert payload["rer_percent"] >= 0
+    assert payload["onsite_renewable_percent"] >= 0
+    assert payload["renewable_share"]["status"] == "bounded_conservative_technical_lower_bound_not_certificate"
     assert "annual_cost_lei" in payload
     assert payload["price_retrieved_on"]
     class_reference = payload["energy_class_reference"]
@@ -1680,6 +1775,8 @@ def test_home_lab_next_optimizer_candidate_returns_compact_metrics_only() -> Non
         "final_energy_kwh",
         "primary_specific_kwh_m2",
         "co2_specific_kg_m2",
+        "rer_percent",
+        "onsite_renewable_percent",
         "annual_cost_lei",
     }
     assert payload["final_energy_kwh"] > 0
@@ -1688,6 +1785,7 @@ def test_home_lab_next_optimizer_candidate_returns_compact_metrics_only() -> Non
     assert payload["annual_cost_lei"] is not None
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_partner_home_lab_next_calculation_reuses_existing_energy_engine() -> None:
     response = client.post("/embed/demo-store/next/calculate", data=demo_form_data())
     assert response.status_code == 200
@@ -2072,6 +2170,12 @@ def test_home_lab_next_exposes_source_backed_nzeb_target() -> None:
     assert "Tabel 2.4" in target["envelope_source"]
     assert target["envelope_u_max_w_m2k"]["exterior_wall"] == 0.25
     assert target["envelope_u_max_w_m2k"]["roof"] == 0.15
+    assert target["renewable_total_minimum_percent"] == 30.0
+    assert target["renewable_onsite_minimum_percent"] == 10.0
+    assert target["renewable_guarantee_of_origin_minimum_percent"] == 20.0
+    assert "Legea nr. 372/2005" in target["renewable_legal_source"]
+    assert payload["rer_percent"] >= 0
+    assert payload["onsite_renewable_percent"] >= 0
     assert payload["co2_specific_kg_m2"] >= 0
     assert payload["methodology_version"]
     assert payload["methodology_source"]
@@ -2205,7 +2309,7 @@ def test_editorial_server_compute_budget_caps_only_full_engine_passes() -> None:
     # Deep parametric search remains browser-side and is intentionally not
     # reduced by the server compute profile.
     assert '"/api/optimization/home-lab/v4/plan"' in source
-    assert '"/static/teo-v4-worker.js?v=4"' in source
+    assert '"/static/teo-v4-worker.js?v=6"' in source
 
 
 def test_optimizer_reuses_baseline_bill_and_resets_cross_run_engine_cache() -> None:
@@ -2460,6 +2564,7 @@ def test_home_lab_next_calculation_is_single_pass_without_reference_engine_recur
     assert "include_reference=True" not in engine_section
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_next_optimizer_uses_compact_cached_candidates() -> None:
     response = client.get("/static/home-lab-next.js")
     assert response.status_code == 200
@@ -2480,6 +2585,7 @@ def test_home_lab_next_optimizer_uses_compact_cached_candidates() -> None:
     assert "alreadyAtTarget" in response.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_next_live_calculation_avoids_startup_request_storms_and_hangs() -> None:
     response = client.get("/static/home-lab-next.js")
     assert response.status_code == 200
@@ -2496,6 +2602,7 @@ def test_home_lab_next_live_calculation_avoids_startup_request_storms_and_hangs(
     assert 'cta.disabled = state !== "error"' in js
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_next_roi_uses_catalog_without_homeowner_price_form() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
@@ -2644,6 +2751,7 @@ def test_roi_cost_basis_coalesces_concurrent_d1_bootstrap_and_reads(monkeypatch)
     assert db.run_calls == 4
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_next_optimizer_and_report_styles_are_present() -> None:
     response = client.get("/static/home-lab-next.css")
     assert response.status_code == 200
@@ -2661,6 +2769,7 @@ def test_home_lab_next_optimizer_and_report_styles_are_present() -> None:
     assert "@media print" in response.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_next_semantic_delta_colors_are_present() -> None:
     response = client.get("/static/home-lab-next.css")
     assert response.status_code == 200
@@ -2672,6 +2781,7 @@ def test_home_lab_next_semantic_delta_colors_are_present() -> None:
     assert ".hln-dock-compare strong b.is-bad" in response.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_next_map_and_renovation_compare_styles_are_present() -> None:
     response = client.get("/static/home-lab-next.css")
     assert response.status_code == 200
@@ -2682,12 +2792,14 @@ def test_home_lab_next_map_and_renovation_compare_styles_are_present() -> None:
     assert ".hln-dock-compare article.is-renovation" in response.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_next_hidden_sections_cannot_be_overridden_by_layout_css() -> None:
     response = client.get("/static/home-lab-next.css")
     assert response.status_code == 200
     assert ".hln-app [hidden]{display:none!important}" in response.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     response = client.get("/static/home-lab-next.js")
     assert response.status_code == 200
@@ -2921,6 +3033,7 @@ def test_home_lab_next_frontend_contains_baseline_scenario_contract() -> None:
     assert 'href="#hln-i-' in response.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_envelope_editor_exposes_structure_and_material_inputs() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
@@ -2949,6 +3062,7 @@ def test_home_lab_envelope_editor_exposes_structure_and_material_inputs() -> Non
     assert 'value="wood_fiber"' in html
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_3d_reflects_selected_house_systems() -> None:
     response = client.get("/static/home-lab-3d.js")
     assert response.status_code == 200
@@ -3004,6 +3118,7 @@ def test_home_lab_3d_reflects_selected_house_systems() -> None:
     assert "ray.intersectObjects(roofCandidates, true)" in response.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_3d_uses_one_capacity_scaled_pv_field_and_visible_primary_chimney_smoke() -> None:
     response = client.get("/static/home-lab-3d.js")
     assert response.status_code == 200
@@ -3039,6 +3154,7 @@ def test_home_lab_3d_uses_one_capacity_scaled_pv_field_and_visible_primary_chimn
     assert "Math.sin(Math.PI * t) * 0.78" in source
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_3d_orientation_is_semantic_and_independent_from_camera_orbit() -> None:
     js = client.get("/static/home-lab-3d.js")
     assert js.status_code == 200
@@ -3055,6 +3171,7 @@ def test_home_lab_3d_orientation_is_semantic_and_independent_from_camera_orbit()
     assert "this.rebuildRenovationLayer(part)" not in source
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_3d_compass_has_visible_orientation_arrow() -> None:
     css = client.get("/static/home-lab-3d.css")
     assert css.status_code == 200
@@ -3065,6 +3182,7 @@ def test_home_lab_3d_compass_has_visible_orientation_arrow() -> None:
     assert "cursor: crosshair" in source
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_mobile_house_first_controls_keep_context_visible() -> None:
     css = client.get("/static/home-lab-next.css")
     assert css.status_code == 200
@@ -3088,6 +3206,7 @@ def test_home_lab_mobile_house_first_controls_keep_context_visible() -> None:
 
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_issue_359_adaptive_intro_contract() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
@@ -3117,6 +3236,7 @@ def test_home_lab_issue_359_adaptive_intro_contract() -> None:
     assert "introCollapsedScreens" not in source.split("localStorage.setItem", 1)[1].split("));", 1)[0]
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_hud_exposes_useful_heating_and_cooling_demand() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
@@ -3140,6 +3260,7 @@ def test_home_lab_hud_exposes_useful_heating_and_cooling_demand() -> None:
     assert ".hln-live-cooling-card" in css.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_mobile_declutter_contract() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
@@ -3164,6 +3285,7 @@ def test_home_lab_mobile_declutter_contract() -> None:
     assert semantic.json()["parts"]["windows"]["anchor"] == [0.43, 0.44, 0.14]
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_gameified_controls_are_separate_from_technical_mode() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
@@ -3211,6 +3333,7 @@ def test_home_lab_gameified_controls_are_separate_from_technical_mode() -> None:
     assert ".hln-3d-add-rail" in css3d.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_3d_is_visible_from_first_paint_without_2d_house_flash() -> None:
     css = client.get("/static/home-lab-3d.css")
     assert css.status_code == 200
@@ -3220,12 +3343,12 @@ def test_home_lab_3d_is_visible_from_first_paint_without_2d_house_flash() -> Non
     assert "display: none" in source
 
 
-def test_embed_loader_supports_deferred_next_mounts() -> None:
+def test_embed_loader_supports_deferred_mounts_without_retired_classic_path() -> None:
     response = client.get("/static/embed-loader.js")
     assert response.status_code == 200
-    assert 'host.dataset.path' in response.text
-    assert 'path === "next"' in response.text
     assert 'host.dataset.deferred === "true"' in response.text
+    assert "/next" not in response.text
+    assert "always mount the" in response.text
     assert "window.LaCurentEmbed" in response.text
     assert "publicApi.mount" in response.text
 
@@ -3565,6 +3688,7 @@ def test_embed_integration_documents_mobile_focus_opt_out() -> None:
     assert "prima interacțiune" in response.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_normal_calculator_does_not_get_embed_frame_policy() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
@@ -3806,6 +3930,7 @@ def test_embed_language_switch_keeps_ro_en_controls_and_reversible_translation_c
     assert "window.lacurentSetLanguage = setLanguage" in script.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_report_3d_stage_is_contained_by_positioned_wrapper() -> None:
     response = client.get("/static/home-lab-next.css")
     assert response.status_code == 200
@@ -3813,6 +3938,7 @@ def test_home_lab_report_3d_stage_is_contained_by_positioned_wrapper() -> None:
     assert ".hln-report-3d-wrap{position:relative;" in css
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_report_exposes_heating_branch_traceability() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
@@ -3825,6 +3951,7 @@ def test_home_lab_report_exposes_heating_branch_traceability() -> None:
     assert "rejected_for_capacity" in js.text
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_heating_branch_report_uses_explicit_verdict_labels() -> None:
     response = client.get("/static/home-lab-next.js")
     assert response.status_code == 200
@@ -3837,6 +3964,7 @@ def test_heating_branch_report_uses_explicit_verdict_labels() -> None:
     assert "nu a fost selectată" in source
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_next_uses_transient_retry_asset_version() -> None:
     response = client.get("/home-lab-classic")
     assert response.status_code == 200
@@ -3883,6 +4011,7 @@ def test_compact_partner_next_route_does_not_trigger_full_heap_collection() -> N
     assert 'path.endswith("/lab-calculate")' in helper
 
 
+@pytest.mark.skip(reason="retired classic 3D Home Lab is frozen outside production and release gates")
 def test_home_lab_next_economic_optimizer_uses_v4_browser_worker() -> None:
     response = client.get("/static/home-lab-next.js")
     assert response.status_code == 200

@@ -112,7 +112,7 @@
   function isPersistableField(field) {
     if (!field || field.disabled) return false;
     if (field.type === "hidden") {
-      return field.id === "localityId" || field.name === "_optimization_mode";
+      return field.id === "localityId" || field.name === "_optimization_mode" || field.name === "_nzeb_constraint";
     }
     return Boolean(field.id || field.name);
   }
@@ -508,7 +508,7 @@
     stepNumber.textContent = stepNumbers[name] || "—";
     stepName.textContent = stepNames[name] || name;
     renderProgressHistory();
-    if (name === "report" && optimizationResult) {
+    if ((name === "report" || name === "goal") && optimizationResult) {
       paintBaselineSummary(
         optimizationSummaryForPersistentBar(),
         "Rezultat TEO verificat · după intervenții."
@@ -1027,35 +1027,93 @@
     });
   });
 
-  const goalWrap = $("#goalValueWrap");
-  const goalValue = $("#goalValue");
-  const goalLabel = $("#goalValueLabel");
-  const goalUnit = $("#goalValueUnit");
+  const goalBudget = $("#edGoalBudget");
+  const goalPayback = $("#edGoalPayback");
+  const goalBudgetWrap = $("#edGoalBudgetWrap");
+  const goalPaybackWrap = $("#edGoalPaybackWrap");
+  const nzebConstraintToggle = $("#edNzebConstraintToggle");
+  const nzebConstraintValue = $("#edNzebConstraintValue");
+
+  function isNewBuildYearProxy() {
+    const year = Number(form.elements["construction_year"]?.value || 0);
+    return Number.isFinite(year) && year >= 2021;
+  }
+
+  function nzebConstraintEnabled() {
+    return String(nzebConstraintValue?.value || "0") === "1";
+  }
+
+  function syncNzebPolicy() {
+    if (!nzebConstraintToggle || !nzebConstraintValue) return;
+    const mandatory = isNewBuildYearProxy();
+    if (mandatory) nzebConstraintValue.value = "1";
+    const enabled = nzebConstraintEnabled();
+    nzebConstraintToggle.classList.toggle("is-enabled", enabled);
+    nzebConstraintToggle.classList.toggle("is-mandatory", mandatory);
+    nzebConstraintToggle.setAttribute("aria-pressed", enabled ? "true" : "false");
+    nzebConstraintToggle.setAttribute("aria-disabled", mandatory ? "true" : "false");
+    nzebConstraintToggle.title = mandatory
+      ? "Conformarea nZEB este blocată activ pentru o casă nouă."
+      : enabled
+        ? "Dezactivează ținta nZEB pentru această analiză."
+        : "Activează ținta nZEB pentru această analiză.";
+
+    const badge = $("#edNzebMandatoryBadge");
+    if (badge) {
+      badge.textContent = mandatory ? "OBLIGATORIU" : (enabled ? "ACTIV" : "OPȚIONAL");
+    }
+
+    const note = $("#edNzebLegalNote");
+    if (note) {
+      note.querySelector("span").textContent = mandatory
+        ? "Pentru o casă cu anul construcției după 2020, Home Lab activează conformarea ca regulă de siguranță. Anul este un proxy de produs; statutul juridic real depinde de autorizația clădirii."
+        : enabled
+          ? "Ținta nZEB este activă pentru această analiză. TEO o tratează ca o constrângere tehnică, nu ca pe un certificat legal."
+          : "Pentru clădirile existente, ținta nZEB este opțională și poate fi activată aici.";
+    }
+
+    const step3 = $("#edTeoStep3Label");
+    const step4 = $("#edTeoStep4Label");
+    const compliantLabel = $("#edTeoCompliantLabel");
+    if (step3) step3.innerHTML = enabled
+      ? "Caut<br>frontiera nZEB"
+      : "Construiesc<br>frontiera Pareto";
+    if (step4) step4.innerHTML = enabled
+      ? "Reoptimizez<br>soluțiile conforme"
+      : "Rafinez<br>candidații economici";
+    if (compliantLabel) compliantLabel.textContent = enabled
+      ? "soluții conforme*"
+      : "candidați fezabili";
+
+    renderNzebStatus(
+      optimizationResult ? optimizationSummaryForPersistentBar() : baselineResult
+    );
+  }
 
   function syncGoalField() {
     const mode = form.elements["_optimization_mode"].value;
-    goalValue.removeAttribute("name");
-    goalWrap.hidden = mode === "auto_economic";
-    if (mode === "investment_budget") {
-      goalValue.name = "_investment_budget_lei";
-      goalLabel.textContent = "Buget maxim";
-      goalUnit.textContent = "lei";
-      goalValue.step = "1000"; goalValue.min = "1000"; goalValue.removeAttribute("max");
-      if (!goalValue.value) goalValue.value = "50000";
-    } else if (mode === "annual_bill_target") {
-      goalValue.name = "_annual_bill_target_lei";
-      goalLabel.textContent = "Factură anuală țintă";
-      goalUnit.textContent = "lei/an";
-      goalValue.step = "100"; goalValue.min = "0"; goalValue.removeAttribute("max");
-      if (!goalValue.value) goalValue.value = "3000";
-    } else if (mode === "max_payback_years") {
-      goalValue.name = "_max_payback_years";
-      goalLabel.textContent = "Recuperare în maximum";
-      goalUnit.textContent = "ani";
-      goalValue.step = "0.5"; goalValue.min = "0.5"; goalValue.max = "50";
-      if (!goalValue.value) goalValue.value = "10";
+    if (goalBudget) {
+      goalBudget.disabled = mode !== "investment_budget";
+      goalBudget.name = mode === "investment_budget" ? "_investment_budget_lei" : "";
     }
+    if (goalPayback) {
+      goalPayback.disabled = mode !== "max_payback_years";
+      goalPayback.name = mode === "max_payback_years" ? "_max_payback_years" : "";
+    }
+    goalBudgetWrap?.classList.toggle("is-inactive", mode !== "investment_budget");
+    goalPaybackWrap?.classList.toggle("is-inactive", mode !== "max_payback_years");
   }
+
+  nzebConstraintToggle?.addEventListener("click", () => {
+    if (isNewBuildYearProxy()) return;
+    nzebConstraintValue.value = nzebConstraintEnabled() ? "0" : "1";
+    syncNzebPolicy();
+    markDraftDirty();
+    scheduleEditorialDraftSave();
+  });
+
+  form.elements["construction_year"]?.addEventListener("change", syncNzebPolicy);
+  form.elements["construction_year"]?.addEventListener("input", syncNzebPolicy);
 
   function walkMapCoordinates(value, visit) {
     if (Array.isArray(value) && value.length >= 2 && Number.isFinite(value[0]) && Number.isFinite(value[1])) {
@@ -2133,9 +2191,316 @@
             : null
         ),
       primary_specific_kwh_m2:primarySpecific,
+      co2_specific_kg_m2:
+        parametric.co2SpecificKgM2
+        ?? scenario.co2_specific_kg_m2
+        ?? baselineResult?.co2_specific_kg_m2
+        ?? null,
+      rer_percent:
+        parametric.rerPercent
+        ?? scenario.rer_percent
+        ?? baselineResult?.rer_percent
+        ?? null,
+      onsite_renewable_percent:
+        parametric.onsiteRenewablePercent
+        ?? scenario.onsite_renewable_percent
+        ?? baselineResult?.onsite_renewable_percent
+        ?? null,
       price_reference_rows:finalPriceRows.length ? finalPriceRows : fallbackPriceRows,
       _summary_scope:"teo_final",
     };
+  }
+
+  function candidateAvailableNzebPass(candidate, target = baselineResult?.nzeb_target) {
+    if (!target || !candidate) return false;
+    const primary = Number(
+      candidate.primary_specific_kwh_m2
+      ?? candidate.primarySpecificKwhM2
+    );
+    const co2 = Number(
+      candidate.co2_specific_kg_m2
+      ?? candidate.co2SpecificKgM2
+    );
+    const rer = Number(
+      candidate.rer_percent
+      ?? candidate.rerPercent
+    );
+    const onsite = Number(
+      candidate.onsite_renewable_percent
+      ?? candidate.onsiteRenewablePercent
+    );
+    const primaryLimit = Number(target.primary_energy_kwh_m2_year);
+    const co2Limit = Number(target.co2_kg_m2_year);
+    const rerMinimum = Number(target.renewable_total_minimum_percent ?? 30);
+    const onsiteMinimum = Number(target.renewable_onsite_minimum_percent ?? 10);
+    return [
+      primary, co2, rer, onsite,
+      primaryLimit, co2Limit, rerMinimum, onsiteMinimum
+    ].every(Number.isFinite)
+      && primary <= primaryLimit + 1e-6
+      && co2 <= co2Limit + 1e-6
+      && onsite + 1e-6 >= onsiteMinimum;
+  }
+
+  function setNzebMetric(metricName, actual, limit, unit) {
+    const card = document.querySelector(`[data-nzeb-metric="${metricName}"]`);
+    const title = metricName === "primary" ? $("#edNzebPrimaryValue") : $("#edNzebCo2Value");
+    const limitNode = metricName === "primary" ? $("#edNzebPrimaryLimit") : $("#edNzebCo2Limit");
+    const bar = metricName === "primary" ? $("#edNzebPrimaryBar") : $("#edNzebCo2Bar");
+    const state = metricName === "primary" ? $("#edNzebPrimaryState") : $("#edNzebCo2State");
+    if (!card || !title || !limitNode || !bar || !state) return null;
+    const valid = Number.isFinite(Number(actual)) && Number.isFinite(Number(limit)) && Number(limit) > 0;
+    const pass = valid ? Number(actual) <= Number(limit) + 1e-6 : null;
+    card.classList.toggle("is-pass", pass === true);
+    card.classList.toggle("is-fail", pass === false);
+    title.textContent = valid ? `${fmt(actual,1)} / ${fmt(limit,1)}` : "—";
+    limitNode.textContent = valid
+      ? `Limită: ${fmt(limit,1)} ${unit}`
+      : "Limită indisponibilă";
+    const ratio = valid ? Math.min(100, Math.max(4, 100 * Number(actual) / Number(limit))) : 0;
+    bar.style.width = `${ratio}%`;
+    state.innerHTML = pass === true
+      ? '<svg><use href="#ed-i-check"></use></svg>'
+      : pass === false
+        ? '<svg><use href="#ed-i-x"></use></svg>'
+        : '<svg><use href="#ed-i-info"></use></svg>';
+    return pass;
+  }
+
+  function renderNzebStatus(result = baselineResult) {
+    const panel = $(".ed-nzeb-status-panel");
+    if (!panel) return;
+    const scope = $("#edNzebScopeLabel");
+    if (scope) {
+      scope.textContent = result?._summary_scope === "teo_final"
+        ? "După optimizarea TEO"
+        : "Situație inițială";
+    }
+    const target = result?.nzeb_target || baselineResult?.nzeb_target || null;
+    const zone = target?.climate_zone || result?.climate_zone || "—";
+    const zoneNode = $("#edNzebZone");
+    if (zoneNode) zoneNode.textContent = zone || "—";
+
+    const primaryPass = setNzebMetric(
+      "primary",
+      result?.primary_specific_kwh_m2,
+      target?.primary_energy_kwh_m2_year,
+      "kWh/m²·an"
+    );
+    const co2Pass = setNzebMetric(
+      "co2",
+      result?.co2_specific_kg_m2,
+      target?.co2_kg_m2_year,
+      "kgCO₂/m²·an"
+    );
+
+    const rerCard = document.querySelector('[data-nzeb-metric="rer"]');
+    rerCard?.classList.remove("is-pass","is-fail","is-rer-pending");
+    const rerValue = $("#edNzebRerValue");
+    const rerBar = $("#edNzebRerBar");
+    const rerState = $("#edNzebRerState");
+    const rer = Number(
+      result?.rer_percent
+      ?? result?.renewable_share?.rer_percent
+    );
+    const onsite = Number(
+      result?.onsite_renewable_percent
+      ?? result?.renewable_share?.onsite_percent
+    );
+    const rerMinimum = Number(target?.renewable_total_minimum_percent ?? 30);
+    const onsiteMinimum = Number(target?.renewable_onsite_minimum_percent ?? 10);
+    const goMinimum = Number(
+      target?.renewable_guarantee_of_origin_minimum_percent ?? 20
+    );
+    const rerValid = [rer, onsite, rerMinimum, onsiteMinimum].every(Number.isFinite);
+    const rerTotalPass = rerValid
+      ? rer + 1e-6 >= rerMinimum
+      : null;
+    const onsitePass = rerValid
+      ? onsite + 1e-6 >= onsiteMinimum
+      : null;
+    rerCard?.classList.toggle("is-pass", rerTotalPass === true && onsitePass === true);
+    rerCard?.classList.toggle("is-fail", onsitePass === false);
+    rerCard?.classList.toggle(
+      "is-rer-pending",
+      rerValid === false || (onsitePass === true && rerTotalPass === false)
+    );
+    if (rerValue) {
+      rerValue.textContent = rerValid
+        ? `${fmt(rer,1)}% · onsite ${fmt(onsite,1)}%`
+        : "—";
+    }
+    if (rerBar) {
+      rerBar.style.width = rerValid
+        ? `${Math.min(100, Math.max(4, 100 * rer / Math.max(rerMinimum, 1)))}%`
+        : "0%";
+    }
+    if (rerState) {
+      rerState.innerHTML = onsitePass === false
+        ? '<svg><use href="#ed-i-x"></use></svg>'
+        : rerTotalPass === true && onsitePass === true
+          ? '<svg><use href="#ed-i-info"></use></svg>'
+          : '<svg><use href="#ed-i-info"></use></svg>';
+    }
+    const rerLimit = $("#edNzebRerLimit");
+    if (rerLimit) {
+      rerLimit.textContent = `Țintă modelată: ≥${fmt(rerMinimum,0)}% total · ≥${fmt(onsiteMinimum,0)}% onsite · ≥${fmt(goMinimum,0)}% GO de dovedit`;
+    }
+
+    const message = $("#edNzebMessage");
+    if (!message) return;
+    const constrained = nzebConstraintEnabled();
+    const technicalPass = (
+      target
+      && primaryPass === true
+      && co2Pass === true
+      && onsitePass === true
+    );
+    let text = "Completează casa pentru a verifica pragurile aplicabile.";
+    if (technicalPass) {
+      text = constrained
+        ? `TEO poate verifica tehnic Eprim, CO₂ și partea SRE onsite ≥${fmt(onsiteMinimum,0)}%. RER modelat este ${fmt(rer,1)}%; cerința totală ≥${fmt(rerMinimum,0)}% se închide juridic numai împreună cu dovada pentru ≥${fmt(goMinimum,0)}% prin garanții de origine și cu orice prag suplimentar 2026 stabilit oficial.`
+        : "Indicatorii tehnici nZEB modelați sunt atinși, dar constrângerea nZEB este momentan dezactivată.";
+    } else if (target && [primaryPass, co2Pass, onsitePass].some(value => value === false)) {
+      text = constrained
+        ? "Clădirea nu respectă încă toate pragurile tehnice pe care TEO le poate proiecta. TEO caută economic, apoi reoptimizează în domeniul Eprim + CO₂ + SRE onsite; RER total și dovada GO rămân raportate separat."
+        : "Cel puțin un prag tehnic nZEB modelat nu este atins. Activează conformarea pentru a-l trata drept restricție.";
+    } else if (!target) {
+      text = "Pragurile nZEB nu sunt disponibile până când localitatea și zona climatică nu sunt rezolvate.";
+    }
+    message.querySelector("span").textContent = text;
+  }
+
+  function setTeoControlPhase(step, label = "") {
+    const panel = $(".ed-teo-control-panel");
+    if (!panel) return;
+    const requested = Math.max(0, Math.min(5, Number(step) || 0));
+    const activeValues = [...document.querySelectorAll("[data-teo-step]")]
+      .filter(node => node.classList.contains("is-active") || node.classList.contains("is-done"))
+      .map(node => Number(node.dataset.teoStep || 0));
+    const currentMax = activeValues.length ? Math.max(...activeValues) : 0;
+    const numeric = requested > 0 ? Math.max(requested, currentMax) : 0;
+    panel.classList.toggle("is-running", numeric > 0 && numeric < 6);
+    panel.classList.remove("is-done");
+    document.querySelectorAll("[data-teo-step]").forEach(node => {
+      const value = Number(node.dataset.teoStep || 0);
+      node.classList.toggle("is-done", numeric > 0 && value < numeric);
+      node.classList.toggle("is-active", value === numeric);
+    });
+    const state = $("#edTeoRunState");
+    if (state) state.textContent = label || (numeric ? `Pas ${numeric}/5` : "Pregătit");
+  }
+
+  function resetTeoControlUi() {
+    const panel = $(".ed-teo-control-panel");
+    panel?.classList.remove("is-running","is-done");
+    document.querySelectorAll("[data-teo-step]").forEach(node => node.classList.remove("is-active","is-done"));
+    const state = $("#edTeoRunState");
+    if (state) state.textContent = "Pregătit";
+    if ($("#edTeoEvaluated")) $("#edTeoEvaluated").textContent = "0";
+    if ($("#edTeoCompliant")) $("#edTeoCompliant").textContent = "0";
+    if ($("#edTeoFinalists")) $("#edTeoFinalists").textContent = "0";
+    const result = $("#edTeoResult");
+    if (result) result.hidden = true;
+  }
+
+  function updateTeoStats({evaluated, compliant, finalists} = {}) {
+    if (evaluated != null && $("#edTeoEvaluated")) $("#edTeoEvaluated").textContent = fmt(evaluated);
+    if (compliant != null && $("#edTeoCompliant")) $("#edTeoCompliant").textContent = fmt(compliant);
+    if (finalists != null && $("#edTeoFinalists")) $("#edTeoFinalists").textContent = fmt(finalists);
+  }
+
+  function renderTeoResult() {
+    const root = $("#edTeoResult");
+    if (!root || !optimizationResult) return;
+    const opt = optimizationResult.optimization || {};
+    const engineering = opt.engineeringSpec || {};
+    const env = engineering.envelope || {};
+    const bridges = engineering.thermal_bridges || {};
+    const ventilation = engineering.ventilation || {};
+    const heat = engineering.heating || {};
+    const pv = engineering.pv || {};
+    const solarThermal = engineering.solar_thermal || {};
+    const rows = [];
+    const add = (icon, label, value, muted = false) => rows.push(
+      `<div class="ed-teo-measure"><svg><use href="#${icon}"></use></svg><b>${escapeHtml(label)}</b><span class="${muted ? "is-muted" : ""}">${escapeHtml(value)}</span></div>`
+    );
+
+    const wallCm = Number(env.wall?.equivalent_insulation_thickness_cm || 0);
+    const roofCm = Number(env.roof?.equivalent_insulation_thickness_cm || 0);
+    const floorCm = Number(env.floor?.equivalent_insulation_thickness_cm || 0);
+    add("ed-i-wall","Pereți",wallCm > .05 ? `+${fmt(wallCm,1)} cm izolație` : "Fără intervenție", wallCm <= .05);
+    add("ed-i-roof","Acoperiș / pod",roofCm > .05 ? `+${fmt(roofCm,1)} cm izolație` : "Fără intervenție", roofCm <= .05);
+    add("ed-i-floor","Pardoseală",floorCm > .05 ? `+${fmt(floorCm,1)} cm izolație` : "Fără intervenție", floorCm <= .05);
+
+    const windowFraction = Number(env.windows?.replacement_fraction || 0);
+    const windowU = Number(env.windows?.final_u_w_m2k || 0);
+    add(
+      "ed-i-window",
+      "Ferestre",
+      windowFraction > .005
+        ? `${fmt(windowFraction * 100,0)}% înlocuire · Uw ${fmt(windowU,2)}`
+        : `Fără înlocuire · Uw ${fmt(windowU,2)}`,
+      windowFraction <= .005
+    );
+
+    const psiMean = Number(bridges.weighted_mean_psi_w_mk);
+    add(
+      "ed-i-bridge",
+      "Punți termice",
+      Number.isFinite(psiMean)
+        ? `ψ mediu ${fmt(psiMean,3)} W/mK`
+        : "Nemodificate",
+      !bridges.optimized
+    );
+
+    const hrv = Number(ventilation.heat_recovery_efficiency || 0);
+    add("ed-i-air","Ventilație",hrv > .01 ? `HRV ${fmt(hrv * 100,0)}% · ACH ${fmt(ventilation.air_changes_per_hour || 0,2)}` : "Fără intervenție", hrv <= .01);
+
+    const branch = String(heat.technology_branch || heat.generator_type || "sistem existent");
+    add("ed-i-heat","Încălzire",`${branch} · ${fmt(heat.design_required_power_kw || 0,1)} kW`,false);
+
+    const pvAdded = Number(pv.added_power_kwp || 0);
+    add("ed-i-pv","Fotovoltaice",pvAdded > .01 ? `+${fmt(pvAdded,1)} kWp · total ${fmt(pv.installed_power_kwp || 0,1)} kWp` : "Fără intervenție", pvAdded <= .01);
+
+    const solarAdded = Number(solarThermal.added_area_m2 || 0);
+    add(
+      "ed-i-solar",
+      "Solar termic",
+      solarAdded > .01
+        ? `+${fmt(solarAdded,1)} m² · total ${fmt(solarThermal.collector_area_m2 || 0,1)} m²`
+        : "Fără intervenție",
+      solarAdded <= .01
+    );
+
+    $("#edTeoMeasures").innerHTML = rows.join("");
+
+    $("#edTeoCapex").textContent = money(opt.capexLei);
+    $("#edTeoSaving").textContent = opt.annualSavingLei == null ? "—" : `${money(opt.annualSavingLei)}/an`;
+    $("#edTeoPayback").textContent = opt.paybackYears == null ? "—" : `${fmt(opt.paybackYears,1)} ani`;
+
+    const badge = $("#edTeoComplianceBadge");
+    const selected = opt.parametricEvaluation || {};
+    const availablePass = candidateAvailableNzebPass(selected);
+    if (badge) {
+      badge.classList.toggle("is-pending", nzebConstraintEnabled() && availablePass);
+      badge.classList.toggle("is-fail", nzebConstraintEnabled() && !availablePass);
+      badge.innerHTML = nzebConstraintEnabled()
+        ? availablePass
+          ? '<svg><use href="#ed-i-info"></use></svg> nZEB tehnic modelat · dovadă GO necesară'
+          : '<svg><use href="#ed-i-x"></use></svg> Prag tehnic nZEB neatins'
+        : '<svg><use href="#ed-i-check"></use></svg> Optim economic';
+    }
+    root.hidden = false;
+    const panel = $(".ed-teo-control-panel");
+    panel?.classList.remove("is-running");
+    panel?.classList.add("is-done");
+    const state = $("#edTeoRunState");
+    if (state) state.textContent = "Finalizat";
+    document.querySelectorAll("[data-teo-step]").forEach(node => {
+      node.classList.remove("is-active");
+      node.classList.add("is-done");
+    });
   }
 
   function paintBaselineSummary(result, statusText = "Estimare pentru configurația curentă.") {
@@ -2160,6 +2525,7 @@
     baselineBar.classList.remove("is-updating");
     if (priceDialog?.open) renderPriceReferences(result);
     if (classDialog?.open) renderClassReference(result);
+    renderNzebStatus(result);
   }
 
   function baselineSummaryReady() {
@@ -2216,13 +2582,13 @@
     baselineSummaryTimer = window.setTimeout(refreshBaselineSummary, delay);
   }
 
-  function runTeoV4Worker({kernel, searchSpec, searchBounds, branchIds, mode, goals, baselineAnnualBillLei}) {
+  function runTeoV4Worker({kernel, searchSpec, searchBounds, branchIds, mode, goals, baselineAnnualBillLei, compliancePolicy}) {
     return new Promise((resolve, reject) => {
       if (!("Worker" in window)) {
         reject(new Error("Browserul nu suportă Web Worker pentru TEO V4."));
         return;
       }
-      const worker = new Worker("/static/teo-v4-worker.js?v=4");
+      const worker = new Worker("/static/teo-v4-worker.js?v=6");
       let settled = false;
       const finish = (fn, value) => {
         if (settled) return;
@@ -2243,11 +2609,14 @@
           const phase = String(message.phase || "global");
           if (phase === "refine") {
             stage("branches","active",`refine ${completed}/${total}`);
+            setTeoControlPhase(completed >= total ? 4 : 3, completed >= total ? "Reoptimizare conformă" : "Frontieră nZEB");
             log(
               `TEO refine local · rundă ${completed}/${total} · ramură ${branchIndex}/${branchCount} · ${Number(message.refinementEvaluations || 0)} evaluări locale suplimentare.`
             );
           } else {
             stage("branches","active",`${completed} / ${total}`);
+            setTeoControlPhase(2,"Explorare economică");
+            updateTeoStats({evaluated:completed});
             if (completed === total || completed % 1000 === 0) {
               log(
                 `TEO V4 global · ${completed}/${total} evaluări · ramură ${branchIndex}/${branchCount} · ${Number(message.accepted || 0)} candidați valizi.`
@@ -2273,6 +2642,7 @@
         mode,
         goals,
         baselineAnnualBillLei,
+        compliancePolicy,
       });
     });
   }
@@ -2359,8 +2729,17 @@
     return 0;
   }
 
-  function selectOptimizationCandidateLocal(candidates, mode, goals) {
-    const unique = uniqueCandidatesLocal(candidates);
+  function selectOptimizationCandidateLocal(candidates, mode, goals, compliancePolicy = null) {
+    const allUnique = uniqueCandidatesLocal(candidates);
+    const target = compliancePolicy?.target || null;
+    const complianceEnabled = Boolean(compliancePolicy?.enabled && target);
+    const compliant = complianceEnabled
+      ? allUnique.filter(candidate => candidateAvailableNzebPass(candidate, target))
+      : [];
+    if (complianceEnabled && !compliant.length) {
+      throw new Error("Niciun finalist verificat RBPE nu respectă simultan pragurile nZEB disponibile pentru Eprim și CO₂.");
+    }
+    const unique = complianceEnabled ? compliant : allUnique;
     const frontier = paretoFrontierLocal(unique);
     if (!unique.length) throw new Error("Nu există finaliști locali pentru selecția economică.");
 
@@ -2435,7 +2814,11 @@
       candidateCount:unique.length,
       feasibleCount:feasible.length,
       paretoCount:frontier.length,
-      rationale,
+      rationale:complianceEnabled
+        ? `Conformarea disponibilă (Eprim + CO₂) este tratată ca restricție; dintre candidații verificați care o respectă, ${rationale}`
+        : rationale,
+      complianceEnabled,
+      availableCompliantCount:compliant.length,
     };
   }
 
@@ -2523,6 +2906,9 @@
       primary_specific_kwh_m2:Number(candidate?.primary_specific_kwh_m2 || 0),
       co2_total_kg:Number(candidate?.co2_total_kg || 0),
       co2_specific_kg_m2:Number(candidate?.co2_specific_kg_m2 || 0),
+      rer_percent:Number(candidate?.rer_percent || 0),
+      onsite_renewable_percent:Number(candidate?.onsite_renewable_percent || 0),
+      rer_status:candidate?.rer_status || null,
       energy_class:candidate?.energy_class || "—",
       design_heat_load_kw:candidate?.design_heat_load_kw ?? null,
       annual_fuel_use:{},
@@ -2649,6 +3035,7 @@
     targets,
     mode,
     goals,
+    compliancePolicy,
     maxVerifications,
   }) {
     const count = Number(verifiedRows?.length || 0);
@@ -2664,7 +3051,8 @@
       selection = selectOptimizationCandidateLocal(
         verifiedRows.map(row => row?.candidate).filter(Boolean),
         mode,
-        goals
+        goals,
+        compliancePolicy
       );
     } catch (_) {
       return {
@@ -2884,6 +3272,7 @@
     refinementEvaluations,
     browserSearchMethod,
     adaptiveVerification,
+    compliancePolicy,
     runId,
   }) {
     const verifiedCandidates = (verifiedRows || [])
@@ -2892,7 +3281,8 @@
     const selection = selectOptimizationCandidateLocal(
       verifiedCandidates,
       mode,
-      goals
+      goals,
+      compliancePolicy
     );
     const selected = selection.selected;
     const selectedVerifiedRow = (verifiedRows || []).find(
@@ -2946,6 +3336,8 @@
       "Căutarea TEO combină explorarea globală Halton cu două runde de rafinare locală în jurul zonelor economice/Pareto promițătoare.",
       "λ-urile afișate pentru anvelopă sunt valorile de calcul/reference folosite la transformarea R↔grosime; în această versiune TEO optimizează R și U rezultat, nu λ ca material comercial independent.",
       "Valorile ψ provin din modelul clădirii și sunt raportate inginerește; optimizarea explicită a punților termice va necesita o variabilă TEO separată.",
+      "RER Home Lab este un indicator tehnic conservator pe perimetrul explicit al serviciilor reglementate: include fPren/fPnren pentru energia livrată, PV onsite autoconsumat reglementat și solar termic utilizat la ACM; exclude exportul PV, consumul casnic și, până la validarea metodei generale, energia de mediu a pompelor de căldură.",
+      "Un rezultat tehnic nZEB nu este promovat ca verdict juridic: garanțiile de origine și orice cerință suplimentară 2026 stabilită oficial trebuie verificate documentar.",
     ];
     for (const row of (verifiedRows || [])) {
       for (const warning of (row?.warnings || [])) {
@@ -2982,6 +3374,16 @@
         feasibleCandidates:Number(feasibleTotal || selection.feasibleCount || 0),
         paretoSolutions:Number(selection.paretoCount || 0),
         paretoScope:"verified_parametric_teo_only",
+        compliancePolicy:compliancePolicy || {enabled:false,target:null},
+        availableCompliantFinalists:Number(selection.availableCompliantCount || 0),
+        technicalNzebPass:Boolean(
+          compliancePolicy?.enabled
+          && candidateAvailableNzebPass(selected, compliancePolicy?.target)
+        ),
+        fullLegalNzebCompliance:false,
+        rerStatus:compliancePolicy?.enabled
+          ? "bounded_technical_model_go_evidence_required"
+          : "not_requested",
         heatingBranches:branches,
         technicalHeatingAlternatives:[],
         rawSolution:selected?.parameters || {},
@@ -2993,6 +3395,9 @@
           primarySpecificKwhM2:Number(selected?.primary_specific_kwh_m2 || 0),
           co2TotalKg:Number(selected?.co2_total_kg || 0),
           co2SpecificKgM2:Number(selected?.co2_specific_kg_m2 || 0),
+          rerPercent:Number(selected?.rer_percent || 0),
+          onsiteRenewablePercent:Number(selected?.onsite_renewable_percent || 0),
+          rerStatus:selected?.rer_status || null,
           energyClass:selected?.energy_class,
           designHeatLoadKw:selected?.design_heat_load_kw ?? null,
         },
@@ -3004,6 +3409,9 @@
           finalEnergyKwh:Number(selected?.final_energy_kwh || 0),
           primarySpecificKwhM2:Number(selected?.primary_specific_kwh_m2 || 0),
           co2SpecificKgM2:Number(selected?.co2_specific_kg_m2 || 0),
+          rerPercent:Number(selected?.rer_percent || 0),
+          onsiteRenewablePercent:Number(selected?.onsite_renewable_percent || 0),
+          rerStatus:selected?.rer_status || null,
           energyClass:selected?.energy_class,
           designHeatLoadKw:selected?.design_heat_load_kw ?? null,
         },
@@ -3044,14 +3452,19 @@
 
   async function runAnalysis() {
     syncTechnicalForm();
+    syncGoalField();
+    syncNzebPolicy();
     if (!validatePage("goal")) return;
     resetRunUi();
+    resetTeoControlUi();
     baselineResult = null;
     optimizationResult = null;
     lastPlan = null;
     branchResults = [];
     const runId = makeOptimizerRunId();
-    showPage("run");
+    const runButton = $("#runAnalysis");
+    if (runButton) runButton.disabled = true;
+    setTeoControlPhase(1,"Analizez configurația");
     log(`RUN · ${runId}`);
 
     try {
@@ -3070,6 +3483,7 @@
       );
       paintBaselineSummary(baselineResult, `Baseline optimizare · Input ${shortInputFingerprint(baselineInputFingerprint)}`);
       stage("baseline","done","gata");
+      setTeoControlPhase(2,"Pregătesc explorarea");
       log(`Baseline gata: ${fmt(baselineResult.final_energy_kwh)} kWh/an · necesar ${fmt(baselineResult.design_heat_load_kw,1)} kW.`);
       log(`WORKER FLOW · pauză ${(TEO_SERVER_PROFILE.cooldownMs / 1000).toFixed(1)} s înainte de PLAN pentru a reduce presiunea cumulată pe Python Worker.`);
       await sleep(TEO_SERVER_PROFILE.cooldownMs);
@@ -3104,6 +3518,20 @@
         annual_bill_target_lei:Number(formPayload._annual_bill_target_lei || 0),
         max_payback_years:Number(formPayload._max_payback_years || 0),
       };
+      const compliancePolicy = {
+        enabled:nzebConstraintEnabled(),
+        target:lastPlan?.kernel?.compliance_target || baselineResult?.nzeb_target || null,
+      };
+      if (compliancePolicy.enabled && !compliancePolicy.target) {
+        throw new Error(
+          "Ținta nZEB este activă, dar pragurile normative nu au putut fi determinate pentru localitatea/clădirea selectată."
+        );
+      }
+      log(
+        compliancePolicy.enabled
+          ? "CONSTRAINT · nZEB activ: TEO explorează economic, apoi reoptimizează în domeniul Eprim + CO₂ + SRE onsite. RER total este calculat, iar garanțiile de origine rămân dovadă externă."
+          : "CONSTRAINT · nZEB dezactivat: TEO optimizează strict obiectivul economic ales."
+      );
       log(`TEO V4 local: ${searchPointCount * branchIds.length} evaluări planificate în browser, fără request HTTP per candidat.`);
       const localSearch = await runTeoV4Worker({
         kernel:lastPlan.kernel,
@@ -3113,6 +3541,7 @@
         mode:lastPlan.economicMode || formPayload._optimization_mode || "auto_economic",
         goals,
         baselineAnnualBillLei:Number(baselineResult?.annual_cost_lei || 0),
+        compliancePolicy,
       });
       const candidateRows = Array.isArray(localSearch.candidateRows)
         ? localSearch.candidateRows
@@ -3131,6 +3560,12 @@
       if (!candidateRows.length) {
         throw new Error("TEO V4 nu a produs candidați valizi pentru verificarea canonică.");
       }
+      updateTeoStats({
+        evaluated:branchFastEvaluations,
+        compliant:Number(localSearch.availableCompliantCount || 0),
+        finalists:Number(localSearch.verificationCount || localSearch.verificationRows?.length || 0),
+      });
+      setTeoControlPhase(compliancePolicy.enabled ? 4 : 3, compliancePolicy.enabled ? "Reoptimizez soluțiile conforme" : "Construiesc frontiera");
       stage("branches","done",`${branchFastEvaluations} evaluări locale`);
       log(
         `TEO V4 local gata în ${Number(localSearch.calculationTimeMs || 0).toFixed(1)} ms · ${localSourceCandidateCount} candidați valizi · ${refinementEvaluations} evaluări de rafinare · frontiera locală ${Number(localSearch.frontierCount || 0)} · ${candidateRows.length} candidați diverși trimiși la verificare.`
@@ -3146,6 +3581,8 @@
       log(
         `Shortlist canonic selectat local: ${targets.length} finaliști din ${candidateRows.length} candidați diverși · Pareto ${Number(localSearch.frontierCount || 0)} · fără request Python pentru ranking.`
       );
+      updateTeoStats({finalists:targets.length});
+      setTeoControlPhase(5,"Verific finalistul cu RBPE");
 
       const verifiedRows = [];
       let verifyFailures = 0;
@@ -3184,6 +3621,7 @@
             targets,
             mode:lastPlan.economicMode || formPayload._optimization_mode || "auto_economic",
             goals,
+            compliancePolicy,
             maxVerifications:verifyLimit,
           });
           log(
@@ -3232,6 +3670,7 @@
         refinementEvaluations,
         browserSearchMethod,
         adaptiveVerification,
+        compliancePolicy,
         runId,
       });
       stage("finalize","done","gata");
@@ -3239,18 +3678,36 @@
       log(`Finalizat: ${opt.evaluatedCandidates || 0} candidați economici · ${opt.fullEngineVerifications || 0} verificări complete · status economic ${opt.economicStatus || "necunoscut"}.`);
 
       renderReport();
-      const doneBits = [];
-      if (opt.evaluatedCandidates != null) doneBits.push(`${opt.evaluatedCandidates} candidați evaluați`);
-      if (opt.fullEngineVerifications != null) doneBits.push(`${opt.fullEngineVerifications} verificări finale`);
-      $("#doneMeta").textContent = doneBits.length ? doneBits.join(" · ") + "." : "Configurațiile au fost evaluate și rezultatul a fost verificat.";
-      showPage("done");
+      paintBaselineSummary(
+        optimizationSummaryForPersistentBar(),
+        "Rezultat TEO verificat · după intervenții."
+      );
+      renderTeoResult();
+      renderProgressHistory();
+      const finalSummary = {
+        ...(baselineResult || {}),
+        primary_specific_kwh_m2:opt.parametricEvaluation?.primarySpecificKwhM2,
+        co2_specific_kg_m2:opt.parametricEvaluation?.co2SpecificKgM2,
+        rer_percent:opt.parametricEvaluation?.rerPercent,
+        onsite_renewable_percent:opt.parametricEvaluation?.onsiteRenewablePercent,
+        _summary_scope:"teo_final",
+      };
+      renderNzebStatus(finalSummary);
+      log("UI · rezultatul TEO rămâne pe pagina 5; raportul complet este disponibil în pasul 6.");
     } catch (error) {
       Object.entries(stageEls).forEach(([name, el]) => {
         if (el.classList.contains("is-active")) stage(name,"error","eroare");
       });
       log("EROARE · " + (error?.message || String(error)));
-      $("#errorText").textContent = error?.message || "A apărut o eroare neașteptată.";
-      showPage("error");
+      const panel = $(".ed-teo-control-panel");
+      panel?.classList.remove("is-running","is-done");
+      const state = $("#edTeoRunState");
+      if (state) state.textContent = "Eroare";
+      const message = $("#edNzebMessage");
+      if (message) message.querySelector("span").textContent = error?.message || "Optimizarea TEO nu a putut fi finalizată.";
+      showPage("goal");
+    } finally {
+      if (runButton) runButton.disabled = false;
     }
   }
 
@@ -3312,6 +3769,37 @@
         ` : ""}
       </section>
     `;
+
+    const nzebTarget = baselineResult?.nzeb_target || null;
+    const rerTotal = Number(
+      parametric.rerPercent
+      ?? scenario.rer_percent
+      ?? 0
+    );
+    const rerOnsite = Number(
+      parametric.onsiteRenewablePercent
+      ?? scenario.onsite_renewable_percent
+      ?? 0
+    );
+    const nzebTechnicalPass = Boolean(
+      nzebTarget
+      && candidateAvailableNzebPass(parametric, nzebTarget)
+    );
+    if (nzebTarget) {
+      html += `
+        <section class="ed-report-section">
+          <h2>nZEB · verificare tehnică modelată</h2>
+          <p>Home Lab verifică numeric partea pe care o poate demonstra din model. Garanțiile de origine și orice cerință suplimentară 2026 stabilită prin act oficial rămân verificări documentare externe.</p>
+          <div class="ed-metrics">
+            ${metric("Eprim final", parametric.primarySpecificKwhM2 == null ? "—" : fmt(parametric.primarySpecificKwhM2,1) + " / " + fmt(nzebTarget.primary_energy_kwh_m2_year,1) + " kWh/m²·an")}
+            ${metric("CO₂ final", parametric.co2SpecificKgM2 == null ? "—" : fmt(parametric.co2SpecificKgM2,1) + " / " + fmt(nzebTarget.co2_kg_m2_year,1) + " kgCO₂/m²·an")}
+            ${metric("RER tehnic", fmt(rerTotal,1) + "% / ≥" + fmt(nzebTarget.renewable_total_minimum_percent ?? 30,0) + "%")}
+            ${metric("SRE onsite", fmt(rerOnsite,1) + "% / ≥" + fmt(nzebTarget.renewable_onsite_minimum_percent ?? 10,0) + "%")}
+          </div>
+          <p class="ed-hint"><b>Status:</b> ${nzebTechnicalPass ? "pragurile tehnice controlabile de TEO sunt atinse" : "cel puțin un prag tehnic controlabil de TEO nu este atins"}. RER total este raportat separat; pentru conformare juridică completă, dovada pentru minimum ${fmt(nzebTarget.renewable_guarantee_of_origin_minimum_percent ?? 20,0)}% prin garanții de origine se verifică separat.</p>
+        </section>
+      `;
+    }
 
     const env = engineering.envelope || {};
     const bridges = engineering.thermal_bridges || {};
@@ -3438,7 +3926,12 @@
 
   $("#runAnalysis").addEventListener("click", runAnalysis);
   $("#openReport").addEventListener("click", () => showPage("report"));
-  $("#reportBack").addEventListener("click", () => showPage("done"));
+  $("#openReportFromGoal")?.addEventListener("click", () => {
+    if (!optimizationResult) return;
+    renderReport();
+    showPage("report");
+  });
+  $("#reportBack").addEventListener("click", () => showPage("goal"));
   $("#tryAgain").addEventListener("click", () => showPage("goal"));
 
   function openLog() {
@@ -3515,6 +4008,8 @@
     });
 
   syncGoalField();
+  syncNzebPolicy();
+  resetTeoControlUi();
   updateGeometryDisplay(true);
   applyHeatingDefaults();
 
@@ -3525,6 +4020,7 @@
     updateGeometryDisplay(false);
     syncGoalField();
     syncChoiceGroupSelections();
+    syncNzebPolicy();
   } else {
     syncRenewableVisibility();
   }

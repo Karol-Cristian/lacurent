@@ -381,6 +381,7 @@ function renewableAndCarriers(kernel, measures, branch, balance) {
   const auxiliary = num(branch.heating_auxiliary_kwh_year);
 
   let dhwFinal = 0;
+  let solarThermalUsed = 0;
   let pvSelf = 0;
   let pvRegulatedSelf = 0;
   let pvHouseholdSelf = 0;
@@ -406,6 +407,7 @@ function renewableAndCarriers(kernel, measures, branch, balance) {
     const thermalHsol = num(renew.solar_thermal_hsol_kwh_m2_month?.[i]);
     const thermalAvailable = thermalHsol * thermalArea * thermalEfficiency;
     const thermalUsed = Math.min(thermalAvailable, row.dhwUseful);
+    solarThermalUsed += thermalUsed;
     const dhwBackupUseful = Math.max(row.dhwUseful - thermalUsed, 0);
     const monthDhwFinal = dhwBackupUseful * num(branch.dhw_final_per_useful);
     dhwFinal += monthDhwFinal;
@@ -455,7 +457,8 @@ function renewableAndCarriers(kernel, measures, branch, balance) {
     householdGridImport,
     heatingFinal,
     coolingFinal,
-    dhwFinal
+    dhwFinal,
+    solarThermalUsed
   };
 }
 
@@ -500,6 +503,113 @@ function primaryAndCo2(kernel, carriers) {
     primarySpecific: primary / Math.max(num(kernel.area_m2), EPS),
     co2Total: co2,
     co2Specific: co2 / Math.max(num(kernel.area_m2), EPS),
+  };
+}
+
+function renewableShare(kernel, energy) {
+  let deliveredRenewable = 0;
+  let nonrenewable = 0;
+  for (const [carrier, valueRaw] of Object.entries(energy?.net || {})) {
+    const value = Math.max(num(valueRaw), 0);
+    if (value <= EPS) continue;
+    const factors = kernel.carrier_factors?.[carrier];
+    if (!factors) return null;
+    const fRen = Number(factors.renewable_primary_energy_factor);
+    const fNren = Number(factors.nonrenewable_primary_energy_factor);
+    if (!Number.isFinite(fRen) || !Number.isFinite(fNren)) return null;
+    deliveredRenewable += value * fRen;
+    nonrenewable += value * fNren;
+  }
+  // Same bounded RBPE perimeter as the canonical engine. PV household use and
+  // exported PV are excluded; solar thermal is credited only when it serves DHW.
+  const pvOnsite = Math.max(num(energy?.pvRegulatedSelf), 0);
+  const solarOnsite = Math.max(num(energy?.solarThermalUsed), 0);
+  const onsiteRenewable = pvOnsite + solarOnsite;
+  const renewablePrimary = deliveredRenewable + onsiteRenewable;
+  const totalPrimary = renewablePrimary + nonrenewable;
+  return {
+    status:"bounded_conservative_technical_lower_bound_not_certificate",
+    renewablePrimary:round(renewablePrimary, 4),
+    nonrenewablePrimary:round(nonrenewable, 4),
+    totalPrimary:round(totalPrimary, 4),
+    rerPercent:round(totalPrimary > EPS ? 100 * renewablePrimary / totalPrimary : 0, 4),
+    onsitePercent:round(totalPrimary > EPS ? 100 * onsiteRenewable / totalPrimary : 0, 4),
+    deliveredRenewablePrimary:round(deliveredRenewable, 4),
+    onsiteRenewablePrimary:round(onsiteRenewable, 4),
+    pvRegulatedPrimary:round(pvOnsite, 4),
+    solarThermalPrimary:round(solarOnsite, 4),
+    pvExportedExcluded:round(Math.max(num(energy?.pvExport), 0), 4),
+    pvHouseholdExcluded:round(Math.max(num(energy?.pvHouseholdSelf), 0), 4),
+  };
+}
+
+function candidateCompliance(kernel, indicators, rer) {
+  const target = kernel?.compliance_target || null;
+  if (!target) {
+    return {
+      available:false,
+      availablePass:false,
+      primaryPass:null,
+      co2Pass:null,
+      rerPass:null,
+      onsitePass:null,
+      distanceToAvailableCompliance:null,
+      rerStatus:"unavailable",
+      fullLegalCompliance:false,
+    };
+  }
+  const primaryLimit = num(target.primary_energy_kwh_m2_year, Infinity);
+  const co2Limit = num(target.co2_kg_m2_year, Infinity);
+  const rerMinimum = num(target.renewable_total_minimum_percent, 30);
+  const onsiteMinimum = num(target.renewable_onsite_minimum_percent, 10);
+  const goMinimum = num(target.renewable_guarantee_of_origin_minimum_percent, 20);
+  const primary = num(indicators?.primarySpecific, Infinity);
+  const co2 = num(indicators?.co2Specific, Infinity);
+  const rerPercent = num(rer?.rerPercent, -Infinity);
+  const onsitePercent = num(rer?.onsitePercent, -Infinity);
+  const primaryRatio = primaryLimit > EPS ? primary / primaryLimit : Infinity;
+  const co2Ratio = co2Limit > EPS ? co2 / co2Limit : Infinity;
+  const primaryPass = primaryRatio <= 1.000001;
+  const co2Pass = co2Ratio <= 1.000001;
+  const rerPass = rerPercent + 1e-6 >= rerMinimum;
+  const onsitePass = onsitePercent + 1e-6 >= onsiteMinimum;
+  const rerShortfall = rerMinimum > EPS
+    ? Math.max((rerMinimum - rerPercent) / rerMinimum, 0)
+    : 0;
+  const onsiteShortfall = onsiteMinimum > EPS
+    ? Math.max((onsiteMinimum - onsitePercent) / onsiteMinimum, 0)
+    : 0;
+  // The building-side constraint is the part TEO can actually design:
+  // Eprim, CO2 and the minimum onsite renewable share. The remaining legal
+  // renewable share is explicitly tied to guarantees-of-origin evidence and
+  // must not be fabricated as a building-physics decision variable.
+  const technicalPass = primaryPass && co2Pass && onsitePass;
+  return {
+    available:true,
+    availablePass:technicalPass,
+    technicalPass,
+    primaryPass,
+    co2Pass,
+    rerPass,
+    onsitePass,
+    primaryRatio:round(primaryRatio, 6),
+    co2Ratio:round(co2Ratio, 6),
+    rerPercent:round(rerPercent, 4),
+    onsitePercent:round(onsitePercent, 4),
+    rerMinimumPercent:rerMinimum,
+    onsiteMinimumPercent:onsiteMinimum,
+    guaranteeOfOriginMinimumPercent:goMinimum,
+    guaranteeOfOriginEvidenceRequired:true,
+    distanceToAvailableCompliance:round(
+      Math.max(primaryRatio - 1, co2Ratio - 1, onsiteShortfall, 0),
+      6
+    ),
+    modeledRerShortfall:round(rerShortfall, 6),
+    rerStatus:String(rer?.status || "unavailable"),
+    rerMethodologyStatus:String(target.renewable_requirement_status || ""),
+    // The optimizer can verify the technical modeled perimeter, but not legal
+    // guarantees-of-origin evidence or a future 2026 HG threshold.
+    fullLegalCompliance:false,
   };
 }
 
@@ -549,6 +659,9 @@ function evaluate(kernel, branch, measures, baselineBill, id) {
   if (bill == null || !Number.isFinite(bill)) return null;
   const indicators = primaryAndCo2(kernel, energy.net);
   if (!indicators) return null;
+  const rer = renewableShare(kernel, energy);
+  if (!rer) return null;
+  const compliance = candidateCompliance(kernel, indicators, rer);
 
   const saving = baselineBill - bill;
   const payback = capex > EPS && saving > EPS ? capex / saving : null;
@@ -572,7 +685,11 @@ function evaluate(kernel, branch, measures, baselineBill, id) {
       primary_specific_kwh_m2:round(indicators.primarySpecific, 3),
       co2_total_kg:round(indicators.co2Total, 3),
       co2_specific_kg_m2:round(indicators.co2Specific, 3),
+      rer_percent:round(rer.rerPercent, 3),
+      onsite_renewable_percent:round(rer.onsitePercent, 3),
+      rer_status:rer.status,
       energy_class:energyClass(kernel, indicators.primarySpecific),
+      compliance,
       cost_catalog_version:kernel.cost_catalog?.catalog_version || null,
       cost_source:"teo_v4_browser_surrogate",
       commercialization_status:capex > EPS ? "pending_product_catalog" : "raw_only"
@@ -634,18 +751,23 @@ function evenlySample(rows, limit) {
   return out;
 }
 
-function shortlist(rows, mode, goals) {
+function shortlist(rows, mode, goals, compliancePolicy = null) {
   const selected = new Map();
-  const frontier = paretoRows(rows);
+  const complianceEnabled = Boolean(compliancePolicy?.enabled);
+  const compliantRows = complianceEnabled
+    ? rows.filter(row => row?.candidate?.compliance?.availablePass === true)
+    : [];
+  const workingRows = complianceEnabled && compliantRows.length ? compliantRows : rows;
+  const frontier = paretoRows(workingRows);
   evenlySample(frontier, 256).forEach(row => selected.set(row.candidate.candidate_id, row));
 
-  addTop(selected, rows, (a,b) => num(a.candidate.annual_bill_lei) - num(b.candidate.annual_bill_lei), 40);
-  addTop(selected, rows, (a,b) => num(b.candidate.annual_saving_lei) - num(a.candidate.annual_saving_lei), 40);
-  addTop(selected, rows.filter(r => r.candidate.annual_saving_lei > 0), (a,b) =>
+  addTop(selected, workingRows, (a,b) => num(a.candidate.annual_bill_lei) - num(b.candidate.annual_bill_lei), 40);
+  addTop(selected, workingRows, (a,b) => num(b.candidate.annual_saving_lei) - num(a.candidate.annual_saving_lei), 40);
+  addTop(selected, workingRows.filter(r => r.candidate.annual_saving_lei > 0), (a,b) =>
     num(a.candidate.payback_years, Infinity) - num(b.candidate.payback_years, Infinity), 40);
 
   for (const years of AUTO_HORIZONS) {
-    addTop(selected, rows, (a,b) => {
+    addTop(selected, workingRows, (a,b) => {
       const na = num(a.candidate.annual_saving_lei) * years - num(a.candidate.capex_lei);
       const nb = num(b.candidate.annual_saving_lei) * years - num(b.candidate.capex_lei);
       return nb - na;
@@ -653,7 +775,7 @@ function shortlist(rows, mode, goals) {
   }
 
   if (mode === "auto_economic") {
-    const regretPool = frontier.length ? frontier : rows;
+    const regretPool = frontier.length ? frontier : workingRows;
     const regretMetrics = robustRegretMetricsRows(regretPool);
     addTop(selected, regretPool, (a,b) => {
       const am = regretMetrics.get(String(a.candidate.candidate_id));
@@ -667,24 +789,24 @@ function shortlist(rows, mode, goals) {
     }, 64);
   }
 
-  const branchIds = [...new Set(rows.map(row => row.branchId))];
+  const branchIds = [...new Set(workingRows.map(row => row.branchId))];
   for (const branchId of branchIds) {
-    const branchRows = rows.filter(row => row.branchId === branchId);
+    const branchRows = workingRows.filter(row => row.branchId === branchId);
     addTop(selected, branchRows, (a,b) => num(a.candidate.annual_bill_lei) - num(b.candidate.annual_bill_lei), 20);
     addTop(selected, branchRows, (a,b) => num(a.candidate.capex_lei) - num(b.candidate.capex_lei), 12);
   }
 
   if (mode === "investment_budget") {
     const budget = num(goals.investment_budget_lei, Infinity);
-    addTop(selected, rows.filter(r => num(r.candidate.capex_lei) <= budget + 0.01),
+    addTop(selected, workingRows.filter(r => num(r.candidate.capex_lei) <= budget + 0.01),
       (a,b) => num(a.candidate.annual_bill_lei) - num(b.candidate.annual_bill_lei), 64);
   } else if (mode === "annual_bill_target") {
     const target = num(goals.annual_bill_target_lei, -Infinity);
-    addTop(selected, rows.filter(r => num(r.candidate.annual_bill_lei) <= target + 0.01),
+    addTop(selected, workingRows.filter(r => num(r.candidate.annual_bill_lei) <= target + 0.01),
       (a,b) => num(a.candidate.capex_lei) - num(b.candidate.capex_lei), 64);
   } else if (mode === "max_payback_years") {
     const limit = num(goals.max_payback_years, -Infinity);
-    addTop(selected, rows.filter(r => r.candidate.payback_years != null && num(r.candidate.payback_years) <= limit + 1e-6),
+    addTop(selected, workingRows.filter(r => r.candidate.payback_years != null && num(r.candidate.payback_years) <= limit + 1e-6),
       (a,b) => num(b.candidate.annual_saving_lei) - num(a.candidate.annual_saving_lei), 64);
   }
 
@@ -697,7 +819,7 @@ function shortlist(rows, mode, goals) {
     });
     output = [...keep.values()];
   }
-  return {rows:output, frontierCount:frontier.length};
+  return {rows:output, frontierCount:frontier.length, availableCompliantCount:compliantRows.length};
 }
 
 
@@ -981,16 +1103,27 @@ function hasSearchBounds(bounds) {
   );
 }
 
-function refinementSeeds(rows, mode, goals, count) {
+function refinementSeeds(rows, mode, goals, count, compliancePolicy = null) {
   const chosen = new Map();
-  const frontier = paretoRows(rows);
+  const complianceEnabled = Boolean(compliancePolicy?.enabled);
+  const compliant = complianceEnabled
+    ? rows.filter(row => row?.candidate?.compliance?.availablePass === true)
+    : [];
+  const seedPool = complianceEnabled && compliant.length ? compliant : rows;
+  const frontier = paretoRows(seedPool);
   evenlySample(frontier, Math.min(4, count)).forEach(row => {
     chosen.set(row.candidate.candidate_id, row);
   });
 
-  let ranked = rows.slice();
-  if (mode === "auto_economic") {
-    const pool = frontier.length ? frontier : rows;
+  let ranked = seedPool.slice();
+  if (complianceEnabled && !compliant.length) {
+    ranked.sort((left, right) =>
+      num(left?.candidate?.compliance?.distanceToAvailableCompliance, Infinity)
+      - num(right?.candidate?.compliance?.distanceToAvailableCompliance, Infinity)
+      || objectiveSeedSorter(mode, goals)(left, right)
+    );
+  } else if (mode === "auto_economic") {
+    const pool = frontier.length ? frontier : seedPool;
     const metrics = robustRegretMetricsRows(pool);
     ranked = pool.slice().sort((left, right) => {
       const lm = metrics.get(String(left.candidate.candidate_id));
@@ -1019,13 +1152,14 @@ function refineBranch({
   bounds,
   mode,
   goals,
+  compliancePolicy,
   seen,
   roundIndex,
   baselineBill,
 }) {
   const cfg = LOCAL_REFINEMENT_ROUNDS[roundIndex];
   if (!cfg || !hasSearchBounds(bounds) || !rows.length) return {rows:[], attempts:0};
-  const seeds = refinementSeeds(rows, mode, goals, cfg.seedCount);
+  const seeds = refinementSeeds(rows, mode, goals, cfg.seedCount, compliancePolicy);
   const generated = [];
   let ordinal = 0;
   let attempts = 0;
@@ -1156,6 +1290,7 @@ self.onmessage = event => {
           bounds:searchBounds,
           mode:data.mode || "auto_economic",
           goals:data.goals || {},
+          compliancePolicy:data.compliancePolicy || null,
           seen,
           roundIndex,
           baselineBill,
@@ -1191,7 +1326,12 @@ self.onmessage = event => {
       });
     }
 
-    const reduced = shortlist(allRows, data.mode || "auto_economic", data.goals || {});
+    const reduced = shortlist(
+      allRows,
+      data.mode || "auto_economic",
+      data.goals || {},
+      data.compliancePolicy || null
+    );
     const verificationPlan = verificationPlanRows(
       reduced.rows,
       data.mode || "auto_economic",
@@ -1206,6 +1346,12 @@ self.onmessage = event => {
       verificationCount:verificationPlan.requestedCount,
       verificationStrategy:"browser_rank_plus_pareto_v4",
       sourceCandidateCount:allRows.length,
+      availableCompliantCount:allRows.filter(
+        row => row?.candidate?.compliance?.availablePass === true
+      ).length,
+      shortlistedAvailableCompliantCount:Number(reduced.availableCompliantCount || 0),
+      compliancePolicyEnabled:Boolean(data.compliancePolicy?.enabled),
+      complianceTarget:kernel.compliance_target || null,
       frontierCount:verificationPlan.frontierCount,
       branchStats,
       fastEvaluations:total,
