@@ -80,3 +80,11 @@ jobs:
           done
           curl -fsS "$HOME_LAB_BASE_URL/health" | grep -q '"status":"ok"'
           node scripts/smoke-home-lab-browser.mjs
+
+      - name: Verify production TEO sticky-client recovery
+        env:
+          HOME_LAB_BASE_URL: https://lacurent.com
+          TEO_STICKY_RUNS: 12
+          TEO_FRESH_RUNS: 6
+        run: |
+          node scripts/diagnose-teo-device-affinity.mjs
