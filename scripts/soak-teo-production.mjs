@@ -11,6 +11,15 @@ function percentile(values, p) {
   return sorted[Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1)];
 }
 
+function normalizeSemanticReport(text) {
+  return String(text || "")
+    // Runtime telemetry is deliberately non-deterministic and is not part of
+    // the physical/economic result contract.
+    .replace(/Timp calcul server\s*[:]?\s*[\d.,]+\s*s/gi, "Timp calcul server <runtime>")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 async function runOnce(browser, ordinal) {
   const context = await browser.newContext({viewport:{width:1280,height:900}});
   const page = await context.newPage();
@@ -153,8 +162,10 @@ async function runOnce(browser, ordinal) {
 
     await page.locator("#openReportFromGoal").click();
     await page.locator('[data-page="report"].is-active').waitFor({state:"visible",timeout:10000});
-    const reportText = (await page.locator("#reportBody").innerText()).replace(/\s+/g," ").trim();
-    const digest = crypto.createHash("sha256").update(reportText).digest("hex");
+    const rawReportText = (await page.locator("#reportBody").innerText()).replace(/\s+/g," ").trim();
+    const semanticReportText = normalizeSemanticReport(rawReportText);
+    const rawDigest = crypto.createHash("sha256").update(rawReportText).digest("hex");
+    const digest = crypto.createHash("sha256").update(semanticReportText).digest("hex");
     const snapshot = await page.evaluate(() => ({
       energyClass:String(document.querySelector("#edBaselineClass")?.textContent || "").trim(),
       annualCost:String(document.querySelector("#edBaselineCost")?.textContent || "").trim(),
@@ -167,6 +178,7 @@ async function runOnce(browser, ordinal) {
       ordinal,
       durationMs:performance.now() - started,
       digest,
+      rawDigest,
       snapshot,
       shards:[...new Set(criticalRoutes.map(row => row.shard).filter(Boolean))],
       routeCount:criticalRoutes.length,
@@ -186,7 +198,8 @@ try {
       "TEO soak " + ordinal + "/" + runs
       + " " + Math.round(row.durationMs) + "ms"
       + " shards=" + row.shards.join(",")
-      + " digest=" + row.digest.slice(0,12)
+      + " semantic=" + row.digest.slice(0,12)
+      + " raw=" + row.rawDigest.slice(0,12)
     );
   }
 } finally {
@@ -199,10 +212,12 @@ for (const row of rows.slice(1)) {
     throw new Error("TEO final HUD is non-deterministic: " + JSON.stringify({baseline,row}));
   }
   if (row.digest !== baseline.digest) {
-    throw new Error("TEO final report is non-deterministic: " + JSON.stringify({
+    throw new Error("TEO semantic report is non-deterministic: " + JSON.stringify({
       baseline:baseline.digest,
       ordinal:row.ordinal,
       digest:row.digest,
+      baselineRaw:baseline.rawDigest,
+      raw:row.rawDigest,
     }));
   }
 }
@@ -214,6 +229,8 @@ console.log(JSON.stringify({
   p50Ms:Math.round(percentile(durations,50)),
   p95Ms:Math.round(percentile(durations,95)),
   maxMs:Math.round(Math.max(...durations)),
-  digest:baseline.digest,
+  semanticDigest:baseline.digest,
+  rawDigest:baseline.rawDigest,
+  rawDigestVariants:new Set(rows.map(row => row.rawDigest)).size,
   snapshot:baseline.snapshot,
 }, null, 2));
