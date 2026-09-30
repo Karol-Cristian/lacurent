@@ -45,8 +45,8 @@ def test_editorial_exposes_exact_rbpe_input_identity_and_clean_reset():
 
     # Cache busting is deliberate: browsers must not keep running the old
     # persistence code after the deploy.
-    assert "/static/home-lab-editorial.js?v=61" in template
-    assert "/static/home-lab-editorial.css?v=32" in template
+    assert "/static/home-lab-editorial.js?v=62" in template
+    assert "/static/home-lab-editorial.css?v=33" in template
 
 
 def test_privacy_opt_out_clears_editorial_v2_storage():
@@ -114,6 +114,7 @@ def test_editorial_exposes_modeled_impact_without_claiming_measured_savings():
     assert "modelat · nu măsurat" in template
     assert "edImpactHomes" in template
     assert "edImpactEnergy" in template
+    assert "edImpactMoney" in template
     assert "edImpactCapex" in template
     assert "edImpactPayback" in template
 
