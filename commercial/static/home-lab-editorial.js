@@ -4,6 +4,7 @@
   if (!root || !form) return;
 
   const $ = selector => document.querySelector(selector);
+  const TEO_ADAPTIVE_AUDIT = new URLSearchParams(window.location.search).get("teo_audit") === "1";
   const EDITORIAL_DRAFT_VERSION = 2;
   const CALCULATION_MODEL_VERSION = "rbpe-editorial-2026-09-29.1";
   const storageKey = `lacurent-home-lab-editorial-v2:${root.dataset.partnerId || "official"}`;
@@ -66,14 +67,14 @@
   // 1 BASELINE + 1 PLAN kernel baseline + VERIFY. PRODUCT is a later workflow.
   // Raise maxCanonicalPasses later when the execution environment has more headroom.
   const TEO_SERVER_PROFILE = Object.freeze({
-    name:"cloudflare-adaptive-flow",
-    maxCanonicalPasses:5,
+    name:TEO_ADAPTIVE_AUDIT ? "adaptive-audit-full-eight" : "cloudflare-adaptive-flow",
+    maxCanonicalPasses:TEO_ADAPTIVE_AUDIT ? 10 : 5,
     minVerifyPasses:1,
-    maxVerifyPasses:3,
+    maxVerifyPasses:TEO_ADAPTIVE_AUDIT ? 8 : 3,
     maxProductPasses:0,
     heavyRetries:0,
-    cooldownMs:1800,
-    flowPollMs:450,
+    cooldownMs:TEO_ADAPTIVE_AUDIT ? 50 : 1800,
+    flowPollMs:TEO_ADAPTIVE_AUDIT ? 25 : 450,
   });
 
   let current = "intro";
@@ -3600,6 +3601,17 @@
         continueVerification:true,
         reason:"not_started",
       };
+      let adaptiveAuditStop = null;
+      if (TEO_ADAPTIVE_AUDIT) {
+        window.__TEO_ADAPTIVE_AUDIT__ = {
+          status:"running",
+          verificationTargetIds:verifyTargets.map(row => String(row?.candidate?.candidate_id || "")),
+          prefixStop:null,
+          fullWinnerId:null,
+          fullVerifiedCount:0,
+        };
+        log("AUDIT · adaptive early-stop dezactivat ca acțiune; verific toți cei 8 finaliști și compar winner-ul prefixului cu winner-ul complet.");
+      }
 
       const flowStart = await startTeoWorkerFlow(runId, verifyLimit);
       log(
@@ -3632,7 +3644,22 @@
           log(
             `ADAPTIVE VERIFY · ${adaptiveVerification.reason} · exact ${verifiedRows.length}/${verifyLimit}.`
           );
-          if (!adaptiveVerification.continueVerification) break;
+          if (!adaptiveVerification.continueVerification && TEO_ADAPTIVE_AUDIT && !adaptiveAuditStop) {
+            const prefixSelection = selectOptimizationCandidateLocal(
+              verifiedRows.map(row => row?.candidate).filter(Boolean),
+              lastPlan.economicMode || formPayload._optimization_mode || "auto_economic",
+              goals,
+              compliancePolicy
+            );
+            adaptiveAuditStop = {
+              verifiedCount:verifiedRows.length,
+              reason:adaptiveVerification.reason,
+              winnerId:String(prefixSelection?.selected?.candidate_id || ""),
+            };
+            window.__TEO_ADAPTIVE_AUDIT__.prefixStop = adaptiveAuditStop;
+            log(`AUDIT · early-stop ar fi oprit la ${verifiedRows.length}/${verifyLimit} cu winner ${adaptiveAuditStop.winnerId}.`);
+          }
+          if (!adaptiveVerification.continueVerification && !TEO_ADAPTIVE_AUDIT) break;
           if (
             verified?.workerFlow?.storage === "none"
             && i + 1 < verifyTargets.length
@@ -3656,6 +3683,28 @@
 
       if (!verifiedRows.length || verifyFailures > 0) {
         throw new Error("Setul de verificări RBPE este incomplet. TEO nu publică un rezultat dintr-un subset parțial.");
+      }
+
+      if (TEO_ADAPTIVE_AUDIT) {
+        const fullSelection = selectOptimizationCandidateLocal(
+          verifiedRows.map(row => row?.candidate).filter(Boolean),
+          lastPlan.economicMode || formPayload._optimization_mode || "auto_economic",
+          goals,
+          compliancePolicy
+        );
+        const fullWinnerId = String(fullSelection?.selected?.candidate_id || "");
+        window.__TEO_ADAPTIVE_AUDIT__ = {
+          ...window.__TEO_ADAPTIVE_AUDIT__,
+          status:"complete",
+          prefixStop:adaptiveAuditStop,
+          fullWinnerId,
+          fullVerifiedCount:verifiedRows.length,
+          matches:adaptiveAuditStop ? adaptiveAuditStop.winnerId === fullWinnerId : null,
+          verifiedWinnerIds:verifiedRows.map(row => String(row?.candidate?.candidate_id || "")),
+        };
+        log(
+          `AUDIT · full ${verifiedRows.length}/${verifyLimit} winner ${fullWinnerId} · early-stop ${adaptiveAuditStop?.winnerId || "nu s-a activat"} · match ${window.__TEO_ADAPTIVE_AUDIT__.matches}.`
+        );
       }
 
       log(
