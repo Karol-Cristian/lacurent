@@ -2,6 +2,7 @@ import { chromium } from "playwright";
 
 const baseUrl = process.env.HOME_LAB_BASE_URL || process.env.STAGING_URL;
 const adaptiveAudit = process.env.TEO_ADAPTIVE_AUDIT === "1";
+const adaptiveAuditObjective = process.env.TEO_ADAPTIVE_AUDIT_OBJECTIVE || "auto_economic";
 const adaptiveAuditQuery = adaptiveAudit ? "?teo_audit=1" : "";
 if (!baseUrl) throw new Error("HOME_LAB_BASE_URL or STAGING_URL is required");
 
@@ -538,6 +539,22 @@ try {
     throw new Error("Existing-home optional nZEB contract failed: " + JSON.stringify(existingNzeb));
   }
 
+  if (adaptiveAudit) {
+    const supported = new Set(["auto_economic","investment_budget","max_payback_years"]);
+    if (!supported.has(adaptiveAuditObjective)) {
+      throw new Error("Unsupported adaptive audit objective: " + adaptiveAuditObjective);
+    }
+    await page.locator(
+      `[data-choice-group="_optimization_mode"] [data-value="${adaptiveAuditObjective}"]`
+    ).click();
+    if (adaptiveAuditObjective === "investment_budget") {
+      await page.locator("#edGoalBudget").fill("15000");
+    } else if (adaptiveAuditObjective === "max_payback_years") {
+      await page.locator("#edGoalPayback").fill("5");
+    }
+    console.log("TEO_ADAPTIVE_AUDIT_OBJECTIVE=" + adaptiveAuditObjective);
+  }
+
   const editorialProductRequests = [];
   const productRequestListener = request => {
     try {
@@ -577,7 +594,7 @@ try {
   await expectVisible("#edTeoResult");
   if (adaptiveAudit) {
     const audit = await page.evaluate(() => window.__TEO_ADAPTIVE_AUDIT__ || null);
-    console.log("TEO_ADAPTIVE_AUDIT_RESULT=" + JSON.stringify(audit));
+    console.log("TEO_ADAPTIVE_AUDIT_RESULT=" + JSON.stringify({objective:adaptiveAuditObjective,...audit}));
     if (!audit || audit.status !== "complete" || audit.fullVerifiedCount !== 8) {
       throw new Error("Adaptive early-stop audit did not complete all 8 finalists: " + JSON.stringify(audit));
     }
@@ -625,12 +642,14 @@ try {
 
   const editorialRunLog = await page.locator("#runLog").innerText();
   const verifyMatches = editorialRunLog.match(/VERIFY\s+\d+\/\d+/g) || [];
+  const verifyTraceValid = adaptiveAudit
+    ? verifyMatches.length === 8
+    : (verifyMatches.length >= 2 && verifyMatches.length <= 3);
   if (!editorialRunLog.includes("WORKER FLOW") ||
       !editorialRunLog.includes("ADAPTIVE VERIFY") ||
       !editorialRunLog.includes("TEO PARAMETRIC") ||
       !editorialRunLog.includes("REPORT") ||
-      verifyMatches.length < 2 ||
-      verifyMatches.length > 3) {
+      !verifyTraceValid) {
     throw new Error(
       "Editorial adaptive TEO trace is incomplete: " +
       JSON.stringify({verifyCount:verifyMatches.length, log:editorialRunLog})
