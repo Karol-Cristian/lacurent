@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.impact import normalize_impact_payload, public_impact_summary
+from commercial.app.impact import normalize_impact_payload, public_impact_summary
 
 
 def test_normalize_impact_payload_derives_savings_and_payback_server_side():
