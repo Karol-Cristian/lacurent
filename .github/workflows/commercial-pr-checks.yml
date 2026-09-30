@@ -79,4 +79,7 @@ jobs:
             sleep 1
           done
           curl -fsS "$HOME_LAB_BASE_URL/health" | grep -q '"status":"ok"'
-          node scripts/smoke-home-lab-browser.mjs
+          for objective in auto_economic investment_budget max_payback_years; do
+            echo "Adaptive audit objective: $objective"
+            TEO_ADAPTIVE_AUDIT_OBJECTIVE="$objective" node scripts/smoke-home-lab-browser.mjs
+          done
