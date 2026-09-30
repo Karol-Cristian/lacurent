@@ -945,7 +945,9 @@ def test_private_teo_topology_is_sharded_and_route_isolated() -> None:
     assert 'TEO_SOAK_RUNS: "10"' in workflow
     assert "private-teo-sharded" in soak
     assert "serverErrors.length" in soak
-    assert "TEO final report is non-deterministic" in soak
+    assert "TEO semantic report is non-deterministic" in soak
+    assert "normalizeSemanticReport" in soak
+    assert "Timp calcul server <runtime>" in soak
 
     worker_pyproject = Path("commercial/cloudflare-worker/pyproject.toml").read_text(
         encoding="utf-8"
