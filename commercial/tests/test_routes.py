@@ -171,7 +171,7 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'data-page="report"' in page.text
     assert 'data-page="renewables"' in page.text
     assert "/static/home-lab-editorial.css?v=24" in page.text
-    assert "/static/home-lab-editorial.js?v=53" in page.text
+    assert "/static/home-lab-editorial.js?v=54" in page.text
     assert "/static/home-lab-3d.js" not in page.text
     assert 'id="edBaselineClass"' in page.text
     assert 'id="edClassReferenceOpen"' in page.text
@@ -2305,7 +2305,7 @@ def test_editorial_server_compute_budget_caps_only_full_engine_passes() -> None:
     assert "maxCanonicalPasses:5" in source
     assert "maxVerifyPasses:3" in source
     assert "maxProductPasses:0" in source
-    assert "heavyRetries:0" in source
+    assert "heavyRetries:2" in source
     assert "cooldownMs:1800" in source
     assert "const verifyTargets = targets.slice(0, verifyLimit)" in source
     assert "adaptiveVerificationDecisionLocal" in source
