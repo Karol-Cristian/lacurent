@@ -11,6 +11,8 @@
   const legacyStorageKey = `lacurent-home-lab-editorial-v1:${root.dataset.partnerId || "official"}`;
   const legacyStorageHistoryKey = `${legacyStorageKey}:history`;
   const classicStorageKey = `lacurent-home-lab-next-v1:${root.dataset.partnerId || "official"}`;
+  const impactProjectStorageKey = `${storageKey}:impact-project-id`;
+  const authTokenStorageKey = "lacurent_auth_token";
   const localAutosaveAllowed = () => window.LaCurentPrivacy?.allowsLocalAutosave?.() === true;
   const pages = [...root.querySelectorAll("[data-page]")];
   const wizardOrder = ["intro", "house", "envelope", "systems", "renewables", "goal"];
@@ -219,6 +221,7 @@
       legacyStorageKey,
       legacyStorageHistoryKey,
       classicStorageKey,
+      impactProjectStorageKey,
     ].forEach(key => localStorage.removeItem(key));
   }
 
@@ -1865,6 +1868,192 @@
     // parse and cache the ~6.5 MB Romanian locality registry on every isolate.
     data.set("locality_id", climateTokenForSelectedLocality());
     return data;
+  }
+
+  function impactProjectId() {
+    try {
+      const existing = String(localStorage.getItem(impactProjectStorageKey) || "").trim();
+      if (existing) return existing;
+      const created = typeof crypto?.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `editorial-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      localStorage.setItem(impactProjectStorageKey, created);
+      return created;
+    } catch (_) {
+      return `editorial-session-${Date.now()}`;
+    }
+  }
+
+  function impactAuthToken() {
+    try {
+      return String(localStorage.getItem(authTokenStorageKey) || "").trim();
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function impactNumber(value, maximumFractionDigits = 0) {
+    const number = Number(value);
+    return Number.isFinite(number)
+      ? number.toLocaleString("ro-RO", {maximumFractionDigits})
+      : "—";
+  }
+
+  function renderImpactSummary(summary) {
+    const homes = $("#edImpactHomes");
+    const energyNode = $("#edImpactEnergy");
+    const capexNode = $("#edImpactCapex");
+    const paybackNode = $("#edImpactPayback");
+    const note = $("#edImpactNote");
+    if (!homes || !energyNode || !capexNode || !paybackNode) return;
+
+    if (!summary?.available) {
+      homes.textContent = "—";
+      energyNode.textContent = "—";
+      capexNode.textContent = "—";
+      paybackNode.textContent = "—";
+      if (note) {
+        note.textContent = "Agregatul live nu este disponibil în acest mediu. În producție include cel mult ultima analiză salvată pentru fiecare casă.";
+      }
+      return;
+    }
+
+    homes.textContent = impactNumber(summary.savedHouses, 0);
+    energyNode.textContent = impactNumber(Number(summary.potentialSavingKwhYear || 0) / 1000, 1);
+    capexNode.textContent = impactNumber(summary.estimatedCapexLei, 0);
+    paybackNode.textContent = summary.globalSimplePaybackYears == null
+      ? "—"
+      : impactNumber(summary.globalSimplePaybackYears, 1);
+    if (note) {
+      note.textContent = "Agregat din ultima analiză salvată per casă. Potențial tehnico-economic modelat, nu economie măsurată sau audit energetic.";
+    }
+  }
+
+  async function loadImpactSummary() {
+    try {
+      const response = await fetch("/api/home-lab/impact/summary", {
+        headers:{"Accept":"application/json"},
+        cache:"no-store",
+      });
+      renderImpactSummary(await response.json());
+    } catch (_) {
+      renderImpactSummary({available:false});
+    }
+  }
+
+  function impactCo2TotalKg(result, heatedArea) {
+    const direct = Number(result?.co2_total_kg ?? result?.co2TotalKg);
+    if (Number.isFinite(direct) && direct >= 0) return direct;
+    const specific = Number(result?.co2_specific_kg_m2 ?? result?.co2SpecificKgM2);
+    return Number.isFinite(specific) && Number.isFinite(heatedArea) && heatedArea > 0
+      ? specific * heatedArea
+      : null;
+  }
+
+  function buildImpactSavePayload() {
+    if (!baselineResult || !optimizationResult) return null;
+    const opt = optimizationResult.optimization || {};
+    const parametric = opt.parametricEvaluation || {};
+    const scenario = optimizationResult.scenario || {};
+    const heatedArea = parseDecimal($("#heatedArea")?.value);
+    const optimizedFinalEnergy = Number(
+      parametric.finalEnergyKwh
+      ?? scenario.final_energy_kwh
+    );
+    const optimizedAnnualCost = Number(
+      parametric.annualBillLei
+      ?? scenario.annual_cost_lei
+    );
+    const baselineFinalEnergy = Number(baselineResult.final_energy_kwh);
+    const baselineAnnualCost = Number(baselineResult.annual_cost_lei);
+    const capex = Number(opt.capexLei);
+    if (![optimizedFinalEnergy, optimizedAnnualCost, baselineFinalEnergy, baselineAnnualCost, capex].every(Number.isFinite)) {
+      return null;
+    }
+    const optimizedCo2 = Number.isFinite(Number(parametric.co2TotalKg))
+      ? Number(parametric.co2TotalKg)
+      : impactCo2TotalKg(
+          {
+            co2_total_kg:scenario.co2_total_kg,
+            co2_specific_kg_m2:parametric.co2SpecificKgM2 ?? scenario.co2_specific_kg_m2,
+          },
+          heatedArea
+        );
+
+    return {
+      projectId:impactProjectId(),
+      projectName:`Casa ${String(baselineResult.locality || $("#localityInput")?.value || "mea").trim() || "mea"}`,
+      baselineInputFingerprint,
+      teoInputFingerprint,
+      calculationModelVersion:CALCULATION_MODEL_VERSION,
+      methodologyVersion:String(scenario.methodology_version || baselineResult.methodology_version || ""),
+      heatedAreaM2:Number.isFinite(heatedArea) ? heatedArea : null,
+      baseline:{
+        finalEnergyKwh:baselineFinalEnergy,
+        annualCostLei:baselineAnnualCost,
+        co2KgYear:impactCo2TotalKg(baselineResult, heatedArea),
+      },
+      optimized:{
+        finalEnergyKwh:optimizedFinalEnergy,
+        annualCostLei:optimizedAnnualCost,
+        capexLei:capex,
+        co2KgYear:optimizedCo2,
+      },
+      source:{
+        locality:String(baselineResult.locality || $("#localityInput")?.value || ""),
+      },
+    };
+  }
+
+  async function saveImpactSnapshotFromReport() {
+    const button = $("#edImpactSave");
+    const state = $("#edImpactSaveState");
+    const token = impactAuthToken();
+    if (!button || !state) return;
+    if (!token) {
+      state.textContent = "Autentificarea Home Lab este necesară. Agregatul public include numai analizele salvate în cont.";
+      return;
+    }
+    const payload = buildImpactSavePayload();
+    if (!payload) {
+      state.textContent = "Rezultatul nu conține încă toate valorile necesare pentru salvarea impactului.";
+      return;
+    }
+    button.disabled = true;
+    state.textContent = "Salvez ultima versiune a acestei case…";
+    try {
+      const response = await fetch("/api/home-lab/impact/save", {
+        method:"POST",
+        headers:{
+          "Accept":"application/json",
+          "Content-Type":"application/json",
+          "Authorization":`Bearer ${token}`,
+        },
+        body:JSON.stringify(payload),
+      });
+      const result = await response.json();
+      if (!response.ok || !result?.saved) {
+        throw new Error(result?.detail || result?.error || "Salvarea nu a reușit.");
+      }
+      button.textContent = "Analiză salvată ✓";
+      state.textContent = "Această casă contribuie o singură dată la agregat; o salvare ulterioară îi înlocuiește snapshot-ul.";
+      await loadImpactSummary();
+    } catch (error) {
+      button.disabled = false;
+      state.textContent = error?.message || "Salvarea nu a reușit.";
+    }
+  }
+
+  function wireImpactSaveButton() {
+    const button = $("#edImpactSave");
+    const state = $("#edImpactSaveState");
+    if (!button || !state) return;
+    const token = impactAuthToken();
+    button.disabled = !token;
+    state.textContent = token
+      ? "Salvarea folosește ultima analiză TEO și înlocuiește versiunea anterioară a aceleiași case."
+      : "Conectează contul Home Lab pentru a salva. Simulările nesalvate nu intră în agregatul public.";
+    button.addEventListener("click", saveImpactSnapshotFromReport, {once:true});
   }
 
   function calculationInputFingerprint(data) {
@@ -4138,10 +4327,21 @@
         </details>
 
         <p class="ed-report-legal-note"><b>Important:</b> regimul concret depinde de clădire, tipul și amploarea intervenției, statutul de renovare majoră, autorizare și eventuale regimuri speciale. Home Lab nu presupune automat că o intervenție este autorizabilă sau că o clădire intră într-o anumită excepție legală.</p>
+
+        <div class="ed-impact-save">
+          <div>
+            <p class="ed-eyebrow">Home Lab Impact</p>
+            <h3>Salvează această analiză în cont.</h3>
+            <p>În agregatul public intră numai ultima versiune salvată a fiecărei case. Nu pretindem că intervenția a fost executată sau că economia a fost măsurată.</p>
+          </div>
+          <button type="button" class="ed-primary" id="edImpactSave">Salvează analiza</button>
+          <small id="edImpactSaveState"></small>
+        </div>
       </section>
     `;
 
     $("#reportBody").innerHTML = html;
+    wireImpactSaveButton();
   }
 
   $("#runAnalysis").addEventListener("click", runAnalysis);
@@ -4255,5 +4455,6 @@
   form.querySelectorAll("[data-optional-advanced]").forEach(refreshAdvancedFieldState);
   syncTechnicalForm();
   showPage("intro");
+  loadImpactSummary();
   scheduleBaselineSummary(150);
 })();
