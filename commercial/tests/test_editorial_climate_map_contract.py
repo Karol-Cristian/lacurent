@@ -65,7 +65,25 @@ def test_editorial_map_supports_zoom_pan_and_progressive_localities() -> None:
         assert token in script
 
 
+def test_editorial_locality_combobox_supports_keyboard_navigation() -> None:
+    template = (TEMPLATES / "home_lab_editorial.html").read_text(encoding="utf-8")
+    script = (STATIC / "home-lab-editorial.js").read_text(encoding="utf-8")
+
+    assert 'role="combobox"' in template
+    assert 'aria-controls="edLocalitySuggestions"' in template
+    assert 'role="listbox"' in template
+    for token in (
+        'event.key === "ArrowDown"',
+        'event.key === "ArrowUp"',
+        'event.key === "Enter"',
+        'event.key === "Escape"',
+        'aria-activedescendant',
+        'is-keyboard-active',
+    ):
+        assert token in script
+
+
 def test_editorial_template_busts_map_asset_cache() -> None:
     template = (TEMPLATES / "home_lab_editorial.html").read_text(encoding="utf-8")
-    assert "/static/home-lab-editorial.css?v=24" in template
-    assert "/static/home-lab-editorial.js?v=54" in template
+    assert "/static/home-lab-editorial.css?v=30" in template
+    assert "/static/home-lab-editorial.js?v=59" in template

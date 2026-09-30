@@ -87,6 +87,7 @@
   let baselineSummaryController = null;
   let baselineSummaryRevision = 0;
   let baselineInputFingerprint = "";
+  let teoInputFingerprint = "";
   let locationData = null;
   let localities = [];
   let localityMap = new Map();
@@ -432,6 +433,55 @@
     return Boolean(field && field.dataset.advancedAuto !== "true" && String(field.value ?? "").trim() !== "");
   }
 
+  const ADVANCED_DEPENDENCY_RESETS = Object.freeze({
+    wallStructure:["advWallU"],
+    wallStructureThickness:["advWallU"],
+    wallInsulationMaterial:["advWallU"],
+    wallIns:["advWallU"],
+    topBoundary:["advRoofU"],
+    roofInsulationMaterial:["advRoofU"],
+    roofIns:["advRoofU"],
+    floorBoundary:["advFloorU","advGroundConductivity"],
+    floorInsulationMaterial:["advFloorU"],
+    floorIns:["advFloorU"],
+    glazing:["advWindowU","advSolarGn"],
+    ventilation:["advAch","advHeatRecovery"],
+    heatingChoice:["advHeatingEfficiency","advHeatingScop","advHeatingAux","advHeatingFlow","advHeatingReturn"],
+    heatPumpSource:["advHeatingScop","advHeatingAux","advHeatingFlow","advHeatingReturn"],
+    heatingEmitter:["advHeatingFlow","advHeatingReturn","advHeatingScop"],
+    cooling:["advCoolingSeer","advCoolingSetpoint"],
+    dhwSystem:["advDhwEfficiency","advDhwCop"],
+  });
+
+  function refreshAdvancedDetailsState(details) {
+    if (!details?.matches?.(".ed-advanced-details")) return;
+    const manualCount = [...details.querySelectorAll("[data-optional-advanced]")]
+      .filter(field => advancedFieldIsManual(field.id)).length;
+    details.classList.toggle("has-manual-overrides", manualCount > 0);
+    details.dataset.manualOverrideCount = String(manualCount);
+  }
+
+  function resetAdvancedDerivedFields(ids = []) {
+    [...new Set(ids)].forEach(id => {
+      const field = document.getElementById(id);
+      if (!field?.matches?.("[data-optional-advanced]")) return;
+      field.dataset.advancedAuto = "true";
+      field.value = "";
+      refreshAdvancedFieldState(field);
+    });
+  }
+
+  function resetAdvancedDependents(field) {
+    if (!field || field.matches?.("[data-optional-advanced]")) return;
+    const key = String(field.id || field.name || "");
+    const ids = [...(ADVANCED_DEPENDENCY_RESETS[key] || [])];
+    if (key === "heatingChoice" && $("#dhwSystem")?.value === "same_as_heating") {
+      ids.push("advDhwEfficiency","advDhwCop");
+    }
+    if (!ids.length) return;
+    resetAdvancedDerivedFields(ids);
+  }
+
   function setAdvancedDerivedValue(id, value, digits = 2) {
     const field = document.getElementById(id);
     if (!field || advancedFieldIsManual(id)) return;
@@ -446,6 +496,7 @@
     const wrapper = field.closest(".ed-field");
     wrapper?.classList.toggle("is-derived-value", Number.isFinite(numeric));
     wrapper?.classList.remove("is-manual-value");
+    refreshAdvancedDetailsState(field.closest(".ed-advanced-details"));
   }
 
   function refreshAdvancedFieldState(field) {
@@ -455,6 +506,7 @@
     const wrapper = field.closest(".ed-field");
     wrapper?.classList.toggle("is-derived-value", hasValue && auto);
     wrapper?.classList.toggle("is-manual-value", hasValue && !auto);
+    refreshAdvancedDetailsState(field.closest(".ed-advanced-details"));
   }
 
   function markAdvancedManual(field) {
@@ -508,6 +560,7 @@
     stepNumber.textContent = stepNumbers[name] || "—";
     stepName.textContent = stepNames[name] || name;
     renderProgressHistory();
+    if (name === "goal") syncTeoRecalculationCue();
     if ((name === "report" || name === "goal") && optimizationResult) {
       paintBaselineSummary(
         optimizationSummaryForPersistentBar(),
@@ -1021,6 +1074,7 @@
         button.classList.add("is-selected");
         field.value = button.dataset.value;
         if (group.dataset.choiceGroup === "_optimization_mode") syncGoalField();
+        syncTeoRecalculationCue();
         markDraftDirty();
         scheduleEditorialDraftSave();
       });
@@ -1108,6 +1162,7 @@
     if (isNewBuildYearProxy()) return;
     nzebConstraintValue.value = nzebConstraintEnabled() ? "0" : "1";
     syncNzebPolicy();
+    syncTeoRecalculationCue();
     markDraftDirty();
     scheduleEditorialDraftSave();
   });
@@ -1496,26 +1551,70 @@
     `;
   }
 
+  let localitySuggestionIndex = -1;
+
+  function resetLocalitySuggestionActive() {
+    localitySuggestionIndex = -1;
+    const input = $("#localityInput");
+    input?.removeAttribute("aria-activedescendant");
+    $("#edLocalitySuggestions")?.querySelectorAll("[data-locality-id]").forEach(button => {
+      button.classList.remove("is-keyboard-active");
+      button.setAttribute("aria-selected", "false");
+    });
+  }
+
+  function setLocalitySuggestionActive(index) {
+    const target = $("#edLocalitySuggestions");
+    const input = $("#localityInput");
+    const buttons = Array.from(target?.querySelectorAll("[data-locality-id]") || []);
+    if (!buttons.length) {
+      resetLocalitySuggestionActive();
+      return;
+    }
+    localitySuggestionIndex = Math.max(0, Math.min(Number(index) || 0, buttons.length - 1));
+    buttons.forEach((button, buttonIndex) => {
+      const active = buttonIndex === localitySuggestionIndex;
+      button.classList.toggle("is-keyboard-active", active);
+      button.setAttribute("aria-selected", active ? "true" : "false");
+    });
+    const active = buttons[localitySuggestionIndex];
+    if (active) {
+      input?.setAttribute("aria-activedescendant", active.id);
+      active.scrollIntoView({block:"nearest"});
+    }
+  }
+
+  function closeLocalitySuggestions() {
+    const target = $("#edLocalitySuggestions");
+    if (!target) return;
+    target.hidden = true;
+    $("#localityInput")?.setAttribute("aria-expanded", "false");
+    resetLocalitySuggestionActive();
+  }
+
   function renderLocalitySuggestions(query) {
     const target = $("#edLocalitySuggestions");
+    const input = $("#localityInput");
     if (!target) return;
     const q = normalizeSearch(query);
     if (q.length < 2 || !localities.length) {
-      target.hidden = true;
       target.innerHTML = "";
+      closeLocalitySuggestions();
       return;
     }
     const hits = localities
       .filter(item => normalizeSearch(item.search || `${item.name} ${item.county || ""} ${item.uatName || ""}`).includes(q))
       .sort((a,b) => Number(b.importance || 0) - Number(a.importance || 0))
       .slice(0,8);
-    target.innerHTML = hits.map(item => `
-      <button type="button" data-locality-id="${escapeHtml(item.id)}">
+    target.innerHTML = hits.map((item, index) => `
+      <button type="button" id="ed-locality-option-${index}" role="option" aria-selected="false" data-locality-id="${escapeHtml(item.id)}">
         <span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.county || "")}${item.uatName && item.uatName !== item.name ? " · " + escapeHtml(item.uatName) : ""}</small></span>
         <em>${item.climateZone ? "Zona " + escapeHtml(item.climateZone) : ""}</em>
       </button>
     `).join("");
     target.hidden = !hits.length;
+    input?.setAttribute("aria-expanded", hits.length ? "true" : "false");
+    resetLocalitySuggestionActive();
   }
 
   function selectLocality(locality) {
@@ -1524,7 +1623,7 @@
     $("#localityInput").value = locality.name;
     $("#edLocationMeta").textContent =
       `${locality.county || ""}${locality.climateZone ? " · zona climatică " + locality.climateZone : ""}${locality.stationName ? " · " + locality.stationName : ""}`;
-    $("#edLocalitySuggestions").hidden = true;
+    closeLocalitySuggestions();
     $("#edMapSuggestions").hidden = true;
     renderLocationMap();
     scheduleBaselineSummary(120);
@@ -1571,6 +1670,32 @@
     target.hidden = !items.length;
   }
 
+  $("#localityInput").addEventListener("keydown", event => {
+    const target = $("#edLocalitySuggestions");
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      if (target.hidden) renderLocalitySuggestions(event.currentTarget.value);
+      const buttons = Array.from(target.querySelectorAll("[data-locality-id]"));
+      if (!buttons.length) return;
+      event.preventDefault();
+      const nextIndex = event.key === "ArrowDown"
+        ? (localitySuggestionIndex < buttons.length - 1 ? localitySuggestionIndex + 1 : 0)
+        : (localitySuggestionIndex > 0 ? localitySuggestionIndex - 1 : buttons.length - 1);
+      setLocalitySuggestionActive(nextIndex);
+      return;
+    }
+    if (event.key === "Enter" && !target.hidden && localitySuggestionIndex >= 0) {
+      const button = target.querySelectorAll("[data-locality-id]")[localitySuggestionIndex];
+      if (!button) return;
+      event.preventDefault();
+      markDraftDirty();
+      selectLocality(localityMap.get(String(button.dataset.localityId)));
+      return;
+    }
+    if (event.key === "Escape" && !target.hidden) {
+      event.preventDefault();
+      closeLocalitySuggestions();
+    }
+  });
   $("#localityInput").addEventListener("input", event => {
     $("#localityId").value = "";
     $("#edLocationMeta").textContent = "Alege o sugestie pentru a fixa profilul climatic.";
@@ -1769,6 +1894,42 @@
     const parts = String(value || "").split(":");
     const hash = parts.length >= 3 ? parts[2] : "";
     return hash ? hash.slice(-8).toUpperCase() : "—";
+  }
+
+  function syncTeoRecalculationCue() {
+    const panel = $(".ed-teo-control-panel");
+    const state = $("#edTeoRunState");
+    const runButton = $("#runAnalysis");
+    if (!panel || !state || !runButton) return false;
+
+    if (!optimizationResult || !teoInputFingerprint) {
+      panel.classList.remove("is-recalculation-needed");
+      runButton.classList.remove("is-recalculation-needed");
+      runButton.innerHTML = 'Rulează optimizarea TEO <svg><use href="#ed-i-arrow"></use></svg>';
+      return false;
+    }
+
+    let currentFingerprint = "";
+    try {
+      currentFingerprint = calculationInputFingerprint(baseFormData());
+    } catch {
+      currentFingerprint = "";
+    }
+    const stale = Boolean(currentFingerprint && currentFingerprint !== teoInputFingerprint);
+    panel.classList.toggle("is-recalculation-needed", stale);
+    runButton.classList.toggle("is-recalculation-needed", stale);
+    runButton.innerHTML = stale
+      ? 'Recalculează optimizarea TEO <svg><use href="#ed-i-arrow"></use></svg>'
+      : 'Rulează optimizarea TEO <svg><use href="#ed-i-arrow"></use></svg>';
+
+    if (stale) {
+      state.textContent = "Recalculare disponibilă";
+      state.title = "Datele casei sau obiectivul s-au schimbat după ultima optimizare TEO.";
+    } else if (panel.classList.contains("is-done")) {
+      state.textContent = "Finalizat";
+      state.removeAttribute("title");
+    }
+    return stale;
   }
 
   function formObject() {
@@ -3455,6 +3616,20 @@
     };
   }
 
+  function focusTeoProgressOnMobile() {
+    if (!window.matchMedia("(max-width: 720px)").matches) return;
+    const target = $("#edTeoSteps");
+    if (!target) return;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    requestAnimationFrame(() => {
+      target.scrollIntoView({
+        behavior:reducedMotion ? "auto" : "smooth",
+        block:"center",
+        inline:"nearest",
+      });
+    });
+  }
+
   async function runAnalysis() {
     syncTechnicalForm();
     syncGoalField();
@@ -3464,20 +3639,24 @@
     resetTeoControlUi();
     baselineResult = null;
     optimizationResult = null;
+    teoInputFingerprint = "";
+    syncTeoRecalculationCue();
     lastPlan = null;
     branchResults = [];
     const runId = makeOptimizerRunId();
     const runButton = $("#runAnalysis");
     if (runButton) runButton.disabled = true;
     setTeoControlPhase(1,"Analizez configurația");
+    focusTeoProgressOnMobile();
     log(`RUN · ${runId}`);
 
     try {
       stage("baseline","active","rulează");
       log("Construiesc modelul termic al casei actuale din setul complet de inputuri Home Lab.");
       const baselinePayload = baseFormData();
-      baselineInputFingerprint = calculationInputFingerprint(baselinePayload);
-      log(`INPUT RBPE · ${shortInputFingerprint(baselineInputFingerprint)} · model ${CALCULATION_MODEL_VERSION}`);
+      const runInputFingerprint = calculationInputFingerprint(baselinePayload);
+      baselineInputFingerprint = runInputFingerprint;
+      log(`INPUT RBPE · ${shortInputFingerprint(runInputFingerprint)} · model ${CALCULATION_MODEL_VERSION}`);
       baselineResult = await postForm(
         "/api/home-lab-next/calculate",
         baselinePayload,
@@ -3682,6 +3861,7 @@
         runId,
       });
       stage("finalize","done","gata");
+      teoInputFingerprint = runInputFingerprint;
       const opt = optimizationResult.optimization || {};
       log(`Finalizat: ${opt.evaluatedCandidates || 0} candidați economici · ${opt.fullEngineVerifications || 0} verificări complete · status economic ${opt.economicStatus || "necunoscut"}.`);
 
@@ -3691,6 +3871,7 @@
         "Rezultat TEO verificat · după intervenții."
       );
       renderTeoResult();
+      syncTeoRecalculationCue();
       renderProgressHistory();
       const finalSummary = {
         ...(baselineResult || {}),
@@ -3984,16 +4165,22 @@
     if (event.target?.type === "hidden") return;
     if (event.target?.matches?.("[data-optional-advanced]") && event.isTrusted) {
       markAdvancedManual(event.target);
+    } else if (event.isTrusted) {
+      resetAdvancedDependents(event.target);
     }
     syncDerivedAdvancedFields();
+    syncTeoRecalculationCue();
     scheduleBaselineSummary();
   });
   form.addEventListener("change", event => {
     if (event.target?.type === "hidden") return;
     if (event.target?.matches?.("[data-optional-advanced]") && event.isTrusted) {
       markAdvancedManual(event.target);
+    } else if (event.isTrusted) {
+      resetAdvancedDependents(event.target);
     }
     syncDerivedAdvancedFields();
+    syncTeoRecalculationCue();
     scheduleBaselineSummary(350);
   });
 

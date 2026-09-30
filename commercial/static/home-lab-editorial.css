@@ -2051,3 +2051,675 @@ body{
     line-height:1.25;
   }
 }
+
+
+/* Editorial v25: pages 1-4 visual parity with approved Objectives UI. */
+.ed-page[data-page="house"],
+.ed-page[data-page="envelope"],
+.ed-page[data-page="systems"],
+.ed-page[data-page="renewables"]{
+  background:
+    radial-gradient(circle at 76% 4%,rgba(226,238,255,.42),transparent 30%),
+    linear-gradient(180deg,#fbfdff 0,#f7faff 100%);
+  padding-top:24px;
+}
+
+.ed-page[data-page="house"] .ed-form-page,
+.ed-page[data-page="envelope"] .ed-form-page,
+.ed-page[data-page="systems"] .ed-form-page,
+.ed-page[data-page="renewables"] .ed-form-page{
+  width:min(1180px,calc(100vw - 40px));
+  max-width:none;
+  padding-top:0;
+}
+
+.ed-page[data-page="house"] .ed-eyebrow,
+.ed-page[data-page="envelope"] .ed-eyebrow,
+.ed-page[data-page="systems"] .ed-eyebrow,
+.ed-page[data-page="renewables"] .ed-eyebrow{
+  color:#6a7f9d;
+  font-size:10px;
+  letter-spacing:.11em;
+}
+
+.ed-page[data-page="house"] .ed-form-page>h2,
+.ed-page[data-page="envelope"] .ed-form-page>h2,
+.ed-page[data-page="systems"] .ed-form-page>h2,
+.ed-page[data-page="renewables"] .ed-form-page>h2{
+  margin:8px 0 5px;
+  color:#0d1b3b;
+  font-size:clamp(26px,3vw,34px);
+  line-height:1.08;
+  letter-spacing:-.035em;
+  font-weight:760;
+}
+
+.ed-page[data-page="house"] .ed-form-page>.ed-hint,
+.ed-page[data-page="envelope"] .ed-form-page>.ed-hint,
+.ed-page[data-page="systems"] .ed-form-page>.ed-hint,
+.ed-page[data-page="renewables"] .ed-form-page>.ed-hint{
+  max-width:760px;
+  margin:0 0 18px;
+  color:#607493;
+  font-size:12px;
+  line-height:1.5;
+}
+
+.ed-page[data-page="house"] .ed-grid,
+.ed-page[data-page="envelope"] .ed-grid,
+.ed-page[data-page="systems"] .ed-grid,
+.ed-page[data-page="renewables"] .ed-grid{
+  gap:10px;
+}
+
+.ed-page[data-page="house"] .ed-field,
+.ed-page[data-page="envelope"] .ed-field,
+.ed-page[data-page="systems"] .ed-field,
+.ed-page[data-page="renewables"] .ed-field{
+  gap:6px;
+  padding:12px 13px;
+  border:1px solid #dfe7f1;
+  border-radius:11px;
+  background:rgba(255,255,255,.96);
+  box-shadow:0 4px 14px rgba(24,57,96,.025);
+}
+
+.ed-page[data-page="house"] .ed-field:focus-within,
+.ed-page[data-page="envelope"] .ed-field:focus-within,
+.ed-page[data-page="systems"] .ed-field:focus-within,
+.ed-page[data-page="renewables"] .ed-field:focus-within{
+  border-color:#9dbce6;
+  box-shadow:0 0 0 3px rgba(30,114,242,.07);
+}
+
+.ed-page[data-page="house"] .ed-field>span,
+.ed-page[data-page="envelope"] .ed-field>span,
+.ed-page[data-page="systems"] .ed-field>span,
+.ed-page[data-page="renewables"] .ed-field>span{
+  color:#607493;
+  font-size:10px;
+  letter-spacing:.015em;
+}
+
+.ed-page[data-page="house"] .ed-field input,
+.ed-page[data-page="house"] .ed-field select,
+.ed-page[data-page="house"] .ed-field>select,
+.ed-page[data-page="envelope"] .ed-field input,
+.ed-page[data-page="envelope"] .ed-field select,
+.ed-page[data-page="envelope"] .ed-field>select,
+.ed-page[data-page="systems"] .ed-field input,
+.ed-page[data-page="systems"] .ed-field select,
+.ed-page[data-page="systems"] .ed-field>select,
+.ed-page[data-page="renewables"] .ed-field input,
+.ed-page[data-page="renewables"] .ed-field select,
+.ed-page[data-page="renewables"] .ed-field>select{
+  color:#102044;
+  font-size:14px;
+  font-weight:650;
+}
+
+.ed-page[data-page="house"] .ed-location-meta{
+  margin:7px 2px 9px;
+  color:#71839e;
+  font-size:10px;
+}
+
+.ed-page[data-page="house"] .ed-location-map{
+  border-color:#dfe7f1;
+  border-radius:13px;
+  background:#fff;
+  box-shadow:0 8px 24px rgba(24,57,96,.035);
+}
+
+.ed-page[data-page="envelope"] .ed-domain-card,
+.ed-page[data-page="systems"] .ed-domain-card,
+.ed-page[data-page="renewables"] .ed-domain-card{
+  margin-bottom:12px;
+  padding:15px;
+  border:1px solid #e3eaf3;
+  border-radius:14px;
+  box-shadow:0 10px 26px rgba(24,57,96,.035);
+}
+
+.ed-page[data-page="envelope"] .ed-domain-card>h3,
+.ed-page[data-page="systems"] .ed-domain-card>h3,
+.ed-page[data-page="renewables"] .ed-domain-card>h3{
+  margin:0 0 11px;
+  color:#142344;
+  font-size:14px;
+  font-weight:760;
+  letter-spacing:-.015em;
+}
+
+.ed-page[data-page="envelope"] .ed-tone-blue,
+.ed-page[data-page="systems"] .ed-tone-blue,
+.ed-page[data-page="renewables"] .ed-tone-blue{
+  background:linear-gradient(180deg,#f7fbff,#f2f7fc);
+}
+.ed-page[data-page="envelope"] .ed-tone-aqua,
+.ed-page[data-page="systems"] .ed-tone-aqua,
+.ed-page[data-page="renewables"] .ed-tone-aqua{
+  background:linear-gradient(180deg,#f8fcfc,#f2f8f8);
+}
+.ed-page[data-page="envelope"] .ed-tone-sand,
+.ed-page[data-page="systems"] .ed-tone-sand,
+.ed-page[data-page="renewables"] .ed-tone-sand{
+  background:linear-gradient(180deg,#fffdf9,#faf7ef);
+}
+.ed-page[data-page="envelope"] .ed-tone-sage,
+.ed-page[data-page="systems"] .ed-tone-sage,
+.ed-page[data-page="renewables"] .ed-tone-sage{
+  background:linear-gradient(180deg,#fbfdf9,#f4f8f1);
+}
+.ed-page[data-page="envelope"] .ed-tone-lilac,
+.ed-page[data-page="systems"] .ed-tone-lilac,
+.ed-page[data-page="renewables"] .ed-tone-lilac{
+  background:linear-gradient(180deg,#fcfbff,#f6f4fb);
+}
+
+.ed-page[data-page="house"] .ed-details,
+.ed-page[data-page="envelope"] .ed-details,
+.ed-page[data-page="systems"] .ed-details,
+.ed-page[data-page="renewables"] .ed-details{
+  margin-top:12px;
+  border:1px solid #e1e8f1;
+  border-radius:11px;
+  background:rgba(255,255,255,.9);
+}
+
+.ed-page[data-page="house"] .ed-details summary,
+.ed-page[data-page="envelope"] .ed-details summary,
+.ed-page[data-page="systems"] .ed-details summary,
+.ed-page[data-page="renewables"] .ed-details summary{
+  padding:11px 13px;
+  color:#23375d;
+}
+
+.ed-page[data-page="house"] .ed-details summary span,
+.ed-page[data-page="envelope"] .ed-details summary span,
+.ed-page[data-page="systems"] .ed-details summary span,
+.ed-page[data-page="renewables"] .ed-details summary span{
+  font-size:12px;
+  font-weight:700;
+}
+
+.ed-page[data-page="house"] .ed-details summary small,
+.ed-page[data-page="envelope"] .ed-details summary small,
+.ed-page[data-page="systems"] .ed-details summary small,
+.ed-page[data-page="renewables"] .ed-details summary small{
+  color:#71839e;
+  font-size:9.5px;
+}
+
+.ed-page[data-page="house"] .ed-details-body,
+.ed-page[data-page="envelope"] .ed-details-body,
+.ed-page[data-page="systems"] .ed-details-body,
+.ed-page[data-page="renewables"] .ed-details-body{
+  padding:12px;
+}
+
+.ed-page[data-page="house"] .ed-actions,
+.ed-page[data-page="envelope"] .ed-actions,
+.ed-page[data-page="systems"] .ed-actions,
+.ed-page[data-page="renewables"] .ed-actions{
+  margin-top:18px;
+  padding-top:14px;
+  border-top:1px solid #e8eef5;
+}
+
+.ed-page[data-page="house"] .ed-actions .ed-primary,
+.ed-page[data-page="envelope"] .ed-actions .ed-primary,
+.ed-page[data-page="systems"] .ed-actions .ed-primary,
+.ed-page[data-page="renewables"] .ed-actions .ed-primary{
+  min-height:44px;
+  border-radius:10px;
+  background:#071d43;
+  box-shadow:0 8px 18px rgba(7,29,67,.10);
+  font-size:12px;
+}
+.ed-page[data-page="house"] .ed-actions .ed-primary:hover,
+.ed-page[data-page="envelope"] .ed-actions .ed-primary:hover,
+.ed-page[data-page="systems"] .ed-actions .ed-primary:hover,
+.ed-page[data-page="renewables"] .ed-actions .ed-primary:hover{
+  background:#0b2859;
+}
+
+@media(max-width:720px){
+  .ed-page[data-page="house"],
+  .ed-page[data-page="envelope"],
+  .ed-page[data-page="systems"],
+  .ed-page[data-page="renewables"]{
+    padding:16px 10px 70px;
+  }
+
+  .ed-page[data-page="house"] .ed-form-page,
+  .ed-page[data-page="envelope"] .ed-form-page,
+  .ed-page[data-page="systems"] .ed-form-page,
+  .ed-page[data-page="renewables"] .ed-form-page{
+    width:100%;
+  }
+
+  .ed-page[data-page="house"] .ed-form-page>h2,
+  .ed-page[data-page="envelope"] .ed-form-page>h2,
+  .ed-page[data-page="systems"] .ed-form-page>h2,
+  .ed-page[data-page="renewables"] .ed-form-page>h2{
+    font-size:24px;
+  }
+
+  .ed-page[data-page="house"] .ed-form-page>.ed-hint,
+  .ed-page[data-page="envelope"] .ed-form-page>.ed-hint,
+  .ed-page[data-page="systems"] .ed-form-page>.ed-hint,
+  .ed-page[data-page="renewables"] .ed-form-page>.ed-hint{
+    margin-bottom:13px;
+    font-size:10.5px;
+  }
+
+  .ed-page[data-page="house"] .ed-field,
+  .ed-page[data-page="envelope"] .ed-field,
+  .ed-page[data-page="systems"] .ed-field,
+  .ed-page[data-page="renewables"] .ed-field{
+    padding:10px 11px;
+    border-radius:10px;
+  }
+
+  .ed-page[data-page="house"] .ed-field input,
+  .ed-page[data-page="house"] .ed-field select,
+  .ed-page[data-page="house"] .ed-field>select,
+  .ed-page[data-page="envelope"] .ed-field input,
+  .ed-page[data-page="envelope"] .ed-field select,
+  .ed-page[data-page="envelope"] .ed-field>select,
+  .ed-page[data-page="systems"] .ed-field input,
+  .ed-page[data-page="systems"] .ed-field select,
+  .ed-page[data-page="systems"] .ed-field>select,
+  .ed-page[data-page="renewables"] .ed-field input,
+  .ed-page[data-page="renewables"] .ed-field select,
+  .ed-page[data-page="renewables"] .ed-field>select{
+    font-size:16px;
+  }
+
+  .ed-page[data-page="envelope"] .ed-domain-card,
+  .ed-page[data-page="systems"] .ed-domain-card,
+  .ed-page[data-page="renewables"] .ed-domain-card{
+    padding:12px;
+    border-radius:12px;
+    margin-bottom:9px;
+  }
+
+  .ed-page[data-page="house"] .ed-actions,
+  .ed-page[data-page="envelope"] .ed-actions,
+  .ed-page[data-page="systems"] .ed-actions,
+  .ed-page[data-page="renewables"] .ed-actions{
+    position:sticky;
+    bottom:0;
+    z-index:20;
+    width:100%;
+    margin:14px 0 0;
+    padding:10px 0 calc(10px + env(safe-area-inset-bottom));
+    background:rgba(248,251,255,.94);
+    backdrop-filter:blur(15px);
+    -webkit-backdrop-filter:blur(15px);
+  }
+}
+
+
+/* Editorial v26: contextual icons + clearly activatable renewables. */
+.ed-page-title{
+  display:flex;
+  align-items:center;
+  gap:11px;
+}
+.ed-page-title>svg{
+  width:28px;
+  height:28px;
+  flex:0 0 28px;
+  fill:none;
+  stroke:#1b6fdc;
+  stroke-width:1.65;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.ed-card-title{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.ed-card-title>svg{
+  width:20px;
+  height:20px;
+  flex:0 0 20px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.65;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  opacity:.82;
+}
+
+/* An off renewable is available, not unavailable. Keep its fields locked but readable. */
+.ed-page[data-page="renewables"] .ed-grid.is-disabled{
+  opacity:.72;
+  filter:saturate(.88);
+  pointer-events:none;
+}
+.ed-page[data-page="renewables"] .ed-grid.is-disabled .ed-field{
+  background:rgba(255,255,255,.78);
+  border-style:dashed;
+  border-color:#d6e0ec;
+}
+.ed-renewable-card{
+  position:relative;
+  border-color:#d7e3f1!important;
+  transition:border-color .16s ease,box-shadow .16s ease,background .16s ease;
+}
+.ed-renewable-card:hover{
+  border-color:#b8cde8!important;
+  box-shadow:0 12px 30px rgba(24,57,96,.055)!important;
+}
+.ed-renewable-switch-row{
+  display:grid;
+  grid-template-columns:46px minmax(0,1fr) auto;
+  gap:12px;
+  align-items:center;
+  padding:2px 0 12px;
+  border-bottom:1px solid rgba(91,108,124,.13);
+}
+.ed-renewable-icon{
+  display:grid;
+  place-items:center;
+  width:44px;
+  height:44px;
+  border:1px solid #d8e6f7;
+  border-radius:11px;
+  background:#fff;
+  color:#176fdc;
+}
+.ed-renewable-icon svg{
+  width:27px;
+  height:27px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.65;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.ed-renewable-copy{
+  display:grid!important;
+  gap:3px!important;
+  min-width:0;
+}
+.ed-renewable-copy>b{
+  color:#142344;
+  font-size:14px;
+  line-height:1.25;
+}
+.ed-renewable-copy>span:not(.ed-renewable-state){
+  color:#607493;
+  font-size:11px;
+  line-height:1.35;
+}
+.ed-renewable-state{
+  width:max-content;
+  margin-top:3px;
+  padding:4px 8px;
+  border-radius:999px;
+  font-size:9px!important;
+  line-height:1!important;
+  font-weight:780;
+}
+.ed-state-off{
+  display:inline-flex;
+  background:#edf5ff;
+  color:#1767c8!important;
+}
+.ed-state-on{
+  display:none;
+  background:#e8f8ee;
+  color:#0a9347!important;
+}
+.ed-renewable-card:has(.ed-switch input:checked){
+  border-color:#b9ddc7!important;
+  box-shadow:0 10px 28px rgba(20,120,67,.045)!important;
+}
+.ed-renewable-card:has(.ed-switch input:checked) .ed-state-off{display:none}
+.ed-renewable-card:has(.ed-switch input:checked) .ed-state-on{display:inline-flex}
+.ed-renewable-card:has(.ed-switch input:checked) .ed-renewable-icon{
+  border-color:#c8e8d4;
+  background:#f7fdf9;
+  color:#109d4e;
+}
+.ed-page[data-page="renewables"] .ed-switch{
+  width:50px;
+  height:30px;
+  cursor:pointer;
+}
+.ed-page[data-page="renewables"] .ed-switch i{
+  width:50px;
+  height:30px;
+  border:1px solid #b8cee8;
+  background:#eaf3ff;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.6);
+}
+.ed-page[data-page="renewables"] .ed-switch i:after{
+  width:22px;
+  height:22px;
+  left:3px;
+  top:3px;
+  box-shadow:0 2px 6px rgba(35,71,113,.18);
+}
+.ed-page[data-page="renewables"] .ed-switch input:checked+i{
+  border-color:#159550;
+  background:#17a65a;
+}
+.ed-page[data-page="renewables"] .ed-switch input:checked+i:after{
+  transform:translateX(20px);
+}
+
+@media(max-width:720px){
+  .ed-page-title{gap:8px}
+  .ed-page-title>svg{width:23px;height:23px;flex-basis:23px}
+  .ed-card-title>svg{width:18px;height:18px;flex-basis:18px}
+  .ed-renewable-switch-row{
+    grid-template-columns:40px minmax(0,1fr) auto;
+    gap:9px;
+    padding-bottom:10px;
+  }
+  .ed-renewable-icon{width:38px;height:38px;border-radius:10px}
+  .ed-renewable-icon svg{width:23px;height:23px}
+  .ed-renewable-copy>b{font-size:12px}
+  .ed-renewable-copy>span:not(.ed-renewable-state){font-size:10px}
+}
+
+
+/* Editorial v27: compact density, collapsed advanced rows, discrete choices, locality keyboard focus. */
+/* Slightly tighter without becoming dense. */
+.ed-page[data-page="house"] .ed-grid,
+.ed-page[data-page="envelope"] .ed-grid,
+.ed-page[data-page="systems"] .ed-grid,
+.ed-page[data-page="renewables"] .ed-grid{
+  gap:8px;
+}
+.ed-page[data-page="house"] .ed-field,
+.ed-page[data-page="envelope"] .ed-field,
+.ed-page[data-page="systems"] .ed-field,
+.ed-page[data-page="renewables"] .ed-field{
+  gap:5px;
+  padding:10px 11px;
+  border-radius:10px;
+}
+.ed-page[data-page="envelope"] .ed-domain-card,
+.ed-page[data-page="systems"] .ed-domain-card,
+.ed-page[data-page="renewables"] .ed-domain-card{
+  margin-bottom:9px;
+  padding:13px;
+  border-radius:13px;
+}
+.ed-page[data-page="envelope"] .ed-domain-card>h3,
+.ed-page[data-page="systems"] .ed-domain-card>h3,
+.ed-page[data-page="renewables"] .ed-domain-card>h3{
+  margin-bottom:9px;
+}
+.ed-page[data-page="house"] .ed-top-gap,
+.ed-page[data-page="envelope"] .ed-top-gap,
+.ed-page[data-page="systems"] .ed-top-gap,
+.ed-page[data-page="renewables"] .ed-top-gap{
+  margin-top:8px;
+}
+
+/* Closed advanced sections should read as a compact affordance, not another card. */
+.ed-page[data-page="house"] .ed-advanced-details,
+.ed-page[data-page="envelope"] .ed-advanced-details,
+.ed-page[data-page="systems"] .ed-advanced-details,
+.ed-page[data-page="renewables"] .ed-advanced-details{
+  margin-top:7px;
+}
+.ed-page[data-page="house"] .ed-advanced-details summary,
+.ed-page[data-page="envelope"] .ed-advanced-details summary,
+.ed-page[data-page="systems"] .ed-advanced-details summary,
+.ed-page[data-page="renewables"] .ed-advanced-details summary{
+  min-height:30px;
+  padding:7px 0 0;
+}
+.ed-page[data-page="house"] .ed-advanced-details:not([open]) summary small,
+.ed-page[data-page="envelope"] .ed-advanced-details:not([open]) summary small,
+.ed-page[data-page="systems"] .ed-advanced-details:not([open]) summary small,
+.ed-page[data-page="renewables"] .ed-advanced-details:not([open]) summary small{
+  display:none;
+}
+.ed-page[data-page="house"] .ed-advanced-details summary span,
+.ed-page[data-page="envelope"] .ed-advanced-details summary span,
+.ed-page[data-page="systems"] .ed-advanced-details summary span,
+.ed-page[data-page="renewables"] .ed-advanced-details summary span{
+  font-size:10.5px;
+}
+.ed-page[data-page="house"] .ed-advanced-details .ed-details-body,
+.ed-page[data-page="envelope"] .ed-advanced-details .ed-details-body,
+.ed-page[data-page="systems"] .ed-advanced-details .ed-details-body,
+.ed-page[data-page="renewables"] .ed-advanced-details .ed-details-body{
+  padding-top:8px;
+}
+
+/* Native lists for genuinely discrete small ranges. */
+.ed-choice-field select{
+  cursor:pointer;
+  font-weight:680!important;
+}
+.ed-choice-field>div{
+  position:relative;
+}
+.ed-choice-field>div::after{
+  content:"⌄";
+  position:absolute;
+  right:1px;
+  top:50%;
+  transform:translateY(-55%);
+  color:#71839e;
+  font-size:14px;
+  pointer-events:none;
+}
+.ed-choice-field select{
+  appearance:none;
+  -webkit-appearance:none;
+  padding-right:20px!important;
+}
+
+/* Keyboard-highlighted locality in the desktop combobox. */
+.ed-locality-suggestions button.is-keyboard-active,
+.ed-locality-suggestions button[aria-selected="true"]{
+  background:#edf5ff;
+  color:#102044;
+  box-shadow:inset 3px 0 0 #1e72f2;
+}
+.ed-locality-suggestions button.is-keyboard-active strong,
+.ed-locality-suggestions button[aria-selected="true"] strong{
+  color:#0d4fae;
+}
+
+@media(max-width:720px){
+  .ed-page[data-page="envelope"] .ed-domain-card,
+  .ed-page[data-page="systems"] .ed-domain-card,
+  .ed-page[data-page="renewables"] .ed-domain-card{
+    padding:11px;
+  }
+}
+
+
+/* Editorial v28: stale TEO result cue without restructuring the Objectives page. */
+.ed-teo-control-panel.is-recalculation-needed{
+  border-color:#e7bd62!important;
+  background:
+    linear-gradient(180deg,rgba(255,248,228,.48),rgba(255,255,255,0) 92px),
+    #fff;
+  box-shadow:0 0 0 3px rgba(226,165,46,.08),0 12px 34px rgba(24,57,96,.055)!important;
+}
+.ed-teo-control-panel.is-recalculation-needed .ed-teo-run-state{
+  border-color:#edc977;
+  background:#fff6dc;
+  color:#8a5b00;
+  font-weight:780;
+}
+#runAnalysis.is-recalculation-needed{
+  box-shadow:0 0 0 4px rgba(231,183,68,.16),0 7px 18px rgba(13,27,59,.12);
+}
+
+
+/* Editorial v29: centered advanced affordance, semantic override state, edit feedback, mobile TEO focus. */
+/* Center the closed/open advanced affordance as one visual unit. */
+.ed-page[data-page="house"] .ed-advanced-details summary,
+.ed-page[data-page="envelope"] .ed-advanced-details summary,
+.ed-page[data-page="systems"] .ed-advanced-details summary,
+.ed-page[data-page="renewables"] .ed-advanced-details summary{
+  display:grid;
+  grid-template-columns:auto auto;
+  justify-content:center;
+  align-items:center;
+  column-gap:7px;
+  row-gap:3px;
+  text-align:center;
+}
+.ed-page[data-page="house"] .ed-advanced-details summary span,
+.ed-page[data-page="envelope"] .ed-advanced-details summary span,
+.ed-page[data-page="systems"] .ed-advanced-details summary span,
+.ed-page[data-page="renewables"] .ed-advanced-details summary span{
+  grid-column:1;
+  justify-self:end;
+}
+.ed-page[data-page="house"] .ed-advanced-details summary::after,
+.ed-page[data-page="envelope"] .ed-advanced-details summary::after,
+.ed-page[data-page="systems"] .ed-advanced-details summary::after,
+.ed-page[data-page="renewables"] .ed-advanced-details summary::after{
+  grid-column:2;
+  margin-left:0;
+  justify-self:start;
+  color:#2f73c9;
+}
+.ed-page[data-page="house"] .ed-advanced-details summary small,
+.ed-page[data-page="envelope"] .ed-advanced-details summary small,
+.ed-page[data-page="systems"] .ed-advanced-details summary small,
+.ed-page[data-page="renewables"] .ed-advanced-details summary small{
+  grid-column:1/-1;
+  justify-self:center;
+  text-align:center;
+}
+
+/* Auto = blue; at least one manual engineering override = green. */
+.ed-advanced-details{
+  transition:border-color .18s ease,background .18s ease,box-shadow .18s ease;
+}
+.ed-advanced-details:not(.has-manual-overrides) summary span{
+  color:#4c6f9c;
+}
+.ed-advanced-details.has-manual-overrides{
+  border-top-color:#9fd7b5;
+}
+.ed-advanced-details.has-manual-overrides summary span,
+.ed-advanced-details.has-manual-overrides summary::after{
+  color:#128349!important;
+}
+.ed-advanced-details.has-manual-overrides[open]{
+  background:linear-gradient(180deg,rgba(235,250,240,.58),rgba(255,255,255,0) 58px);
+}
+
+
+@media(max-width:720px){
+  #edTeoSteps{scroll-margin-top:132px}
+}
