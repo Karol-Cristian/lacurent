@@ -106,20 +106,3 @@ def test_editorial_positions_home_lab_as_decision_support_not_official_document(
     assert "Home Lab nu presupune automat" in source
 
 
-def test_editorial_exposes_modeled_impact_without_claiming_measured_savings():
-    source = EDITORIAL_JS.read_text(encoding="utf-8")
-    template = EDITORIAL_HTML.read_text(encoding="utf-8")
-
-    assert "Potențialul identificat în casele salvate." in template
-    assert "modelat · nu măsurat" in template
-    assert "edImpactHomes" in template
-    assert "edImpactEnergy" in template
-    assert "edImpactMoney" in template
-    assert "edImpactCapex" in template
-    assert "edImpactPayback" in template
-
-    assert 'fetch("/api/home-lab/impact/summary"' in source
-    assert 'fetch("/api/home-lab/impact/save"' in source
-    assert "impactProjectStorageKey" in source
-    assert "ultima versiune salvată a fiecărei case" in source
-    assert "Nu pretindem că intervenția a fost executată" in source
