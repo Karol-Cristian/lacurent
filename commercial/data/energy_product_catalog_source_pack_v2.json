@@ -1,0 +1,196 @@
+{
+  "schema_version": "energy-product-source-pack-v1",
+  "observed_on": "2026-09-30",
+  "note": "Initial evidence-backed cross-category smoke pack. Technical facts and commercial offers are kept as separate provenance streams. Product images remain link-only until redistribution rights are established.",
+  "products": [
+    {
+      "id": "austrotherm-eps-a100-af-plus-160",
+      "category_id": "wall_insulation",
+      "manufacturer": "Austrotherm",
+      "model": "EPS A100 AF PLUS 160 mm",
+      "label": "Austrotherm EPS A100 AF PLUS 160 mm",
+      "manufacturer_sku": "5945786200983",
+      "evidence_status": "document_backed",
+      "technical_sources": [
+        {
+          "kind": "manufacturer_product_page",
+          "url": "https://www.austrotherm.ro/produse/austrotherm-eps/austrotherm-eps-a100-af-plus-grafitat",
+          "properties": {
+            "thickness_mm": 160,
+            "lambda_w_mk": 0.030,
+            "package_area_m2": 1.50,
+            "plate_area_m2": 0.50
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Filge",
+          "price_lei": 114.90,
+          "price_basis": "lei_package",
+          "quantity": 1.50,
+          "quantity_unit": "m2",
+          "vat_included": true,
+          "source_url": "https://filge.ro/produs/polistiren-grafitat-austrotherm-eps100-af-plus-16cm/",
+          "observed_on": "2026-09-30"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.austrotherm.ro/produse/austrotherm-eps/austrotherm-eps-a100-af-plus-grafitat",
+        "rights_basis": "link_only",
+        "status": "manufacturer_page_contains_product_image"
+      },
+      "teo": {
+        "role": "planning_curve",
+        "status": "ready_after_offer_normalization",
+        "normalized_price_basis": "lei_per_m2"
+      }
+    },
+    {
+      "id": "purmo-compact-c22-600x1000",
+      "category_id": "radiator",
+      "manufacturer": "Purmo",
+      "model": "Compact C22 600 x 1000",
+      "label": "Purmo Compact C22 600 x 1000 mm",
+      "evidence_status": "document_backed",
+      "technical_sources": [
+        {
+          "kind": "manufacturer_product_page",
+          "url": "https://www.purmo.com/en/products/panels/compact.htm",
+          "properties": {
+            "height_mm": 600,
+            "length_mm": 1000,
+            "heat_output_w_75_65_20": 1709,
+            "heat_output_w_70_55_20": 1362,
+            "radiator_exponent_n": 1.3358,
+            "working_pressure_bar": 10,
+            "max_temperature_c": 110
+          },
+          "standard_context": "EN 442"
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Dedeman",
+          "supplier_sku": "2017064",
+          "price_lei": 509.00,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.dedeman.ro/ro/calorifer-otel-purmo-c22-600-x-1000-mm-accesorii-incluse/p/2017064",
+          "observed_on": "2026-09-30"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.purmo.com/en/products/panels/compact.htm",
+        "rights_basis": "link_only",
+        "status": "manufacturer_page_contains_product_image"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "ready_for_emitter_dimensioning_adapter",
+        "note": "Do not rank from retailer generic 'power' alone. Use manufacturer output at declared temperature condition and radiator exponent for low-temperature correction."
+      }
+    },
+    {
+      "id": "uponor-comfort-pipe-plus-16x2-640",
+      "category_id": "underfloor_pipe",
+      "manufacturer": "Uponor",
+      "model": "Comfort Pipe PLUS 16x2.0 640 m",
+      "label": "Uponor Comfort Pipe PLUS 16x2.0 640 m",
+      "manufacturer_sku": "1062046",
+      "evidence_status": "document_backed",
+      "technical_sources": [
+        {
+          "kind": "manufacturer_product_page",
+          "url": "https://www.uponor.com/en-en/documents?country=RO&id=1062046",
+          "properties": {
+            "package_length_m": 640,
+            "outer_diameter_mm": 16,
+            "wall_thickness_mm": 2,
+            "design_pressure_bar": 6,
+            "design_temperature_c": 70
+          },
+          "standards": [
+            "ISO 22391",
+            "DIN 4726"
+          ]
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Shop-Einstal",
+          "price_lei": 5.00,
+          "price_basis": "lei_per_m",
+          "quantity": 1,
+          "quantity_unit": "m",
+          "vat_included": true,
+          "minimum_order_quantity_m": 640,
+          "source_url": "https://www.shop-einstal.ro/tevi-si-fitinguri/teava-pex-fitinguri/teava-pe-xa-uponor-comfort-pipe-plus-16x2-41689301841.html",
+          "observed_on": "2026-09-30"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.uponor.com/en-en/documents?country=RO&id=1062046",
+        "rights_basis": "link_only",
+        "status": "manufacturer_page_contains_product_image"
+      },
+      "teo": {
+        "role": "bill_of_materials",
+        "status": "requires_underfloor_loop_design",
+        "note": "Pipe length is derived only after heated area, design heat flux, spacing and loop-length constraints are known."
+      }
+    },
+    {
+      "id": "zehnder-comfoair-q350-hrv",
+      "category_id": "hrv_unit",
+      "manufacturer": "Zehnder",
+      "model": "ComfoAir Q350 HRV",
+      "label": "Zehnder ComfoAir Q350 HRV",
+      "evidence_status": "source_backed",
+      "technical_sources": [
+        {
+          "kind": "manufacturer_product_page",
+          "url": "https://www.international.zehnder-systems.com/en/comfortable-indoor-ventilation/products/units/ventilation-units-up-to-600-m3/h/zehnder-comfoair-q350-tr",
+          "properties": {
+            "max_airflow_m3h_at_200_pa": 350
+          }
+        },
+        {
+          "kind": "manufacturer_technical_catalog",
+          "url": "https://newsletter.zehnder-systems.com/upload/prj/datasheet/ZehnderComfosystems_Technik-Katalog04-2022-it_lores.pdf",
+          "properties": {
+            "sfp_wh_m3_at_350_m3h_100pa": 0.30,
+            "electrical_power_w_at_350_m3h_100pa": 106
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "ventilatiecurecuperarecaldura.ro",
+          "price_lei": 21713.00,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://ventilatiecurecuperarecaldura.ro/product-category/sisteme-centralizate-cu-recuperator-de-caldura/zehnder-comfoair/",
+          "observed_on": "2026-09-30"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.international.zehnder-systems.com/en/comfortable-indoor-ventilation/products/units/ventilation-units-up-to-600-m3/h/zehnder-comfoair-q350-tr",
+        "rights_basis": "link_only",
+        "status": "manufacturer_page_contains_product_image"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "blocked_pending_official_efficiency_parse",
+        "missing_for_teo": [
+          "heat_recovery_efficiency_at_declared_condition"
+        ],
+        "note": "Retail pages advertise recovery efficiency, but the first TEO-backed import should parse the manufacturer Ecodesign/technical declaration instead of trusting marketing copy."
+      }
+    }
+  ]
+}
