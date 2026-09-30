@@ -78,3 +78,11 @@ jobs:
           done
           curl -fsS "$HOME_LAB_BASE_URL/health" | grep -q '"status":"ok"'
           node scripts/smoke-home-lab-browser.mjs
+
+      - name: Diagnose production TEO report determinism
+        env:
+          HOME_LAB_BASE_URL: https://lacurent.com
+          TEO_SOAK_RUNS: 6
+          TEO_DIAGNOSTIC_ONLY: 1
+        run: |
+          node scripts/soak-teo-production.mjs
