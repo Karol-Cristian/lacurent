@@ -2383,7 +2383,7 @@ def test_editorial_teo_run_has_no_product_discretization_stage() -> None:
     source = js.text
 
     assert "maxCanonicalPasses:TEO_ADAPTIVE_AUDIT ? 10 : 5" in source
-    assert "maxVerifyPasses:3" in source
+    assert "maxVerifyPasses:TEO_ADAPTIVE_AUDIT ? 8 : 3" in source
     assert "maxProductPasses:0" in source
     assert "TEO PARAMETRIC" in source
     assert "function engineeringSpecLocal(" in source
