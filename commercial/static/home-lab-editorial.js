@@ -1896,70 +1896,6 @@
     }
   }
 
-  function impactNumber(value, maximumFractionDigits = 0) {
-    const number = Number(value);
-    return Number.isFinite(number)
-      ? number.toLocaleString("ro-RO", {maximumFractionDigits})
-      : "—";
-  }
-
-  function renderImpactSummary(summary) {
-    const homes = $("#edImpactHomes");
-    const energyNode = $("#edImpactEnergy");
-    const moneyNode = $("#edImpactMoney");
-    const capexNode = $("#edImpactCapex");
-    const paybackNode = $("#edImpactPayback");
-    const note = $("#edImpactNote");
-    if (!homes || !energyNode || !moneyNode || !capexNode || !paybackNode) return;
-
-    if (!summary?.available) {
-      homes.textContent = "—";
-      energyNode.textContent = "—";
-      moneyNode.textContent = "—";
-      capexNode.textContent = "—";
-      paybackNode.textContent = "—";
-      if (note) {
-        note.textContent = "Agregatul live nu este disponibil în acest mediu. În producție include cel mult ultima analiză salvată pentru fiecare casă.";
-      }
-      return;
-    }
-
-    if (summary.suppressed) {
-      homes.textContent = `<${impactNumber(summary.minimumCohortSize || 10, 0)}`;
-      energyNode.textContent = "—";
-      moneyNode.textContent = "—";
-      capexNode.textContent = "—";
-      paybackNode.textContent = "—";
-      if (note) {
-        note.textContent = `Valorile agregate devin publice după minimum ${impactNumber(summary.minimumCohortSize || 10, 0)} case salvate, pentru a evita expunerea unui cohort prea mic.`;
-      }
-      return;
-    }
-
-    homes.textContent = impactNumber(summary.savedHouses, 0);
-    energyNode.textContent = impactNumber(Number(summary.potentialSavingKwhYear || 0) / 1000, 1);
-    moneyNode.textContent = impactNumber(summary.potentialSavingLeiYear, 0);
-    capexNode.textContent = impactNumber(summary.estimatedCapexLei, 0);
-    paybackNode.textContent = summary.globalSimplePaybackYears == null
-      ? "—"
-      : impactNumber(summary.globalSimplePaybackYears, 1);
-    if (note) {
-      note.textContent = "Agregat din ultima analiză salvată per casă. Potențial tehnico-economic modelat, nu economie măsurată sau audit energetic.";
-    }
-  }
-
-  async function loadImpactSummary() {
-    try {
-      const response = await fetch("/api/home-lab/impact/summary", {
-        headers:{"Accept":"application/json"},
-        cache:"no-store",
-      });
-      renderImpactSummary(await response.json());
-    } catch (_) {
-      renderImpactSummary({available:false});
-    }
-  }
-
   function impactCo2TotalKg(result, heatedArea) {
     const direct = Number(result?.co2_total_kg ?? result?.co2TotalKg);
     if (Number.isFinite(direct) && direct >= 0) return direct;
@@ -2056,7 +1992,6 @@
       }
       button.textContent = "Analiză salvată ✓";
       state.textContent = "Această casă contribuie o singură dată la agregat; o salvare ulterioară îi înlocuiește snapshot-ul.";
-      await loadImpactSummary();
     } catch (error) {
       button.disabled = false;
       state.textContent = error?.message || "Salvarea nu a reușit.";
