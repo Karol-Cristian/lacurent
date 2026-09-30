@@ -35,7 +35,7 @@ def test_normalize_impact_payload_derives_savings_and_payback_server_side():
 def test_public_impact_summary_uses_portfolio_payback_not_average_house_payback():
     summary = public_impact_summary(
         {
-            "saved_houses": 3,
+            "saved_houses": 30,
             "baseline_final_energy_kwh": 100000,
             "optimized_final_energy_kwh": 70000,
             "potential_saving_kwh_year": 30000,
@@ -45,7 +45,7 @@ def test_public_impact_summary_uses_portfolio_payback_not_average_house_payback(
         }
     )
 
-    assert summary["savedHouses"] == 3
+    assert summary["savedHouses"] == 30
     assert summary["potentialReductionPercent"] == pytest.approx(30)
     assert summary["globalSimplePaybackYears"] == pytest.approx(4.5)
     assert summary["method"]["globalPayback"] == "sum_capex_divided_by_sum_annual_saving"
@@ -61,3 +61,23 @@ def test_impact_payload_rejects_negative_or_missing_physical_totals():
                 "optimized": {"finalEnergyKwh": 10, "annualCostLei": 90, "capexLei": 1000},
             }
         )
+
+
+def test_public_impact_summary_suppresses_small_cohorts():
+    summary = public_impact_summary(
+        {
+            "saved_houses": 3,
+            "baseline_final_energy_kwh": 100000,
+            "optimized_final_energy_kwh": 70000,
+            "potential_saving_kwh_year": 30000,
+            "potential_saving_lei_year": 20000,
+            "estimated_capex_lei": 90000,
+            "potential_co2_reduction_kg_year": 6000,
+        }
+    )
+
+    assert summary["available"] is True
+    assert summary["suppressed"] is True
+    assert summary["minimumCohortSize"] == 10
+    assert "potentialSavingKwhYear" not in summary
+    assert summary["method"]["measuredImpact"] is False
