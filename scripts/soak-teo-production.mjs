@@ -101,19 +101,23 @@ async function runOnce(browser, ordinal) {
     await page.locator("#runAnalysis").click();
     await page.waitForFunction(
       () => {
-        const done = document.querySelector('[data-page="done"]');
-        const error = document.querySelector('[data-page="error"]');
-        return done?.classList.contains("is-active") || error?.classList.contains("is-active");
+        const result = document.querySelector("#edTeoResult");
+        const state = String(document.querySelector("#edTeoRunState")?.textContent || "").trim();
+        return (result && !result.hasAttribute("hidden")) || state === "Eroare";
       },
       null,
       {timeout:210000},
     );
 
-    if (await page.locator('[data-page="error"].is-active').count()) {
+    const teoState = String(await page.locator("#edTeoRunState").innerText()).trim();
+    if (teoState === "Eroare") {
       throw new Error(
-        "TEO UI failed: " + await page.locator("#errorText").innerText()
+        "TEO UI failed: " + await page.locator("#edNzebMessage").innerText()
         + " log=" + (await page.locator("#runLog").innerText()).slice(-6000)
       );
+    }
+    if (!(await page.locator('[data-page="goal"].is-active').count())) {
+      throw new Error("TEO result left page 5 unexpectedly.");
     }
     if (serverErrors.length) {
       throw new Error("TEO produced server 5xx: " + JSON.stringify(serverErrors));
@@ -135,7 +139,7 @@ async function runOnce(browser, ordinal) {
       }
     }
 
-    await page.locator("#openReport").click();
+    await page.locator("#openReportFromGoal").click();
     await page.locator('[data-page="report"].is-active').waitFor({state:"visible",timeout:10000});
     const reportText = (await page.locator("#reportBody").innerText()).replace(/\s+/g," ").trim();
     const digest = crypto.createHash("sha256").update(reportText).digest("hex");
