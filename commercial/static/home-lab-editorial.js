@@ -1887,7 +1887,7 @@
     ordinal,
     total,
   }) {
-    for (let gateAttempt=0; gateAttempt<4; gateAttempt++) {
+    for (let gateAttempt=0; gateAttempt<8; gateAttempt++) {
       const state = await waitForTeoWorkerFlowReady(runId);
       if (state?.status === "complete") {
         throw new Error("TEO Worker Flow a fost închis înaintea verificării planificate.");
@@ -1905,12 +1905,12 @@
           {stageName:`verify ${ordinal}/${total}`, runId, retries:2}
         );
       } catch (error) {
-        if (Number(error?.status || 0) !== 409 || gateAttempt >= 3) throw error;
+        if (Number(error?.status || 0) !== 409 || gateAttempt >= 7) throw error;
         const retryMs = Math.max(
           TEO_SERVER_PROFILE.flowPollMs,
           Math.min(
             Number(error?.payload?.workerFlow?.retryAfterMs || TEO_SERVER_PROFILE.cooldownMs),
-            2500
+            5000
           )
         );
         await sleep(retryMs);
