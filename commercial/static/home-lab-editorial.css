@@ -329,7 +329,7 @@ button{cursor:pointer}
 .ed-details summary small{color:var(--muted);font-size:12px;text-align:right}
 .ed-details[open] summary{border-bottom:1px solid var(--line)}
 .ed-details-body{padding:18px}
-.ed-derived{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:16px}
+.ed-derived{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-bottom:16px}
 .ed-derived span{padding:12px;border-radius:12px;background:var(--soft);font-size:11px;color:var(--muted)}
 .ed-derived b{display:block;margin-top:5px;color:var(--ink);font-size:14px}
 .ed-reset-geometry{padding-left:0;margin-top:8px}
