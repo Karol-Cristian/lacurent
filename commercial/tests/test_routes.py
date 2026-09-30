@@ -2301,8 +2301,9 @@ def test_editorial_server_compute_budget_caps_only_full_engine_passes() -> None:
     assert js.status_code == 200
     source = js.text
 
-    assert 'name:"cloudflare-adaptive-flow"' in source
-    assert "maxCanonicalPasses:5" in source
+    assert '"cloudflare-adaptive-flow"' in source
+    assert '"adaptive-audit-full-eight"' in source
+    assert "maxCanonicalPasses:TEO_ADAPTIVE_AUDIT ? 10 : 5" in source
     assert "maxVerifyPasses:3" in source
     assert "maxProductPasses:0" in source
     assert "heavyRetries:0" in source
