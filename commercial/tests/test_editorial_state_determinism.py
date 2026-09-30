@@ -45,8 +45,8 @@ def test_editorial_exposes_exact_rbpe_input_identity_and_clean_reset():
 
     # Cache busting is deliberate: browsers must not keep running the old
     # persistence code after the deploy.
-    assert "/static/home-lab-editorial.js?v=60" in template
-    assert "/static/home-lab-editorial.css?v=31" in template
+    assert "/static/home-lab-editorial.js?v=61" in template
+    assert "/static/home-lab-editorial.css?v=32" in template
 
 
 def test_privacy_opt_out_clears_editorial_v2_storage():
@@ -104,3 +104,21 @@ def test_editorial_positions_home_lab_as_decision_support_not_official_document(
     assert "auditor energetic pentru clădiri gradul I" in source
     assert "verificatori de proiecte atestați" in source
     assert "Home Lab nu presupune automat" in source
+
+
+def test_editorial_exposes_modeled_impact_without_claiming_measured_savings():
+    source = EDITORIAL_JS.read_text(encoding="utf-8")
+    template = EDITORIAL_HTML.read_text(encoding="utf-8")
+
+    assert "Potențialul identificat în casele salvate." in template
+    assert "modelat · nu măsurat" in template
+    assert "edImpactHomes" in template
+    assert "edImpactEnergy" in template
+    assert "edImpactCapex" in template
+    assert "edImpactPayback" in template
+
+    assert 'fetch("/api/home-lab/impact/summary"' in source
+    assert 'fetch("/api/home-lab/impact/save"' in source
+    assert "impactProjectStorageKey" in source
+    assert "ultima versiune salvată a fiecărei case" in source
+    assert "Nu pretindem că intervenția a fost executată" in source
