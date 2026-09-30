@@ -3578,7 +3578,10 @@ async def home_lab_optimization_v3_verify_api(request: Request) -> JSONResponse:
         if not branch_id or not isinstance(candidate_raw, dict):
             raise ValueError("Lipsește finalistul V3 pentru verificare.")
 
-        if run_id:
+        router_flow_gated = (
+            request.headers.get("x-lacurent-flow-gated", "").strip() == "1"
+        )
+        if run_id and not router_flow_gated:
             gate = await _teo_flow_acquire_verification(request, run_id)
             if not gate.get("acquired"):
                 state = gate.get("state") or {}
@@ -3621,7 +3624,7 @@ async def home_lab_optimization_v3_verify_api(request: Request) -> JSONResponse:
                 run_id,
                 flow_lease_token,
             )
-            if run_id
+            if run_id and not router_flow_gated
             else None
         )
         payload = {
