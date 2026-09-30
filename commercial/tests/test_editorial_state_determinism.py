@@ -93,10 +93,10 @@ def test_editorial_positions_home_lab_as_decision_support_not_official_document(
     source = EDITORIAL_JS.read_text(encoding="utf-8")
     template = EDITORIAL_HTML.read_text(encoding="utf-8")
 
-    assert "De la casa ta la o decizie verificabilă." in template
-    assert "Raport + pas profesional" in template
-    assert "Home Lab este un instrument de calcul și decizie." in template
-    assert "nu este, prin el însuși, certificat de performanță energetică" in template
+    assert "Construiește planul energetic al casei tale." in template
+    assert "Comparăm ce merită" in template
+    assert "Home Lab este instrumentul tău de decizie energetică." in template
+    assert "nu înlocuiește documentele oficiale" in template
 
     assert "Calcul finalizat. Verificarea profesională este un pas separat." in source
     assert "Verificare profesională neefectuată" in source
