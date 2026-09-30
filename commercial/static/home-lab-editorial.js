@@ -102,6 +102,7 @@
   let autosaveTimer = 0;
   let draftDirty = false;
   let suppressLocalAutosave = false;
+  let volatileImpactProjectId = "";
   const MAP_MIN_ZOOM = 1;
   const MAP_MAX_ZOOM = 6;
   const mapView = {zoom:1, centerX:null, centerY:null};
@@ -1874,13 +1875,16 @@
     try {
       const existing = String(localStorage.getItem(impactProjectStorageKey) || "").trim();
       if (existing) return existing;
-      const created = typeof crypto?.randomUUID === "function"
-        ? crypto.randomUUID()
+      const created = typeof window.crypto?.randomUUID === "function"
+        ? window.crypto.randomUUID()
         : `editorial-${Date.now()}-${Math.random().toString(16).slice(2)}`;
       localStorage.setItem(impactProjectStorageKey, created);
       return created;
     } catch (_) {
-      return `editorial-session-${Date.now()}`;
+      if (!volatileImpactProjectId) {
+        volatileImpactProjectId = `editorial-session-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      }
+      return volatileImpactProjectId;
     }
   }
 
@@ -2053,7 +2057,7 @@
     state.textContent = token
       ? "Salvarea folosește ultima analiză TEO și înlocuiește versiunea anterioară a aceleiași case."
       : "Conectează contul Home Lab pentru a salva. Simulările nesalvate nu intră în agregatul public.";
-    button.addEventListener("click", saveImpactSnapshotFromReport, {once:true});
+    button.addEventListener("click", saveImpactSnapshotFromReport);
   }
 
   function calculationInputFingerprint(data) {
