@@ -4110,6 +4110,37 @@
         ${Array.isArray(opt.warnings) && opt.warnings.length ? `<h3>Limitări / avertismente</h3><ul>${opt.warnings.map(x => `<li>${escapeHtml(x)}</li>`).join("")}</ul>` : ""}
       </section>
     `;
+    html += `
+      <section class="ed-report-section ed-report-professional-gate">
+        <p class="ed-eyebrow">Statutul raportului</p>
+        <h2>Calcul finalizat. Verificarea profesională este un pas separat.</h2>
+
+        <div class="ed-report-status-grid">
+          <div class="is-complete">
+            <span>Home Lab</span>
+            <strong><svg aria-hidden="true"><use href="#ed-i-check"></use></svg> Calcul tehnic finalizat</strong>
+          </div>
+          <div class="is-review">
+            <span>Utilizare oficială</span>
+            <strong><svg aria-hidden="true"><use href="#ed-i-info"></use></svg> Verificare profesională neefectuată</strong>
+          </div>
+        </div>
+
+        <p>Raportul Home Lab poate susține comparația tehnică și economică a opțiunilor. El nu înlocuiește documentele pe care legea le rezervă specialiștilor atestați și nici proiectul necesar executării lucrărilor, atunci când acesta este cerut.</p>
+
+        <details class="ed-report-review-details">
+          <summary><span>Când intră specialistul atestat?</span><b>+</b></summary>
+          <div>
+            <p><b>Certificat de performanță energetică / raport de audit energetic:</b> documentele oficiale se elaborează de auditor energetic pentru clădiri, în limitele dreptului său de practică.</p>
+            <p><b>Raport de conformare nZEB:</b> pentru documentația oficială aferentă unei clădiri noi, raportul este elaborat de auditor energetic pentru clădiri gradul I.</p>
+            <p><b>Proiect și execuție:</b> soluția trebuie preluată în documentația de proiect de specialiștii competenți și, unde legislația o cere, verificată de verificatori de proiecte atestați.</p>
+          </div>
+        </details>
+
+        <p class="ed-report-legal-note"><b>Important:</b> regimul concret depinde de clădire, tipul și amploarea intervenției, statutul de renovare majoră, autorizare și eventuale regimuri speciale. Home Lab nu presupune automat că o intervenție este autorizabilă sau că o clădire intră într-o anumită excepție legală.</p>
+      </section>
+    `;
+
     $("#reportBody").innerHTML = html;
   }
 
