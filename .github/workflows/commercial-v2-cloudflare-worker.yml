@@ -1326,7 +1326,6 @@ jobs:
               "data-lacurent-focus-bar",
               "Înapoi la magazin",
               'host.style.position = "fixed"',
-              'host.dataset.path',
               'host.dataset.deferred === "true"',
               "window.LaCurentEmbed",
           ):
