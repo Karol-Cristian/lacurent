@@ -69,6 +69,20 @@ copyDirectory(path.join(commercialRoot, "app"), path.join(srcDir, "app"));
 copyDirectory(path.join(commercialRoot, "data"), path.join(srcDir, "data"));
 copyDirectory(path.join(commercialRoot, "static"), path.join(srcDir, "static"));
 copyDirectory(path.join(commercialRoot, "templates"), path.join(srcDir, "templates"));
+
+// The animated 3D Home Lab is intentionally frozen as repository-only legacy
+// code. Keep the source available for reference, but never ship its runtime
+// surface in the production Worker bundle.
+for (const retiredRelativePath of [
+  path.join("static", "home-lab-next.js"),
+  path.join("static", "home-lab-next.css"),
+  path.join("static", "home-lab-3d.js"),
+  path.join("static", "home-lab-3d.css"),
+  path.join("templates", "home_lab_next.html"),
+]) {
+  fs.rmSync(path.join(srcDir, retiredRelativePath), { force: true });
+}
+
 fs.copyFileSync(path.join(configRoot, "worker.py"), path.join(srcDir, "worker.py"));
 fs.copyFileSync(path.join(configRoot, "pyproject.toml"), path.join(outputDir, "pyproject.toml"));
 
