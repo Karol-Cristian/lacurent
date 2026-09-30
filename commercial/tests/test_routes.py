@@ -934,6 +934,9 @@ def test_private_teo_topology_is_sharded_and_route_isolated() -> None:
     assert "acquireFlow" in router
     assert "completeFlow" in router
     assert '"x-lacurent-flow-gated":"1"' in router
+    main = Path("commercial/app/main.py").read_text(encoding="utf-8")
+    assert 'request.headers.get("x-lacurent-flow-gated"' in main
+    assert "if run_id and not router_flow_gated" in main
     assert ".wrangler/teo-worker" in prepare
     assert "copyDirectory(path.join(commercialRoot, \"app\")" in prepare
     assert "Deploy four private TEO shards" in workflow
