@@ -45,10 +45,45 @@ def test_editorial_exposes_exact_rbpe_input_identity_and_clean_reset():
 
     # Cache busting is deliberate: browsers must not keep running the old
     # persistence code after the deploy.
-    assert "/static/home-lab-editorial.js?v=54" in template
-    assert "/static/home-lab-editorial.css?v=24" in template
+    assert "/static/home-lab-editorial.js?v=59" in template
+    assert "/static/home-lab-editorial.css?v=30" in template
 
 
 def test_privacy_opt_out_clears_editorial_v2_storage():
     privacy_source = (ROOT / "commercial" / "static" / "privacy-consent.js").read_text(encoding="utf-8")
     assert '"lacurent-home-lab-editorial-v2:"' in privacy_source
+
+
+def test_editorial_marks_stale_teo_result_for_recalculation():
+    source = EDITORIAL_JS.read_text(encoding="utf-8")
+
+    assert 'let teoInputFingerprint = "";' in source
+    assert "function syncTeoRecalculationCue()" in source
+    assert 'currentFingerprint !== teoInputFingerprint' in source
+    assert '"is-recalculation-needed"' in source
+    assert "Recalculare disponibilă" in source
+    assert "Recalculează optimizarea TEO" in source
+    assert "const runInputFingerprint = calculationInputFingerprint(baselinePayload)" in source
+    assert "teoInputFingerprint = runInputFingerprint" in source
+
+
+def test_editorial_resets_manual_advanced_values_when_dependencies_change():
+    source = EDITORIAL_JS.read_text(encoding="utf-8")
+
+    assert "ADVANCED_DEPENDENCY_RESETS" in source
+    assert 'dhwSystem:["advDhwEfficiency","advDhwCop"]' in source
+    assert 'ventilation:["advAch","advHeatRecovery"]' in source
+    assert 'heatingEmitter:["advHeatingFlow","advHeatingReturn","advHeatingScop"]' in source
+    assert 'floorBoundary:["advFloorU","advGroundConductivity"]' in source
+    assert 'field.dataset.advancedAuto = "true"' in source
+    assert "resetAdvancedDependents(event.target)" in source
+
+
+def test_editorial_focuses_teo_progress_on_mobile_when_run_starts():
+    source = EDITORIAL_JS.read_text(encoding="utf-8")
+
+    assert "function focusTeoProgressOnMobile()" in source
+    assert 'window.matchMedia("(max-width: 720px)")' in source
+    assert 'const target = $("#edTeoSteps")' in source
+    assert "target.scrollIntoView({" in source
+    assert "focusTeoProgressOnMobile();" in source
