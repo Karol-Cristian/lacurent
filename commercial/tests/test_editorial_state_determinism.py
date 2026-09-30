@@ -45,8 +45,8 @@ def test_editorial_exposes_exact_rbpe_input_identity_and_clean_reset():
 
     # Cache busting is deliberate: browsers must not keep running the old
     # persistence code after the deploy.
-    assert "/static/home-lab-editorial.js?v=59" in template
-    assert "/static/home-lab-editorial.css?v=30" in template
+    assert "/static/home-lab-editorial.js?v=60" in template
+    assert "/static/home-lab-editorial.css?v=31" in template
 
 
 def test_privacy_opt_out_clears_editorial_v2_storage():
@@ -87,3 +87,20 @@ def test_editorial_focuses_teo_progress_on_mobile_when_run_starts():
     assert 'const target = $("#edTeoSteps")' in source
     assert "target.scrollIntoView({" in source
     assert "focusTeoProgressOnMobile();" in source
+
+
+def test_editorial_positions_home_lab_as_decision_support_not_official_document():
+    source = EDITORIAL_JS.read_text(encoding="utf-8")
+    template = EDITORIAL_HTML.read_text(encoding="utf-8")
+
+    assert "De la casa ta la o decizie verificabilă." in template
+    assert "Raport + pas profesional" in template
+    assert "Home Lab este un instrument de calcul și decizie." in template
+    assert "nu este, prin el însuși, certificat de performanță energetică" in template
+
+    assert "Calcul finalizat. Verificarea profesională este un pas separat." in source
+    assert "Verificare profesională neefectuată" in source
+    assert "Certificat de performanță energetică / raport de audit energetic" in source
+    assert "auditor energetic pentru clădiri gradul I" in source
+    assert "verificatori de proiecte atestați" in source
+    assert "Home Lab nu presupune automat" in source
