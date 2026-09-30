@@ -45,7 +45,7 @@ def test_editorial_exposes_exact_rbpe_input_identity_and_clean_reset():
 
     # Cache busting is deliberate: browsers must not keep running the old
     # persistence code after the deploy.
-    assert "/static/home-lab-editorial.js?v=53" in template
+    assert "/static/home-lab-editorial.js?v=54" in template
     assert "/static/home-lab-editorial.css?v=24" in template
 
 
