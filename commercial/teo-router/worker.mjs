@@ -319,14 +319,14 @@ async function routeAcrossShards(request, env, bodyBytes, extraHeaders = {}) {
   const ready = ordered.filter(key => (disabledUntil.get(key) || 0) <= now);
 
   // Half-open recovery: if this router isolate has put every shard in
-  // cooldown, do not create a client-specific blackout. Probe the shard whose
-  // cooldown expires first. A fresh isolate would probe too; the sticky
-  // isolate must get the same recovery opportunity.
+  // cooldown, do not create a client-specific blackout. Probe the disabled
+  // shards in expiry order until one answers successfully. This path runs
+  // only when there is no normally-ready shard.
   const candidates = ready.length
     ? ready
-    : [[...ordered].sort(
+    : [...ordered].sort(
         (a,b) => (disabledUntil.get(a) || 0) - (disabledUntil.get(b) || 0)
-      )[0]];
+      );
 
   for (const key of candidates) {
     try {
