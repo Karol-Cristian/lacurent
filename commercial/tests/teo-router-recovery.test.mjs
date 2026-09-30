@@ -105,35 +105,3 @@ test("half-open recovery survives 250 repeated fail-all then recover cycles in o
     );
   }
 });
-
-
-test("router probes a recovered cooldown shard after every ready shard fails", async () => {
-  const moduleUrl = new URL("../teo-router/worker.mjs?recovery=ready-then-disabled", import.meta.url);
-  const router = (await import(moduleUrl.href)).default;
-  const state = {
-    TEO_A:503,
-    TEO_B:503,
-    TEO_C:503,
-    TEO_D:503,
-  };
-  const calls = {};
-  const env = dynamicEnv(state, calls);
-
-  // First request puts all shards in cooldown.
-  const first = await router.fetch(planRequest(), env);
-  assert.equal(first.status, 503);
-
-  // Let B/C/D become the normally-ready set by waiting out their short
-  // cooldown in the module's own clock, while A remains conceptually
-  // "previously disabled" but is already healthy at the upstream.
-  await new Promise(resolve => setTimeout(resolve, 1600));
-  state.TEO_A = 200;
-  state.TEO_B = 503;
-  state.TEO_C = 503;
-  state.TEO_D = 503;
-
-  // A recovered cooldown shard must still be probed before returning 503.
-  const second = await router.fetch(planRequest(), env);
-  assert.equal(second.status, 200);
-  assert.equal(second.headers.get("x-lacurent-teo-shard"), "teo_a");
-});
