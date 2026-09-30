@@ -67,6 +67,7 @@ jobs:
       - name: Run Home Lab browser smoke
         env:
           HOME_LAB_BASE_URL: http://127.0.0.1:8765
+          TEO_ADAPTIVE_AUDIT: "1"
         run: |
           python -m uvicorn app.main:app --app-dir commercial --host 127.0.0.1 --port 8765 > /tmp/home-lab-uvicorn.log 2>&1 &
           server_pid=$!
