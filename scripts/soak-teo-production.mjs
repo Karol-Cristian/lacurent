@@ -134,8 +134,20 @@ async function runOnce(browser, ordinal) {
     );
     if (!criticalRoutes.length) throw new Error("No TEO API responses were observed.");
     for (const row of criticalRoutes) {
-      if (row.route !== "private-teo-sharded") {
-        throw new Error("TEO bypassed private router: " + JSON.stringify(row));
+      const isFlowControl =
+        row.path.endsWith("/v4/flow/start")
+        || row.path.includes("/v4/flow/");
+      const expectedRoute = isFlowControl
+        ? "router-flow-d1"
+        : "private-teo-sharded";
+      if (row.route !== expectedRoute) {
+        throw new Error(
+          "Unexpected TEO route ownership: expected " + expectedRoute + " :: " +
+          JSON.stringify(row)
+        );
+      }
+      if (!isFlowControl && !row.shard) {
+        throw new Error("Heavy TEO route did not expose a shard: " + JSON.stringify(row));
       }
     }
 
