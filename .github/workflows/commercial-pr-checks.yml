@@ -55,6 +55,7 @@ jobs:
           node --test commercial/tests/language-toggle.test.cjs
           node --test commercial/tests/scenario-cockpit.test.cjs
           node --test commercial/tests/request-timeout.test.cjs
+          node --test commercial/tests/teo-router-flow.test.mjs
           python -m compileall -q commercial
           python -m pytest commercial/tests -q
 
