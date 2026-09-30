@@ -1783,6 +1783,10 @@
       const error = new Error(data.error || data.detail || `HTTP ${response.status}`);
       error.status = response.status;
       error.payload = data;
+      const retryAfterSeconds = Number(response.headers.get("retry-after") || 0);
+      error.retryAfterMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+        ? retryAfterSeconds * 1000
+        : 0;
       throw error;
     }
     return data;
@@ -1801,8 +1805,9 @@
         const status = Number(error?.status || 0);
         const retryable = status === 0 || [500, 502, 503, 504].includes(status);
         if (!retryable || attempt >= retries) break;
-        const delay = attempt === 0 ? 700 : 1600;
-        log(`RETRY · ${stageName} · HTTP ${status || "network"} · ${attempt + 1}/${retries} · run ${runId || "—"}`);
+        const backoff = attempt === 0 ? 700 : 1600;
+        const delay = Math.max(backoff, Number(error?.retryAfterMs || 0));
+        log(`RETRY · ${stageName} · HTTP ${status || "network"} · ${attempt + 1}/${retries} · aștept ${(delay / 1000).toFixed(1)} s · run ${runId || "—"}`);
         await sleep(delay);
       }
     }
@@ -1833,7 +1838,7 @@
     return postJson(
       "/api/optimization/home-lab/v4/flow/start",
       {runId, plannedVerifications},
-      {stageName:"TEO Worker Flow start", runId, retries:0}
+      {stageName:"TEO Worker Flow start", runId, retries:3}
     );
   }
 
@@ -1841,7 +1846,7 @@
     return requestJsonWithRetry(
       `/api/optimization/home-lab/v4/flow/${encodeURIComponent(runId)}`,
       {method:"GET", headers:{"Accept":"application/json"}},
-      {stageName:"TEO Worker Flow status", runId, retries:0}
+      {stageName:"TEO Worker Flow status", runId, retries:3}
     );
   }
 
@@ -1850,7 +1855,7 @@
       return await postJson(
         `/api/optimization/home-lab/v4/flow/${encodeURIComponent(runId)}/finish`,
         {},
-        {stageName:"TEO Worker Flow finish", runId, retries:0}
+        {stageName:"TEO Worker Flow finish", runId, retries:2}
       );
     } catch (_) {
       return null;
@@ -1897,7 +1902,7 @@
             candidate:target.candidate,
             baselineAnnualBillLei,
           },
-          {stageName:`verify ${ordinal}/${total}`, runId, retries:0}
+          {stageName:`verify ${ordinal}/${total}`, runId, retries:2}
         );
       } catch (error) {
         if (Number(error?.status || 0) !== 409 || gateAttempt >= 3) throw error;
@@ -3640,14 +3645,17 @@
         } catch (error) {
           verifyFailures += 1;
           log(
-            `VERIFY ${i + 1}/${verifyTargets.length} indisponibil · ${error?.message || String(error)} · următorul finalist poate continua după Worker Flow cooldown.`
+            `VERIFY ${i + 1}/${verifyTargets.length} eșuat după retry/failover · ${error?.message || String(error)} · rezultatul NU este publicat dintr-un subset parțial.`
+          );
+          throw new Error(
+            `Verificarea RBPE a finalistului ${i + 1}/${verifyTargets.length} nu a reușit. TEO oprește finalizarea pentru a păstra determinismul.`
           );
         }
       }
       await finishTeoWorkerFlow(runId);
 
-      if (!verifiedRows.length) {
-        throw new Error("Nicio verificare RBPE canonică nu a reușit. Căutarea locală nu este promovată ca rezultat verificat.");
+      if (!verifiedRows.length || verifyFailures > 0) {
+        throw new Error("Setul de verificări RBPE este incomplet. TEO nu publică un rezultat dintr-un subset parțial.");
       }
 
       log(
