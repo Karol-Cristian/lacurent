@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import math
@@ -8,6 +9,10 @@ from typing import Any
 
 IMPACT_SCHEMA_VERSION = "home-lab-impact-v1"
 IMPACT_QUALITY_SCOPE = "user_saved_modelled"
+PUBLIC_IMPACT_MIN_COHORT = 10
+
+_impact_schema_lock = asyncio.Lock()
+_impact_schema_ready = False
 
 IMPACT_CREATE_SQL = """
 CREATE TABLE IF NOT EXISTS home_lab_impact_snapshots (
@@ -177,6 +182,20 @@ def normalize_impact_payload(payload: dict[str, Any]) -> dict[str, Any]:
 def public_impact_summary(row: dict[str, Any] | None) -> dict[str, Any]:
     row = row or {}
     saved_houses = int(row.get("saved_houses") or 0)
+    if saved_houses < PUBLIC_IMPACT_MIN_COHORT:
+        return {
+            "available": True,
+            "suppressed": True,
+            "scope": IMPACT_QUALITY_SCOPE,
+            "savedHouses": saved_houses,
+            "minimumCohortSize": PUBLIC_IMPACT_MIN_COHORT,
+            "method": {
+                "deduplication": "latest_saved_snapshot_per_project_id",
+                "globalPayback": "sum_capex_divided_by_sum_annual_saving",
+                "measuredImpact": False,
+            },
+        }
+
     baseline_energy = float(row.get("baseline_final_energy_kwh") or 0.0)
     optimized_energy = float(row.get("optimized_final_energy_kwh") or 0.0)
     energy_saving = float(row.get("potential_saving_kwh_year") or 0.0)
@@ -210,15 +229,22 @@ def public_impact_summary(row: dict[str, Any] | None) -> dict[str, Any]:
 
 
 async def ensure_impact_schema(db: Any) -> None:
-    await db.prepare(IMPACT_CREATE_SQL).run()
-    await db.prepare(
-        "CREATE INDEX IF NOT EXISTS home_lab_impact_owner_idx "
-        "ON home_lab_impact_snapshots(owner_user_id, updated_at)"
-    ).run()
-    await db.prepare(
-        "CREATE INDEX IF NOT EXISTS home_lab_impact_active_idx "
-        "ON home_lab_impact_snapshots(is_active, data_quality)"
-    ).run()
+    global _impact_schema_ready
+    if _impact_schema_ready:
+        return
+    async with _impact_schema_lock:
+        if _impact_schema_ready:
+            return
+        await db.prepare(IMPACT_CREATE_SQL).run()
+        await db.prepare(
+            "CREATE INDEX IF NOT EXISTS home_lab_impact_owner_idx "
+            "ON home_lab_impact_snapshots(owner_user_id, updated_at)"
+        ).run()
+        await db.prepare(
+            "CREATE INDEX IF NOT EXISTS home_lab_impact_active_idx "
+            "ON home_lab_impact_snapshots(is_active, data_quality)"
+        ).run()
+        _impact_schema_ready = True
 
 
 def bearer_token(request: Any) -> str:
