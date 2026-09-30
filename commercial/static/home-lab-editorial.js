@@ -4,6 +4,7 @@
   if (!root || !form) return;
 
   const $ = selector => document.querySelector(selector);
+  // Diagnostic-only: compare the first adaptive stop against all eight exact finalists.
   const TEO_ADAPTIVE_AUDIT = new URLSearchParams(window.location.search).get("teo_audit") === "1";
   const EDITORIAL_DRAFT_VERSION = 2;
   const CALCULATION_MODEL_VERSION = "rbpe-editorial-2026-09-29.1";
