@@ -3,6 +3,11 @@ main = "worker.mjs"
 compatibility_date = "2026-09-28"
 workers_dev = false
 
+[[d1_databases]]
+binding = "DB"
+database_name = "lacurent-db"
+database_id = "91b70c8a-3c11-4fe0-81ed-e3b64a075118"
+
 [[services]]
 binding = "TEO_A"
 service = "lacurent-teo-shard-a"
