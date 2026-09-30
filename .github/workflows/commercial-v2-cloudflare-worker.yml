@@ -107,8 +107,6 @@ jobs:
         run: |
           git diff --check
           node --check commercial/static/app.js
-          node --check commercial/static/home-lab-next.js
-          node --check commercial/static/home-lab-3d.js
           node --check scripts/build-location-payload.mjs
           node --check scripts/prepare-commercial-cloudflare-worker.mjs
           node --check scripts/prepare-reference-cloudflare-worker.mjs
@@ -496,9 +494,6 @@ jobs:
               "/sitemap.xml": "https://lacurent.com/home-lab/facts",
               "/static/simulation-facts.css": ".facts-grid",
               "/home-lab-next": "data-editorial-lab",
-              "/home-lab-classic": "data-home-lab-next",
-              "/static/home-lab-next.js": "function openMeasure",
-              "/static/home-lab-next.css": ".hln-before-after",
               "/static/home-lab-product.js": "data-hlp-demo-shell",
               "/static/home-lab-product.css": ".hlp-house-stage",
           }
@@ -560,7 +555,6 @@ jobs:
               "data-lacurent-focus-bar",
               "Înapoi la magazin",
               'host.style.position = "fixed"',
-              'host.dataset.path',
               'host.dataset.deferred === "true"',
               "window.LaCurentEmbed",
           ):
@@ -656,31 +650,27 @@ jobs:
           if float(lab_payload.get("design_heat_load_kw", 0)) <= 0:
               raise AssertionError("Embedded house lab did not return design heat load.")
 
-          next_html = get("/home-lab-classic")
-          for marker in (
-              'data-hln-screen="home"',
-              'data-hln-screen="site"',
-              'data-hln-screen="intervention"',
-              'data-hln-screen="scenario"',
-              "Salvează Casa mea și vezi îmbunătățirile",
-              "Păstrează intervenția",
-              'class="hln-house-board"',
-              'class="hln-impact-panel"',
-              'id="hln-i-wall"',
+          for retired_path in (
+              "/home-lab-classic",
+              "/embed/demo-store/next",
+              "/embed/demo-store/next/calculate",
           ):
-              if marker not in next_html:
-                  raise AssertionError(f"Home Lab Next missing {marker!r}")
-
-          partner_next_html = get("/embed/demo-store/next")
-          if 'data-partner-id="demo-store"' not in partner_next_html:
-              raise AssertionError("Partner Home Lab Next lost partner scope.")
+              request = urllib.request.Request(base + retired_path)
+              try:
+                  urllib.request.urlopen(request, timeout=20)
+              except urllib.error.HTTPError as exc:
+                  if exc.code != 404:
+                      raise AssertionError(
+                          f"Retired Classic 3D path {retired_path} returned HTTP {exc.code}, expected 404"
+                      ) from exc
+              else:
+                  raise AssertionError(
+                      f"Retired Classic 3D path {retired_path} is still exposed."
+                  )
 
           next_payload = json.loads(post("/api/home-lab-next/calculate", lab_form))
           if float(next_payload.get("final_energy_kwh", 0)) <= 0:
               raise AssertionError("Home Lab Next API did not return final energy.")
-          partner_next_payload = json.loads(post("/embed/demo-store/next/calculate", lab_form))
-          if float(partner_next_payload.get("design_heat_load_kw", 0)) <= 0:
-              raise AssertionError("Partner Home Lab Next API did not return design heat load.")
 
           optimizer_form = dict(lab_form)
           optimizer_form["_optimization_mode"] = "auto_economic"
@@ -1336,7 +1326,6 @@ jobs:
               "data-lacurent-focus-bar",
               "Înapoi la magazin",
               'host.style.position = "fixed"',
-              'host.dataset.path',
               'host.dataset.deferred === "true"',
               "window.LaCurentEmbed",
           ):
@@ -1634,13 +1623,16 @@ jobs:
               if marker not in next_html:
                   raise AssertionError(f"Production Editorial Home Lab missing {marker!r}")
 
-          status, _, classic_html = open_url(apex + "/home-lab-classic")
-          if status != 200 or 'data-home-lab-next' not in classic_html:
-              raise AssertionError("Classic Home Lab rollback route is unavailable.")
-
-          status, _, partner_next_html = open_url(apex + "/embed/demo-store/next")
-          if status != 200 or 'data-partner-id="demo-store"' not in partner_next_html:
-              raise AssertionError("Production partner Home Lab Next is unavailable.")
+          for retired_path in (
+              "/home-lab-classic",
+              "/embed/demo-store/next",
+              "/embed/demo-store/next/calculate",
+          ):
+              retired_status, _, _ = open_url(apex + retired_path)
+              if retired_status != 404:
+                  raise AssertionError(
+                      f"Retired Classic 3D path {retired_path} returned HTTP {retired_status}, expected 404."
+                  )
 
           next_ok = False
           next_status = None
@@ -1669,39 +1661,8 @@ jobs:
                   f"HTTP {next_status}, body={next_body[:500]!r}"
               )
 
-          partner_next_ok = False
-          partner_next_status = None
-          partner_next_body = ""
-          for attempt in range(1, 5):
-              partner_next_status, _, partner_next_body = open_url(
-                  apex + "/embed/demo-store/next/calculate",
-                  data=lab_encoded,
-                  headers={"Content-Type": "application/x-www-form-urlencoded"},
-              )
-              try:
-                  partner_next_payload = json.loads(partner_next_body) if partner_next_status == 200 else {}
-              except Exception:
-                  partner_next_payload = {}
-              if (
-                  partner_next_status == 200
-                  and float(partner_next_payload.get("design_heat_load_kw", 0)) > 0
-              ):
-                  partner_next_ok = True
-                  break
-              print(
-                  f"Partner Home Lab Next calculation retry {attempt}: HTTP {partner_next_status}, "
-                  f"body={partner_next_body[:240]!r}"
-              )
-              time.sleep(attempt * 2)
-          if not partner_next_ok:
-              raise AssertionError(
-                  f"Production partner Home Lab Next calculation failed after retries: "
-                  f"HTTP {partner_next_status}, body={partner_next_body[:500]!r}"
-              )
-
           print("/instalatii/calculator -> Home Lab", 200)
           print("/home-lab-next", 200)
-          print("/embed/demo-store/next", 200)
 
           scenario_encoded = json.dumps({
               "baseline": json.loads(model_to_json(demo_building())),
