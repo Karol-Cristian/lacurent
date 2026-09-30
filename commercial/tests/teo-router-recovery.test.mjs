@@ -75,3 +75,33 @@ test("progressive cooldown starts short instead of imposing a fixed 15s penalty"
   assert.ok(retryAfter >= 1);
   assert.ok(retryAfter <= 3, "first failure should not impose the old 15s blackout");
 });
+
+
+test("half-open recovery survives 250 repeated fail-all then recover cycles in one isolate", async () => {
+  const moduleUrl = new URL("../teo-router/worker.mjs?recovery=stress-250", import.meta.url);
+  const router = (await import(moduleUrl.href)).default;
+  const state = {
+    TEO_A:503,
+    TEO_B:503,
+    TEO_C:503,
+    TEO_D:503,
+  };
+  const calls = {};
+  const env = dynamicEnv(state, calls);
+
+  for (let cycle=0; cycle<250; cycle+=1) {
+    for (const key of Object.keys(state)) state[key] = 503;
+    const failed = await router.fetch(planRequest(), env);
+    assert.equal(failed.status, 503, "cycle " + cycle + " should observe the injected outage");
+
+    const recoveredKey = ["TEO_A","TEO_B","TEO_C","TEO_D"][cycle % 4];
+    state[recoveredKey] = 200;
+    const recovered = await router.fetch(planRequest(), env);
+    assert.equal(recovered.status, 200, "cycle " + cycle + " should recover without isolate blackout");
+    assert.equal(
+      recovered.headers.get("x-lacurent-teo-shard"),
+      recoveredKey.toLowerCase(),
+      "cycle " + cycle + " should reach the recovered shard",
+    );
+  }
+});
