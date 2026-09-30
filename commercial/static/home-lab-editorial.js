@@ -4474,6 +4474,5 @@
   form.querySelectorAll("[data-optional-advanced]").forEach(refreshAdvancedFieldState);
   syncTechnicalForm();
   showPage("intro");
-  loadImpactSummary();
   scheduleBaselineSummary(150);
 })();
