@@ -318,17 +318,15 @@ async function routeAcrossShards(request, env, bodyBytes, extraHeaders = {}) {
   );
   const ready = ordered.filter(key => (disabledUntil.get(key) || 0) <= now);
 
-  // Recovery order:
-  // 1) normally-ready shards first;
-  // 2) if all of them fail, probe cooldown shards in expiry order.
-  //
-  // This prevents a sticky router isolate from returning 503 while a shard
-  // marked down by an earlier request has already recovered. With no ready
-  // shards, this naturally becomes the half-open path.
-  const disabled = ordered
-    .filter(key => !ready.includes(key))
-    .sort((a,b) => (disabledUntil.get(a) || 0) - (disabledUntil.get(b) || 0));
-  const candidates = [...ready, ...disabled];
+  // Half-open recovery: if this router isolate has put every shard in
+  // cooldown, do not create a client-specific blackout. Probe the disabled
+  // shards in expiry order until one answers successfully. This path runs
+  // only when there is no normally-ready shard.
+  const candidates = ready.length
+    ? ready
+    : [...ordered].sort(
+        (a,b) => (disabledUntil.get(a) || 0) - (disabledUntil.get(b) || 0)
+      );
 
   for (const key of candidates) {
     try {
