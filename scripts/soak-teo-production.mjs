@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 
 const baseUrl = String(process.env.HOME_LAB_BASE_URL || "").replace(/\/$/, "");
 const runs = Number(process.env.TEO_SOAK_RUNS || 10);
+const diagnosticOnly = process.env.TEO_DIAGNOSTIC_ONLY === "1";
 if (!baseUrl) throw new Error("HOME_LAB_BASE_URL is required");
 
 function percentile(values, p) {
@@ -143,6 +144,19 @@ async function runOnce(browser, ordinal) {
     await page.locator('[data-page="report"].is-active').waitFor({state:"visible",timeout:10000});
     const reportText = (await page.locator("#reportBody").innerText()).replace(/\s+/g," ").trim();
     const digest = crypto.createHash("sha256").update(reportText).digest("hex");
+    const sections = await page.locator("#reportBody .ed-report-section").evaluateAll(nodes =>
+      nodes.map(node => {
+        const heading = String(node.querySelector("h2")?.textContent || "(fără titlu)").trim();
+        const text = String(node.textContent || "").replace(/\s+/g," ").trim();
+        return {heading,text};
+      })
+    );
+    const sectionDigests = Object.fromEntries(
+      sections.map(section => [
+        section.heading,
+        crypto.createHash("sha256").update(section.text).digest("hex").slice(0,12),
+      ])
+    );
     const snapshot = await page.evaluate(() => ({
       energyClass:String(document.querySelector("#edBaselineClass")?.textContent || "").trim(),
       annualCost:String(document.querySelector("#edBaselineCost")?.textContent || "").trim(),
@@ -150,12 +164,31 @@ async function runOnce(browser, ordinal) {
       primaryEnergy:String(document.querySelector("#edBaselinePrimaryEnergy")?.textContent || "").trim(),
       status:String(document.querySelector("#edBaselineStatus")?.textContent || "").trim(),
     }));
+    const runLogTail = (await page.locator("#runLog").innerText())
+      .split("\n")
+      .filter(Boolean)
+      .slice(-24);
+    const page5Summary = await page.evaluate(() => ({
+      measures:[...document.querySelectorAll("#edTeoMeasures .ed-teo-measure")]
+        .map(node => String(node.textContent || "").replace(/\s+/g," ").trim()),
+      capex:String(document.querySelector("#edTeoCapex")?.textContent || "").trim(),
+      saving:String(document.querySelector("#edTeoSaving")?.textContent || "").trim(),
+      payback:String(document.querySelector("#edTeoPayback")?.textContent || "").trim(),
+      finalists:String(document.querySelector("#edTeoFinalists")?.textContent || "").trim(),
+      compliant:String(document.querySelector("#edTeoCompliant")?.textContent || "").trim(),
+      evaluated:String(document.querySelector("#edTeoEvaluated")?.textContent || "").trim(),
+      badge:String(document.querySelector("#edTeoComplianceBadge")?.textContent || "").replace(/\s+/g," ").trim(),
+    }));
 
     return {
       ordinal,
       durationMs:performance.now() - started,
       digest,
       snapshot,
+      sections,
+      sectionDigests,
+      page5Summary,
+      runLogTail,
       shards:[...new Set(criticalRoutes.map(row => row.shard).filter(Boolean))],
       routeCount:criticalRoutes.length,
     };
@@ -175,6 +208,8 @@ try {
       + " " + Math.round(row.durationMs) + "ms"
       + " shards=" + row.shards.join(",")
       + " digest=" + row.digest.slice(0,12)
+      + " sections=" + JSON.stringify(row.sectionDigests)
+      + " page5=" + JSON.stringify(row.page5Summary)
     );
   }
 } finally {
@@ -182,22 +217,55 @@ try {
 }
 
 const baseline = rows[0];
+const differences = [];
 for (const row of rows.slice(1)) {
   if (JSON.stringify(row.snapshot) !== JSON.stringify(baseline.snapshot)) {
-    throw new Error("TEO final HUD is non-deterministic: " + JSON.stringify({baseline,row}));
+    differences.push({
+      kind:"hud",
+      ordinal:row.ordinal,
+      baseline:baseline.snapshot,
+      current:row.snapshot,
+    });
   }
   if (row.digest !== baseline.digest) {
-    throw new Error("TEO final report is non-deterministic: " + JSON.stringify({
-      baseline:baseline.digest,
+    const baselineSections = new Map(baseline.sections.map(section => [section.heading, section.text]));
+    const currentSections = new Map(row.sections.map(section => [section.heading, section.text]));
+    const changedSections = [];
+    for (const heading of new Set([...baselineSections.keys(), ...currentSections.keys()])) {
+      const left = baselineSections.get(heading) || "";
+      const right = currentSections.get(heading) || "";
+      if (left !== right) {
+        changedSections.push({
+          heading,
+          baseline:left,
+          current:right,
+        });
+      }
+    }
+    differences.push({
+      kind:"report",
       ordinal:row.ordinal,
-      digest:row.digest,
-    }));
+      baselineDigest:baseline.digest,
+      currentDigest:row.digest,
+      changedSections,
+      baselinePage5:baseline.page5Summary,
+      currentPage5:row.page5Summary,
+      baselineRunLogTail:baseline.runLogTail,
+      currentRunLogTail:row.runLogTail,
+    });
+  }
+}
+
+if (differences.length) {
+  console.log("TEO_DIAGNOSTIC_DIFFERENCES=" + JSON.stringify(differences, null, 2));
+  if (!diagnosticOnly) {
+    throw new Error("TEO deterministic contract failed; see TEO_DIAGNOSTIC_DIFFERENCES above.");
   }
 }
 
 const durations = rows.map(row => row.durationMs);
 console.log(JSON.stringify({
-  status:"pass",
+  status:differences.length ? "diagnostic_differences" : "pass",
   runs,
   p50Ms:Math.round(percentile(durations,50)),
   p95Ms:Math.round(percentile(durations,95)),
