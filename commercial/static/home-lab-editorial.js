@@ -71,7 +71,7 @@
     minVerifyPasses:1,
     maxVerifyPasses:3,
     maxProductPasses:0,
-    heavyRetries:0,
+    heavyRetries:2,
     cooldownMs:1800,
     flowPollMs:450,
   });

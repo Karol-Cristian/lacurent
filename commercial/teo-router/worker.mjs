@@ -1,5 +1,6 @@
 const SHARDS = ["TEO_A", "TEO_B", "TEO_C", "TEO_D"];
-const SHARD_COOLDOWN_MS = 15000;
+const SHARD_COOLDOWN_BASE_MS = 1500;
+const SHARD_COOLDOWN_MAX_MS = 15000;
 const FLOW_COOLDOWN_MS = 1800;
 const FLOW_LEASE_MS = 30000;
 const FLOW_MAX_VERIFICATIONS = 3;
@@ -18,7 +19,28 @@ CREATE TABLE IF NOT EXISTS teo_verification_runs (
 
 let cursor = 0;
 const disabledUntil = new Map();
+const consecutiveFailures = new Map();
 let flowSchemaPromise = null;
+
+function shardCooldownMs(key) {
+  const failures = Math.max(1, Number(consecutiveFailures.get(key) || 1));
+  return Math.min(
+    SHARD_COOLDOWN_MAX_MS,
+    SHARD_COOLDOWN_BASE_MS * (2 ** Math.min(failures - 1, 4)),
+  );
+}
+
+function markShardFailure(key) {
+  consecutiveFailures.set(key, Number(consecutiveFailures.get(key) || 0) + 1);
+  const cooldownMs = shardCooldownMs(key);
+  disabledUntil.set(key, Date.now() + cooldownMs);
+  return cooldownMs;
+}
+
+function markShardSuccess(key) {
+  consecutiveFailures.delete(key);
+  disabledUntil.delete(key);
+}
 
 function isTeoPath(pathname) {
   return pathname.startsWith("/api/optimization/home-lab/v3/")
@@ -290,30 +312,44 @@ async function routeAcrossShards(request, env, bodyBytes, extraHeaders = {}) {
   const attempts = [];
   let lastError = null;
 
-  for (let offset=0; offset<SHARDS.length; offset+=1) {
-    const key = SHARDS[(start + offset) % SHARDS.length];
-    if ((disabledUntil.get(key) || 0) > now) continue;
+  const ordered = Array.from(
+    {length:SHARDS.length},
+    (_, offset) => SHARDS[(start + offset) % SHARDS.length],
+  );
+  const ready = ordered.filter(key => (disabledUntil.get(key) || 0) <= now);
+
+  // Half-open recovery: if this router isolate has put every shard in
+  // cooldown, do not create a client-specific blackout. Probe the disabled
+  // shards in expiry order until one answers successfully. This path runs
+  // only when there is no normally-ready shard.
+  const candidates = ready.length
+    ? ready
+    : [...ordered].sort(
+        (a,b) => (disabledUntil.get(a) || 0) - (disabledUntil.get(b) || 0)
+      );
+
+  for (const key of candidates) {
     try {
       const response = await callShard(env, key, request, bodyBytes, extraHeaders);
       attempts.push(key + ":" + response.status);
       if (response.status >= 500) {
-        disabledUntil.set(key, Date.now() + SHARD_COOLDOWN_MS);
+        markShardFailure(key);
         lastError = new Error("upstream_http_" + response.status);
         continue;
       }
-      disabledUntil.delete(key);
+      markShardSuccess(key);
       return {response, shard:key, attempts};
     } catch (error) {
       attempts.push(key + ":exception");
       lastError = error;
-      disabledUntil.set(key, Date.now() + SHARD_COOLDOWN_MS);
+      markShardFailure(key);
     }
   }
 
   const earliest = [...SHARDS].sort(
     (a,b) => (disabledUntil.get(a) || 0) - (disabledUntil.get(b) || 0)
   )[0];
-  const retryAfterMs = Math.max(1000, (disabledUntil.get(earliest) || 0) - Date.now());
+  const retryAfterMs = Math.max(500, (disabledUntil.get(earliest) || 0) - Date.now());
   return {response:null, shard:null, attempts, lastError, retryAfterMs};
 }
 

@@ -586,10 +586,17 @@ def main() -> int:
                 continue
 
             search_points = plan.get("searchPoints")
+            search_spec = plan.get("searchSpec")
+            search_point_count = int(plan.get("searchPointCount") or 0)
             branch_ids = plan.get("runBranchIds")
             kernel = plan.get("kernel")
-            if not isinstance(search_points, list) or len(search_points) < 2000:
-                raise CampaignFailure(f"{case_prefix}: PLAN returned too few search points")
+            if isinstance(search_points, list) and search_points:
+                if len(search_points) < 2000:
+                    raise CampaignFailure(f"{case_prefix}: PLAN returned too few search points")
+            elif not isinstance(search_spec, dict) or search_point_count < 2000:
+                raise CampaignFailure(
+                    f"{case_prefix}: PLAN returned neither materialized search points nor a valid browser search spec"
+                )
             if not isinstance(branch_ids, list) or not branch_ids:
                 raise CampaignFailure(f"{case_prefix}: PLAN returned no heating branches")
             if not isinstance(kernel, dict):
@@ -601,7 +608,8 @@ def main() -> int:
                 {
                     "type": "run",
                     "kernel": kernel,
-                    "searchPoints": search_points,
+                    "searchPoints": search_points if isinstance(search_points, list) else [],
+                    "searchSpec": search_spec if isinstance(search_spec, dict) else {},
                     "searchBounds": plan.get("searchBounds") or {},
                     "branchIds": branch_ids,
                     "mode": mode,
