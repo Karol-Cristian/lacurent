@@ -171,7 +171,7 @@ def test_home_lab_editorial_experiment_is_isolated_and_does_not_auto_open_report
     assert 'data-page="report"' in page.text
     assert 'data-page="renewables"' in page.text
     assert "/static/home-lab-editorial.css?v=24" in page.text
-    assert "/static/home-lab-editorial.js?v=52" in page.text
+    assert "/static/home-lab-editorial.js?v=53" in page.text
     assert "/static/home-lab-3d.js" not in page.text
     assert 'id="edBaselineClass"' in page.text
     assert 'id="edClassReferenceOpen"' in page.text
@@ -924,10 +924,16 @@ def test_private_teo_topology_is_sharded_and_route_isolated() -> None:
 
     assert 'pattern = "lacurent.com/api/optimization/home-lab/v3/*"' in router_wrangler
     assert 'pattern = "lacurent.com/api/optimization/home-lab/v4/*"' in router_wrangler
+    assert 'binding = "DB"' in router_wrangler
+    assert 'database_name = "lacurent-db"' in router_wrangler
     assert '"x-lacurent-teo", "private-teo-sharded"' in router
     assert "disabledUntil" in router
     assert "response.status >= 500" in router
     assert "requestBodyBytes" in router
+    assert "handleFlowEndpoint" in router
+    assert "acquireFlow" in router
+    assert "completeFlow" in router
+    assert '"x-lacurent-flow-gated":"1"' in router
     assert ".wrangler/teo-worker" in prepare
     assert "copyDirectory(path.join(commercialRoot, \"app\")" in prepare
     assert "Deploy four private TEO shards" in workflow
