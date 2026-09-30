@@ -12,7 +12,7 @@
   <meta property="og:url" content="https://lacurent.com/">
   <title>LaCurent — Nu promitem. Calculăm.</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=6">
-  <link rel="stylesheet" href="/static/lacurent-landing.css?v=4">
+  <link rel="stylesheet" href="/static/lacurent-landing.css?v=5">
 </head>
 <body data-lacurent-landing>
   <header class="lc-topbar">
@@ -52,6 +52,21 @@
           <i></i>
           <span>Verificare inginerească</span>
         </div>
+
+        <aside class="lc-hero-impact" id="impact" aria-label="Impact calculat din casele salvate">
+          <div class="lc-hero-impact-main">
+            <span>IMPACT CALCULAT</span>
+            <strong id="lcImpactEnergy">—</strong>
+            <b>MWh/an potențial</b>
+          </div>
+          <div class="lc-hero-impact-mini">
+            <span><b id="lcImpactHomes">—</b><small>case</small></span>
+            <span><b id="lcImpactMoney">—</b><small>lei/an</small></span>
+            <span><b id="lcImpactCapex">—</b><small>CAPEX lei</small></span>
+            <span><b id="lcImpactPayback">—</b><small>ani</small></span>
+          </div>
+          <p id="lcImpactStatus">Potențial modelat din analize salvate, nu economii măsurate.</p>
+        </aside>
       </div>
 
       <aside class="lc-model-card" aria-label="Fluxul motorului de optimizare">
@@ -93,36 +108,6 @@
           <span>model rapid</span><b>→</b><span>optimizare</span><b>→</b><span>produse</span><b>→</b><span>soluție</span>
         </div>
       </aside>
-    </section>
-
-    <section class="lc-impact" id="impact" aria-labelledby="lcImpactTitle">
-      <div class="lc-impact-copy">
-        <p class="lc-section-kicker">IMPACT CALCULAT</p>
-        <h2 id="lcImpactTitle">Cât am putea economisi,<br><em>împreună.</em></h2>
-        <p>
-          Fiecare casă salvată în Home Lab contribuie o singură dată la această imagine agregată.
-          Nu măsurăm promisiuni: însumăm potențialul tehnico-economic calculat de RBPE + TEO.
-        </p>
-        <a class="lc-button lc-button-primary" href="/home-lab-next">Vezi cât poate economisi casa ta <span>→</span></a>
-      </div>
-
-      <div class="lc-impact-stage" aria-live="polite">
-        <div class="lc-impact-main">
-          <span>POTENȚIAL DE ENERGIE IDENTIFICAT</span>
-          <strong id="lcImpactEnergy">—</strong>
-          <b>MWh/an</b>
-          <small id="lcImpactStatus">Se actualizează din analizele salvate.</small>
-        </div>
-        <div class="lc-impact-grid">
-          <article><span>CASE MODELATE</span><strong id="lcImpactHomes">—</strong><small>salvate în cont</small></article>
-          <article><span>ECONOMII POTENȚIALE</span><strong id="lcImpactMoney">—</strong><small>lei/an</small></article>
-          <article><span>INVESTIȚIE ESTIMATĂ</span><strong id="lcImpactCapex">—</strong><small>lei</small></article>
-          <article><span>RECUPERARE GLOBALĂ</span><strong id="lcImpactPayback">—</strong><small>ani</small></article>
-        </div>
-        <p class="lc-impact-disclaimer">
-          Estimări agregate din locuințele salvate de utilizatori. Reprezintă potențial modelat, nu economii măsurate sau audituri energetice individuale.
-        </p>
-      </div>
     </section>
 
     <section class="lc-intro" id="model">
