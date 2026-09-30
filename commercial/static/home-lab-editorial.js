@@ -1906,14 +1906,16 @@
   function renderImpactSummary(summary) {
     const homes = $("#edImpactHomes");
     const energyNode = $("#edImpactEnergy");
+    const moneyNode = $("#edImpactMoney");
     const capexNode = $("#edImpactCapex");
     const paybackNode = $("#edImpactPayback");
     const note = $("#edImpactNote");
-    if (!homes || !energyNode || !capexNode || !paybackNode) return;
+    if (!homes || !energyNode || !moneyNode || !capexNode || !paybackNode) return;
 
     if (!summary?.available) {
       homes.textContent = "—";
       energyNode.textContent = "—";
+      moneyNode.textContent = "—";
       capexNode.textContent = "—";
       paybackNode.textContent = "—";
       if (note) {
@@ -1924,6 +1926,7 @@
 
     homes.textContent = impactNumber(summary.savedHouses, 0);
     energyNode.textContent = impactNumber(Number(summary.potentialSavingKwhYear || 0) / 1000, 1);
+    moneyNode.textContent = impactNumber(summary.potentialSavingLeiYear, 0);
     capexNode.textContent = impactNumber(summary.estimatedCapexLei, 0);
     paybackNode.textContent = summary.globalSimplePaybackYears == null
       ? "—"
