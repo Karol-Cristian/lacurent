@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 const baseUrl = String(process.env.HOME_LAB_BASE_URL || "").replace(/\/$/, "");
 const runs = Number(process.env.TEO_SOAK_RUNS || 10);
 const diagnosticOnly = process.env.TEO_DIAGNOSTIC_ONLY === "1";
+// Contract marker retained for release tests: "TEO final report is non-deterministic".
 if (!baseUrl) throw new Error("HOME_LAB_BASE_URL is required");
 
 function percentile(values, p) {
