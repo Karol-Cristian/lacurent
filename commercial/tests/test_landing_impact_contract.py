@@ -13,15 +13,14 @@ def test_collective_impact_lives_on_landing_not_home_lab_intro():
     editorial = EDITORIAL.read_text(encoding="utf-8")
 
     assert 'id="impact"' in landing
-    assert "Cât am putea economisi" in landing
-    assert "POTENȚIAL DE ENERGIE IDENTIFICAT" in landing
+    assert "IMPACT CALCULAT" in landing
     assert 'id="lcImpactEnergy"' in landing
     assert 'id="lcImpactHomes"' in landing
     assert 'id="lcImpactMoney"' in landing
     assert 'id="lcImpactCapex"' in landing
     assert 'id="lcImpactPayback"' in landing
     assert "potențial modelat, nu economii măsurate" in landing
-    assert "/static/lacurent-landing.css?v=4" in landing
+    assert "/static/lacurent-landing.css?v=5" in landing
     assert "/static/lacurent-landing.js?v=1" in landing
 
     assert 'id="edImpactOverview"' not in editorial
@@ -42,8 +41,7 @@ def test_landing_impact_reads_live_aggregate_and_respects_cohort_suppression():
 def test_landing_impact_is_presented_as_primary_visual_story():
     css = LANDING_CSS.read_text(encoding="utf-8")
 
-    assert ".lc-impact{" in css
-    assert ".lc-impact-main{" in css
-    assert ".lc-impact-grid{" in css
-    assert "grid-template-columns:repeat(4,1fr)" in css
-    assert "html.lc-snap-page .lc-impact" in css
+    assert ".lc-hero-impact{" in css
+    assert ".lc-hero-impact-main{" in css
+    assert ".lc-hero-impact-mini{" in css
+    assert "grid-template-columns:repeat(4,minmax(0,1fr))" in css
