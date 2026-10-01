@@ -10,6 +10,7 @@ from .engine import calculate, design_heat_load_breakdown
 from .models import BuildingInput, HeatingEmitterType, model_to_dict
 from .optimization import CandidateEvaluationV1, CostLineV1
 from .pricing import estimate_energy_cost
+from .product_matching import WallInsulationProductV1
 
 
 class HrvFinalistCommercializationRequestV1(BaseModel):
@@ -18,6 +19,13 @@ class HrvFinalistCommercializationRequestV1(BaseModel):
     installation_allowance_lei: float = Field(default=0, ge=0)
     max_specific_power_input_w_m3h: float | None = Field(default=None, gt=0)
     category_limit: int = Field(default=24, ge=1, le=100)
+
+
+class WallCatalogFinalistCommercializationRequestV1(BaseModel):
+    baseline: BuildingInput
+    raw_candidate: CandidateEvaluationV1
+    nonmaterial_installed_cost_per_m2_lei: float = Field(ge=0)
+    category_limit: int = Field(default=48, ge=1, le=100)
 
 
 class RadiatorFinalistCommercializationRequestV1(BaseModel):
@@ -434,6 +442,72 @@ def match_heating_controls(
             row.product_id,
         ),
     )
+
+
+def wall_products_from_catalog_window(
+    window: dict[str, Any],
+) -> list[WallInsulationProductV1]:
+    """Convert generic D1 wall-insulation rows to the existing exact SKU model."""
+
+    products: list[WallInsulationProductV1] = []
+    for row in window.get("products") or []:
+        properties = dict(row.get("properties") or {})
+        thickness = properties.get("thickness_mm")
+        conductivity = properties.get("lambda_w_mk")
+        if thickness in (None, "") or conductivity in (None, ""):
+            continue
+
+        package_area = None
+        package_price = None
+        product_url = row.get("source_url")
+        sku = row.get("manufacturer_sku")
+        for offer in row.get("offers") or []:
+            if (
+                str(offer.get("price_basis") or "") == "lei_package"
+                and str(offer.get("quantity_unit") or "") == "m2"
+                and offer.get("quantity") not in (None, "")
+                and offer.get("price_lei") not in (None, "")
+            ):
+                area = float(offer["quantity"])
+                price = float(offer["price_lei"])
+                if area > 0 and price >= 0 and (
+                    package_price is None or price / area < package_price / package_area
+                ):
+                    package_area = area
+                    package_price = price
+                    product_url = offer.get("source_url") or product_url
+                    sku = offer.get("supplier_sku") or sku
+
+        if package_area is None or package_price is None:
+            continue
+
+        products.append(
+            WallInsulationProductV1(
+                partner_id="energy_catalog_d1",
+                product_id=str(row["id"]),
+                sku=None if sku is None else str(sku),
+                name=str(row.get("label") or row["id"]),
+                manufacturer=(
+                    None
+                    if row.get("manufacturer") is None
+                    else str(row["manufacturer"])
+                ),
+                thickness_mm=float(thickness),
+                lambda_w_mk=float(conductivity),
+                package_area_m2=float(package_area),
+                price_per_package_lei=float(package_price),
+                stock_status="unknown",
+                product_url=(
+                    None if product_url is None else str(product_url)
+                ),
+                catalog_version=(
+                    None
+                    if row.get("catalog_version") is None
+                    else str(row["catalog_version"])
+                ),
+            )
+        )
+    return products
 
 
 def candidate_from_source_pack_row(row: dict[str, Any]) -> ProductCandidate:
