@@ -3983,6 +3983,8 @@
         effective_system_performance:branchProfile?.heating_effective_system_performance ?? null,
         performance_source:branchProfile?.heating_performance_source || null,
         performance_confidence:branchProfile?.heating_performance_confidence || null,
+        generator_performance_kind:branchProfile?.heating_generator_performance_kind || null,
+        generator_performance_value:branchProfile?.heating_generator_performance ?? null,
         efficiency_target:heating?.efficiency ?? null,
         system_type:heating?.system_type || null,
         generator_type:details?.generator_type || null,
@@ -4513,9 +4515,23 @@
   }
 
   function monthlyBillProfile(result) {
-    const rows = Array.isArray(result?.monthly) ? result.monthly : [];
     const annualBill = Number(result?.annual_cost_lei);
-    if (rows.length !== 12 || !Number.isFinite(annualBill) || annualBill < 0) return [];
+    if (!Number.isFinite(annualBill) || annualBill < 0) return [];
+
+    const pricedRows = Array.isArray(result?.monthly_costs) ? result.monthly_costs : [];
+    if (
+      pricedRows.length === 12
+      && pricedRows.every(row => row?.cost_lei != null && row?.complete !== false)
+    ) {
+      return pricedRows.map((row,index) => ({
+        month:shortMonthLabel(row?.month, index),
+        costLei:Number(row?.cost_lei || 0),
+        exact:true,
+      }));
+    }
+
+    const rows = Array.isArray(result?.monthly) ? result.monthly : [];
+    if (rows.length !== 12) return [];
 
     const annualHeatingUseful = rows.reduce((sum,row) => sum + Math.max(Number(row?.useful_heating_kwh || 0), 0), 0);
     const annualCoolingUseful = rows.reduce((sum,row) => sum + Math.max(Number(row?.useful_cooling_kwh || 0), 0), 0);
@@ -4546,16 +4562,20 @@
     }));
   }
 
-  function renderMonthlyBillSection(result, optimizedAnnualBill) {
+  function renderMonthlyBillSection(result, optimizedResult, optimizedAnnualBill) {
     const before = monthlyBillProfile(result);
     if (!before.length) return "";
+    const afterExact = monthlyBillProfile(optimizedResult);
     const baselineAnnual = Math.max(Number(result?.annual_cost_lei || 0), 0);
     const finalAnnual = Math.max(Number(optimizedAnnualBill || 0), 0);
     const factor = baselineAnnual > 1e-9 ? finalAnnual / baselineAnnual : 0;
-    const rows = before.map(row => ({
+    const hasExactAfter = afterExact.length === 12;
+    const rows = before.map((row,index) => ({
       month:row.month,
       before:Number(row.costLei || 0),
-      after:Number(row.costLei || 0) * factor,
+      after:hasExactAfter
+        ? Number(afterExact[index]?.costLei || 0)
+        : Number(row.costLei || 0) * factor,
     }));
     const peak = Math.max(1, ...rows.flatMap(row => [row.before,row.after]));
     return `
@@ -4587,7 +4607,10 @@
             `;
           }).join("")}
         </div>
-        <p class="ed-chart-note">Totalurile anuale sunt cele verificate de motor. Profilul lunar „după” păstrează distribuția climatică lunară a casei și o scalează la factura anuală TEO.</p>
+        <p class="ed-chart-note">${hasExactAfter
+          ? "Profilurile lunare provin direct din calculul energetic și de cost."
+          : "Profilul lunar actual folosește costurile lunare RBPE. Pentru rezultatul TEO, totalul anual este verificat, iar distribuția pe luni păstrează forma profilului actual până când este disponibil un profil lunar final complet."
+        }</p>
       </section>
     `;
   }
@@ -4607,78 +4630,73 @@
     `;
   }
 
-  function reportHeatingPerformance(engineering) {
-    const heat = engineering?.heating || {};
-    const reportInputNumber = selector => {
-      const raw = String($(selector)?.value ?? "").trim();
-      return raw === "" ? NaN : parseDecimal(raw, NaN);
-    };
-    const currentScop = reportInputNumber("#techHeatingScop");
-    const currentEtaRaw = reportInputNumber("#techHeatingEfficiency");
-    const currentEta = Number.isFinite(currentEtaRaw)
-      ? (currentEtaRaw <= 1.5 ? currentEtaRaw * 100 : currentEtaRaw)
-      : NaN;
-    const afterScop = Number(heat.scop_model);
-    const afterEffective = Number(heat.effective_system_performance);
-    const afterEta = Number(heat.efficiency_target);
+  function normalizedPerformanceMetric(kind, value) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric) || numeric <= 0) return null;
+    if (String(kind || "").toLowerCase() === "scop") {
+      return {label:"SCOP generator",value:numeric,display:fmt(numeric,2),scale:Math.max(5,numeric)};
+    }
+    const percent = numeric <= 1.5 ? numeric * 100 : numeric;
+    return {label:"Randament generator",value:percent,display:fmt(percent,0) + "%",scale:100};
+  }
 
-    if (Number.isFinite(afterScop) && afterScop > 1) {
-      return {
-        title:"SCOP sistem încălzire",
-        before:Number.isFinite(currentScop) ? currentScop : null,
-        after:afterScop,
-        suffix:"",
-        max:Math.max(5, afterScop, Number.isFinite(currentScop) ? currentScop : 0),
-      };
+  function reportHeatingPerformance(engineering) {
+    const beforeSystem = baselineResult?.heating_system || {};
+    const heat = engineering?.heating || {};
+    const before = normalizedPerformanceMetric(
+      beforeSystem?.generator_performance_kind,
+      beforeSystem?.generator_performance
+    );
+
+    let afterKind = heat?.generator_performance_kind;
+    let afterValue = heat?.generator_performance_value;
+    if (afterValue == null && Number.isFinite(Number(heat?.scop_model)) && Number(heat.scop_model) > 1) {
+      afterKind = "scop";
+      afterValue = Number(heat.scop_model);
     }
-    if (Number.isFinite(afterEffective) && afterEffective > 1.05) {
-      return {
-        title:"Performanță efectivă sistem",
-        before:Number.isFinite(currentScop) ? currentScop : null,
-        after:afterEffective,
-        suffix:"",
-        max:Math.max(5, afterEffective, Number.isFinite(currentScop) ? currentScop : 0),
-      };
+    if (afterValue == null && heat?.efficiency_target != null) {
+      afterKind = "efficiency";
+      afterValue = Number(heat.efficiency_target);
     }
-    const afterPercent = Number.isFinite(afterEta)
-      ? (afterEta <= 1.5 ? afterEta * 100 : afterEta)
-      : null;
-    if (afterPercent != null || Number.isFinite(currentEta)) {
-      return {
-        title:"Randament sezonier generator",
-        before:Number.isFinite(currentEta) ? currentEta : null,
-        after:afterPercent,
-        suffix:"%",
-        max:100,
-      };
-    }
-    return null;
+    const after = normalizedPerformanceMetric(afterKind, afterValue);
+    if (!before && !after) return null;
+    return {
+      before,
+      after,
+      beforeEffective:Number(beforeSystem?.effective_system_performance),
+      afterEffective:Number(heat?.effective_system_performance),
+    };
   }
 
   function renderHeatingPerformanceSection(engineering) {
     const perf = reportHeatingPerformance(engineering);
     if (!perf) return "";
-    const before = perf.before == null ? null : Math.max(0, Number(perf.before));
-    const after = perf.after == null ? null : Math.max(0, Number(perf.after));
-    const max = Math.max(Number(perf.max || 1), before || 0, after || 0, 1);
-    const display = value => value == null ? "—" : fmt(value, perf.suffix === "%" ? 0 : 2) + perf.suffix;
+    const card = (title, metric, effective, after = false) => {
+      const width = metric ? Math.max(0, Math.min(100, 100 * metric.value / metric.scale)) : 0;
+      const effectiveText = Number.isFinite(effective) && effective > 0
+        ? '<small>Performanță efectivă sistem: ' + escapeHtml(fmt(effective,2)) + '</small>'
+        : "";
+      return `
+        <article>
+          <span>${escapeHtml(title)}</span>
+          <small>${escapeHtml(metric?.label || "Performanță generator")}</small>
+          <strong>${escapeHtml(metric?.display || "—")}</strong>
+          <div><i class="${after ? "is-after" : ""}" style="width:${fmt(width,1)}%"></i></div>
+          ${effectiveText}
+        </article>
+      `;
+    };
     return `
       <section class="ed-report-section">
         <div class="ed-report-section-heading">
           <div>
             <p class="ed-eyebrow">SISTEM TERMIC</p>
-            <h2>${escapeHtml(perf.title)}</h2>
+            <h2>Performanța generatorului</h2>
           </div>
         </div>
         <div class="ed-performance-compare">
-          <article>
-            <span>Înainte</span><strong>${escapeHtml(display(before))}</strong>
-            <div><i style="width:${before == null ? 0 : fmt(100 * before / max,1)}%"></i></div>
-          </article>
-          <article>
-            <span>După TEO</span><strong>${escapeHtml(display(after))}</strong>
-            <div><i class="is-after" style="width:${after == null ? 0 : fmt(100 * after / max,1)}%"></i></div>
-          </article>
+          ${card("Înainte", perf.before, perf.beforeEffective, false)}
+          ${card("După TEO", perf.after, perf.afterEffective, true)}
         </div>
       </section>
     `;
@@ -4868,7 +4886,7 @@
       "Raportul nu repetă recomandările de pe pagina TEO. Aici vezi numai diferențele măsurabile și lista comercială rezultată.";
 
     let html = "";
-    html += renderMonthlyBillSection(baselineResult, finalBill);
+    html += renderMonthlyBillSection(baselineResult, scenario, finalBill);
     html += `
       <section class="ed-report-section">
         <div class="ed-report-section-heading">
