@@ -21,6 +21,23 @@ const service = fs.readFileSync(path.join(preparedApp, "teo_service.py"), "utf8"
 const main = fs.readFileSync(path.join(repoRoot, "commercial", "app", "main.py"), "utf8");
 const pyproject = fs.readFileSync(path.join(preparedRoot, "pyproject.toml"), "utf8");
 
+function directoryBytes(root) {
+  let total = 0;
+  for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+    const full = path.join(root, entry.name);
+    if (entry.isDirectory()) total += directoryBytes(full);
+    else if (entry.isFile()) total += fs.statSync(full).size;
+  }
+  return total;
+}
+
+const preparedBundleBytes = directoryBytes(preparedSrc);
+const maxPreparedBundleBytes = 10 * 1024 * 1024;
+assert.ok(
+  preparedBundleBytes < maxPreparedBundleBytes,
+  `private TEO source bundle regressed to ${(preparedBundleBytes / 1024 / 1024).toFixed(2)} MiB; ceiling is 10 MiB`,
+);
+
 assert.match(worker, /from app\.teo_service import app/);
 assert.doesNotMatch(worker, /app\.main/);
 assert.equal(fs.existsSync(path.join(preparedSrc, "static")), false);
@@ -87,6 +104,8 @@ assert.deepEqual(
 console.log(JSON.stringify({
   status: "PASS",
   routeCount: teoRoutes(service).length,
+  preparedBundleMiB: Number((preparedBundleBytes / 1024 / 1024).toFixed(2)),
+  bundleCeilingMiB: 10,
   publicRuntimeExcluded: true,
   dedicatedEntrypoint: true,
 }, null, 2));
