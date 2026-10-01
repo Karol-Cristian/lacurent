@@ -101,10 +101,14 @@ jobs:
                   "Safety gate: lacurent-dev-db resolves to a production D1 UUID."
               )
 
+          Path("/tmp/lacurent-dev-db-id").write_text(database_id, encoding="utf-8")
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as fh:
               fh.write(f"DB_ID={database_id}\n")
           print(f"Development D1 isolation PASS: {target} ({database_id})")
           PY
+
+          DB_ID="$(cat /tmp/lacurent-dev-db-id)"
+          test -n "$DB_ID"
 
           cat > "$D1_STAGING_CONFIG" <<EOF
           name = "lacurent-d1-staging-control"
