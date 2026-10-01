@@ -48,6 +48,8 @@ jobs:
           node --check scripts/prepare-teo-cloudflare-worker.mjs
           node --check scripts/soak-teo-production.mjs
           node --check commercial/teo-router/worker.mjs
+          node --check commercial/maintenance-worker/worker.mjs
+          node --check scripts/cloudflare-maintenance-mode.mjs
           node scripts/prepare-commercial-cloudflare-worker.mjs
           node scripts/prepare-reference-cloudflare-worker.mjs
           node scripts/prepare-teo-cloudflare-worker.mjs
@@ -58,6 +60,8 @@ jobs:
           node --test commercial/tests/teo-router-flow.test.mjs
           node --test commercial/tests/teo-router-recovery.test.mjs
           node --test commercial/tests/rbpe-gateway-recovery.test.mjs
+          node --test commercial/tests/maintenance-worker.test.mjs
+          node --test commercial/tests/maintenance-route-switch.test.mjs
           python -m compileall -q commercial
           python -m pytest commercial/tests -q
 
