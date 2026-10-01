@@ -247,6 +247,34 @@ class VentilationInput(BaseModel):
         ),
     )
     heat_recovery_efficiency: float = Field(default=0, ge=0, lt=1)
+    specific_fan_power_w_per_m3h: float | None = Field(
+        default=None,
+        gt=0,
+        le=10,
+        description=(
+            "Source-backed fan specific power at the modeled operating condition, "
+            "in W per (m3/h), numerically equivalent to Wh/m3."
+        ),
+    )
+    fan_operation_hours_per_year: float | None = Field(
+        default=None,
+        gt=0,
+        le=8784,
+        description=(
+            "Explicit annual fan operating hours. No operation schedule is invented "
+            "when this value is absent."
+        ),
+    )
+
+    @root_validator(skip_on_failure=True)
+    def validate_fan_auxiliary_pair(cls, values: dict) -> dict:
+        sfp = values.get("specific_fan_power_w_per_m3h")
+        hours = values.get("fan_operation_hours_per_year")
+        if (sfp is None) != (hours is None):
+            raise ValueError(
+                "Ventilation fan specific power and annual operation hours must be supplied together."
+            )
+        return values
 
 
 class HeatingInput(BaseModel):
@@ -510,6 +538,20 @@ class EnergyServiceResult(BaseModel):
     carrier: Carrier | None = None
 
 
+class VentilationSystemPerformanceResult(BaseModel):
+    controlled_airflow_m3h: float
+    heat_recovery_efficiency: float
+    specific_fan_power_w_per_m3h: float | None = None
+    fan_operation_hours_per_year: float | None = None
+    auxiliary_electricity_kwh: float = 0
+    status: Literal[
+        "not_applicable_no_fan_data",
+        "calculated_explicit_fan_data",
+    ]
+    performance_source: str
+    assumptions: list[str] = Field(default_factory=list)
+
+
 class HeatingSystemPerformanceResult(BaseModel):
     generator_type: HeatingGeneratorType
     emitter_type: HeatingEmitterType
@@ -662,6 +704,7 @@ class CalculationResult(BaseModel):
     monthly: list[MonthlyBalance]
     annual_heating_demand_kwh: float
     annual_cooling_demand_kwh: float
+    ventilation_system: VentilationSystemPerformanceResult
     heating: EnergyServiceResult
     heating_system: HeatingSystemPerformanceResult
     cooling: EnergyServiceResult

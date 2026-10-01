@@ -20,11 +20,19 @@ def test_production_deploys_are_serialized_in_fifo_queue() -> None:
     assert concurrency_index < jobs_index
 
 
-def test_production_deploy_trigger_covers_executed_catalog_builder() -> None:
+def test_production_deploy_auto_starts_on_production_merge_and_keeps_manual_rollback() -> None:
     workflow = PRODUCTION_WORKFLOW.read_text(encoding="utf-8")
-    script = "scripts/build-heating-catalog-d1-import.py"
+    trigger_section = workflow.split("concurrency:", 1)[0]
 
-    assert f'- "{script}"' in workflow
+    assert "workflow_dispatch:" in trigger_section
+    assert "\n  push:" in trigger_section
+    assert "codex/commercial-v2-cloudflare-python" in trigger_section
+    assert "release_sha:" in trigger_section
+    assert "promotion_mode:" in trigger_section
+    assert "uat-approved" in workflow
+
+    script = "scripts/build-heating-catalog-d1-import.py"
+    assert script in workflow
 
 
 def test_retired_classic_3d_is_not_part_of_production_release_contract() -> None:

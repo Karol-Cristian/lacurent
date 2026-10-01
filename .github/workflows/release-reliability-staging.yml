@@ -1,0 +1,181 @@
+name: Release Reliability Staging
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/release-product-staging-integration
+    paths:
+      - ".github/workflows/release-reliability-staging.yml"
+      - ".github/workflows/commercial-v2-cloudflare-worker.yml"
+      - ".github/workflows/commercial-pr-checks.yml"
+      - ".github/workflows/maintenance-worker-staging.yml"
+      - ".github/workflows/maintenance-mode-production.yml"
+      - ".github/workflows/d1-catalog-staging.yml"
+      - "migrations/015_energy_product_catalog.sql"
+      - "migrations/016_energy_product_catalog_smoke_pack.sql"
+      - "migrations/017_unify_energy_product_catalog.sql"
+      - "scripts/build-energy-product-catalog-d1-import.py"
+      - "commercial/app/**"
+      - "commercial/tests/**"
+      - "commercial/calc-gateway/**"
+      - "commercial/maintenance-worker/**"
+      - "commercial/rbpe-router/**"
+      - "commercial/teo-router/**"
+      - "commercial/static/home-lab-editorial.js"
+      - "commercial/static/home-lab-editorial.css"
+      - "commercial/templates/home_lab_editorial.html"
+      - "commercial/tests/test_energy_product_catalog_scale.py"
+      - "commercial/tests/test_unified_d1_runtime_sql.py"
+      - "commercial/tests/test_release_pipeline_contract.py"
+      - "commercial/tests/test_maintenance_notice_contract.py"
+      - "scripts/release-rbpe-stress.mjs"
+      - "scripts/release-browser-matrix.mjs"
+      - "scripts/cloudflare-maintenance-mode.mjs"
+      - "scripts/soak-teo-production.mjs"
+
+concurrency:
+  group: release-reliability-staging
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  reliability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      HOME_LAB_BASE_URL: http://127.0.0.1:8765
+
+    steps:
+      - name: Check out exact release staging SHA
+        uses: actions/checkout@v4
+
+      - name: Record release candidate SHA
+        run: |
+          echo "RELEASE_SHA=$GITHUB_SHA" >> "$GITHUB_ENV"
+          echo "Testing release candidate $GITHUB_SHA"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Install runtime and browser dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r commercial/requirements.txt
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium firefox webkit
+
+      - name: Verify large-catalog boundedness and unified D1 SQL contracts
+        run: |
+          python -m pytest             commercial/tests/test_energy_product_catalog_scale.py             commercial/tests/test_unified_d1_runtime_sql.py             -q
+
+      - name: Start production-equivalent local application
+        run: |
+          python -m uvicorn app.main:app             --app-dir commercial             --host 127.0.0.1             --port 8765             > /tmp/release-reliability-uvicorn.log 2>&1 &
+          echo $! > /tmp/release-reliability-uvicorn.pid
+
+          for attempt in $(seq 1 45); do
+            if curl -fsS "$HOME_LAB_BASE_URL/health" | grep -q '"status":"ok"'; then
+              echo "Local application healthy after $attempt attempt(s)."
+              exit 0
+            fi
+            if ! kill -0 "$(cat /tmp/release-reliability-uvicorn.pid)" 2>/dev/null; then
+              cat /tmp/release-reliability-uvicorn.log
+              exit 1
+            fi
+            sleep 1
+          done
+          cat /tmp/release-reliability-uvicorn.log
+          exit 1
+
+      - name: Run 1000+ RBPE requests, concurrent bursts and repeated PV mutations
+        env:
+          RBPE_STRESS_SEQUENTIAL: "1000"
+          RBPE_STRESS_BURST_BATCHES: "20"
+          RBPE_STRESS_BURST_CONCURRENCY: "8"
+          RBPE_STRESS_PV_ROUNDS: "10"
+          RBPE_STRESS_MAX_RSS_GROWTH_MB: "180"
+        run: |
+          set -o pipefail
+          HOME_LAB_SERVER_PID="$(cat /tmp/release-reliability-uvicorn.pid)"             node scripts/release-rbpe-stress.mjs | tee /tmp/rbpe-release-stress.log
+
+      - name: Run Chromium Firefox WebKit persistence and determinism matrix
+        run: |
+          set -o pipefail
+          node scripts/release-browser-matrix.mjs | tee /tmp/release-browser-matrix.log
+
+      - name: Run repeated full TEO UI soak on the exact staging SHA
+        env:
+          TEO_SOAK_RUNS: "25"
+          TEO_REQUIRE_SHARDED_ROUTES: "0"
+        run: |
+          set -o pipefail
+          node scripts/soak-teo-production.mjs | tee /tmp/teo-local-soak.log
+
+      - name: Require server survival after full campaign
+        run: |
+          test -f /tmp/release-reliability-uvicorn.pid
+          kill -0 "$(cat /tmp/release-reliability-uvicorn.pid)"
+          curl -fsS "$HOME_LAB_BASE_URL/health" | grep -q '"status":"ok"'
+
+          if grep -E 'HTTP/[0-9.]+" (500|503)( |$)|(^|[^[:alnum:]])(1101|1102)([^[:alnum:]]|$)' /tmp/release-reliability-uvicorn.log; then
+            echo "::error::Release campaign server log contains a forbidden HTTP/Cloudflare failure code."
+            grep -nE 'HTTP/[0-9.]+" (500|503)( |$)|(^|[^[:alnum:]])(1101|1102)([^[:alnum:]]|$)' /tmp/release-reliability-uvicorn.log | tail -50
+            exit 1
+          fi
+
+      - name: Publish release reliability summary
+        if: success()
+        run: |
+          {
+            echo "## Release reliability staging"
+            echo
+            echo "- exact SHA: `$RELEASE_SHA`"
+            echo "- 10k cross-category catalog bounded-window test: PASS"
+            echo "- 10k heating catalog finalist-window test: PASS"
+            echo "- unified D1 runtime SQL contract: PASS"
+            echo "- 1000 sequential RBPE requests: PASS"
+            echo "- 20 x 8 concurrent RBPE burst requests: PASS"
+            echo "- 10 x 8 repeated PV orientation mutations: PASS"
+            echo "- Chromium/Firefox/WebKit deterministic baseline + reload persistence: PASS"
+            echo "- 25 full TEO UI runs with semantic report determinism: PASS"
+            echo "- application process survived full campaign: PASS"
+            echo "- forbidden 500/503/1101/1102 in local-server log: NONE"
+            echo
+            echo "This is a release-candidate stress gate. Remote Cloudflare D1/topology remains a separate gate."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload reliability evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-reliability-${{ github.sha }}
+          path: |
+            /tmp/rbpe-release-stress.log
+            /tmp/release-browser-matrix.log
+            /tmp/teo-local-soak.log
+            /tmp/release-reliability-uvicorn.log
+          if-no-files-found: warn
+
+      - name: Stop local application
+        if: always()
+        run: |
+          if [ -f /tmp/release-reliability-uvicorn.pid ]; then
+            kill "$(cat /tmp/release-reliability-uvicorn.pid)" || true
+          fi
+
+
+  remote-d1:
+    name: Remote Cloudflare D1 catalog gate
+    needs: reliability
+    uses: ./.github/workflows/d1-catalog-staging.yml
+    secrets: inherit

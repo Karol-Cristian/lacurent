@@ -11,6 +11,9 @@
   const legacyStorageKey = `lacurent-home-lab-editorial-v1:${root.dataset.partnerId || "official"}`;
   const legacyStorageHistoryKey = `${legacyStorageKey}:history`;
   const classicStorageKey = `lacurent-home-lab-next-v1:${root.dataset.partnerId || "official"}`;
+  const impactProjectStorageKey = `${storageKey}:impact-project-id`;
+  const authTokenStorageKey = "lacurent_auth_token";
+  const accountProjectStorageKey = `${storageKey}:account-project-id`;
   const localAutosaveAllowed = () => window.LaCurentPrivacy?.allowsLocalAutosave?.() === true;
   const pages = [...root.querySelectorAll("[data-page]")];
   const wizardOrder = ["intro", "house", "envelope", "systems", "renewables", "goal"];
@@ -41,6 +44,14 @@
   const classDialog = $("#classDialog");
   const classReferenceOpen = $("#edClassReferenceOpen");
   const classReferenceBody = $("#edClassReferenceBody");
+  const accountDialog = $("#edAccountDialog");
+  const accountOpen = $("#edAccountOpen");
+  const accountQuickSave = $("#edProjectQuickSave");
+  const accountSignedOut = $("#edAccountSignedOut");
+  const accountSignedIn = $("#edAccountSignedIn");
+  const accountSignedOutState = $("#edAccountSignedOutState");
+  const projectSaveState = $("#edProjectSaveState");
+  const projectsList = $("#edProjectsList");
   const stageEls = Object.fromEntries([...document.querySelectorAll("[data-run-stage]")].map(el => [el.dataset.runStage, el]));
 
   const WALL_STRUCTURE_PRESETS = Object.freeze({
@@ -100,6 +111,9 @@
   let autosaveTimer = 0;
   let draftDirty = false;
   let suppressLocalAutosave = false;
+  let volatileImpactProjectId = "";
+  let currentProjectId = "";
+  let accountUser = null;
   const MAP_MIN_ZOOM = 1;
   const MAP_MAX_ZOOM = 6;
   const mapView = {zoom:1, centerX:null, centerY:null};
@@ -219,6 +233,8 @@
       legacyStorageKey,
       legacyStorageHistoryKey,
       classicStorageKey,
+      impactProjectStorageKey,
+      accountProjectStorageKey,
     ].forEach(key => localStorage.removeItem(key));
   }
 
@@ -229,6 +245,7 @@
     draftDirty = false;
     window.clearTimeout(autosaveTimer);
     clearEditorialLocalState();
+    currentProjectId = "";
     window.location.reload();
   }
 
@@ -395,6 +412,383 @@
     } catch (_) {}
     if (migrateLegacyEditorialDraft()) return true;
     return migrateClassicDraft();
+  }
+
+
+  function accountToken() {
+    try {
+      return String(localStorage.getItem(authTokenStorageKey) || "").trim();
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function setAccountState(node, message = "", kind = "") {
+    if (!node) return;
+    node.textContent = message;
+    node.classList.toggle("is-error", kind === "error");
+    node.classList.toggle("is-ok", kind === "ok");
+  }
+
+  function rememberAccountToken(token) {
+    try {
+      if (token) localStorage.setItem(authTokenStorageKey, String(token));
+      else localStorage.removeItem(authTokenStorageKey);
+    } catch (_) {}
+  }
+
+  function rememberCurrentProject(projectId) {
+    currentProjectId = String(projectId || "").trim();
+    try {
+      if (currentProjectId) {
+        localStorage.setItem(accountProjectStorageKey, currentProjectId);
+        localStorage.setItem(impactProjectStorageKey, currentProjectId);
+      } else {
+        localStorage.removeItem(accountProjectStorageKey);
+        localStorage.removeItem(impactProjectStorageKey);
+      }
+    } catch (_) {}
+  }
+
+  function restoreCurrentProjectId() {
+    try {
+      currentProjectId = String(localStorage.getItem(accountProjectStorageKey) || "").trim();
+    } catch (_) {
+      currentProjectId = "";
+    }
+  }
+
+  async function accountRequest(path, {method = "GET", body = null, auth = true} = {}) {
+    const headers = {"Accept":"application/json"};
+    if (body !== null) headers["Content-Type"] = "application/json";
+    if (auth) {
+      const token = accountToken();
+      if (!token) {
+        const error = new Error("Autentificare necesară.");
+        error.status = 401;
+        throw error;
+      }
+      headers.Authorization = "Bearer " + token;
+    }
+    const response = await fetch(path, {
+      method,
+      headers,
+      cache:"no-store",
+      body:body === null ? undefined : JSON.stringify(body),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data?.success === false) {
+      const error = new Error(data?.error || data?.detail || ("HTTP " + response.status));
+      error.status = response.status;
+      error.payload = data;
+      throw error;
+    }
+    return data;
+  }
+
+  function projectNameSuggestion() {
+    const explicit = String($("#edProjectName")?.value || "").trim();
+    if (explicit && explicit !== "Casa mea") return explicit;
+    const locality = String($("#localityInput")?.value || "").trim();
+    return locality ? "Casa " + locality : "Casa mea";
+  }
+
+  function accountWorkspaceSnapshot() {
+    return {
+      schemaVersion:"home_lab_editorial_workspace_v1",
+      draft:editorialDraftSnapshot(),
+      page:current,
+      furthestWizardIndex,
+      baselineResult:baselineResult || null,
+      optimizationResult:optimizationResult || null,
+      baselineInputFingerprint:baselineInputFingerprint || "",
+      teoInputFingerprint:teoInputFingerprint || "",
+      savedAt:new Date().toISOString(),
+    };
+  }
+
+  function syncAccountChrome() {
+    const signedIn = Boolean(accountUser && accountToken());
+    if (accountSignedOut) accountSignedOut.hidden = signedIn;
+    if (accountSignedIn) accountSignedIn.hidden = !signedIn;
+    if (accountQuickSave) accountQuickSave.hidden = !signedIn;
+    if (accountOpen) {
+      const firstName = String(accountUser?.name || "").trim().split(/\s+/)[0];
+      accountOpen.textContent = signedIn && firstName ? firstName : "Cont";
+    }
+    if (signedIn) {
+      if ($("#edAccountUserName")) $("#edAccountUserName").textContent = accountUser.name || "Cont Home Lab";
+      if ($("#edAccountUserEmail")) $("#edAccountUserEmail").textContent = accountUser.email || "";
+    }
+  }
+
+  function setAccountSession(result) {
+    rememberAccountToken(result?.token || "");
+    accountUser = result?.user || null;
+    syncAccountChrome();
+  }
+
+  function clearAccountSession() {
+    rememberAccountToken("");
+    accountUser = null;
+    syncAccountChrome();
+  }
+
+  async function refreshAccountSession() {
+    if (!accountToken()) {
+      accountUser = null;
+      syncAccountChrome();
+      return false;
+    }
+    try {
+      const result = await accountRequest("/api/me");
+      accountUser = result.user || null;
+      syncAccountChrome();
+      return Boolean(accountUser);
+    } catch (error) {
+      if (Number(error?.status) === 401) {
+        clearAccountSession();
+      } else {
+        setAccountState(accountSignedOutState, error?.message || "Contul nu poate fi verificat momentan.", "error");
+      }
+      return false;
+    }
+  }
+
+  function formatProjectUpdatedAt(value) {
+    if (!value) return "salvat";
+    const date = new Date(String(value).replace(" ", "T") + (String(value).includes("Z") ? "" : "Z"));
+    if (Number.isNaN(date.getTime())) return "salvat";
+    try {
+      return new Intl.DateTimeFormat("ro-RO", {dateStyle:"medium",timeStyle:"short"}).format(date);
+    } catch (_) {
+      return "salvat";
+    }
+  }
+
+  function renderAccountProjects(projects) {
+    if (!projectsList) return;
+    projectsList.replaceChildren();
+    const rows = Array.isArray(projects) ? projects : [];
+    if (!rows.length) {
+      const empty = document.createElement("p");
+      empty.className = "ed-account-empty";
+      empty.textContent = "Nu ai încă nicio casă salvată în cont.";
+      projectsList.appendChild(empty);
+      return;
+    }
+    rows.forEach(project => {
+      const projectId = String(project.project_id || project.projectId || "");
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "ed-account-project";
+      button.classList.toggle("is-current", projectId === currentProjectId);
+
+      const title = document.createElement("strong");
+      title.textContent = String(project.project_name || project.name || "Casa mea");
+      const meta = document.createElement("small");
+      meta.textContent = formatProjectUpdatedAt(project.updated_at || project.updatedAt);
+      const action = document.createElement("span");
+      action.textContent = projectId === currentProjectId ? "Deschisă" : "Deschide";
+
+      button.append(title, meta, action);
+      button.addEventListener("click", () => loadAccountProject(projectId));
+      projectsList.appendChild(button);
+    });
+  }
+
+  async function refreshAccountProjects() {
+    if (!accountUser) return;
+    if (projectsList) projectsList.innerHTML = '<p class="ed-hint">Se încarcă…</p>';
+    try {
+      const result = await accountRequest("/api/projects/list");
+      renderAccountProjects(result.projects || []);
+    } catch (error) {
+      if (projectsList) {
+        projectsList.replaceChildren();
+        const message = document.createElement("p");
+        message.className = "ed-account-empty";
+        message.textContent = error?.message || "Casele salvate nu pot fi încărcate.";
+        projectsList.appendChild(message);
+      }
+    }
+  }
+
+  function refreshUiAfterLoadedDraft(workspace) {
+    normalizeHeatingUi();
+    syncRenewableVisibility();
+    updateGeometryDisplay(false);
+    syncGoalField();
+    syncChoiceGroupSelections();
+    syncNzebPolicy();
+    syncDerivedAdvancedFields();
+    form.querySelectorAll("[data-optional-advanced]").forEach(refreshAdvancedFieldState);
+    syncTechnicalForm();
+
+    baselineResult = workspace?.baselineResult || null;
+    optimizationResult = workspace?.optimizationResult || null;
+    baselineInputFingerprint = String(workspace?.baselineInputFingerprint || "");
+    teoInputFingerprint = String(workspace?.teoInputFingerprint || "");
+    lastPlan = null;
+    branchResults = [];
+    furthestWizardIndex = Math.max(
+      -1,
+      Math.min(
+        wizardOrder.length - 1,
+        Number.isFinite(Number(workspace?.furthestWizardIndex))
+          ? Number(workspace.furthestWizardIndex)
+          : 0
+      )
+    );
+
+    resetTeoControlUi();
+    if (baselineResult) {
+      paintBaselineSummary(baselineResult, "Casă redeschisă din cont.");
+    }
+    if (optimizationResult) {
+      renderTeoResult();
+    }
+
+    const requestedPage = String(workspace?.page || "");
+    if (requestedPage === "report" && baselineResult && optimizationResult) {
+      renderReport();
+      showPage("report");
+    } else if (requestedPage === "goal" && optimizationResult) {
+      showPage("goal");
+    } else {
+      showPage("house");
+    }
+    if (!baselineResult) scheduleBaselineSummary(150);
+  }
+
+  async function loadAccountProject(projectId) {
+    if (!projectId) return;
+    setAccountState(projectSaveState, "Deschid casa…");
+    try {
+      const result = await accountRequest("/api/projects/load", {
+        method:"POST",
+        body:{projectId},
+      });
+      const project = result.project || {};
+      const workspace = project.workspace || {};
+      const draft = workspace.draft;
+      if (!draftHasFields(draft)) {
+        throw new Error("Casa salvată nu conține un draft Home Lab compatibil.");
+      }
+
+      suppressLocalAutosave = true;
+      const applied = applyEditorialDraft(draft, {preserveOverrides:true})
+        || applyEditorialDraft(draft, {preserveOverrides:false});
+      suppressLocalAutosave = false;
+      if (!applied) throw new Error("Casa salvată nu poate fi aplicată în această versiune Home Lab.");
+
+      rememberCurrentProject(project.projectId || projectId);
+      if ($("#edProjectName")) $("#edProjectName").value = String(project.name || "Casa mea");
+      draftDirty = true;
+      persistEditorialDraft({force:true});
+      refreshUiAfterLoadedDraft(workspace);
+      setAccountState(projectSaveState, "Casa a fost redeschisă.", "ok");
+      await refreshAccountProjects();
+      accountDialog?.close();
+    } catch (error) {
+      suppressLocalAutosave = false;
+      setAccountState(projectSaveState, error?.message || "Casa nu a putut fi deschisă.", "error");
+    }
+  }
+
+  async function saveCurrentAccountProject({quiet = false} = {}) {
+    if (!accountUser || !accountToken()) {
+      accountDialog?.showModal?.();
+      setAccountState(accountSignedOutState, "Conectează-te înainte de salvare.");
+      return false;
+    }
+    const name = projectNameSuggestion();
+    if ($("#edProjectName")) $("#edProjectName").value = name;
+    if (accountQuickSave) {
+      accountQuickSave.disabled = true;
+      accountQuickSave.textContent = "Salvez…";
+    }
+    setAccountState(projectSaveState, quiet ? "" : "Salvez casa în cont…");
+    try {
+      syncTechnicalForm();
+      const result = await accountRequest("/api/projects/save", {
+        method:"POST",
+        body:{
+          projectId:currentProjectId || undefined,
+          name,
+          workspace:accountWorkspaceSnapshot(),
+        },
+      });
+      rememberCurrentProject(result.projectId);
+      markDraftDirty();
+      persistEditorialDraft({force:true});
+      setAccountState(projectSaveState, "Proiectul Home Lab este salvat în cont.", "ok");
+      if (accountQuickSave) accountQuickSave.textContent = "Salvat ✓";
+      await refreshAccountProjects();
+      window.setTimeout(() => {
+        if (accountQuickSave) accountQuickSave.textContent = "Salvează proiectul";
+      }, 1400);
+      return true;
+    } catch (error) {
+      setAccountState(projectSaveState, error?.message || "Salvarea nu a reușit.", "error");
+      if (accountQuickSave) accountQuickSave.textContent = "Salvează proiectul";
+      return false;
+    } finally {
+      if (accountQuickSave) accountQuickSave.disabled = false;
+    }
+  }
+
+  async function handleAccountAuthentication(event, mode) {
+    event.preventDefault();
+    const source = event.currentTarget;
+    const fields = Object.fromEntries(new FormData(source).entries());
+    setAccountState(accountSignedOutState, mode === "register" ? "Creez contul…" : "Verific datele…");
+    try {
+      const result = await accountRequest(
+        mode === "register" ? "/api/register" : "/api/login",
+        {method:"POST",body:fields,auth:false}
+      );
+      setAccountSession(result);
+      source.reset();
+      setAccountState(accountSignedOutState, "", "");
+      setAccountState(projectSaveState, "Cont conectat. Poți salva proiectul Home Lab.", "ok");
+      await refreshAccountProjects();
+    } catch (error) {
+      setAccountState(accountSignedOutState, error?.message || "Autentificarea nu a reușit.", "error");
+    }
+  }
+
+  function initializeAccountUi() {
+    restoreCurrentProjectId();
+    syncAccountChrome();
+
+    accountOpen?.addEventListener("click", async () => {
+      if (typeof accountDialog?.showModal === "function") accountDialog.showModal();
+      else accountDialog?.setAttribute("open", "");
+      const signedIn = await refreshAccountSession();
+      if (signedIn) await refreshAccountProjects();
+    });
+    $("#edAccountClose")?.addEventListener("click", () => accountDialog?.close());
+    accountDialog?.addEventListener("click", event => {
+      if (event.target === accountDialog) accountDialog.close();
+    });
+    $("#edLoginForm")?.addEventListener("submit", event => handleAccountAuthentication(event, "login"));
+    $("#edRegisterForm")?.addEventListener("submit", event => handleAccountAuthentication(event, "register"));
+    $("#edAccountLogout")?.addEventListener("click", async () => {
+      try {
+        if (accountToken()) await accountRequest("/api/logout", {method:"POST"});
+      } catch (_) {}
+      clearAccountSession();
+      setAccountState(projectSaveState, "");
+      renderAccountProjects([]);
+    });
+    $("#edProjectSave")?.addEventListener("click", () => saveCurrentAccountProject());
+    accountQuickSave?.addEventListener("click", () => saveCurrentAccountProject({quiet:true}));
+    $("#edProjectsRefresh")?.addEventListener("click", refreshAccountProjects);
+
+    refreshAccountSession().then(signedIn => {
+      if (signedIn && accountDialog?.open) refreshAccountProjects();
+    });
   }
 
   function syncChoiceGroupSelections() {
@@ -592,6 +986,16 @@
   function validatePage(name) {
     const page = pages.find(p => p.dataset.page === name);
     if (!page) return true;
+    if (name === "house") {
+      const confirmation = $("#edHouseValuesConfirmed");
+      if (confirmation) {
+        confirmation.setCustomValidity(
+          confirmation.checked
+            ? ""
+            : "Confirmă că ai verificat valorile principale ale casei înainte de a continua."
+        );
+      }
+    }
     const fields = [...page.querySelectorAll("input:not([type=hidden]),select")].filter(el => !el.disabled && !el.closest("[hidden]"));
     for (const field of fields) {
       if (field.matches("[data-decimal-input]")) {
@@ -1867,6 +2271,145 @@
     return data;
   }
 
+  function impactProjectId() {
+    try {
+      const existing = String(localStorage.getItem(impactProjectStorageKey) || "").trim();
+      if (existing) return existing;
+      const created = typeof window.crypto?.randomUUID === "function"
+        ? window.crypto.randomUUID()
+        : `editorial-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      localStorage.setItem(impactProjectStorageKey, created);
+      return created;
+    } catch (_) {
+      if (!volatileImpactProjectId) {
+        volatileImpactProjectId = `editorial-session-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      }
+      return volatileImpactProjectId;
+    }
+  }
+
+  function impactAuthToken() {
+    try {
+      return String(localStorage.getItem(authTokenStorageKey) || "").trim();
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function impactCo2TotalKg(result, heatedArea) {
+    const direct = Number(result?.co2_total_kg ?? result?.co2TotalKg);
+    if (Number.isFinite(direct) && direct >= 0) return direct;
+    const specific = Number(result?.co2_specific_kg_m2 ?? result?.co2SpecificKgM2);
+    return Number.isFinite(specific) && Number.isFinite(heatedArea) && heatedArea > 0
+      ? specific * heatedArea
+      : null;
+  }
+
+  function buildImpactSavePayload() {
+    if (!baselineResult || !optimizationResult) return null;
+    const opt = optimizationResult.optimization || {};
+    const parametric = opt.parametricEvaluation || {};
+    const scenario = optimizationResult.scenario || {};
+    const heatedArea = parseDecimal($("#heatedArea")?.value);
+    const optimizedFinalEnergy = Number(
+      parametric.finalEnergyKwh
+      ?? scenario.final_energy_kwh
+    );
+    const optimizedAnnualCost = Number(
+      parametric.annualBillLei
+      ?? scenario.annual_cost_lei
+    );
+    const baselineFinalEnergy = Number(baselineResult.final_energy_kwh);
+    const baselineAnnualCost = Number(baselineResult.annual_cost_lei);
+    const capex = Number(opt.capexLei);
+    if (![optimizedFinalEnergy, optimizedAnnualCost, baselineFinalEnergy, baselineAnnualCost, capex].every(Number.isFinite)) {
+      return null;
+    }
+    const optimizedCo2 = Number.isFinite(Number(parametric.co2TotalKg))
+      ? Number(parametric.co2TotalKg)
+      : impactCo2TotalKg(
+          {
+            co2_total_kg:scenario.co2_total_kg,
+            co2_specific_kg_m2:parametric.co2SpecificKgM2 ?? scenario.co2_specific_kg_m2,
+          },
+          heatedArea
+        );
+
+    return {
+      projectId:impactProjectId(),
+      projectName:`Casa ${String(baselineResult.locality || $("#localityInput")?.value || "mea").trim() || "mea"}`,
+      baselineInputFingerprint,
+      teoInputFingerprint,
+      calculationModelVersion:CALCULATION_MODEL_VERSION,
+      methodologyVersion:String(scenario.methodology_version || baselineResult.methodology_version || ""),
+      heatedAreaM2:Number.isFinite(heatedArea) ? heatedArea : null,
+      baseline:{
+        finalEnergyKwh:baselineFinalEnergy,
+        annualCostLei:baselineAnnualCost,
+        co2KgYear:impactCo2TotalKg(baselineResult, heatedArea),
+      },
+      optimized:{
+        finalEnergyKwh:optimizedFinalEnergy,
+        annualCostLei:optimizedAnnualCost,
+        capexLei:capex,
+        co2KgYear:optimizedCo2,
+      },
+      source:{
+        locality:String(baselineResult.locality || $("#localityInput")?.value || ""),
+      },
+    };
+  }
+
+  async function saveImpactSnapshotFromReport() {
+    const button = $("#edImpactSave");
+    const state = $("#edImpactSaveState");
+    const token = impactAuthToken();
+    if (!button || !state) return;
+    if (!token) {
+      state.textContent = "Autentificarea Home Lab este necesară. Agregatul public include numai analizele salvate în cont.";
+      return;
+    }
+    const payload = buildImpactSavePayload();
+    if (!payload) {
+      state.textContent = "Rezultatul nu conține încă toate valorile necesare pentru salvarea impactului.";
+      return;
+    }
+    button.disabled = true;
+    state.textContent = "Salvez ultima versiune a acestei case…";
+    try {
+      const response = await fetch("/api/home-lab/impact/save", {
+        method:"POST",
+        headers:{
+          "Accept":"application/json",
+          "Content-Type":"application/json",
+          "Authorization":`Bearer ${token}`,
+        },
+        body:JSON.stringify(payload),
+      });
+      const result = await response.json();
+      if (!response.ok || !result?.saved) {
+        throw new Error(result?.detail || result?.error || "Salvarea nu a reușit.");
+      }
+      button.textContent = "Analiză salvată ✓";
+      state.textContent = "Această casă contribuie o singură dată la agregat; o salvare ulterioară îi înlocuiește snapshot-ul.";
+    } catch (error) {
+      button.disabled = false;
+      state.textContent = error?.message || "Salvarea nu a reușit.";
+    }
+  }
+
+  function wireImpactSaveButton() {
+    const button = $("#edImpactSave");
+    const state = $("#edImpactSaveState");
+    if (!button || !state) return;
+    const token = impactAuthToken();
+    button.disabled = !token;
+    state.textContent = token
+      ? "Salvarea folosește ultima analiză TEO și înlocuiește versiunea anterioară a aceleiași case."
+      : "Conectează contul Home Lab pentru a salva. Simulările nesalvate nu intră în agregatul public.";
+    button.addEventListener("click", saveImpactSnapshotFromReport);
+  }
+
   function calculationInputFingerprint(data) {
     const entries = [...data.entries()]
       .map(([key,value]) => [String(key), String(value)])
@@ -1938,6 +2481,43 @@
     return out;
   }
 
+  function serviceNoticeMessage(error, stageName = "") {
+    const status = Number(error?.status || 0);
+    const payload = error?.payload || {};
+    const explicit = String(
+      payload.maintenance_message
+      || payload.detail
+      || payload.error
+      || ""
+    ).trim();
+    if (explicit && explicit.length <= 180) return explicit;
+    if (status === 0) {
+      return "Conexiunea cu serviciul de calcul a fost întreruptă. Datele introduse rămân în pagină și reîncercăm automat.";
+    }
+    if ([500, 502, 503, 504].includes(status)) {
+      return stageName
+        ? `${stageName} este temporar indisponibil. Datele introduse rămân în pagină și reîncercăm automat.`
+        : "Calculul este temporar indisponibil. Datele introduse rămân în pagină și reîncercăm automat.";
+    }
+    return "";
+  }
+
+  function showServiceNotice(error, stageName = "") {
+    if (error?.name === "AbortError") return;
+    const status = Number(error?.status || 0);
+    if (status !== 0 && ![500, 502, 503, 504].includes(status)) return;
+    const notice = $("#edServiceNotice");
+    const text = $("#edServiceNoticeText");
+    if (!notice || !text) return;
+    text.textContent = serviceNoticeMessage(error, stageName);
+    notice.hidden = false;
+  }
+
+  function clearServiceNotice() {
+    const notice = $("#edServiceNotice");
+    if (notice) notice.hidden = true;
+  }
+
   async function readJson(response) {
     const data = await response.json().catch(() => ({}));
     if (!response.ok || data.error) {
@@ -1948,8 +2528,10 @@
       error.retryAfterMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
         ? retryAfterSeconds * 1000
         : 0;
+      showServiceNotice(error);
       throw error;
     }
+    clearServiceNotice();
     return data;
   }
 
@@ -1972,6 +2554,7 @@
         await sleep(delay);
       }
     }
+    showServiceNotice(lastError || new Error("Request failed."), stageName);
     throw lastError || new Error("Request failed.");
   }
 
@@ -2736,8 +3319,9 @@
       paintBaselineSummary(data, `Estimare curentă · Input ${shortInputFingerprint(inputFingerprint)}`);
     } catch (error) {
       if (error?.name === "AbortError" || revision !== baselineSummaryRevision) return;
+      showServiceNotice(error, "Serviciul RBPE");
       baselineBar.classList.remove("is-updating");
-      baselineStatus.textContent = "Estimarea se actualizează după completarea datelor.";
+      baselineStatus.textContent = "Estimarea se actualizează după revenirea serviciului.";
     }
   }
 
@@ -3399,6 +3983,8 @@
         effective_system_performance:branchProfile?.heating_effective_system_performance ?? null,
         performance_source:branchProfile?.heating_performance_source || null,
         performance_confidence:branchProfile?.heating_performance_confidence || null,
+        generator_performance_kind:branchProfile?.heating_generator_performance_kind || null,
+        generator_performance_value:branchProfile?.heating_generator_performance ?? null,
         efficiency_target:heating?.efficiency ?? null,
         system_type:heating?.system_type || null,
         generator_type:details?.generator_type || null,
@@ -3908,209 +4494,424 @@
     return `<div class="ed-metric"><small>${escapeHtml(label)}</small><strong>${escapeHtml(value)}</strong></div>`;
   }
 
+  const MONTH_SHORT_LABELS = Object.freeze({
+    "1":"Ian","01":"Ian","jan":"Ian","january":"Ian","ian":"Ian","ianuarie":"Ian",
+    "2":"Feb","02":"Feb","feb":"Feb","february":"Feb","februarie":"Feb",
+    "3":"Mar","03":"Mar","mar":"Mar","march":"Mar","martie":"Mar",
+    "4":"Apr","04":"Apr","apr":"Apr","april":"Apr","aprilie":"Apr",
+    "5":"Mai","05":"Mai","may":"Mai","mai":"Mai",
+    "6":"Iun","06":"Iun","jun":"Iun","june":"Iun","iun":"Iun","iunie":"Iun",
+    "7":"Iul","07":"Iul","jul":"Iul","july":"Iul","iul":"Iul","iulie":"Iul",
+    "8":"Aug","08":"Aug","aug":"Aug","august":"Aug",
+    "9":"Sep","09":"Sep","sep":"Sep","september":"Sep","septembrie":"Sep",
+    "10":"Oct","oct":"Oct","october":"Oct","octombrie":"Oct",
+    "11":"Nov","nov":"Nov","november":"Nov","noiembrie":"Nov",
+    "12":"Dec","dec":"Dec","december":"Dec","decembrie":"Dec",
+  });
+
+  function shortMonthLabel(value, index) {
+    const key = String(value ?? "").trim().toLowerCase();
+    return MONTH_SHORT_LABELS[key] || ["Ian","Feb","Mar","Apr","Mai","Iun","Iul","Aug","Sep","Oct","Nov","Dec"][index] || String(value || "—");
+  }
+
+  function monthlyBillProfile(result) {
+    const annualBill = Number(result?.annual_cost_lei);
+    if (!Number.isFinite(annualBill) || annualBill < 0) return [];
+
+    const pricedRows = Array.isArray(result?.monthly_costs) ? result.monthly_costs : [];
+    if (
+      pricedRows.length === 12
+      && pricedRows.every(row => row?.cost_lei != null && row?.complete !== false)
+    ) {
+      return pricedRows.map((row,index) => ({
+        month:shortMonthLabel(row?.month, index),
+        costLei:Number(row?.cost_lei || 0),
+        exact:true,
+      }));
+    }
+
+    const rows = Array.isArray(result?.monthly) ? result.monthly : [];
+    if (rows.length !== 12) return [];
+
+    const annualHeatingUseful = rows.reduce((sum,row) => sum + Math.max(Number(row?.useful_heating_kwh || 0), 0), 0);
+    const annualCoolingUseful = rows.reduce((sum,row) => sum + Math.max(Number(row?.useful_cooling_kwh || 0), 0), 0);
+    const heatingFinal = Math.max(Number(result?.heating?.final_kwh || 0), 0);
+    const coolingFinal = Math.max(Number(result?.cooling?.final_kwh || 0), 0);
+    const totalFinal = Math.max(Number(result?.final_energy_kwh ?? result?.total_final_energy_kwh ?? 0), 0);
+    const otherFinal = Math.max(totalFinal - heatingFinal - coolingFinal, 0);
+    const totalDays = Math.max(rows.reduce((sum,row) => sum + Math.max(Number(row?.days || 0), 0), 0), 1);
+    const heatingRatio = annualHeatingUseful > 1e-9 ? heatingFinal / annualHeatingUseful : 0;
+    const coolingRatio = annualCoolingUseful > 1e-9 ? coolingFinal / annualCoolingUseful : 0;
+
+    const proxies = rows.map(row => (
+      Math.max(Number(row?.useful_heating_kwh || 0), 0) * heatingRatio
+      + Math.max(Number(row?.useful_cooling_kwh || 0), 0) * coolingRatio
+      + otherFinal * Math.max(Number(row?.days || 0), 0) / totalDays
+    ));
+    let proxyTotal = proxies.reduce((sum,value) => sum + value, 0);
+    if (proxyTotal <= 1e-9) {
+      for (let index=0; index<proxies.length; index++) {
+        proxies[index] = Math.max(Number(rows[index]?.days || 0), 1);
+      }
+      proxyTotal = proxies.reduce((sum,value) => sum + value, 0);
+    }
+
+    return rows.map((row,index) => ({
+      month:shortMonthLabel(row?.month, index),
+      costLei:annualBill * proxies[index] / proxyTotal,
+    }));
+  }
+
+  function renderMonthlyBillSection(result, optimizedResult, optimizedAnnualBill) {
+    const before = monthlyBillProfile(result);
+    if (!before.length) return "";
+    const afterExact = monthlyBillProfile(optimizedResult);
+    const baselineAnnual = Math.max(Number(result?.annual_cost_lei || 0), 0);
+    const finalAnnual = Math.max(Number(optimizedAnnualBill || 0), 0);
+    const factor = baselineAnnual > 1e-9 ? finalAnnual / baselineAnnual : 0;
+    const hasExactAfter = afterExact.length === 12;
+    const rows = before.map((row,index) => ({
+      month:row.month,
+      before:Number(row.costLei || 0),
+      after:hasExactAfter
+        ? Number(afterExact[index]?.costLei || 0)
+        : Number(row.costLei || 0) * factor,
+    }));
+    const peak = Math.max(1, ...rows.flatMap(row => [row.before,row.after]));
+    return `
+      <section class="ed-report-section ed-monthly-bills">
+        <div class="ed-report-section-heading">
+          <div>
+            <p class="ed-eyebrow">COST LUNAR</p>
+            <h2>Înainte vs. după investiție</h2>
+          </div>
+          <span>total anual verificat</span>
+        </div>
+        <div class="ed-monthly-bill-legend">
+          <span><i class="is-current"></i> Înainte · ${escapeHtml(money(baselineAnnual))}/an</span>
+          <span><i class="is-teo-average"></i> După TEO · ${escapeHtml(money(finalAnnual))}/an</span>
+        </div>
+        <div class="ed-monthly-bill-chart" role="img" aria-label="Cost lunar estimat înainte și după investiția recomandată de TEO">
+          ${rows.map(row => {
+            const beforeHeight = Math.max(2, Math.min(100, 100 * row.before / peak));
+            const afterHeight = Math.max(2, Math.min(100, 100 * row.after / peak));
+            return `
+              <div class="ed-monthly-bill-column">
+                <div class="ed-monthly-bill-bars">
+                  <i class="is-current" style="height:${fmt(beforeHeight,1)}%"></i>
+                  <i class="is-teo-average" style="height:${fmt(afterHeight,1)}%"></i>
+                </div>
+                <b>${escapeHtml(row.month)}</b>
+                <small>${escapeHtml(money(row.before))} → ${escapeHtml(money(row.after))}</small>
+              </div>
+            `;
+          }).join("")}
+        </div>
+        <p class="ed-chart-note">${hasExactAfter
+          ? "Profilurile lunare provin direct din calculul energetic și de cost."
+          : "Profilul lunar actual folosește costurile lunare RBPE. Pentru rezultatul TEO, totalul anual este verificat, iar distribuția pe luni păstrează forma profilului actual până când este disponibil un profil lunar final complet."
+        }</p>
+      </section>
+    `;
+  }
+
+  function reportComparisonBar(label, beforeValue, afterValue, formatter) {
+    const before = Math.max(Number(beforeValue || 0), 0);
+    const after = Math.max(Number(afterValue || 0), 0);
+    const peak = Math.max(before, after, 1);
+    return `
+      <article class="ed-report-compare-row">
+        <header><span>${escapeHtml(label)}</span><b>${escapeHtml(formatter(before))} → ${escapeHtml(formatter(after))}</b></header>
+        <div class="ed-report-compare-track">
+          <i class="is-before" style="width:${fmt(100 * before / peak,1)}%"></i>
+          <i class="is-after" style="width:${fmt(100 * after / peak,1)}%"></i>
+        </div>
+      </article>
+    `;
+  }
+
+  function normalizedPerformanceMetric(kind, value) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric) || numeric <= 0) return null;
+    if (String(kind || "").toLowerCase() === "scop") {
+      return {label:"SCOP generator",value:numeric,display:fmt(numeric,2),scale:Math.max(5,numeric)};
+    }
+    const percent = numeric <= 1.5 ? numeric * 100 : numeric;
+    return {label:"Randament generator",value:percent,display:fmt(percent,0) + "%",scale:100};
+  }
+
+  function reportHeatingPerformance(engineering) {
+    const beforeSystem = baselineResult?.heating_system || {};
+    const heat = engineering?.heating || {};
+    const before = normalizedPerformanceMetric(
+      beforeSystem?.generator_performance_kind,
+      beforeSystem?.generator_performance
+    );
+
+    let afterKind = heat?.generator_performance_kind;
+    let afterValue = heat?.generator_performance_value;
+    if (afterValue == null && Number.isFinite(Number(heat?.scop_model)) && Number(heat.scop_model) > 1) {
+      afterKind = "scop";
+      afterValue = Number(heat.scop_model);
+    }
+    if (afterValue == null && heat?.efficiency_target != null) {
+      afterKind = "efficiency";
+      afterValue = Number(heat.efficiency_target);
+    }
+    const after = normalizedPerformanceMetric(afterKind, afterValue);
+    if (!before && !after) return null;
+    return {
+      before,
+      after,
+      beforeEffective:Number(beforeSystem?.effective_system_performance),
+      afterEffective:Number(heat?.effective_system_performance),
+    };
+  }
+
+  function renderHeatingPerformanceSection(engineering) {
+    const perf = reportHeatingPerformance(engineering);
+    if (!perf) return "";
+    const card = (title, metric, effective, after = false) => {
+      const width = metric ? Math.max(0, Math.min(100, 100 * metric.value / metric.scale)) : 0;
+      const effectiveText = Number.isFinite(effective) && effective > 0
+        ? '<small>Performanță efectivă sistem: ' + escapeHtml(fmt(effective,2)) + '</small>'
+        : "";
+      return `
+        <article>
+          <span>${escapeHtml(title)}</span>
+          <small>${escapeHtml(metric?.label || "Performanță generator")}</small>
+          <strong>${escapeHtml(metric?.display || "—")}</strong>
+          <div><i class="${after ? "is-after" : ""}" style="width:${fmt(width,1)}%"></i></div>
+          ${effectiveText}
+        </article>
+      `;
+    };
+    return `
+      <section class="ed-report-section">
+        <div class="ed-report-section-heading">
+          <div>
+            <p class="ed-eyebrow">SISTEM TERMIC</p>
+            <h2>Performanța generatorului</h2>
+          </div>
+        </div>
+        <div class="ed-performance-compare">
+          ${card("Înainte", perf.before, perf.beforeEffective, false)}
+          ${card("După TEO", perf.after, perf.afterEffective, true)}
+        </div>
+      </section>
+    `;
+  }
+
+  function catalogBomRequirements(engineering, opt) {
+    const selected = Array.isArray(opt?.selected) ? opt.selected : [];
+    const active = new Set(selected.map(row => String(row?.family || "")));
+    const geometry = baselineResult?.envelope_geometry || {};
+    const env = engineering?.envelope || {};
+    const ventilation = engineering?.ventilation || {};
+    const heating = engineering?.heating || {};
+    const pv = engineering?.pv || {};
+    const solar = engineering?.solar_thermal || {};
+    const heatedVolume = Number(
+      baselineResult?.input?.heated_volume_m3
+      ?? parseDecimal($("#heatedVolume")?.value, 0)
+      ?? 0
+    );
+    const rows = [];
+
+    const insulation = (family, categoryId, spec, area) => {
+      if (!active.has(family) || Number(spec?.added_r_m2k_w || 0) <= 1e-9) return;
+      rows.push({
+        family,
+        categoryId,
+        requiredAreaM2:Number(area || 0),
+        targetThicknessMm:10 * Number(spec?.equivalent_insulation_thickness_cm || 0),
+      });
+    };
+    insulation("wall","wall_insulation",env.wall,geometry.net_wall_area_m2);
+    insulation("roof","roof_insulation",env.roof,geometry.roof_area_m2);
+    insulation("floor","floor_insulation",env.floor,geometry.floor_area_m2);
+
+    const replacement = Number(env.windows?.replacement_fraction || 0);
+    if (active.has("windows") && replacement > 1e-9) {
+      rows.push({
+        family:"windows",
+        categoryId:"window_system",
+        requiredAreaM2:Number(geometry.window_area_m2 || 0) * replacement,
+        targetUw:Number(env.windows?.target_u_w_m2k || env.windows?.final_u_w_m2k || 0),
+      });
+    }
+
+    if (active.has("ventilation") && Number(ventilation.heat_recovery_efficiency || 0) > 0) {
+      rows.push({
+        family:"ventilation",
+        categoryId:"hrv_unit",
+        requiredAirflowM3h:Math.max(0, heatedVolume * Number(ventilation.air_changes_per_hour || 0)),
+        targetEfficiency:Number(ventilation.heat_recovery_efficiency || 0),
+      });
+    }
+
+    if (active.has("heating")) {
+      rows.push({
+        family:"heating",
+        technologyBranch:String(heating.technology_branch || heating.generator_type || ""),
+        requiredPowerKw:Number(heating.installed_power_target_kw || heating.design_required_power_kw || 0),
+      });
+    }
+
+    if (active.has("pv") && Number(pv.added_power_kwp || 0) > 1e-9) {
+      rows.push({
+        family:"pv",
+        categoryId:"pv_module",
+        requiredPowerKwp:Number(pv.added_power_kwp || 0),
+      });
+    }
+
+    if (active.has("solar_thermal") && Number(solar.added_area_m2 || 0) > 1e-9) {
+      rows.push({
+        family:"solar_thermal",
+        categoryId:"solar_thermal_collector",
+        requiredAreaM2:Number(solar.added_area_m2 || 0),
+      });
+    }
+    return rows;
+  }
+
+  function renderCatalogBomShell() {
+    return `
+      <section class="ed-report-section ed-technical-bom" id="edTechnicalBom">
+        <div class="ed-report-section-heading">
+          <div>
+            <p class="ed-eyebrow">LISTĂ DE MATERIALE</p>
+            <h2>Produse și cantități din catalogul LaCurent</h2>
+          </div>
+          <span>D1 · post-TEO</span>
+        </div>
+        <div id="edCatalogBom" class="ed-catalog-bom" data-state="loading">
+          <p class="ed-hint">Potrivesc specificația TEO cu produsele source-backed din baza de date…</p>
+        </div>
+      </section>
+    `;
+  }
+
+  function bomQuantityLabel(item) {
+    const value = Number(item?.quantity);
+    if (!Number.isFinite(value)) return "—";
+    const unit = String(item?.quantityUnit || "buc");
+    return fmt(value, Number.isInteger(value) ? 0 : 1) + " " + unit;
+  }
+
+  function renderCatalogBomItems(items) {
+    const node = $("#edCatalogBom");
+    if (!node) return;
+    node.dataset.state = "ready";
+    const rows = Array.isArray(items) ? items : [];
+    if (!rows.length) {
+      node.innerHTML = '<p class="ed-hint">TEO nu a selectat materiale sau echipamente noi pentru această configurație.</p>';
+      return;
+    }
+    node.innerHTML = rows.map(item => {
+      if (!item?.matched) {
+        const family = String(item?.family || "intervenție").replaceAll("_"," ");
+        const reason = item?.reason === "no_new_product_required"
+          ? "Sistemul existent rămâne în soluție."
+          : "Catalogul D1 nu are încă un SKU source-backed care să satisfacă această cerință.";
+        return `
+          <article class="ed-bom-product is-unmatched">
+            <div class="ed-bom-product-image"><span>—</span></div>
+            <div class="ed-bom-product-main">
+              <small>${escapeHtml(family)}</small>
+              <h3>Cerință tehnică fără SKU validat</h3>
+              <p>${escapeHtml(reason)}</p>
+            </div>
+          </article>
+        `;
+      }
+      const image = /^https?:\/\//i.test(String(item.imageUrl || ""))
+        ? '<img src="' + escapeHtml(item.imageUrl) + '" alt="' + escapeHtml(item.label || "Produs") + '" loading="lazy">'
+        : '<span>' + escapeHtml(String(item.manufacturer || "LC").slice(0,2).toUpperCase()) + '</span>';
+      const source = /^https?:\/\//i.test(String(item.sourceUrl || ""))
+        ? '<a href="' + escapeHtml(item.sourceUrl) + '" target="_blank" rel="noopener noreferrer">Sursa produsului ↗</a>'
+        : "";
+      return `
+        <article class="ed-bom-product">
+          <div class="ed-bom-product-image">${image}</div>
+          <div class="ed-bom-product-main">
+            <small>${escapeHtml(item.manufacturer || item.categoryId || "Produs")}</small>
+            <h3>${escapeHtml(item.label || item.model || item.productId)}</h3>
+            <p>${escapeHtml(item.selectionBasis || "")}</p>
+            <div class="ed-bom-product-meta">
+              <b>${escapeHtml(bomQuantityLabel(item))}</b>
+              ${item.subtotalLei == null ? "" : '<span>' + escapeHtml(money(item.subtotalLei)) + '</span>'}
+              ${item.supplier ? '<span>' + escapeHtml(item.supplier) + '</span>' : ""}
+            </div>
+            ${source}
+          </div>
+        </article>
+      `;
+    }).join("");
+  }
+
+  async function loadCatalogBom(engineering, opt) {
+    const node = $("#edCatalogBom");
+    if (node) node.dataset.state = "loading";
+    const requirements = catalogBomRequirements(engineering, opt);
+    if (!requirements.length) {
+      renderCatalogBomItems([]);
+      return;
+    }
+    try {
+      const response = await fetch("/api/home-lab/bom", {
+        method:"POST",
+        headers:{"Content-Type":"application/json","Accept":"application/json"},
+        body:JSON.stringify({requirements}),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload?.detail || "Lista de materiale nu poate fi încărcată.");
+      renderCatalogBomItems(payload.items || []);
+    } catch (error) {
+      const node = $("#edCatalogBom");
+      if (node) {
+        node.dataset.state = "error";
+        node.innerHTML = '<p class="ed-hint">' + escapeHtml(error?.message || "Lista de materiale nu poate fi încărcată.") + '</p>';
+      }
+    }
+  }
+
   function renderReport() {
     if (!baselineResult || !optimizationResult) return;
     const scenario = optimizationResult.scenario || {};
     const opt = optimizationResult.optimization || {};
     const parametric = opt.parametricEvaluation || {};
     const engineering = opt.engineeringSpec || {};
-    const baselineBill = baselineResult.annual_cost_lei;
-    const finalBill = parametric.annualBillLei ?? scenario.annual_cost_lei;
-    const locality = baselineResult.locality || $("#localityInput").value;
+    const baselineBill = Number(baselineResult.annual_cost_lei || 0);
+    const finalBill = Number(parametric.annualBillLei ?? scenario.annual_cost_lei ?? baselineBill);
+    const baselineFinal = Number(baselineResult.final_energy_kwh || 0);
+    const finalEnergy = Number(parametric.finalEnergyKwh ?? scenario.final_energy_kwh ?? baselineFinal);
 
     $("#reportIntro").textContent =
-      `Analiza pornește de la locuința din ${locality}. Geometria, anvelopa, instalațiile și regenerabilele sunt introduse cu aceeași granularitate ca în Home Lab-ul tehnic.`;
+      "Raportul nu repetă recomandările de pe pagina TEO. Aici vezi numai diferențele măsurabile și lista comercială rezultată.";
 
-    let html = `
+    let html = "";
+    html += renderMonthlyBillSection(baselineResult, scenario, finalBill);
+    html += `
       <section class="ed-report-section">
-        <h2>Situația actuală</h2>
-        <p>Modelul folosește clima locală, geometria, straturile anvelopei și configurația instalațiilor declarate.</p>
-        <div class="ed-metrics">
-          ${metric("Energie finală", energy(baselineResult.final_energy_kwh))}
-          ${metric("Cost anual estimat", money(baselineBill))}
-          ${metric("Putere de calcul încălzire spații", baselineResult.design_heat_load_kw == null ? "—" : fmt(baselineResult.design_heat_load_kw,1) + " kW")}
-          ${metric("Clasă energetică", baselineResult.energy_class || "—")}
-        </div>
-      </section>
-
-      <section class="ed-report-section">
-        <h2>Rezumat economic al optimului TEO</h2>
-        <p>${escapeHtml(opt.rationale || "Rezultatul de mai jos este optimul parametric verificat; discretizarea comercială nu participă la această selecție.")}</p>
-        <div class="ed-report-callout">
-          <small>CAPEX parametric estimat</small><br>
-          <strong>${money(opt.capexLei)}</strong>
-        </div>
-        <div class="ed-metrics">
-          ${metric("Economii estimate", opt.annualSavingLei == null ? "Nedeterminate" : money(opt.annualSavingLei) + "/an")}
-          ${metric("Cost după intervenții", money(finalBill))}
-          ${metric("Recuperare", paybackDisplay(opt))}
-          ${metric("Putere finală necesară · spații", parametric.designHeatLoadKw == null ? "—" : fmt(parametric.designHeatLoadKw,1) + " kW")}
-        </div>
-        ${economicStatusText(opt) ? `<p class="ed-hint"><b>Interpretare economică:</b> ${escapeHtml(economicStatusText(opt))}</p>` : ""}
-        ${opt.simpleNetBenefitLeiByHorizon ? `
-          <h3>Beneficiu net simplu în timp</h3>
-          <p class="ed-hint">Economie anuală × orizont − CAPEX parametric. Fără finanțare, inflație, mentenanță, înlocuiri sau valoare reziduală; acestea vor aparține modelului lifecycle.</p>
-          <div class="ed-metrics">
-            ${(opt.economicHorizonsYears || [5,10,15,20,25]).map(years =>
-              metric(`${years} ani`, money(opt.simpleNetBenefitLeiByHorizon[String(years)]))
-            ).join("")}
-          </div>
-        ` : ""}
-      </section>
-    `;
-
-    const nzebTarget = baselineResult?.nzeb_target || null;
-    const rerTotal = Number(
-      parametric.rerPercent
-      ?? scenario.rer_percent
-      ?? 0
-    );
-    const rerOnsite = Number(
-      parametric.onsiteRenewablePercent
-      ?? scenario.onsite_renewable_percent
-      ?? 0
-    );
-    const nzebTechnicalPass = Boolean(
-      nzebTarget
-      && candidateAvailableNzebPass(parametric, nzebTarget)
-    );
-    if (nzebTarget) {
-      html += `
-        <section class="ed-report-section">
-          <h2>nZEB · verificare tehnică modelată</h2>
-          <p>Home Lab verifică numeric partea pe care o poate demonstra din model. Garanțiile de origine și orice cerință suplimentară 2026 stabilită prin act oficial rămân verificări documentare externe.</p>
-          <div class="ed-metrics">
-            ${metric("Eprim final", parametric.primarySpecificKwhM2 == null ? "—" : fmt(parametric.primarySpecificKwhM2,1) + " / " + fmt(nzebTarget.primary_energy_kwh_m2_year,1) + " kWh/m²·an")}
-            ${metric("CO₂ final", parametric.co2SpecificKgM2 == null ? "—" : fmt(parametric.co2SpecificKgM2,1) + " / " + fmt(nzebTarget.co2_kg_m2_year,1) + " kgCO₂/m²·an")}
-            ${metric("RER tehnic", fmt(rerTotal,1) + "% / ≥" + fmt(nzebTarget.renewable_total_minimum_percent ?? 30,0) + "%")}
-            ${metric("SRE onsite", fmt(rerOnsite,1) + "% / ≥" + fmt(nzebTarget.renewable_onsite_minimum_percent ?? 10,0) + "%")}
-          </div>
-          <p class="ed-hint"><b>Status:</b> ${nzebTechnicalPass ? "pragurile tehnice controlabile de TEO sunt atinse" : "cel puțin un prag tehnic controlabil de TEO nu este atins"}. RER total este raportat separat; pentru conformare juridică completă, dovada pentru minimum ${fmt(nzebTarget.renewable_guarantee_of_origin_minimum_percent ?? 20,0)}% prin garanții de origine se verifică separat.</p>
-        </section>
-      `;
-    }
-
-    const env = engineering.envelope || {};
-    const bridges = engineering.thermal_bridges || {};
-    const ventilation = engineering.ventilation || {};
-    const heat = engineering.heating || {};
-    const pvSpec = engineering.pv || {};
-    const solarSpec = engineering.solar_thermal || {};
-    const familyCard = (label, spec) => {
-      if (!spec) return "";
-      return `
-        <div class="ed-measure">
+        <div class="ed-report-section-heading">
           <div>
-            <b>${escapeHtml(label)}</b><br>
-            <span>
-              U final ${spec.final_u_w_m2k == null ? "—" : fmt(spec.final_u_w_m2k,3) + " W/m²K"}
-              · ΔR ${fmt(spec.added_r_m2k_w || 0,2)} m²K/W
-              · λ calcul ${spec.reference_lambda_w_mk == null ? "—" : fmt(spec.reference_lambda_w_mk,3) + " W/mK"}
-              · grosime echiv. ${spec.equivalent_insulation_thickness_cm == null ? "—" : fmt(spec.equivalent_insulation_thickness_cm,1) + " cm"}
-            </span>
+            <p class="ed-eyebrow">ÎNAINTE / DUPĂ</p>
+            <h2>Impactul soluției TEO</h2>
           </div>
-        </div>`;
-    };
-
-    html += `
-      <section class="ed-report-section">
-        <h2>Optim TEO · specificație inginerească</h2>
-        <p>Acesta este designul parametric verificat. Nu conține SKU-uri și nu rotunjește soluția la trepte comerciale.</p>
-        ${familyCard("Pereți", env.wall)}
-        ${familyCard("Acoperiș / pod", env.roof)}
-        ${familyCard("Pardoseală", env.floor)}
-        <div class="ed-measure">
-          <div><b>Ferestre</b><br><span>
-            ${Number(env.windows?.replacement_fraction || 0) <= 1e-9
-              ? "Fără înlocuire TEO · Uw existent/rezultat " + (env.windows?.final_u_w_m2k == null ? "—" : fmt(env.windows.final_u_w_m2k,3) + " W/m²K")
-              : "Uw țintă " + (env.windows?.target_u_w_m2k == null ? "—" : fmt(env.windows.target_u_w_m2k,3) + " W/m²K")
-                + " · Uw rezultat " + (env.windows?.final_u_w_m2k == null ? "—" : fmt(env.windows.final_u_w_m2k,3) + " W/m²K")
-                + " · înlocuire " + fmt(100 * Number(env.windows?.replacement_fraction || 0),1) + "%"
-            }
-          </span></div>
         </div>
-        <div class="ed-measure">
-          <div><b>Punți termice</b><br><span>
-            Σψ·L ${fmt(bridges.sum_psi_l_w_k || 0,2)} W/K
-            · ψ mediu ponderat ${bridges.weighted_mean_psi_w_mk == null ? "—" : fmt(bridges.weighted_mean_psi_w_mk,3) + " W/mK"}
-            · lungime totală ${fmt(bridges.total_length_m || 0,1)} m
-          </span></div>
+        <div class="ed-report-compare">
+          ${reportComparisonBar("Cost anual", baselineBill, finalBill, money)}
+          ${reportComparisonBar("Energie finală", baselineFinal, finalEnergy, energy)}
         </div>
-        <div class="ed-measure">
-          <div><b>Ventilație / infiltrații</b><br><span>
-            ACH ${fmt(ventilation.air_changes_per_hour || 0,2)}
-            · infiltrații ${fmt(ventilation.infiltration_air_changes_per_hour || 0,2)} 1/h
-            · η recuperare ${fmt(100 * Number(ventilation.heat_recovery_efficiency || 0),1)}%
-          </span></div>
-        </div>
-        <div class="ed-measure">
-          <div><b>Încălzire</b><br><span>
-            ramură ${escapeHtml(heat.technology_branch || heat.generator_type || "sistem existent")}
-            · putere de proiect ${fmt(heat.design_required_power_kw || 0,2)} kW
-            · țintă instalată ${fmt(heat.installed_power_target_kw || 0,2)} kW
-            ${heat.scop_model == null ? "" : " · SCOP model parametric " + fmt(heat.scop_model,2)}
-            ${heat.effective_system_performance == null ? "" : " · performanță efectivă sistem " + fmt(heat.effective_system_performance,2)}
-            ${heat.efficiency_target == null ? "" : " · η țintă " + fmt(100 * Number(heat.efficiency_target),1) + "%"}
-            ${heat.design_flow_temperature_c == null ? "" : " · tur " + fmt(heat.design_flow_temperature_c,0) + " °C"}
-            ${heat.design_return_temperature_c == null ? "" : " · retur " + fmt(heat.design_return_temperature_c,0) + " °C"}
-          </span></div>
-        </div>
-        <div class="ed-measure">
-          <div><b>Fotovoltaice</b><br><span>
-            ${fmt(pvSpec.installed_power_kwp || 0,2)} kWp total
-            · +${fmt(pvSpec.added_power_kwp || 0,2)} kWp TEO
-            ${pvSpec.orientation ? " · " + escapeHtml(pvSpec.orientation) : ""}
-            ${pvSpec.tilt_degrees == null ? "" : " · " + fmt(pvSpec.tilt_degrees,0) + "°"}
-            ${pvSpec.performance_ratio == null ? "" : " · PR " + fmt(pvSpec.performance_ratio,3)}
-          </span></div>
-        </div>
-        <div class="ed-measure">
-          <div><b>Solar termic</b><br><span>
-            ${fmt(solarSpec.collector_area_m2 || 0,2)} m² total
-            · +${fmt(solarSpec.added_area_m2 || 0,2)} m² TEO
-            ${solarSpec.system_efficiency == null ? "" : " · η " + fmt(100 * Number(solarSpec.system_efficiency),1) + "%"}
-          </span></div>
-        </div>
-        <p class="ed-hint">λ este valoarea de calcul folosită pentru conversia dintre rezistență termică și grosime; TEO optimizează în prezent ΔR/U, nu un material comercial. Valorile ψ sunt raportate din modelul fizic și nu sunt încă variabile independente de optimizare. Pentru pompele de căldură, SCOP-ul din această secțiune este modelul tehnic parametric al ramurii; COP/SCOP-ul produsului real se confirmă numai după discretizarea comercială.</p>
-      </section>
-
-      <section class="ed-report-section">
-        <h2>Discretizare comercială</h2>
-        <p>Nu face parte din TEO. Produsele reale, grosimile comerciale, SKU-urile și curbele de producător se vor potrivi ulterior peste această specificație inginerească, fără să redefinească optimul parametric.</p>
       </section>
     `;
+    html += renderHeatingPerformanceSection(engineering);
+    html += renderCatalogBomShell();
 
-    if (scenario.annual_fuel_use && Object.keys(scenario.annual_fuel_use).length) {
-      html += `
-        <section class="ed-report-section">
-          <h2>Combustibil anual</h2>
-          <p>Necesarul fizic anual rezultat din configurația finală:</p>
-          ${Object.entries(scenario.annual_fuel_use).map(([key,val]) => `<div class="ed-measure"><span>${escapeHtml(key.replaceAll("_"," "))}</span><b>${typeof val === "number" ? fmt(val,1) : escapeHtml(JSON.stringify(val))}</b></div>`).join("")}
-        </section>
-      `;
-    }
-
-    html += `
-      <section class="ed-report-section">
-        <h2>Cum a fost verificat rezultatul</h2>
-        <p>Optimizerul a căutat parametric în browser, a evaluat separat ramurile de încălzire și a verificat finalistul cu motorul energetic complet. Selecția comercială este intenționat în afara TEO.</p>
-        <div class="ed-metrics">
-          ${metric("Candidați evaluați", fmt(opt.evaluatedCandidates || 0))}
-          ${metric("Evaluări parametrice", fmt(opt.parametricEvaluations || 0))}
-          ${metric("Verificări motor complet", fmt(opt.fullEngineVerifications || 0))}
-          ${metric("Timp calcul server", opt.calculationTimeMs == null ? "—" : fmt(opt.calculationTimeMs / 1000,1) + " s")}
-        </div>
-      </section>
-
-      <section class="ed-report-section">
-        <h2>Metodologie și ipoteze</h2>
-        <p><b>Metodologie:</b> ${escapeHtml(scenario.methodology_version || baselineResult.methodology_version || "—")}. ${escapeHtml(scenario.methodology_source || baselineResult.methodology_source || "")}</p>
-        <p><b>Date de preț:</b> ${scenario.price_retrieved_on ? "referință " + escapeHtml(scenario.price_retrieved_on) : "conform surselor active ale motorului"}.</p>
-        ${Array.isArray(scenario.assumptions) && scenario.assumptions.length ? `<h3>Ipoteze declarate de motor</h3><ul>${scenario.assumptions.map(x => `<li>${escapeHtml(x)}</li>`).join("")}</ul>` : ""}
-        ${Array.isArray(opt.warnings) && opt.warnings.length ? `<h3>Limitări / avertismente</h3><ul>${opt.warnings.map(x => `<li>${escapeHtml(x)}</li>`).join("")}</ul>` : ""}
-      </section>
-    `;
     $("#reportBody").innerHTML = html;
+    loadCatalogBom(engineering, opt);
   }
 
   $("#runAnalysis").addEventListener("click", runAnalysis);
@@ -4120,8 +4921,21 @@
     renderReport();
     showPage("report");
   });
+  $("#openBomFromGoal")?.addEventListener("click", () => {
+    if (!optimizationResult) return;
+    renderReport();
+    showPage("report");
+    window.requestAnimationFrame(() => {
+      document.querySelector("#edTechnicalBom")?.scrollIntoView({behavior:"smooth",block:"start"});
+    });
+  });
   $("#reportBack").addEventListener("click", () => showPage("goal"));
   $("#tryAgain").addEventListener("click", () => showPage("goal"));
+  $("#edReportEditHouse")?.addEventListener("click", () => showPage("house"));
+  $("#edReportSaveProject")?.addEventListener("click", () => saveCurrentAccountProject());
+  $("#edReportBom")?.addEventListener("click", () => {
+    document.querySelector("#edTechnicalBom")?.scrollIntoView({behavior:"smooth", block:"start"});
+  });
 
   function openLog() {
     logDialogBody.textContent = logLines.join("\n");
@@ -4163,6 +4977,13 @@
 
   form.addEventListener("input", event => {
     if (event.target?.type === "hidden") return;
+    if (event.isTrusted && event.target?.matches?.("[data-house-critical]")) {
+      const confirmation = $("#edHouseValuesConfirmed");
+      if (confirmation) {
+        confirmation.checked = false;
+        confirmation.setCustomValidity("");
+      }
+    }
     if (event.target?.matches?.("[data-optional-advanced]") && event.isTrusted) {
       markAdvancedManual(event.target);
     } else if (event.isTrusted) {
@@ -4174,6 +4995,13 @@
   });
   form.addEventListener("change", event => {
     if (event.target?.type === "hidden") return;
+    if (event.isTrusted && event.target?.matches?.("[data-house-critical]")) {
+      const confirmation = $("#edHouseValuesConfirmed");
+      if (confirmation) {
+        confirmation.checked = false;
+        confirmation.setCustomValidity("");
+      }
+    }
     if (event.target?.matches?.("[data-optional-advanced]") && event.isTrusted) {
       markAdvancedManual(event.target);
     } else if (event.isTrusted) {
@@ -4202,6 +5030,7 @@
       $("#edLocationMap").dataset.mapError = error?.message || "location-map-error";
     });
 
+  initializeAccountUi();
   syncGoalField();
   syncNzebPolicy();
   resetTeoControlUi();

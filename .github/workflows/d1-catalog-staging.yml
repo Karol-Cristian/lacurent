@@ -1,0 +1,800 @@
+name: D1 Catalog Staging Verification
+
+on:
+  workflow_dispatch:
+  workflow_call:
+  push:
+    branches:
+      - codex/release-product-staging-integration
+    paths:
+      - ".github/workflows/d1-catalog-staging.yml"
+      - "migrations/015_energy_product_catalog.sql"
+      - "migrations/016_energy_product_catalog_smoke_pack.sql"
+      - "migrations/017_unify_energy_product_catalog.sql"
+      - "migrations/019_home_lab_account_persistence.sql"
+      - "scripts/build-energy-product-catalog-d1-import.py"
+      - "commercial/data/energy_product_catalog_source_pack_v2.json"
+
+concurrency:
+  group: d1-catalog-staging-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  d1-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_STAGING_API_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      WORKERS_DEV_SUBDOMAIN: lemnarukarol
+      DB_NAME: lacurent-dev-db
+      D1_STAGING_CONFIG: /tmp/lacurent-d1-staging.toml
+
+    steps:
+      - name: Check out release staging
+        uses: actions/checkout@v4
+
+      - name: Validate Cloudflare credentials
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          echo "Using dedicated D1 staging token when CLOUDFLARE_D1_STAGING_API_TOKEN is configured."
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Install staging tooling
+        run: |
+          npm install --no-save wrangler@latest
+          python -m pip install uv
+          npx wrangler --version
+
+      - name: Generate catalog import from current source pack
+        run: |
+          set -euo pipefail
+          python scripts/build-energy-product-catalog-d1-import.py \
+            commercial/data/energy_product_catalog_source_pack_v2.json \
+            /tmp/016_energy_product_catalog_generated.sql \
+            --summary /tmp/energy-product-catalog-summary.json
+          cat /tmp/energy-product-catalog-summary.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          summary = json.loads(Path("/tmp/energy-product-catalog-summary.json").read_text())
+          products = int(summary.get("products") or 0)
+          metrics = int(summary.get("value_metric_ready") or 0)
+          if products != 49:
+              raise SystemExit(f"Expected 49 canonical products, generated {products}.")
+          if metrics < 17:
+              raise SystemExit(
+                  f"Expected at least 17 category-local value metrics, generated {metrics}."
+              )
+          print(f"Generated canonical source pack PASS: products={products}, value_metrics={metrics}")
+          PY
+
+      - name: Resolve dedicated development D1 and prove production isolation
+        run: |
+          set -euo pipefail
+          npx wrangler d1 list --json > /tmp/d1-list.json
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          raw = json.loads(Path("/tmp/d1-list.json").read_text())
+          rows = raw
+          if isinstance(raw, dict):
+              rows = raw.get("result") or raw.get("databases") or raw.get("items") or []
+          if not isinstance(rows, list):
+              raise SystemExit(f"Unexpected wrangler d1 list JSON shape: {type(rows)!r}")
+
+          target = os.environ["DB_NAME"]
+          match = next(
+              (
+                  row for row in rows
+                  if isinstance(row, dict) and str(row.get("name") or "") == target
+              ),
+              None,
+          )
+          if match is None:
+              available = sorted(
+                  str(row.get("name") or "")
+                  for row in rows
+                  if isinstance(row, dict)
+              )
+              raise SystemExit(
+                  f"Dedicated staging database {target!r} is not available. "
+                  f"Visible D1 databases: {available}"
+              )
+
+          database_id = str(match.get("uuid") or match.get("id") or "").strip()
+          if not database_id:
+              raise SystemExit(f"Development D1 {target!r} has no UUID/id: {match!r}")
+          import tomllib
+
+          wrangler = tomllib.loads(
+              Path("commercial/cloudflare-worker/wrangler.toml").read_text(encoding="utf-8")
+          )
+          production_ids = {
+              str(item.get("database_id") or "")
+              for item in wrangler.get("d1_databases", [])
+              if str(item.get("database_id") or "")
+          }
+          if database_id in production_ids:
+              raise SystemExit(
+                  "Safety gate: lacurent-dev-db resolves to a production D1 UUID."
+              )
+
+          Path("/tmp/lacurent-dev-db-id").write_text(database_id, encoding="utf-8")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as fh:
+              fh.write(f"DB_ID={database_id}\n")
+          print(f"Development D1 isolation PASS: {target} ({database_id})")
+          PY
+
+          DB_ID="$(cat /tmp/lacurent-dev-db-id)"
+          test -n "$DB_ID"
+
+          cat > "$D1_STAGING_CONFIG" <<EOF
+          name = "lacurent-d1-staging-control"
+          compatibility_date = "2026-08-29"
+
+          [[d1_databases]]
+          binding = "DB"
+          database_name = "$DB_NAME"
+          database_id = "$DB_ID"
+          EOF
+
+          echo "Dedicated D1 staging Wrangler config:"
+          sed 's/database_id = .*/database_id = "<verified-development-uuid>"/' "$D1_STAGING_CONFIG"
+
+      - name: Apply catalog and account schema to development D1
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/lacurent-d1-migration-chunks
+          mkdir -p /tmp/lacurent-d1-migration-chunks
+
+          for migration in \
+            migrations/015_energy_product_catalog.sql \
+            /tmp/016_energy_product_catalog_generated.sql \
+            migrations/017_unify_energy_product_catalog.sql \
+            migrations/019_home_lab_account_persistence.sql
+          do
+            migration_name="$(basename "$migration" .sql)"
+            out_dir="/tmp/lacurent-d1-migration-chunks/$migration_name"
+            echo "Preparing D1-safe command batches for $migration"
+            python scripts/split_d1_sql.py "$migration" "$out_dir" --max-chars 60000
+
+            for chunk in "$out_dir"/*.sql
+            do
+              echo "Applying $migration via $(basename "$chunk")"
+              SQL="$(cat "$chunk")"
+              test -n "$SQL"
+              npx wrangler d1 execute "$DB_NAME" \
+                --config "$D1_STAGING_CONFIG" \
+                --remote \
+                --command="$SQL" \
+                --yes
+            done
+          done
+
+      - name: Verify D1 materialization and compatibility views
+        run: |
+          set -euo pipefail
+          QUERY="
+          SELECT
+            (SELECT COUNT(*) FROM energy_products) AS products,
+            (SELECT COUNT(*) FROM energy_product_heating_compat) AS heating_compat,
+            (SELECT COUNT(*) FROM energy_heating_products_compat_v1) AS heating_view,
+            (SELECT COUNT(*) FROM energy_product_performance_points) AS performance_points,
+            (SELECT COUNT(*) FROM energy_heat_pump_performance_points_compat_v1) AS performance_view,
+            (SELECT COUNT(*) FROM energy_product_seasonal_performance) AS seasonal_points,
+            (SELECT COUNT(*) FROM energy_heat_pump_seasonal_performance_compat_v1) AS seasonal_view,
+            (SELECT COUNT(*) FROM energy_product_value_metrics) AS value_metrics,
+            (
+              SELECT COUNT(*)
+              FROM sqlite_master
+              WHERE type = 'table'
+                AND name IN (
+                  'users',
+                  'user_sessions',
+                  'building_platform_projects',
+                  'building_platform_project_drafts'
+                )
+            ) AS account_persistence_tables,
+            (
+              SELECT COUNT(*)
+              FROM energy_heat_pump_performance_points_compat_v1 AS pp
+              INNER JOIN energy_heating_products_compat_v1 AS p
+                ON p.id = pp.product_id
+              WHERE p.active = 1
+                AND NOT (
+                  p.technology_id = 'heat-pump-air-air'
+                  AND COALESCE(p.source_kind, '') LIKE 'derived_bundle_%'
+                )
+            ) AS public_performance_points,
+            (
+              SELECT COUNT(*)
+              FROM energy_heating_products_compat_v1
+              WHERE active = 1
+                AND NOT (
+                  technology_id = 'heat-pump-air-air'
+                  AND COALESCE(source_kind, '') LIKE 'derived_bundle_%'
+                )
+            ) AS public_heating_products,
+            (
+              SELECT COUNT(*)
+              FROM energy_heating_products_compat_v1
+              WHERE technology_id = 'heat-pump-air-air'
+                AND COALESCE(source_kind, '') LIKE 'derived_bundle_%'
+            ) AS derived_air_air_bundles;
+          "
+          npx wrangler d1 execute "$DB_NAME" --config "$D1_STAGING_CONFIG" --remote --command "$QUERY" --json > /tmp/d1-smoke.json
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          raw = json.loads(Path("/tmp/d1-smoke.json").read_text())
+
+          def rows_from(value):
+              if isinstance(value, list):
+                  for item in value:
+                      found = rows_from(item)
+                      if found:
+                          return found
+                  return []
+              if isinstance(value, dict):
+                  if isinstance(value.get("results"), list):
+                      return value["results"]
+                  if isinstance(value.get("result"), list):
+                      return value["result"]
+                  for item in value.values():
+                      found = rows_from(item)
+                      if found:
+                          return found
+              return []
+
+          rows = rows_from(raw)
+          if not rows:
+              raise SystemExit(f"No SQL result rows found in Wrangler JSON: {raw!r}")
+          row = rows[0]
+          minimums = {
+              "products": 49,
+              "heating_compat": 40,
+              "heating_view": 40,
+              "performance_points": 50,
+              "performance_view": 50,
+              "seasonal_points": 2,
+              "seasonal_view": 2,
+              "value_metrics": 17,
+              "account_persistence_tables": 4,
+              "public_performance_points": 30,
+              "public_heating_products": 36,
+              "derived_air_air_bundles": 4,
+          }
+          actual = {key: int(row.get(key) or 0) for key in minimums}
+          failures = {
+              key: {"minimum": minimum, "actual": actual[key]}
+              for key, minimum in minimums.items()
+              if actual[key] < minimum
+          }
+          if failures:
+              raise SystemExit(f"Development D1 catalog regression: {failures}")
+          print("Development D1 catalog materialization PASS", actual)
+          PY
+
+      - name: Verify required cross-category source-backed rows in D1
+        run: |
+          set -euo pipefail
+          QUERY="
+          SELECT id, category_id, evidence_status
+          FROM energy_products
+          WHERE id IN (
+            'austrotherm-eps-a100-af-plus-160',
+            'rockwool-frontrock-casa-100',
+            'purmo-compact-c22-600x1000',
+            'uponor-comfort-pipe-plus-16x2-640',
+            'uponor-vario-m-fm-6-1085948',
+            'grundfos-alpha2-25-60-180-99411175',
+            'salus-kl08nsb-8-zone',
+            'jinko-tiger-neo-jkm440n-54hl4r-v',
+            'zehnder-comfoair-q350-hrv'
+          )
+          ORDER BY id;
+          "
+          npx wrangler d1 execute "$DB_NAME" --config "$D1_STAGING_CONFIG" --remote --command "$QUERY" --json > /tmp/d1-cross-category.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          raw = json.loads(Path("/tmp/d1-cross-category.json").read_text())
+
+          def rows_from(value):
+              if isinstance(value, list):
+                  for item in value:
+                      found = rows_from(item)
+                      if found:
+                          return found
+                  return []
+              if isinstance(value, dict):
+                  if isinstance(value.get("results"), list):
+                      return value["results"]
+                  if isinstance(value.get("result"), list):
+                      return value["result"]
+                  for item in value.values():
+                      found = rows_from(item)
+                      if found:
+                          return found
+              return []
+
+          rows = rows_from(raw)
+          ids = {str(row.get("id") or "") for row in rows}
+          expected = {
+              "austrotherm-eps-a100-af-plus-160",
+              "rockwool-frontrock-casa-100",
+              "purmo-compact-c22-600x1000",
+              "uponor-comfort-pipe-plus-16x2-640",
+              "uponor-vario-m-fm-6-1085948",
+              "grundfos-alpha2-25-60-180-99411175",
+              "salus-kl08nsb-8-zone",
+              "jinko-tiger-neo-jkm440n-54hl4r-v",
+              "zehnder-comfoair-q350-hrv",
+          }
+          missing = expected - ids
+          if missing:
+              raise SystemExit(f"Cross-category D1 source pack missing rows: {sorted(missing)}")
+          print("Cross-category D1 rows PASS", sorted(ids))
+          PY
+
+      - name: Prepare isolated Python Worker with development D1 binding
+        run: |
+          set -euo pipefail
+          WORKER_NAME="lacurent-d1-catalog-${GITHUB_RUN_ID}"
+          echo "WORKER_NAME=$WORKER_NAME" >> "$GITHUB_ENV"
+          echo "STAGING_URL=https://$WORKER_NAME.$WORKERS_DEV_SUBDOMAIN.workers.dev" >> "$GITHUB_ENV"
+          echo "ACCOUNT_SMOKE_EMAIL=lacurent-staging-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT@example.invalid" >> "$GITHUB_ENV"
+          echo "ACCOUNT_SMOKE_PROJECT=lacurent-staging-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+
+          node scripts/prepare-commercial-cloudflare-worker.mjs --name "$WORKER_NAME"
+
+          cat > .wrangler/commercial-v2-worker/wrangler.toml <<EOF
+          name = "$WORKER_NAME"
+          main = "src/worker.py"
+          compatibility_date = "2026-08-29"
+          compatibility_flags = ["python_workers"]
+          workers_dev = true
+
+          [[d1_databases]]
+          binding = "DB"
+          database_name = "$DB_NAME"
+          database_id = "$DB_ID"
+
+          [[rules]]
+          type = "Text"
+          globs = ["**/*.html", "**/*.css", "**/*.js", "**/*.json", "**/*.geojson", "**/*.svg"]
+          fallthrough = true
+          EOF
+
+      - name: Sync isolated Worker dependencies
+        working-directory: .wrangler/commercial-v2-worker
+        run: |
+          set -euo pipefail
+          npm install --save-dev wrangler@latest
+          mkdir -p .bin
+          printf '#!/usr/bin/env bash\nexec npx wrangler "$@"\n' > .bin/wrangler
+          chmod +x .bin/wrangler
+          export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
+          uvx --from workers-py pywrangler sync --force
+
+      - name: Deploy isolated D1-backed staging Worker
+        working-directory: .wrangler/commercial-v2-worker
+        run: npx wrangler deploy
+
+      - name: Smoke-test D1 binding through deployed runtime
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import time
+          import urllib.request
+
+          base = os.environ["STAGING_URL"]
+
+          def get(path, attempts=24):
+              last = None
+              for attempt in range(1, attempts + 1):
+                  try:
+                      req = urllib.request.Request(
+                          base + path,
+                          headers={"User-Agent": "LaCurent-D1-Staging-Smoke/1.0"},
+                      )
+                      with urllib.request.urlopen(req, timeout=30) as response:
+                          return response.status, response.read().decode("utf-8")
+                  except Exception as exc:
+                      last = exc
+                      time.sleep(min(attempt, 5))
+              raise AssertionError(f"{path} unavailable after propagation window: {last!r}")
+
+          def post_json(path, payload):
+              req = urllib.request.Request(
+                  base + path,
+                  data=json.dumps(payload).encode("utf-8"),
+                  headers={
+                      "User-Agent": "LaCurent-D1-Staging-Smoke/1.0",
+                      "Content-Type": "application/json",
+                      "Accept": "application/json",
+                  },
+                  method="POST",
+              )
+              with urllib.request.urlopen(req, timeout=30) as response:
+                  return response.status, response.read().decode("utf-8")
+
+          status, health = get("/health")
+          if status != 200 or '"status":"ok"' not in health.replace(" ", ""):
+              raise AssertionError((status, health[:500]))
+
+          status, body = get("/api/heating-products")
+          if status != 200:
+              raise AssertionError((status, body[:500]))
+          catalog = json.loads(body)
+          if catalog.get("source") != "d1":
+              raise AssertionError(f"Runtime catalog did not use D1: {catalog.get('source')!r}")
+          products = catalog.get("options") or []
+          if len(products) < 36:
+              raise AssertionError(f"Expected at least 36 standalone public heating SKUs, got {len(products)}")
+          if any(
+              str(item.get("source_kind") or "").startswith("derived_bundle_")
+              for item in products
+          ):
+              raise AssertionError("Derived air-air bundles leaked into the public SKU catalog.")
+
+          points = catalog.get("heat_pump_performance_points") or []
+          seasonal = catalog.get("heat_pump_seasonal_performance") or []
+          if len(points) < 30:
+              raise AssertionError(
+                  f"Expected at least 30 public standalone heat-pump performance points, got {len(points)}"
+              )
+          product_ids = {str(item.get("id") or "") for item in products}
+          leaked_points = sorted({
+              str(point.get("product_id") or "")
+              for point in points
+              if str(point.get("product_id") or "") not in product_ids
+          })
+          if leaked_points:
+              raise AssertionError(
+                  f"Performance rows for non-public/derived products leaked into API: {leaked_points}"
+              )
+          if len(seasonal) < 2:
+              raise AssertionError(f"Expected at least 2 seasonal performance rows, got {len(seasonal)}")
+          if not all(float(point.get("cop") or 0) > 1 for point in points):
+              raise AssertionError("Invalid COP found in D1-backed runtime catalog.")
+
+          status, products_page = get("/produse")
+          if status != 200:
+              raise AssertionError(status)
+          for marker in (
+              "Catalog produse",
+              "Mitsubishi Electric Ecodan PUZ-SWM80VAA",
+              "Daikin Altherma 3 M EBLA08E3V3",
+          ):
+              if marker not in products_page:
+                  raise AssertionError(f"/produse missing {marker!r}")
+
+          bom_status, bom_body = post_json(
+              "/api/home-lab/bom",
+              {
+                  "requirements": [
+                      {
+                          "family": "wall",
+                          "categoryId": "wall_insulation",
+                          "requiredAreaM2": 82.5,
+                          "targetThicknessMm": 100,
+                      }
+                  ]
+              },
+          )
+          if bom_status != 200:
+              raise AssertionError((bom_status, bom_body[:500]))
+          bom = json.loads(bom_body)
+          if bom.get("source") != "d1" or bom.get("stage") != "post_teo_bom":
+              raise AssertionError(f"Unexpected BOM source/stage: {bom!r}")
+          bom_items = bom.get("items") or []
+          if len(bom_items) != 1 or not bom_items[0].get("matched"):
+              raise AssertionError(f"Expected one matched wall-insulation BOM item: {bom_items!r}")
+          bom_item = bom_items[0]
+          if not bom_item.get("productId") or float(bom_item.get("quantity") or 0) <= 0:
+              raise AssertionError(f"BOM item missing real SKU/quantity: {bom_item!r}")
+          if not bom_item.get("sourceUrl"):
+              raise AssertionError(f"BOM item missing product/offer source URL: {bom_item!r}")
+
+          print("D1-backed runtime + Home Lab BOM smoke PASS", {
+              "source": catalog.get("source"),
+              "publicHeatingProducts": len(products),
+              "performancePoints": len(points),
+              "seasonalPoints": len(seasonal),
+              "bomProduct": bom_item.get("productId"),
+          })
+          PY
+
+
+      - name: Smoke-test account save and reopen on development D1
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import time
+          import urllib.error
+          import urllib.request
+
+          base = os.environ["STAGING_URL"]
+          email = os.environ["ACCOUNT_SMOKE_EMAIL"]
+          project_id = os.environ["ACCOUNT_SMOKE_PROJECT"]
+          password = "Staging-account-2026!"
+
+          def request(path, *, method="GET", body=None, token=None, expected=200, attempts=8):
+              headers = {
+                  "Accept": "application/json",
+                  "User-Agent": "LaCurent-Account-Staging-Smoke/1.0",
+              }
+              if token:
+                  headers["Authorization"] = "Bearer " + token
+              data = None
+              if body is not None:
+                  headers["Content-Type"] = "application/json"
+                  data = json.dumps(body).encode("utf-8")
+
+              last = None
+              for attempt in range(1, attempts + 1):
+                  req = urllib.request.Request(
+                      base + path,
+                      method=method,
+                      headers=headers,
+                      data=data,
+                  )
+                  try:
+                      with urllib.request.urlopen(req, timeout=30) as response:
+                          status = response.status
+                          raw = response.read().decode("utf-8")
+                  except urllib.error.HTTPError as exc:
+                      status = exc.code
+                      raw = exc.read().decode("utf-8", "replace")
+                  except Exception as exc:
+                      last = exc
+                      if attempt < attempts:
+                          time.sleep(min(attempt, 4))
+                          continue
+                      raise
+
+                  if status == expected:
+                      return json.loads(raw or "{}")
+
+                  transient_worker_propagation = (
+                      status in {502, 503, 504}
+                      or (
+                          status == 404
+                          and (
+                              '"error_code":1042' in raw.replace(" ", "")
+                              or "workers_dev_script_not_found" in raw
+                          )
+                      )
+                  )
+                  if transient_worker_propagation and attempt < attempts:
+                      last = AssertionError(
+                          f"{method} {path}: transient Worker propagation HTTP {status}"
+                      )
+                      time.sleep(min(attempt, 4))
+                      continue
+
+                  raise AssertionError(
+                      f"{method} {path}: expected HTTP {expected}, got {status}: {raw[:1000]}"
+                  )
+
+              raise AssertionError(f"{method} {path} did not stabilize: {last!r}")
+
+          # A freshly deployed workers.dev hostname can briefly serve different
+          # edge propagation states. Require consecutive healthy reads before
+          # testing stateful account persistence so we do not confuse rollout
+          # propagation with an application/authentication regression.
+          consecutive = 0
+          for _ in range(12):
+              try:
+                  health = request("/health", attempts=1)
+                  if health.get("status") == "ok":
+                      consecutive += 1
+                      if consecutive >= 3:
+                          break
+                  else:
+                      consecutive = 0
+              except Exception:
+                  consecutive = 0
+              time.sleep(1)
+          if consecutive < 3:
+              raise AssertionError("workers.dev staging hostname did not stabilize before account E2E.")
+
+          registered = request(
+              "/api/register",
+              method="POST",
+              body={
+                  "email": email,
+                  "name": "Staging UAT",
+                  "password": password,
+              },
+          )
+          token = str(registered.get("token") or "")
+          user = registered.get("user") or {}
+          if not token or user.get("email") != email:
+              raise AssertionError(f"Registration contract failed: {registered!r}")
+
+          me = request("/api/me", token=token)
+          if (me.get("user") or {}).get("email") != email:
+              raise AssertionError(f"/api/me contract failed: {me!r}")
+
+          workspace = {
+              "schemaVersion": "home_lab_editorial_workspace_v1",
+              "draft": {
+                  "version": 2,
+                  "calculationModelVersion": "rbpe-editorial-2026-09-29.1",
+                  "fields": {
+                      "id:heatedArea": {"value": "137,5"},
+                      "id:heatedLevels": {"value": "2"},
+                      "id:averageHeight": {"value": "2,7"},
+                      "id:localityId": {"value": "smoke-locality"},
+                      "name:_optimization_mode": {"value": "auto_economic"},
+                  },
+              },
+              "page": "house",
+          }
+          saved = request(
+              "/api/projects/save",
+              method="POST",
+              token=token,
+              body={
+                  "projectId": project_id,
+                  "name": "Casa staging E2E",
+                  "workspace": workspace,
+              },
+          )
+          if saved.get("projectId") != project_id:
+              raise AssertionError(f"Project save contract failed: {saved!r}")
+
+          listed = request("/api/projects/list", token=token)
+          ids = {
+              str(row.get("project_id") or row.get("projectId") or "")
+              for row in listed.get("projects") or []
+          }
+          if project_id not in ids:
+              raise AssertionError(f"Saved project missing from list: {listed!r}")
+
+          loaded = request(
+              "/api/projects/load",
+              method="POST",
+              token=token,
+              body={"projectId": project_id},
+          )
+          project = loaded.get("project") or {}
+          if project.get("projectId") != project_id:
+              raise AssertionError(f"Project reopen id mismatch: {loaded!r}")
+          if project.get("workspace") != workspace:
+              raise AssertionError("Project reopen workspace differs from saved workspace.")
+
+          request("/api/logout", method="POST", token=token)
+          request("/api/me", token=token, expected=401)
+
+          logged = request(
+              "/api/login",
+              method="POST",
+              body={"email": email, "password": password},
+          )
+          if not logged.get("token"):
+              raise AssertionError(f"Login after reopen flow failed: {logged!r}")
+
+          print(
+              "Account persistence E2E PASS",
+              {"email": email, "projectId": project_id},
+          )
+          PY
+
+      - name: Clean account smoke records from development D1
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ -z "${ACCOUNT_SMOKE_EMAIL:-}" ]; then
+            exit 0
+          fi
+          for sql in \
+            "DELETE FROM building_platform_project_drafts WHERE owner_user_id IN (SELECT id FROM users WHERE email = '${ACCOUNT_SMOKE_EMAIL}')" \
+            "DELETE FROM building_platform_projects WHERE owner_user_id IN (SELECT id FROM users WHERE email = '${ACCOUNT_SMOKE_EMAIL}')" \
+            "DELETE FROM user_sessions WHERE user_id IN (SELECT id FROM users WHERE email = '${ACCOUNT_SMOKE_EMAIL}')" \
+            "DELETE FROM users WHERE email = '${ACCOUNT_SMOKE_EMAIL}'"
+          do
+            npx wrangler d1 execute "$DB_NAME" \
+              --config "$D1_STAGING_CONFIG" \
+              --remote \
+              --command="$sql" \
+              --yes
+          done
+          echo "Account staging smoke data cleanup PASS."
+
+      - name: Publish D1 staging verification summary
+        if: success()
+        run: |
+          {
+            echo "## D1 catalog staging verification"
+            echo
+            echo "- dedicated lacurent-dev-db isolation from production UUID: PASS"
+            echo "- catalog migrations + Home Lab account schema on remote Cloudflare D1: PASS"
+            echo "- unified energy_products baseline >= 49: PASS"
+            echo "- heating compatibility baseline >= 40: PASS"
+            echo "- standalone public heating SKUs >= 36: PASS"
+            echo "- four derived air-air TEO bundles remain non-public: PASS"
+            echo "- canonical D1 heat-pump operating points >= 50: PASS"
+            echo "- public standalone heat-pump operating points >= 30: PASS"
+            echo "- seasonal performance rows >= 2: PASS"
+            echo "- cross-category source pack materialized in remote D1: PASS"
+            echo "- account/project persistence tables present in remote D1: PASS"
+            echo "- register/login/save/list/load/logout account E2E on D1: PASS"
+            echo "- deployed Python Worker DB binding: PASS"
+            echo "- /api/heating-products source=d1: PASS"
+            echo "- /produse D1-backed runtime smoke: PASS"
+            echo
+            echo "Production D1 UUID and production routes were explicitly excluded by the safety gate."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Delete isolated staging Worker
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ -z "${WORKER_NAME:-}" ]; then
+            echo "No staging Worker was created."
+            exit 0
+          fi
+          python - <<'PY'
+          import json
+          import os
+          import urllib.error
+          import urllib.request
+
+          account_id = os.environ["CLOUDFLARE_ACCOUNT_ID"]
+          worker_name = os.environ["WORKER_NAME"]
+          token = os.environ["CLOUDFLARE_API_TOKEN"]
+          url = (
+              "https://api.cloudflare.com/client/v4/accounts/"
+              + account_id
+              + "/workers/scripts/"
+              + worker_name
+          )
+          request = urllib.request.Request(
+              url,
+              method="DELETE",
+              headers={
+                  "Authorization": f"Bearer {token}",
+                  "Content-Type": "application/json",
+              },
+          )
+          try:
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  payload = json.loads(response.read().decode("utf-8") or "{}")
+          except urllib.error.HTTPError as exc:
+              body = exc.read().decode("utf-8", "replace")
+              if exc.code == 404:
+                  print(f"Staging Worker already absent: {worker_name}")
+                  raise SystemExit(0)
+              raise SystemExit(
+                  f"Cloudflare Worker cleanup failed HTTP {exc.code}: {body[:1000]}"
+              )
+          if payload.get("success") is not True:
+              raise SystemExit(f"Cloudflare Worker cleanup failed: {payload!r}")
+          print(f"Deleted isolated staging Worker: {worker_name}")
+          PY

@@ -17,14 +17,25 @@ def test_commercial_pr_checks_run_for_every_pr_to_production_branch() -> None:
     assert "paths-ignore:" not in trigger_section
 
 
-def test_production_workflow_blocks_non_pr_push_deployments() -> None:
+def test_production_workflow_auto_promotes_only_after_uat_and_green_release_gates() -> None:
     source = PROD_WORKFLOW.read_text(encoding="utf-8")
-    assert "Require merged PR origin for production pushes" in source
-    assert "github.event_name == 'push'" in source
-    assert "/commits/{sha}/pulls" in source
+    trigger_section = source.split("concurrency:", 1)[0]
+
+    assert "workflow_dispatch:" in trigger_section
+    assert "\n  push:" in trigger_section
+    assert "codex/commercial-v2-cloudflare-python" in trigger_section
+    assert "release_sha:" in trigger_section
+    assert "promotion_mode:" in trigger_section
+    assert "Validate UAT-approved automatic promotion or explicit rollback" in source
+    assert "Promotion SHA must equal current production branch HEAD" in source
+    assert "Rollback SHA must be an ancestor of current production HEAD" in source
+    assert "/commits/{release_sha}/pulls" in source
     assert "merge_commit_sha" in source
-    assert "Direct-push deployments are blocked." in source
+    assert "uat-approved" in source
+    assert "/actions/runs?head_sha=" in source
+    assert "Merged production tree differs from the UAT-tested PR head" in source
     assert "pull-requests: read" in source
+    assert "actions: read" in source
 
 
 def test_production_cloudflare_credentials_fail_closed() -> None:

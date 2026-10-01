@@ -600,7 +600,8 @@ def test_public_product_routes_do_not_load_optimizer_planning_catalog() -> None:
         "async def read_heating_public_catalog_from_d1(",
         1,
     )[0]
-    assert "FROM heating_products" in products_only_section
+    assert "FROM energy_heating_products_compat_v1" in products_only_section
+    assert "FROM heating_products" not in products_only_section
     assert "heat_pump_performance_points" not in products_only_section
     assert "heat_pump_seasonal_performance" not in products_only_section
 
@@ -630,16 +631,15 @@ def test_company_home_is_commercial_landing() -> None:
     assert "data-lacurent-landing" in response.text
     assert "Nu promitem." in response.text
     assert "Calculăm." in response.text
-    assert "clădire nouă sau existentă" in response.text
+    assert "Spune-ne cum este casa ta." in response.text
     assert "MC001" in response.text
     assert "Rapid Building Physics Engine" in response.text
     assert "Techno-Economic Optimizer" in response.text
     assert "regretul investiției" in response.text
-    assert "Produse reale" in response.text
-    assert "Verificare inginerească" in response.text
-    assert "Energia ta și bugetul tău merită luate în serios." in response.text
-    assert 'href="/home-lab-next"' in response.text
-    assert "/static/lacurent-landing.css?v=3" in response.text
+    assert "Planul nu trebuie să se oprească la un calcul." in response.text
+    assert "Nu optimizăm doar consumul. Optimizăm decizia." in response.text
+    assert 'href="/home-lab-editorial"' in response.text
+    assert "/static/lacurent-landing.css?v=5" in response.text
     assert 'href="/static/favicon.svg?v=6"' in response.text
     assert 'class="lc-snap-page"' in response.text
     assert 'href="/produse"' in response.text
@@ -2404,13 +2404,13 @@ def test_editorial_teo_run_has_no_product_discretization_stage() -> None:
     assert "PRODUCT SAFE MODE" not in run_section
     assert "PRODUCT FALLBACK" not in run_section
 
-    assert "Optim TEO · specificație inginerească" in source
-    assert "Rezumat economic al optimului TEO" in source
-    assert "CAPEX parametric estimat" in source
-    assert "Intervențiile selectate" not in source
-    assert "Discretizare comercială" in source
-    assert "reference_lambda_w_mk" in source
-    assert "sum_psi_l_w_k" in source
+    assert "loadCatalogBom(engineering, opt)" in source
+    assert "Înainte vs. după investiție" in source
+    assert "Raportul nu repetă recomandările de pe pagina TEO." in source
+    assert "Produse și cantități din catalogul LaCurent" in source
+    assert '"POST"' in source
+    assert 'fetch("/api/home-lab/bom"' in source
+    assert "reference_lambda_w_mk" not in source or "engineeringSpecLocal" in source
     assert "design_required_power_kw" in source
     assert "installed_power_target_kw" in source
 

@@ -1,0 +1,3917 @@
+{
+  "schema_version": "energy-product-source-pack-v1",
+  "observed_on": "2026-10-01",
+  "note": "Unified evidence-backed source pack. Includes the 40 existing heating products plus cross-category products. Legacy heating tables are shadow-only during parity validation.",
+  "products": [
+    {
+      "id": "austrotherm-eps-a100-af-plus-160",
+      "category_id": "wall_insulation",
+      "manufacturer": "Austrotherm",
+      "model": "EPS A100 AF PLUS 160 mm",
+      "label": "Austrotherm EPS A100 AF PLUS 160 mm",
+      "manufacturer_sku": "5945786200983",
+      "evidence_status": "document_backed",
+      "technical_sources": [
+        {
+          "kind": "manufacturer_product_page",
+          "url": "https://www.austrotherm.ro/produse/austrotherm-eps/austrotherm-eps-a100-af-plus-grafitat",
+          "properties": {
+            "thickness_mm": 160,
+            "lambda_w_mk": 0.03,
+            "package_area_m2": 1.5,
+            "plate_area_m2": 0.5
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Filge",
+          "price_lei": 114.9,
+          "price_basis": "lei_package",
+          "quantity": 1.5,
+          "quantity_unit": "m2",
+          "vat_included": true,
+          "source_url": "https://filge.ro/produs/polistiren-grafitat-austrotherm-eps100-af-plus-16cm/",
+          "observed_on": "2026-09-30"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.austrotherm.ro/produse/austrotherm-eps/austrotherm-eps-a100-af-plus-grafitat",
+        "rights_basis": "link_only",
+        "status": "manufacturer_page_contains_product_image"
+      },
+      "teo": {
+        "role": "planning_curve",
+        "status": "ready_after_offer_normalization",
+        "normalized_price_basis": "lei_per_m2"
+      }
+    },
+    {
+      "id": "purmo-compact-c22-600x1000",
+      "category_id": "radiator",
+      "manufacturer": "Purmo",
+      "model": "Compact C22 600 x 1000",
+      "label": "Purmo Compact C22 600 x 1000 mm",
+      "evidence_status": "document_backed",
+      "technical_sources": [
+        {
+          "kind": "manufacturer_product_page",
+          "url": "https://www.purmo.com/en/products/panels/compact.htm",
+          "properties": {
+            "height_mm": 600,
+            "length_mm": 1000,
+            "heat_output_w_75_65_20": 1709,
+            "heat_output_w_70_55_20": 1362,
+            "radiator_exponent_n": 1.3358,
+            "working_pressure_bar": 10,
+            "max_temperature_c": 110
+          },
+          "standard_context": "EN 442"
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Dedeman",
+          "supplier_sku": "2017064",
+          "price_lei": 509,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.dedeman.ro/ro/calorifer-otel-purmo-c22-600-x-1000-mm-accesorii-incluse/p/2017064",
+          "observed_on": "2026-09-30"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.purmo.com/en/products/panels/compact.htm",
+        "rights_basis": "link_only",
+        "status": "manufacturer_page_contains_product_image"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "ready_for_emitter_dimensioning_adapter",
+        "note": "Do not rank from retailer generic 'power' alone. Use manufacturer output at declared temperature condition and radiator exponent for low-temperature correction."
+      }
+    },
+    {
+      "id": "uponor-comfort-pipe-plus-16x2-640",
+      "category_id": "underfloor_pipe",
+      "manufacturer": "Uponor",
+      "model": "Comfort Pipe PLUS 16x2.0 640 m",
+      "label": "Uponor Comfort Pipe PLUS 16x2.0 640 m",
+      "manufacturer_sku": "1062046",
+      "evidence_status": "document_backed",
+      "technical_sources": [
+        {
+          "kind": "manufacturer_product_page",
+          "url": "https://www.uponor.com/en-en/documents?country=RO&id=1062046",
+          "properties": {
+            "package_length_m": 640,
+            "outer_diameter_mm": 16,
+            "wall_thickness_mm": 2,
+            "design_pressure_bar": 6,
+            "design_temperature_c": 70
+          },
+          "standards": [
+            "ISO 22391",
+            "DIN 4726"
+          ]
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Shop-Einstal",
+          "price_lei": 5,
+          "price_basis": "lei_per_m",
+          "quantity": 1,
+          "quantity_unit": "m",
+          "vat_included": true,
+          "minimum_order_quantity_m": 640,
+          "source_url": "https://www.shop-einstal.ro/tevi-si-fitinguri/teava-pex-fitinguri/teava-pe-xa-uponor-comfort-pipe-plus-16x2-41689301841.html",
+          "observed_on": "2026-09-30"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.uponor.com/en-en/documents?country=RO&id=1062046",
+        "rights_basis": "link_only",
+        "status": "manufacturer_page_contains_product_image"
+      },
+      "teo": {
+        "role": "bill_of_materials",
+        "status": "requires_underfloor_loop_design",
+        "note": "Pipe length is derived only after heated area, design heat flux, spacing and loop-length constraints are known."
+      }
+    },
+    {
+      "id": "zehnder-comfoair-q350-hrv",
+      "category_id": "hrv_unit",
+      "manufacturer": "Zehnder",
+      "model": "ComfoAir Q350 HRV",
+      "label": "Zehnder ComfoAir Q350 HRV",
+      "evidence_status": "source_backed",
+      "technical_sources": [
+        {
+          "kind": "manufacturer_product_page",
+          "url": "https://www.international.zehnder-systems.com/en/comfortable-indoor-ventilation/products/units/ventilation-units-up-to-600-m3/h/zehnder-comfoair-q350-tr",
+          "properties": {
+            "max_airflow_m3h_at_200_pa": 350
+          }
+        },
+        {
+          "kind": "manufacturer_technical_catalog",
+          "url": "https://newsletter.zehnder-systems.com/upload/prj/datasheet/ZehnderComfosystems_Technik-Katalog04-2022-it_lores.pdf",
+          "properties": {
+            "sfp_wh_m3_at_350_m3h_100pa": 0.3,
+            "electrical_power_w_at_350_m3h_100pa": 106
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "ventilatiecurecuperarecaldura.ro",
+          "price_lei": 21713,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://ventilatiecurecuperarecaldura.ro/product-category/sisteme-centralizate-cu-recuperator-de-caldura/zehnder-comfoair/",
+          "observed_on": "2026-09-30"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.international.zehnder-systems.com/en/comfortable-indoor-ventilation/products/units/ventilation-units-up-to-600-m3/h/zehnder-comfoair-q350-tr",
+        "rights_basis": "link_only",
+        "status": "manufacturer_page_contains_product_image"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "blocked_pending_official_efficiency_parse",
+        "missing_for_teo": [
+          "heat_recovery_efficiency_at_declared_condition"
+        ],
+        "note": "Retail pages advertise recovery efficiency, but the first TEO-backed import should parse the manufacturer Ecodesign/technical declaration instead of trusting marketing copy."
+      }
+    },
+    {
+      "id": "rockwool-frontrock-casa-100",
+      "category_id": "wall_insulation",
+      "manufacturer": "ROCKWOOL",
+      "model": "Frontrock Casa 100 mm",
+      "label": "ROCKWOOL Frontrock Casa 100 mm",
+      "evidence_status": "document_backed",
+      "technical_sources": [
+        {
+          "kind": "manufacturer_product_page",
+          "url": "https://www.rockwool.com/ro/produse/frontrock-casa/",
+          "properties": {
+            "thickness_mm": 100,
+            "lambda_w_mk": 0.034
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Dedeman",
+          "supplier_sku": "6053535",
+          "price_lei": 223.06,
+          "price_basis": "lei_package",
+          "quantity": 2.88,
+          "quantity_unit": "m2",
+          "vat_included": true,
+          "source_url": "https://www.dedeman.ro/ro/vata-minerala-bazaltica-pentru-fatada-rockwool-frontrock-casa-1200-x-600-x-100-mm/p/6053535",
+          "observed_on": "2026-10-01"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.rockwool.com/ro/produse/frontrock-casa/",
+        "rights_basis": "link_only",
+        "status": "manufacturer_page_contains_product_image"
+      },
+      "teo": {
+        "role": "planning_curve",
+        "status": "ready_after_offer_normalization",
+        "normalized_price_basis": "lei_per_m2"
+      }
+    },
+    {
+      "id": "jinko-tiger-neo-jkm440n-54hl4r-v",
+      "category_id": "pv_module",
+      "manufacturer": "JinkoSolar",
+      "model": "Tiger Neo JKM440N-54HL4R-V",
+      "label": "JinkoSolar Tiger Neo 440 W JKM440N-54HL4R-V",
+      "evidence_status": "document_backed",
+      "technical_sources": [
+        {
+          "kind": "manufacturer_datasheet",
+          "url": "https://www.jinkosolar.com/uploads/JKM420-440N-54HL4R-B-F4-CN%281%29.pdf",
+          "properties": {
+            "module_power_wp": 440
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Sud Solar",
+          "price_lei": 339,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "module",
+          "vat_included": true,
+          "source_url": "https://sudsolar.ro/produs/panou-fotovoltaic-jinko-tiger-neo-440w-rama-neagra-jkm440n-54hl4r-v-n-type/",
+          "observed_on": "2026-10-01"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.jinkosolar.com/",
+        "rights_basis": "link_only",
+        "status": "manufacturer_or_supplier_page_contains_product_image"
+      },
+      "teo": {
+        "role": "planning_curve",
+        "status": "ready_for_pv_cost_curve"
+      }
+    },
+    {
+      "id": "grundfos-alpha2-25-60-180-99411175",
+      "category_id": "circulation_pump",
+      "manufacturer": "Grundfos",
+      "model": "ALPHA2 25-60 180",
+      "label": "Grundfos ALPHA2 25-60 180",
+      "manufacturer_sku": "99411175",
+      "gtin": "5713828675248",
+      "evidence_status": "source_backed",
+      "technical_sources": [
+        {
+          "kind": "manufacturer_product_reference",
+          "url": "https://product-selection.grundfos.com/products/alpha/alpha2/alpha2-25-60-180-99411175?tab=variant-curves",
+          "properties": {}
+        },
+        {
+          "kind": "market_technical_page",
+          "url": "https://www.melindainstal.ro/pompa-de-circulatie-25-60-180-grundfos-alpha2-11510341",
+          "properties": {
+            "max_flow_m3h": 3.4,
+            "max_head_m": 6,
+            "electrical_input_w": 34
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Melinda Instal",
+          "supplier_sku": "11510341",
+          "price_lei": 1959,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "stock_status": "in_stock",
+          "source_url": "https://www.melindainstal.ro/pompa-de-circulatie-25-60-180-grundfos-alpha2-11510341",
+          "observed_on": "2026-10-01"
+        }
+      ],
+      "image": {
+        "source_page": "https://product-selection.grundfos.com/products/alpha/alpha2/alpha2-25-60-180-99411175",
+        "rights_basis": "link_only",
+        "status": "manufacturer_product_page_reference"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "hydraulic_preselection_only",
+        "note": "Flow/head proxy is not a hydraulic design substitute."
+      }
+    },
+    {
+      "id": "uponor-vario-m-fm-6-1085948",
+      "category_id": "underfloor_manifold",
+      "manufacturer": "Uponor",
+      "model": "Vario M FM 6xG3/4 Euro",
+      "label": "Uponor Vario M distribuitor cu debitmetre 6 circuite",
+      "manufacturer_sku": "1085948",
+      "evidence_status": "document_backed",
+      "technical_sources": [
+        {
+          "kind": "manufacturer_product_page",
+          "url": "https://www.uponor.com/en-en/s/uponor-vario-m-manifold-with-flowmeter-fm-6xg3-4-euro-1085948",
+          "properties": {
+            "circuit_count": 6
+          }
+        },
+        {
+          "kind": "manufacturer_product_datasheet",
+          "url": "https://www.uponor.com/ro-ro/product/getproductdatapdf?code=1085948",
+          "properties": {
+            "max_working_pressure_bar": 6,
+            "max_temperature_c": 60
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Automatic Flow",
+          "price_lei": 1995.88,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://automaticflow.ro/brand/uponor/",
+          "observed_on": "2026-10-01"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.uponor.com/en-en/s/uponor-vario-m-manifold-with-flowmeter-fm-6xg3-4-euro-1085948",
+        "rights_basis": "link_only",
+        "status": "manufacturer_page_contains_product_image"
+      },
+      "teo": {
+        "role": "bill_of_materials",
+        "status": "ready_after_required_circuit_count_is_known"
+      }
+    },
+    {
+      "id": "salus-kl08nsb-8-zone",
+      "category_id": "heating_control",
+      "manufacturer": "SALUS Controls",
+      "model": "KL08NSB",
+      "label": "SALUS KL08NSB centru de cablare 8 zone",
+      "manufacturer_sku": "KL08NSB",
+      "evidence_status": "document_backed",
+      "technical_sources": [
+        {
+          "kind": "manufacturer_product_page",
+          "url": "https://saluscontrols.com/ro/produs/kl08nsb-centru-de-cablare-pentru-8-zone/",
+          "properties": {
+            "controlled_zone_count": 8,
+            "max_actuators": 32,
+            "max_actuators_per_zone": 4
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Price.ro observed market minimum",
+          "price_lei": 428.99,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.price.ro/preturi-salus-kl08nsb-2905901",
+          "observed_on": "2026-10-01"
+        }
+      ],
+      "image": {
+        "source_page": "https://saluscontrols.com/ro/produs/kl08nsb-centru-de-cablare-pentru-8-zone/",
+        "rights_basis": "link_only",
+        "status": "manufacturer_page_contains_product_image"
+      },
+      "teo": {
+        "role": "bill_of_materials",
+        "status": "ready_after_zone_count_is_known"
+      }
+    },
+    {
+      "id": "gas-ferroli-alpha-20-6",
+      "external_id": "gas-ferroli-alpha-20-6",
+      "category_id": "gas_boiler",
+      "manufacturer": "Ferroli",
+      "model": "Ferroli Bluehelix Alpha 24C — 20,6 kW încălzire",
+      "label": "Ferroli Bluehelix Alpha 24C — 20,6 kW încălzire",
+      "evidence_status": "source_backed",
+      "description": "Putere nominală declarată pentru încălzire; ACM poate impune separat o treaptă comercială mai mare.",
+      "legacy_heating_compat": {
+        "technology_id": "condensing-gas",
+        "technology_label": "Centrală gaz în condensare",
+        "system_type": "condensing_gas_boiler",
+        "generator_type": "condensing_gas_boiler",
+        "carrier": "natural_gas",
+        "cost_profile": "natural_gas",
+        "installation_allowance_lei": 3000,
+        "requires_hydronic": true,
+        "requires_existing_gas": true,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "catalog_heating_output",
+        "confidence": "medium",
+        "source_kind": "retail_reference_plus_installation_allowance"
+      },
+      "technical_sources": [
+        {
+          "kind": "retail_reference_plus_installation_allowance",
+          "url": "https://www.dedeman.ro/ro/centrala-termica-pe-gaz-in-condensare-ferroli-bluehelix-alpha-24c-murala-afisaj-digital-ipx4d-protectie-inghet-schimbator-caldura-inox-multi-combustion-control-compatibila-gpl-fara-kit-evacuare/p/2026193",
+          "properties": {
+            "rated_power_kw": 20.6,
+            "technology_id": "condensing-gas",
+            "technology_label": "Centrală gaz în condensare",
+            "system_type": "condensing_gas_boiler",
+            "generator_type": "condensing_gas_boiler",
+            "carrier": "natural_gas",
+            "cost_profile": "natural_gas",
+            "equipment_price_lei": 2868.98,
+            "installation_allowance_lei": 3000,
+            "requires_hydronic": true,
+            "requires_existing_gas": true,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "catalog_heating_output",
+            "confidence": "medium"
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 2868.98,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.dedeman.ro/ro/centrala-termica-pe-gaz-in-condensare-ferroli-bluehelix-alpha-24c-murala-afisaj-digital-ipx4d-protectie-inghet-schimbator-caldura-inox-multi-combustion-control-compatibila-gpl-fara-kit-evacuare/p/2026193",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.dedeman.ro/ro/centrala-termica-pe-gaz-in-condensare-ferroli-bluehelix-alpha-24c-murala-afisaj-digital-ipx4d-protectie-inghet-schimbator-caldura-inox-multi-combustion-control-compatibila-gpl-fara-kit-evacuare/p/2026193",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "gas-termet-24",
+      "external_id": "gas-termet-24",
+      "category_id": "gas_boiler",
+      "manufacturer": "Termet",
+      "model": "Termet Eco Compact Combi — 24 kW încălzire",
+      "label": "Termet Eco Compact Combi — 24 kW încălzire",
+      "evidence_status": "source_backed",
+      "description": "Putere de încălzire declarată 24 kW; 30 kW este puterea pentru ACM.",
+      "legacy_heating_compat": {
+        "technology_id": "condensing-gas",
+        "technology_label": "Centrală gaz în condensare",
+        "system_type": "condensing_gas_boiler",
+        "generator_type": "condensing_gas_boiler",
+        "carrier": "natural_gas",
+        "cost_profile": "natural_gas",
+        "installation_allowance_lei": 3000,
+        "requires_hydronic": true,
+        "requires_existing_gas": true,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "catalog_heating_output",
+        "confidence": "medium",
+        "source_kind": "retail_reference_plus_installation_allowance"
+      },
+      "technical_sources": [
+        {
+          "kind": "retail_reference_plus_installation_allowance",
+          "url": "https://www.dedeman.ro/ro/centrala-termica-pe-gaz-in-condensare-termet-eco-compact-combi-25/30-murala-afisaj-digital-ipx4-fara-kit-evacuare/p/2036449",
+          "properties": {
+            "rated_power_kw": 24,
+            "technology_id": "condensing-gas",
+            "technology_label": "Centrală gaz în condensare",
+            "system_type": "condensing_gas_boiler",
+            "generator_type": "condensing_gas_boiler",
+            "carrier": "natural_gas",
+            "cost_profile": "natural_gas",
+            "equipment_price_lei": 2819.41,
+            "installation_allowance_lei": 3000,
+            "requires_hydronic": true,
+            "requires_existing_gas": true,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "catalog_heating_output",
+            "confidence": "medium"
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 2819.41,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.dedeman.ro/ro/centrala-termica-pe-gaz-in-condensare-termet-eco-compact-combi-25/30-murala-afisaj-digital-ipx4-fara-kit-evacuare/p/2036449",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.dedeman.ro/ro/centrala-termica-pe-gaz-in-condensare-termet-eco-compact-combi-25/30-murala-afisaj-digital-ipx4-fara-kit-evacuare/p/2036449",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "gas-ariston-clas-one-30",
+      "external_id": "gas-ariston-clas-one-30",
+      "category_id": "gas_boiler",
+      "manufacturer": "Ariston",
+      "model": "Ariston Clas One 30",
+      "label": "Ariston Clas One 30",
+      "evidence_status": "source_backed",
+      "description": "Reper comercial de putere superioară; puterea minimă de modulare nu este încă inclusă în optimizer.",
+      "legacy_heating_compat": {
+        "technology_id": "condensing-gas",
+        "technology_label": "Centrală gaz în condensare",
+        "system_type": "condensing_gas_boiler",
+        "generator_type": "condensing_gas_boiler",
+        "carrier": "natural_gas",
+        "cost_profile": "natural_gas",
+        "installation_allowance_lei": 3200,
+        "requires_hydronic": true,
+        "requires_existing_gas": true,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "catalog_nominal_output",
+        "confidence": "medium",
+        "source_kind": "retail_reference_plus_installation_allowance"
+      },
+      "technical_sources": [
+        {
+          "kind": "retail_reference_plus_installation_allowance",
+          "url": "https://www.dedeman.ro/ro/centrala-termica-pe-gaz-in-condensare-ariston-clas-one-30-wi-fi-murala-wi-fi-afisaj-lcd-ipx5d-protectie-inghet-schimbator-caldura-inox-fara-kit-evacuare/p/2030926",
+          "properties": {
+            "rated_power_kw": 30,
+            "technology_id": "condensing-gas",
+            "technology_label": "Centrală gaz în condensare",
+            "system_type": "condensing_gas_boiler",
+            "generator_type": "condensing_gas_boiler",
+            "carrier": "natural_gas",
+            "cost_profile": "natural_gas",
+            "equipment_price_lei": 5174,
+            "installation_allowance_lei": 3200,
+            "requires_hydronic": true,
+            "requires_existing_gas": true,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "catalog_nominal_output",
+            "confidence": "medium"
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 5174,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.dedeman.ro/ro/centrala-termica-pe-gaz-in-condensare-ariston-clas-one-30-wi-fi-murala-wi-fi-afisaj-lcd-ipx5d-protectie-inghet-schimbator-caldura-inox-fara-kit-evacuare/p/2030926",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.dedeman.ro/ro/centrala-termica-pe-gaz-in-condensare-ariston-clas-one-30-wi-fi-murala-wi-fi-afisaj-lcd-ipx5d-protectie-inghet-schimbator-caldura-inox-fara-kit-evacuare/p/2030926",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "hp-ariston-5",
+      "external_id": "hp-ariston-5",
+      "category_id": "heat_pump",
+      "manufacturer": "Ariston",
+      "model": "Ariston Nimbus Pocket 5 kW",
+      "label": "Ariston Nimbus Pocket 5 kW",
+      "evidence_status": "source_backed",
+      "description": "Putere nominală de catalog; capacitatea disponibilă exact la temperatura exterioară de calcul trebuie validată pe curba producătorului înainte de recomandare comercială finală.",
+      "legacy_heating_compat": {
+        "technology_id": "heat-pump-air-water",
+        "technology_label": "Pompă de căldură aer-apă",
+        "system_type": "heat_pump",
+        "generator_type": "heat_pump_air_water",
+        "carrier": "electricity",
+        "cost_profile": "electricity",
+        "installation_allowance_lei": 10000,
+        "requires_hydronic": true,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "catalog_nominal_output",
+        "confidence": "medium",
+        "source_kind": "retail_reference_plus_installation_allowance"
+      },
+      "technical_sources": [
+        {
+          "kind": "retail_reference_plus_installation_allowance",
+          "url": "https://www.termix.ro/cumpara/pompa-caldura-ariston-nimbus-pocket-50-m-net-r32-monobloc-5kw-termix-31207",
+          "properties": {
+            "rated_power_kw": 5,
+            "technology_id": "heat-pump-air-water",
+            "technology_label": "Pompă de căldură aer-apă",
+            "system_type": "heat_pump",
+            "generator_type": "heat_pump_air_water",
+            "carrier": "electricity",
+            "cost_profile": "electricity",
+            "equipment_price_lei": 15827.28,
+            "installation_allowance_lei": 10000,
+            "requires_hydronic": true,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "catalog_nominal_output",
+            "confidence": "medium"
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 15827.28,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.termix.ro/cumpara/pompa-caldura-ariston-nimbus-pocket-50-m-net-r32-monobloc-5kw-termix-31207",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.termix.ro/cumpara/pompa-caldura-ariston-nimbus-pocket-50-m-net-r32-monobloc-5kw-termix-31207",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "hp-ariston-8",
+      "external_id": "hp-ariston-8",
+      "category_id": "heat_pump",
+      "manufacturer": "Ariston",
+      "model": "Ariston Nimbus Pocket 8 kW",
+      "label": "Ariston Nimbus Pocket 8 kW",
+      "evidence_status": "source_backed",
+      "description": "Putere nominală de catalog; capacitatea la temperatura exterioară de calcul rămâne de verificat.",
+      "legacy_heating_compat": {
+        "technology_id": "heat-pump-air-water",
+        "technology_label": "Pompă de căldură aer-apă",
+        "system_type": "heat_pump",
+        "generator_type": "heat_pump_air_water",
+        "carrier": "electricity",
+        "cost_profile": "electricity",
+        "installation_allowance_lei": 12000,
+        "requires_hydronic": true,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "catalog_nominal_output",
+        "confidence": "medium",
+        "source_kind": "retail_reference_plus_installation_allowance"
+      },
+      "technical_sources": [
+        {
+          "kind": "retail_reference_plus_installation_allowance",
+          "url": "https://www.termix.ro/cumpara/pompa-caldura-aer-apa-ariston-nimbus-pocket-80-m-net-r32-monobloc-8kw-31209",
+          "properties": {
+            "rated_power_kw": 8,
+            "technology_id": "heat-pump-air-water",
+            "technology_label": "Pompă de căldură aer-apă",
+            "system_type": "heat_pump",
+            "generator_type": "heat_pump_air_water",
+            "carrier": "electricity",
+            "cost_profile": "electricity",
+            "equipment_price_lei": 18264.22,
+            "installation_allowance_lei": 12000,
+            "requires_hydronic": true,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "catalog_nominal_output",
+            "confidence": "medium"
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 18264.22,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.termix.ro/cumpara/pompa-caldura-aer-apa-ariston-nimbus-pocket-80-m-net-r32-monobloc-8kw-31209",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.termix.ro/cumpara/pompa-caldura-aer-apa-ariston-nimbus-pocket-80-m-net-r32-monobloc-8kw-31209",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "hp-ariston-12",
+      "external_id": "hp-ariston-12",
+      "category_id": "heat_pump",
+      "manufacturer": "Ariston",
+      "model": "Ariston Nimbus Pocket 12 kW",
+      "label": "Ariston Nimbus Pocket 12 kW",
+      "evidence_status": "source_backed",
+      "description": "Putere nominală de catalog; capacitatea la temperatura exterioară de calcul rămâne de verificat.",
+      "legacy_heating_compat": {
+        "technology_id": "heat-pump-air-water",
+        "technology_label": "Pompă de căldură aer-apă",
+        "system_type": "heat_pump",
+        "generator_type": "heat_pump_air_water",
+        "carrier": "electricity",
+        "cost_profile": "electricity",
+        "installation_allowance_lei": 13000,
+        "requires_hydronic": true,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "catalog_nominal_output",
+        "confidence": "medium",
+        "source_kind": "retail_reference_plus_installation_allowance"
+      },
+      "technical_sources": [
+        {
+          "kind": "retail_reference_plus_installation_allowance",
+          "url": "https://www.termix.ro/cumpara/pompa-caldura-aer-apa-ariston-nimbus-pocket-120-m-net-r32-monobloc-31211",
+          "properties": {
+            "rated_power_kw": 12,
+            "technology_id": "heat-pump-air-water",
+            "technology_label": "Pompă de căldură aer-apă",
+            "system_type": "heat_pump",
+            "generator_type": "heat_pump_air_water",
+            "carrier": "electricity",
+            "cost_profile": "electricity",
+            "equipment_price_lei": 24997.87,
+            "installation_allowance_lei": 13000,
+            "requires_hydronic": true,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "catalog_nominal_output",
+            "confidence": "medium"
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 24997.87,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.termix.ro/cumpara/pompa-caldura-aer-apa-ariston-nimbus-pocket-120-m-net-r32-monobloc-31211",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.termix.ro/cumpara/pompa-caldura-aer-apa-ariston-nimbus-pocket-120-m-net-r32-monobloc-31211",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "hp-ariston-15",
+      "external_id": "hp-ariston-15",
+      "category_id": "heat_pump",
+      "manufacturer": "Ariston",
+      "model": "Ariston Nimbus Pocket 15 kW",
+      "label": "Ariston Nimbus Pocket 15 kW",
+      "evidence_status": "source_backed",
+      "description": "Putere nominală de catalog; capacitatea la temperatura exterioară de calcul rămâne de verificat.",
+      "legacy_heating_compat": {
+        "technology_id": "heat-pump-air-water",
+        "technology_label": "Pompă de căldură aer-apă",
+        "system_type": "heat_pump",
+        "generator_type": "heat_pump_air_water",
+        "carrier": "electricity",
+        "cost_profile": "electricity",
+        "installation_allowance_lei": 14000,
+        "requires_hydronic": true,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "catalog_nominal_output",
+        "confidence": "medium",
+        "source_kind": "retail_reference_plus_installation_allowance"
+      },
+      "technical_sources": [
+        {
+          "kind": "retail_reference_plus_installation_allowance",
+          "url": "https://www.termix.ro/cumpara/pompa-caldura-aer-apa-ariston-nimbus-pocket-150-m-net-r32-monobloc-31212",
+          "properties": {
+            "rated_power_kw": 15,
+            "technology_id": "heat-pump-air-water",
+            "technology_label": "Pompă de căldură aer-apă",
+            "system_type": "heat_pump",
+            "generator_type": "heat_pump_air_water",
+            "carrier": "electricity",
+            "cost_profile": "electricity",
+            "equipment_price_lei": 25767.43,
+            "installation_allowance_lei": 14000,
+            "requires_hydronic": true,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "catalog_nominal_output",
+            "confidence": "medium"
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 25767.43,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.termix.ro/cumpara/pompa-caldura-aer-apa-ariston-nimbus-pocket-150-m-net-r32-monobloc-31212",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.termix.ro/cumpara/pompa-caldura-aer-apa-ariston-nimbus-pocket-150-m-net-r32-monobloc-31212",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "electric-protherm-6",
+      "external_id": "electric-protherm-6",
+      "category_id": "electric_boiler",
+      "manufacturer": "Protherm",
+      "model": "Protherm Ray 6 kW",
+      "label": "Protherm Ray 6 kW",
+      "evidence_status": "source_backed",
+      "description": "Varianta de 6 kW poate fi conectată și monofazat conform informațiilor produsului; instalația electrică reală trebuie verificată.",
+      "legacy_heating_compat": {
+        "technology_id": "electric-boiler",
+        "technology_label": "Centrală electrică",
+        "system_type": "custom",
+        "generator_type": "electric_boiler",
+        "carrier": "electricity",
+        "cost_profile": "electricity",
+        "installation_allowance_lei": 2500,
+        "requires_hydronic": true,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "catalog_nominal_output",
+        "confidence": "medium",
+        "source_kind": "retail_reference_plus_electrical_installation_allowance"
+      },
+      "technical_sources": [
+        {
+          "kind": "retail_reference_plus_electrical_installation_allowance",
+          "url": "https://www.dedeman.ro/ro/centrala-electrica-protherm-ray-6-ke-14eu-6-kw-randament-99-5-afisaj-digital-vas-de-expansiune-incorporat-protectie-la-inghet-410-x-740-x-315-mm/p/2023728",
+          "properties": {
+            "rated_power_kw": 6,
+            "technology_id": "electric-boiler",
+            "technology_label": "Centrală electrică",
+            "system_type": "custom",
+            "generator_type": "electric_boiler",
+            "carrier": "electricity",
+            "cost_profile": "electricity",
+            "equipment_price_lei": 2650,
+            "installation_allowance_lei": 2500,
+            "requires_hydronic": true,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "catalog_nominal_output",
+            "confidence": "medium",
+            "efficiency": 0.995
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 2650,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.dedeman.ro/ro/centrala-electrica-protherm-ray-6-ke-14eu-6-kw-randament-99-5-afisaj-digital-vas-de-expansiune-incorporat-protectie-la-inghet-410-x-740-x-315-mm/p/2023728",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.dedeman.ro/ro/centrala-electrica-protherm-ray-6-ke-14eu-6-kw-randament-99-5-afisaj-digital-vas-de-expansiune-incorporat-protectie-la-inghet-410-x-740-x-315-mm/p/2023728",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "electric-protherm-9",
+      "external_id": "electric-protherm-9",
+      "category_id": "electric_boiler",
+      "manufacturer": "Protherm",
+      "model": "Protherm Ray 9 kW",
+      "label": "Protherm Ray 9 kW",
+      "evidence_status": "source_backed",
+      "description": "Necesită validarea branșamentului și protecțiilor electrice.",
+      "legacy_heating_compat": {
+        "technology_id": "electric-boiler",
+        "technology_label": "Centrală electrică",
+        "system_type": "custom",
+        "generator_type": "electric_boiler",
+        "carrier": "electricity",
+        "cost_profile": "electricity",
+        "installation_allowance_lei": 3000,
+        "requires_hydronic": true,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": true,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "catalog_nominal_output",
+        "confidence": "medium",
+        "source_kind": "retail_reference_plus_electrical_installation_allowance"
+      },
+      "technical_sources": [
+        {
+          "kind": "retail_reference_plus_electrical_installation_allowance",
+          "url": "https://www.dedeman.ro/ro/centrala-electrica-protherm-ray-9-ke-14eu-9-kw-randament-99-5-afisaj-digital-vas-de-expansiune-incorporat-protectie-la-inghet-410-x-740-x-315-mm/p/2023729",
+          "properties": {
+            "rated_power_kw": 9,
+            "technology_id": "electric-boiler",
+            "technology_label": "Centrală electrică",
+            "system_type": "custom",
+            "generator_type": "electric_boiler",
+            "carrier": "electricity",
+            "cost_profile": "electricity",
+            "equipment_price_lei": 2729,
+            "installation_allowance_lei": 3000,
+            "requires_hydronic": true,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": true,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "catalog_nominal_output",
+            "confidence": "medium",
+            "efficiency": 0.995
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 2729,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.dedeman.ro/ro/centrala-electrica-protherm-ray-9-ke-14eu-9-kw-randament-99-5-afisaj-digital-vas-de-expansiune-incorporat-protectie-la-inghet-410-x-740-x-315-mm/p/2023729",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.dedeman.ro/ro/centrala-electrica-protherm-ray-9-ke-14eu-9-kw-randament-99-5-afisaj-digital-vas-de-expansiune-incorporat-protectie-la-inghet-410-x-740-x-315-mm/p/2023729",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "electric-protherm-12",
+      "external_id": "electric-protherm-12",
+      "category_id": "electric_boiler",
+      "manufacturer": "Protherm",
+      "model": "Protherm Ray 12 kW",
+      "label": "Protherm Ray 12 kW",
+      "evidence_status": "source_backed",
+      "description": "Necesită validarea branșamentului și protecțiilor electrice.",
+      "legacy_heating_compat": {
+        "technology_id": "electric-boiler",
+        "technology_label": "Centrală electrică",
+        "system_type": "custom",
+        "generator_type": "electric_boiler",
+        "carrier": "electricity",
+        "cost_profile": "electricity",
+        "installation_allowance_lei": 3500,
+        "requires_hydronic": true,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": true,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "catalog_nominal_output",
+        "confidence": "medium",
+        "source_kind": "retail_reference_plus_electrical_installation_allowance"
+      },
+      "technical_sources": [
+        {
+          "kind": "retail_reference_plus_electrical_installation_allowance",
+          "url": "https://www.dedeman.ro/ro/centrala-electrica-protherm-ray-12-ke-14eu-12-kw-randament-99-5-afisaj-digital-vas-de-expansiune-incorporat-protectie-la-inghet-410-x-740-x-315-mm/p/2023740",
+          "properties": {
+            "rated_power_kw": 12,
+            "technology_id": "electric-boiler",
+            "technology_label": "Centrală electrică",
+            "system_type": "custom",
+            "generator_type": "electric_boiler",
+            "carrier": "electricity",
+            "cost_profile": "electricity",
+            "equipment_price_lei": 2710,
+            "installation_allowance_lei": 3500,
+            "requires_hydronic": true,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": true,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "catalog_nominal_output",
+            "confidence": "medium",
+            "efficiency": 0.995
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 2710,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.dedeman.ro/ro/centrala-electrica-protherm-ray-12-ke-14eu-12-kw-randament-99-5-afisaj-digital-vas-de-expansiune-incorporat-protectie-la-inghet-410-x-740-x-315-mm/p/2023740",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.dedeman.ro/ro/centrala-electrica-protherm-ray-12-ke-14eu-12-kw-randament-99-5-afisaj-digital-vas-de-expansiune-incorporat-protectie-la-inghet-410-x-740-x-315-mm/p/2023740",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "electric-protherm-18",
+      "external_id": "electric-protherm-18",
+      "category_id": "electric_boiler",
+      "manufacturer": "Protherm",
+      "model": "Protherm Ray 18 kW",
+      "label": "Protherm Ray 18 kW",
+      "evidence_status": "source_backed",
+      "description": "Necesită validarea branșamentului și protecțiilor electrice.",
+      "legacy_heating_compat": {
+        "technology_id": "electric-boiler",
+        "technology_label": "Centrală electrică",
+        "system_type": "custom",
+        "generator_type": "electric_boiler",
+        "carrier": "electricity",
+        "cost_profile": "electricity",
+        "installation_allowance_lei": 4000,
+        "requires_hydronic": true,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": true,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "catalog_nominal_output",
+        "confidence": "medium",
+        "source_kind": "retail_reference_plus_electrical_installation_allowance"
+      },
+      "technical_sources": [
+        {
+          "kind": "retail_reference_plus_electrical_installation_allowance",
+          "url": "https://www.dedeman.ro/ro/centrala-electrica-protherm-ray-18-ke-14eu-18-kw-randament-99-5-afisaj-digital-vas-de-expansiune-incorporat-protectie-la-inghet-410-x-740-x-315-mm/p/2023742",
+          "properties": {
+            "rated_power_kw": 18,
+            "technology_id": "electric-boiler",
+            "technology_label": "Centrală electrică",
+            "system_type": "custom",
+            "generator_type": "electric_boiler",
+            "carrier": "electricity",
+            "cost_profile": "electricity",
+            "equipment_price_lei": 3119,
+            "installation_allowance_lei": 4000,
+            "requires_hydronic": true,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": true,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "catalog_nominal_output",
+            "confidence": "medium",
+            "efficiency": 0.995
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 3119,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.dedeman.ro/ro/centrala-electrica-protherm-ray-18-ke-14eu-18-kw-randament-99-5-afisaj-digital-vas-de-expansiune-incorporat-protectie-la-inghet-410-x-740-x-315-mm/p/2023742",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.dedeman.ro/ro/centrala-electrica-protherm-ray-18-ke-14eu-18-kw-randament-99-5-afisaj-digital-vas-de-expansiune-incorporat-protectie-la-inghet-410-x-740-x-315-mm/p/2023742",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "pellet-ferroli-18",
+      "external_id": "pellet-ferroli-18",
+      "category_id": "pellet_boiler",
+      "manufacturer": "Ferroli",
+      "model": "Ferroli Biopellet 18 kW",
+      "label": "Ferroli Biopellet 18 kW",
+      "evidence_status": "source_backed",
+      "description": "Randamentul sezonier 0,88 este ipoteză de planificare; coșul, spațiul tehnic și logistica peleților trebuie validate.",
+      "legacy_heating_compat": {
+        "technology_id": "pellet-boiler",
+        "technology_label": "Centrală pe peleți",
+        "system_type": "custom",
+        "generator_type": "pellet_boiler",
+        "carrier": "biomass",
+        "cost_profile": "pellets",
+        "installation_allowance_lei": 7000,
+        "requires_hydronic": true,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": true,
+        "capacity_basis": "catalog_nominal_output",
+        "confidence": "low",
+        "source_kind": "retail_reference_plus_installation_allowance"
+      },
+      "technical_sources": [
+        {
+          "kind": "retail_reference_plus_installation_allowance",
+          "url": "https://www.dedeman.ro/ro/centrala-pe-peleti-ferroli-biopellet-pro-18-kw-din-otel-cu-pompa-de-circulatie-cu-vas-de-expansiune/p/2024320",
+          "properties": {
+            "rated_power_kw": 18,
+            "technology_id": "pellet-boiler",
+            "technology_label": "Centrală pe peleți",
+            "system_type": "custom",
+            "generator_type": "pellet_boiler",
+            "carrier": "biomass",
+            "cost_profile": "pellets",
+            "equipment_price_lei": 12199,
+            "installation_allowance_lei": 7000,
+            "requires_hydronic": true,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": true,
+            "capacity_basis": "catalog_nominal_output",
+            "confidence": "low",
+            "efficiency": 0.88
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 12199,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.dedeman.ro/ro/centrala-pe-peleti-ferroli-biopellet-pro-18-kw-din-otel-cu-pompa-de-circulatie-cu-vas-de-expansiune/p/2024320",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.dedeman.ro/ro/centrala-pe-peleti-ferroli-biopellet-pro-18-kw-din-otel-cu-pompa-de-circulatie-cu-vas-de-expansiune/p/2024320",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "pellet-ferroli-24",
+      "external_id": "pellet-ferroli-24",
+      "category_id": "pellet_boiler",
+      "manufacturer": "Ferroli",
+      "model": "Ferroli Biopellet PRO 24 kW",
+      "label": "Ferroli Biopellet PRO 24 kW",
+      "evidence_status": "source_backed",
+      "description": "Reper de catalog Dedeman; costul exact de montaj/coș rămâne de validat.",
+      "legacy_heating_compat": {
+        "technology_id": "pellet-boiler",
+        "technology_label": "Centrală pe peleți",
+        "system_type": "custom",
+        "generator_type": "pellet_boiler",
+        "carrier": "biomass",
+        "cost_profile": "pellets",
+        "installation_allowance_lei": 7500,
+        "requires_hydronic": true,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": true,
+        "capacity_basis": "catalog_nominal_output",
+        "confidence": "low",
+        "source_kind": "retail_reference_plus_installation_allowance"
+      },
+      "technical_sources": [
+        {
+          "kind": "retail_reference_plus_installation_allowance",
+          "url": "https://www.dedeman.ro/ro/centrale/-cazane-termice-pe-peleti/c/7483",
+          "properties": {
+            "rated_power_kw": 24,
+            "technology_id": "pellet-boiler",
+            "technology_label": "Centrală pe peleți",
+            "system_type": "custom",
+            "generator_type": "pellet_boiler",
+            "carrier": "biomass",
+            "cost_profile": "pellets",
+            "equipment_price_lei": 12799,
+            "installation_allowance_lei": 7500,
+            "requires_hydronic": true,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": true,
+            "capacity_basis": "catalog_nominal_output",
+            "confidence": "low",
+            "efficiency": 0.88
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 12799,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.dedeman.ro/ro/centrale/-cazane-termice-pe-peleti/c/7483",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.dedeman.ro/ro/centrale/-cazane-termice-pe-peleti/c/7483",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "pellet-ferroli-30",
+      "external_id": "pellet-ferroli-30",
+      "category_id": "pellet_boiler",
+      "manufacturer": "Ferroli",
+      "model": "Ferroli Biopellet TOP 30 kW",
+      "label": "Ferroli Biopellet TOP 30 kW",
+      "evidence_status": "source_backed",
+      "description": "Reper de catalog Dedeman; costul exact de montaj/coș rămâne de validat.",
+      "legacy_heating_compat": {
+        "technology_id": "pellet-boiler",
+        "technology_label": "Centrală pe peleți",
+        "system_type": "custom",
+        "generator_type": "pellet_boiler",
+        "carrier": "biomass",
+        "cost_profile": "pellets",
+        "installation_allowance_lei": 8000,
+        "requires_hydronic": true,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": true,
+        "capacity_basis": "catalog_nominal_output",
+        "confidence": "low",
+        "source_kind": "retail_reference_plus_installation_allowance"
+      },
+      "technical_sources": [
+        {
+          "kind": "retail_reference_plus_installation_allowance",
+          "url": "https://www.dedeman.ro/ro/centrale/-cazane-termice-pe-peleti/c/7483",
+          "properties": {
+            "rated_power_kw": 30,
+            "technology_id": "pellet-boiler",
+            "technology_label": "Centrală pe peleți",
+            "system_type": "custom",
+            "generator_type": "pellet_boiler",
+            "carrier": "biomass",
+            "cost_profile": "pellets",
+            "equipment_price_lei": 14675,
+            "installation_allowance_lei": 8000,
+            "requires_hydronic": true,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": true,
+            "capacity_basis": "catalog_nominal_output",
+            "confidence": "low",
+            "efficiency": 0.88
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 14675,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.dedeman.ro/ro/centrale/-cazane-termice-pe-peleti/c/7483",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.dedeman.ro/ro/centrale/-cazane-termice-pe-peleti/c/7483",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "hp-mitsubishi-ecodan-puz-swm80vaa",
+      "external_id": "hp-mitsubishi-ecodan-puz-swm80vaa",
+      "category_id": "heat_pump",
+      "manufacturer": "Mitsubishi",
+      "model": "Mitsubishi Electric Ecodan PUZ-SWM80VAA — 8 kW",
+      "label": "Mitsubishi Electric Ecodan PUZ-SWM80VAA — 8 kW",
+      "evidence_status": "source_backed",
+      "description": "Model Power Inverter R32, reper piață RO. Capacitatea la temperatura exterioară de calcul trebuie validată pe curba producătorului.",
+      "legacy_heating_compat": {
+        "technology_id": "heat-pump-air-water",
+        "technology_label": "Pompă de căldură aer-apă",
+        "system_type": "heat_pump",
+        "generator_type": "heat_pump_air_water",
+        "carrier": "electricity",
+        "cost_profile": "electricity",
+        "installation_allowance_lei": 12000,
+        "requires_hydronic": true,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "catalog_nominal_output",
+        "confidence": "medium",
+        "source_kind": "romanian_market_price_plus_installation_allowance"
+      },
+      "technical_sources": [
+        {
+          "kind": "romanian_market_price_plus_installation_allowance",
+          "url": "https://pompa-de-caldura.compari.ro/mitsubishi/puz-swm80vaa-p1315524346/",
+          "properties": {
+            "rated_power_kw": 8,
+            "technology_id": "heat-pump-air-water",
+            "technology_label": "Pompă de căldură aer-apă",
+            "system_type": "heat_pump",
+            "generator_type": "heat_pump_air_water",
+            "carrier": "electricity",
+            "cost_profile": "electricity",
+            "equipment_price_lei": 19201.45,
+            "installation_allowance_lei": 12000,
+            "requires_hydronic": true,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "catalog_nominal_output",
+            "confidence": "medium"
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 19201.45,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://pompa-de-caldura.compari.ro/mitsubishi/puz-swm80vaa-p1315524346/",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://pompa-de-caldura.compari.ro/mitsubishi/puz-swm80vaa-p1315524346/",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "hp-daikin-altherma3m-ebla08e3v3",
+      "external_id": "hp-daikin-altherma3m-ebla08e3v3",
+      "category_id": "heat_pump",
+      "manufacturer": "Daikin",
+      "model": "Daikin Altherma 3 M EBLA08E3V3 — 8 kW",
+      "label": "Daikin Altherma 3 M EBLA08E3V3 — 8 kW",
+      "evidence_status": "source_backed",
+      "description": "Monobloc reversibil R32. Capacitatea la temperatura exterioară de calcul trebuie validată din datele Daikin.",
+      "legacy_heating_compat": {
+        "technology_id": "heat-pump-air-water",
+        "technology_label": "Pompă de căldură aer-apă",
+        "system_type": "heat_pump",
+        "generator_type": "heat_pump_air_water",
+        "carrier": "electricity",
+        "cost_profile": "electricity",
+        "installation_allowance_lei": 12000,
+        "requires_hydronic": true,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "catalog_nominal_output",
+        "confidence": "medium",
+        "source_kind": "romanian_market_price_plus_installation_allowance"
+      },
+      "technical_sources": [
+        {
+          "kind": "romanian_market_price_plus_installation_allowance",
+          "url": "https://pompa-de-caldura.compari.ro/daikin/altherma-3-m-8kw-ebla08e3v3-p908597100/",
+          "properties": {
+            "rated_power_kw": 8,
+            "technology_id": "heat-pump-air-water",
+            "technology_label": "Pompă de căldură aer-apă",
+            "system_type": "heat_pump",
+            "generator_type": "heat_pump_air_water",
+            "carrier": "electricity",
+            "cost_profile": "electricity",
+            "equipment_price_lei": 24676,
+            "installation_allowance_lei": 12000,
+            "requires_hydronic": true,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "catalog_nominal_output",
+            "confidence": "medium"
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 24676,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://pompa-de-caldura.compari.ro/daikin/altherma-3-m-8kw-ebla08e3v3-p908597100/",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://pompa-de-caldura.compari.ro/daikin/altherma-3-m-8kw-ebla08e3v3-p908597100/",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "hp-lg-therma-v-hm071mr-u44",
+      "external_id": "hp-lg-therma-v-hm071mr-u44",
+      "category_id": "heat_pump",
+      "manufacturer": "LG",
+      "model": "LG THERMA V R32 Monobloc S HM071MR.U44 — 7 kW",
+      "label": "LG THERMA V R32 Monobloc S HM071MR.U44 — 7 kW",
+      "evidence_status": "source_backed",
+      "description": "LG publică 7 kW la A7/W35 și 5,6 kW la A2/W35; curba la temperatura exterioară de calcul trebuie verificată.",
+      "legacy_heating_compat": {
+        "technology_id": "heat-pump-air-water",
+        "technology_label": "Pompă de căldură aer-apă",
+        "system_type": "heat_pump",
+        "generator_type": "heat_pump_air_water",
+        "carrier": "electricity",
+        "cost_profile": "electricity",
+        "installation_allowance_lei": 11000,
+        "requires_hydronic": true,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "catalog_nominal_output",
+        "confidence": "medium",
+        "source_kind": "romanian_market_price_plus_installation_allowance"
+      },
+      "technical_sources": [
+        {
+          "kind": "romanian_market_price_plus_installation_allowance",
+          "url": "https://pompa-de-caldura.compari.ro/lg/therma-v-hm071mr-u44-p792800289/",
+          "properties": {
+            "rated_power_kw": 7,
+            "technology_id": "heat-pump-air-water",
+            "technology_label": "Pompă de căldură aer-apă",
+            "system_type": "heat_pump",
+            "generator_type": "heat_pump_air_water",
+            "carrier": "electricity",
+            "cost_profile": "electricity",
+            "equipment_price_lei": 18499,
+            "installation_allowance_lei": 11000,
+            "requires_hydronic": true,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "catalog_nominal_output",
+            "confidence": "medium"
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 18499,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://pompa-de-caldura.compari.ro/lg/therma-v-hm071mr-u44-p792800289/",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://pompa-de-caldura.compari.ro/lg/therma-v-hm071mr-u44-p792800289/",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "hp-nibe-s2125-8-400v",
+      "external_id": "hp-nibe-s2125-8-400v",
+      "category_id": "heat_pump",
+      "manufacturer": "NIBE",
+      "model": "NIBE S2125-8 400 V — 8 kW",
+      "label": "NIBE S2125-8 400 V — 8 kW",
+      "evidence_status": "source_backed",
+      "description": "R290, temperatură de tur ridicată; preț reper pentru unitatea externă. Capacitatea exactă la temperatura de calcul se validează pe curba NIBE.",
+      "legacy_heating_compat": {
+        "technology_id": "heat-pump-air-water",
+        "technology_label": "Pompă de căldură aer-apă",
+        "system_type": "heat_pump",
+        "generator_type": "heat_pump_air_water",
+        "carrier": "electricity",
+        "cost_profile": "electricity",
+        "installation_allowance_lei": 12000,
+        "requires_hydronic": true,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "catalog_nominal_output",
+        "confidence": "medium",
+        "source_kind": "romanian_market_price_plus_installation_allowance"
+      },
+      "technical_sources": [
+        {
+          "kind": "romanian_market_price_plus_installation_allowance",
+          "url": "https://pompa-de-caldura.compari.ro/nibe/s2125-8-400-v-064219-p1016606635/",
+          "properties": {
+            "rated_power_kw": 8,
+            "technology_id": "heat-pump-air-water",
+            "technology_label": "Pompă de căldură aer-apă",
+            "system_type": "heat_pump",
+            "generator_type": "heat_pump_air_water",
+            "carrier": "electricity",
+            "cost_profile": "electricity",
+            "equipment_price_lei": 49990,
+            "installation_allowance_lei": 12000,
+            "requires_hydronic": true,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "catalog_nominal_output",
+            "confidence": "medium"
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 49990,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://pompa-de-caldura.compari.ro/nibe/s2125-8-400-v-064219-p1016606635/",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://pompa-de-caldura.compari.ro/nibe/s2125-8-400-v-064219-p1016606635/",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "gas-ariston-clas-one-wifi-24",
+      "external_id": "gas-ariston-clas-one-wifi-24",
+      "category_id": "gas_boiler",
+      "manufacturer": "Ariston",
+      "model": "Ariston Clas One Wi‑Fi 24 — 21,4 kW utili încălzire",
+      "label": "Ariston Clas One Wi‑Fi 24 — 21,4 kW utili încălzire",
+      "evidence_status": "source_backed",
+      "description": "Ariston declară 21,4 kW utili la 80/60 °C și 23,6 kW la 50/30 °C; modularea minimă trebuie verificată.",
+      "legacy_heating_compat": {
+        "technology_id": "condensing-gas",
+        "technology_label": "Centrală gaz în condensare",
+        "system_type": "condensing_gas_boiler",
+        "generator_type": "condensing_gas_boiler",
+        "carrier": "natural_gas",
+        "cost_profile": "natural_gas",
+        "installation_allowance_lei": 3000,
+        "requires_hydronic": true,
+        "requires_existing_gas": true,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "catalog_useful_output_80_60",
+        "confidence": "medium",
+        "source_kind": "romanian_market_price_plus_installation_allowance"
+      },
+      "technical_sources": [
+        {
+          "kind": "romanian_market_price_plus_installation_allowance",
+          "url": "https://www.compari.ro/centrale-termice-si-sobe-c4026/ariston/clas-one-wifi-24-kw-3302123-p845842803/",
+          "properties": {
+            "rated_power_kw": 21.4,
+            "technology_id": "condensing-gas",
+            "technology_label": "Centrală gaz în condensare",
+            "system_type": "condensing_gas_boiler",
+            "generator_type": "condensing_gas_boiler",
+            "carrier": "natural_gas",
+            "cost_profile": "natural_gas",
+            "equipment_price_lei": 3969,
+            "installation_allowance_lei": 3000,
+            "requires_hydronic": true,
+            "requires_existing_gas": true,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "catalog_useful_output_80_60",
+            "confidence": "medium"
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 3969,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.compari.ro/centrale-termice-si-sobe-c4026/ariston/clas-one-wifi-24-kw-3302123-p845842803/",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.compari.ro/centrale-termice-si-sobe-c4026/ariston/clas-one-wifi-24-kw-3302123-p845842803/",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "gas-bosch-condens-2300iw-24",
+      "external_id": "gas-bosch-condens-2300iw-24",
+      "category_id": "gas_boiler",
+      "manufacturer": "Bosch",
+      "model": "Bosch Condens 2300i W GC2300iW 24 — 24 kW",
+      "label": "Bosch Condens 2300i W GC2300iW 24 — 24 kW",
+      "evidence_status": "source_backed",
+      "description": "Bosch declară 24 kW nominal la 80/60 °C; puterea minimă și modularea trebuie verificate.",
+      "legacy_heating_compat": {
+        "technology_id": "condensing-gas",
+        "technology_label": "Centrală gaz în condensare",
+        "system_type": "condensing_gas_boiler",
+        "generator_type": "condensing_gas_boiler",
+        "carrier": "natural_gas",
+        "cost_profile": "natural_gas",
+        "installation_allowance_lei": 3000,
+        "requires_hydronic": true,
+        "requires_existing_gas": true,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "catalog_nominal_output",
+        "confidence": "medium",
+        "source_kind": "romanian_market_price_plus_installation_allowance"
+      },
+      "technical_sources": [
+        {
+          "kind": "romanian_market_price_plus_installation_allowance",
+          "url": "https://www.compari.ro/centrale-termice-si-sobe-c4026/bosch/condens-2300i-w-24-30-c-23-7736902960-p710373852/",
+          "properties": {
+            "rated_power_kw": 24,
+            "technology_id": "condensing-gas",
+            "technology_label": "Centrală gaz în condensare",
+            "system_type": "condensing_gas_boiler",
+            "generator_type": "condensing_gas_boiler",
+            "carrier": "natural_gas",
+            "cost_profile": "natural_gas",
+            "equipment_price_lei": 5536,
+            "installation_allowance_lei": 3000,
+            "requires_hydronic": true,
+            "requires_existing_gas": true,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "catalog_nominal_output",
+            "confidence": "medium"
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 5536,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.compari.ro/centrale-termice-si-sobe-c4026/bosch/condens-2300i-w-24-30-c-23-7736902960-p710373852/",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.compari.ro/centrale-termice-si-sobe-c4026/bosch/condens-2300i-w-24-30-c-23-7736902960-p710373852/",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "gas-vaillant-ecotec-pure-vuw236",
+      "external_id": "gas-vaillant-ecotec-pure-vuw236",
+      "category_id": "gas_boiler",
+      "manufacturer": "Vaillant",
+      "model": "Vaillant ecoTEC pure VUW 236/7-2 — 20,2 kW",
+      "label": "Vaillant ecoTEC pure VUW 236/7-2 — 20,2 kW",
+      "evidence_status": "source_backed",
+      "description": "Reper comercial RO; puterea minimă de modulare trebuie inclusă ulterior în filtrul de dimensionare.",
+      "legacy_heating_compat": {
+        "technology_id": "condensing-gas",
+        "technology_label": "Centrală gaz în condensare",
+        "system_type": "condensing_gas_boiler",
+        "generator_type": "condensing_gas_boiler",
+        "carrier": "natural_gas",
+        "cost_profile": "natural_gas",
+        "installation_allowance_lei": 3000,
+        "requires_hydronic": true,
+        "requires_existing_gas": true,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "catalog_heating_output",
+        "confidence": "medium",
+        "source_kind": "romanian_market_price_plus_installation_allowance"
+      },
+      "technical_sources": [
+        {
+          "kind": "romanian_market_price_plus_installation_allowance",
+          "url": "https://www.compari.ro/centrale-termice-si-sobe-c4026/vaillant/ecotec-pure-vuw-236-7-2-0010019976-p356593435/",
+          "properties": {
+            "rated_power_kw": 20.2,
+            "technology_id": "condensing-gas",
+            "technology_label": "Centrală gaz în condensare",
+            "system_type": "condensing_gas_boiler",
+            "generator_type": "condensing_gas_boiler",
+            "carrier": "natural_gas",
+            "cost_profile": "natural_gas",
+            "equipment_price_lei": 4289.99,
+            "installation_allowance_lei": 3000,
+            "requires_hydronic": true,
+            "requires_existing_gas": true,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "catalog_heating_output",
+            "confidence": "medium"
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 4289.99,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.compari.ro/centrale-termice-si-sobe-c4026/vaillant/ecotec-pure-vuw-236-7-2-0010019976-p356593435/",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.compari.ro/centrale-termice-si-sobe-c4026/vaillant/ecotec-pure-vuw-236-7-2-0010019976-p356593435/",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "gas-viessmann-vitodens050w-25",
+      "external_id": "gas-viessmann-vitodens050w-25",
+      "category_id": "gas_boiler",
+      "manufacturer": "Viessmann",
+      "model": "Viessmann Vitodens 050‑W B0KA 25 — 25 kW",
+      "label": "Viessmann Vitodens 050‑W B0KA 25 — 25 kW",
+      "evidence_status": "source_backed",
+      "description": "Reper comercial RO pentru Vitodens 050-W B0KA; modularea minimă trebuie verificată în etapa finală.",
+      "legacy_heating_compat": {
+        "technology_id": "condensing-gas",
+        "technology_label": "Centrală gaz în condensare",
+        "system_type": "condensing_gas_boiler",
+        "generator_type": "condensing_gas_boiler",
+        "carrier": "natural_gas",
+        "cost_profile": "natural_gas",
+        "installation_allowance_lei": 3000,
+        "requires_hydronic": true,
+        "requires_existing_gas": true,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "catalog_nominal_output",
+        "confidence": "medium",
+        "source_kind": "romanian_market_price_plus_installation_allowance"
+      },
+      "technical_sources": [
+        {
+          "kind": "romanian_market_price_plus_installation_allowance",
+          "url": "https://www.compari.ro/centrale-termice-si-sobe-c4026/viessmann/vitodens-050-w-25-b0ka-gn-gpl-z024826-p756488199/",
+          "properties": {
+            "rated_power_kw": 25,
+            "technology_id": "condensing-gas",
+            "technology_label": "Centrală gaz în condensare",
+            "system_type": "condensing_gas_boiler",
+            "generator_type": "condensing_gas_boiler",
+            "carrier": "natural_gas",
+            "cost_profile": "natural_gas",
+            "equipment_price_lei": 4383,
+            "installation_allowance_lei": 3000,
+            "requires_hydronic": true,
+            "requires_existing_gas": true,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "catalog_nominal_output",
+            "confidence": "medium"
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 4383,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.compari.ro/centrale-termice-si-sobe-c4026/viessmann/vitodens-050-w-25-b0ka-gn-gpl-z024826-p756488199/",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.compari.ro/centrale-termice-si-sobe-c4026/viessmann/vitodens-050-w-25-b0ka-gn-gpl-z024826-p756488199/",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "gas-immergas-victrix-tera24plus-v3",
+      "external_id": "gas-immergas-victrix-tera24plus-v3",
+      "category_id": "gas_boiler",
+      "manufacturer": "Immergas",
+      "model": "Immergas Victrix Tera 24 Plus V3 — 24 kW",
+      "label": "Immergas Victrix Tera 24 Plus V3 — 24 kW",
+      "evidence_status": "source_backed",
+      "description": "Putere utilă maximă 24 kW la 80/60 °C; puterea utilă minimă ~4,3 kW trebuie folosită ulterior la verificarea ciclării.",
+      "legacy_heating_compat": {
+        "technology_id": "condensing-gas",
+        "technology_label": "Centrală gaz în condensare",
+        "system_type": "condensing_gas_boiler",
+        "generator_type": "condensing_gas_boiler",
+        "carrier": "natural_gas",
+        "cost_profile": "natural_gas",
+        "installation_allowance_lei": 3000,
+        "requires_hydronic": true,
+        "requires_existing_gas": true,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "catalog_useful_output_80_60",
+        "confidence": "medium",
+        "source_kind": "romanian_market_price_plus_installation_allowance"
+      },
+      "technical_sources": [
+        {
+          "kind": "romanian_market_price_plus_installation_allowance",
+          "url": "https://www.compari.ro/centrale-termice-si-sobe-c4026/immergas/victrix-tera-24-plus-v3-3-036306-p1312370698/",
+          "properties": {
+            "rated_power_kw": 24,
+            "technology_id": "condensing-gas",
+            "technology_label": "Centrală gaz în condensare",
+            "system_type": "condensing_gas_boiler",
+            "generator_type": "condensing_gas_boiler",
+            "carrier": "natural_gas",
+            "cost_profile": "natural_gas",
+            "equipment_price_lei": 3808,
+            "installation_allowance_lei": 3000,
+            "requires_hydronic": true,
+            "requires_existing_gas": true,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "catalog_useful_output_80_60",
+            "confidence": "medium"
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 3808,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.compari.ro/centrale-termice-si-sobe-c4026/immergas/victrix-tera-24-plus-v3-3-036306-p1312370698/",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.compari.ro/centrale-termice-si-sobe-c4026/immergas/victrix-tera-24-plus-v3-3-036306-p1312370698/",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "electric-bosch-tronic3500-6",
+      "external_id": "electric-bosch-tronic3500-6",
+      "category_id": "electric_boiler",
+      "manufacturer": "Bosch",
+      "model": "Bosch Tronic Heat 3500 6 — 5,94 kW utili",
+      "label": "Bosch Tronic Heat 3500 6 — 5,94 kW utili",
+      "evidence_status": "source_backed",
+      "description": "Bosch declară 5,94 kW putere de încălzire; instalația electrică reală trebuie verificată.",
+      "legacy_heating_compat": {
+        "technology_id": "electric-boiler",
+        "technology_label": "Centrală electrică",
+        "system_type": "custom",
+        "generator_type": "electric_boiler",
+        "carrier": "electricity",
+        "cost_profile": "electricity",
+        "installation_allowance_lei": 2500,
+        "requires_hydronic": true,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "catalog_heating_output",
+        "confidence": "medium",
+        "source_kind": "romanian_market_price_plus_electrical_installation_allowance"
+      },
+      "technical_sources": [
+        {
+          "kind": "romanian_market_price_plus_electrical_installation_allowance",
+          "url": "https://www.compari.ro/centrale-termice-si-sobe-c4026/bosch/tronic-heat-3500-6-kw-7738504525-p500736573/",
+          "properties": {
+            "rated_power_kw": 5.94,
+            "technology_id": "electric-boiler",
+            "technology_label": "Centrală electrică",
+            "system_type": "custom",
+            "generator_type": "electric_boiler",
+            "carrier": "electricity",
+            "cost_profile": "electricity",
+            "equipment_price_lei": 3882,
+            "installation_allowance_lei": 2500,
+            "requires_hydronic": true,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "catalog_heating_output",
+            "confidence": "medium",
+            "efficiency": 0.995
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 3882,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.compari.ro/centrale-termice-si-sobe-c4026/bosch/tronic-heat-3500-6-kw-7738504525-p500736573/",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.compari.ro/centrale-termice-si-sobe-c4026/bosch/tronic-heat-3500-6-kw-7738504525-p500736573/",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "electric-bosch-tronic3500-9",
+      "external_id": "electric-bosch-tronic3500-9",
+      "category_id": "electric_boiler",
+      "manufacturer": "Bosch",
+      "model": "Bosch Tronic Heat 3500 9 — 8,91 kW utili",
+      "label": "Bosch Tronic Heat 3500 9 — 8,91 kW utili",
+      "evidence_status": "source_backed",
+      "description": "Bosch declară 8,91 kW putere de încălzire; branșamentul și protecțiile trebuie validate.",
+      "legacy_heating_compat": {
+        "technology_id": "electric-boiler",
+        "technology_label": "Centrală electrică",
+        "system_type": "custom",
+        "generator_type": "electric_boiler",
+        "carrier": "electricity",
+        "cost_profile": "electricity",
+        "installation_allowance_lei": 3000,
+        "requires_hydronic": true,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": true,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "catalog_heating_output",
+        "confidence": "medium",
+        "source_kind": "romanian_market_price_plus_electrical_installation_allowance"
+      },
+      "technical_sources": [
+        {
+          "kind": "romanian_market_price_plus_electrical_installation_allowance",
+          "url": "https://www.price.ro/preturi-bosch-tronic-heat-3500-9-9-kw-3500428",
+          "properties": {
+            "rated_power_kw": 8.91,
+            "technology_id": "electric-boiler",
+            "technology_label": "Centrală electrică",
+            "system_type": "custom",
+            "generator_type": "electric_boiler",
+            "carrier": "electricity",
+            "cost_profile": "electricity",
+            "equipment_price_lei": 3999,
+            "installation_allowance_lei": 3000,
+            "requires_hydronic": true,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": true,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "catalog_heating_output",
+            "confidence": "medium",
+            "efficiency": 0.995
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 3999,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.price.ro/preturi-bosch-tronic-heat-3500-9-9-kw-3500428",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.price.ro/preturi-bosch-tronic-heat-3500-9-9-kw-3500428",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "electric-ferroli-tor6",
+      "external_id": "electric-ferroli-tor6",
+      "category_id": "electric_boiler",
+      "manufacturer": "Ferroli",
+      "model": "Ferroli TOR 6 — 6 kW",
+      "label": "Ferroli TOR 6 — 6 kW",
+      "evidence_status": "source_backed",
+      "description": "Ferroli TOR 6 este 220–240 V, 6 kW; instalația electrică și curentul disponibil trebuie verificate.",
+      "legacy_heating_compat": {
+        "technology_id": "electric-boiler",
+        "technology_label": "Centrală electrică",
+        "system_type": "custom",
+        "generator_type": "electric_boiler",
+        "carrier": "electricity",
+        "cost_profile": "electricity",
+        "installation_allowance_lei": 2500,
+        "requires_hydronic": true,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "catalog_nominal_output",
+        "confidence": "medium",
+        "source_kind": "romanian_market_price_plus_electrical_installation_allowance"
+      },
+      "technical_sources": [
+        {
+          "kind": "romanian_market_price_plus_electrical_installation_allowance",
+          "url": "https://www.compari.ro/centrale-termice-si-sobe-c4026/ferroli/tor-6-gcjo10ea-p858142353/",
+          "properties": {
+            "rated_power_kw": 6,
+            "technology_id": "electric-boiler",
+            "technology_label": "Centrală electrică",
+            "system_type": "custom",
+            "generator_type": "electric_boiler",
+            "carrier": "electricity",
+            "cost_profile": "electricity",
+            "equipment_price_lei": 2550,
+            "installation_allowance_lei": 2500,
+            "requires_hydronic": true,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "catalog_nominal_output",
+            "confidence": "medium",
+            "efficiency": 0.995
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 2550,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.compari.ro/centrale-termice-si-sobe-c4026/ferroli/tor-6-gcjo10ea-p858142353/",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.compari.ro/centrale-termice-si-sobe-c4026/ferroli/tor-6-gcjo10ea-p858142353/",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "electric-ferroli-tor9",
+      "external_id": "electric-ferroli-tor9",
+      "category_id": "electric_boiler",
+      "manufacturer": "Ferroli",
+      "model": "Ferroli TOR 9 — 9 kW",
+      "label": "Ferroli TOR 9 — 9 kW",
+      "evidence_status": "source_backed",
+      "description": "Ferroli TOR 9 este 220–240 V, 9 kW; necesarul de curent și protecțiile trebuie validate.",
+      "legacy_heating_compat": {
+        "technology_id": "electric-boiler",
+        "technology_label": "Centrală electrică",
+        "system_type": "custom",
+        "generator_type": "electric_boiler",
+        "carrier": "electricity",
+        "cost_profile": "electricity",
+        "installation_allowance_lei": 3000,
+        "requires_hydronic": true,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": true,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "catalog_nominal_output",
+        "confidence": "medium",
+        "source_kind": "romanian_market_price_plus_electrical_installation_allowance"
+      },
+      "technical_sources": [
+        {
+          "kind": "romanian_market_price_plus_electrical_installation_allowance",
+          "url": "https://www.compari.ro/centrale-termice-si-sobe-c4026/ferroli/tor-9-gcmo10ea-p858142248/",
+          "properties": {
+            "rated_power_kw": 9,
+            "technology_id": "electric-boiler",
+            "technology_label": "Centrală electrică",
+            "system_type": "custom",
+            "generator_type": "electric_boiler",
+            "carrier": "electricity",
+            "cost_profile": "electricity",
+            "equipment_price_lei": 2700,
+            "installation_allowance_lei": 3000,
+            "requires_hydronic": true,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": true,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "catalog_nominal_output",
+            "confidence": "medium",
+            "efficiency": 0.995
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 2700,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.compari.ro/centrale-termice-si-sobe-c4026/ferroli/tor-9-gcmo10ea-p858142248/",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.compari.ro/centrale-termice-si-sobe-c4026/ferroli/tor-9-gcmo10ea-p858142248/",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "pellet-burnit-pell-easy20",
+      "external_id": "pellet-burnit-pell-easy20",
+      "category_id": "pellet_boiler",
+      "manufacturer": "BURNiT",
+      "model": "BURNiT Pell Easy 20 — 18 kW",
+      "label": "BURNiT Pell Easy 20 — 18 kW",
+      "evidence_status": "source_backed",
+      "description": "BURNiT publică 18 kW nominal și eficiență de referință ~90,6%; coșul și camera tehnică se verifică separat.",
+      "legacy_heating_compat": {
+        "technology_id": "pellet-boiler",
+        "technology_label": "Centrală pe peleți",
+        "system_type": "custom",
+        "generator_type": "pellet_boiler",
+        "carrier": "biomass",
+        "cost_profile": "pellets",
+        "installation_allowance_lei": 7000,
+        "requires_hydronic": true,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": true,
+        "capacity_basis": "catalog_nominal_output",
+        "confidence": "medium",
+        "source_kind": "romanian_market_price_plus_installation_allowance"
+      },
+      "technical_sources": [
+        {
+          "kind": "romanian_market_price_plus_installation_allowance",
+          "url": "https://www.dechor.ro/produse?categorie=centrale-peleti-fornello",
+          "properties": {
+            "rated_power_kw": 18,
+            "technology_id": "pellet-boiler",
+            "technology_label": "Centrală pe peleți",
+            "system_type": "custom",
+            "generator_type": "pellet_boiler",
+            "carrier": "biomass",
+            "cost_profile": "pellets",
+            "equipment_price_lei": 11999,
+            "installation_allowance_lei": 7000,
+            "requires_hydronic": true,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": true,
+            "capacity_basis": "catalog_nominal_output",
+            "confidence": "medium",
+            "efficiency": 0.906
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 11999,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.dechor.ro/produse?categorie=centrale-peleti-fornello",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.dechor.ro/produse?categorie=centrale-peleti-fornello",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "pellet-fornello-royal25",
+      "external_id": "pellet-fornello-royal25",
+      "category_id": "pellet_boiler",
+      "manufacturer": "Fornello",
+      "model": "Fornello Royal 25 — 25 kW",
+      "label": "Fornello Royal 25 — 25 kW",
+      "evidence_status": "source_backed",
+      "description": "Termoșemineu hidronic 25 kW, randament declarat 90–93%; preț reper pentru echipament complet.",
+      "legacy_heating_compat": {
+        "technology_id": "pellet-boiler",
+        "technology_label": "Centrală pe peleți",
+        "system_type": "custom",
+        "generator_type": "pellet_boiler",
+        "carrier": "biomass",
+        "cost_profile": "pellets",
+        "installation_allowance_lei": 6500,
+        "requires_hydronic": true,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": true,
+        "capacity_basis": "catalog_nominal_output",
+        "confidence": "medium",
+        "source_kind": "romanian_market_price_plus_installation_allowance"
+      },
+      "technical_sources": [
+        {
+          "kind": "romanian_market_price_plus_installation_allowance",
+          "url": "https://www.pricy.ro/ProductUrlId/termosemineu-centrala-peleti-fornello-royal-25-kw---complet-echipat-pentru-incalzire--pompa--vas-expansiune--automatizare--telecomanda--buncar-peleti-tiraj-fortat-culoare-ivory--crem---fornello-3340F9AA8E215A26FACD39B2D5B7002B",
+          "properties": {
+            "rated_power_kw": 25,
+            "technology_id": "pellet-boiler",
+            "technology_label": "Centrală pe peleți",
+            "system_type": "custom",
+            "generator_type": "pellet_boiler",
+            "carrier": "biomass",
+            "cost_profile": "pellets",
+            "equipment_price_lei": 6471,
+            "installation_allowance_lei": 6500,
+            "requires_hydronic": true,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": true,
+            "capacity_basis": "catalog_nominal_output",
+            "confidence": "medium",
+            "efficiency": 0.925
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 6471,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.pricy.ro/ProductUrlId/termosemineu-centrala-peleti-fornello-royal-25-kw---complet-echipat-pentru-incalzire--pompa--vas-expansiune--automatizare--telecomanda--buncar-peleti-tiraj-fortat-culoare-ivory--crem---fornello-3340F9AA8E215A26FACD39B2D5B7002B",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.pricy.ro/ProductUrlId/termosemineu-centrala-peleti-fornello-royal-25-kw---complet-echipat-pentru-incalzire--pompa--vas-expansiune--automatizare--telecomanda--buncar-peleti-tiraj-fortat-culoare-ivory--crem---fornello-3340F9AA8E215A26FACD39B2D5B7002B",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "pellet-thermostahl-compact25",
+      "external_id": "pellet-thermostahl-compact25",
+      "category_id": "pellet_boiler",
+      "manufacturer": "Thermostahl",
+      "model": "Thermostahl Pellet Compact 25 — 25 kW",
+      "label": "Thermostahl Pellet Compact 25 — 25 kW",
+      "evidence_status": "source_backed",
+      "description": "25 kW, randament declarat 95%, buncăr 55 kg; coșul și integrarea hidraulică se verifică separat.",
+      "legacy_heating_compat": {
+        "technology_id": "pellet-boiler",
+        "technology_label": "Centrală pe peleți",
+        "system_type": "custom",
+        "generator_type": "pellet_boiler",
+        "carrier": "biomass",
+        "cost_profile": "pellets",
+        "installation_allowance_lei": 7000,
+        "requires_hydronic": true,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": true,
+        "capacity_basis": "catalog_nominal_output",
+        "confidence": "medium",
+        "source_kind": "romanian_market_price_plus_installation_allowance"
+      },
+      "technical_sources": [
+        {
+          "kind": "romanian_market_price_plus_installation_allowance",
+          "url": "https://www.roinstal.com/centrala-pe-peleti-complet-echipata-thermostahl-pellet-compact-25-25-kw-randament-95-continut-apa-28-l-diam-cos-fum-80-mm-rezervor-peleti-55-kg.html",
+          "properties": {
+            "rated_power_kw": 25,
+            "technology_id": "pellet-boiler",
+            "technology_label": "Centrală pe peleți",
+            "system_type": "custom",
+            "generator_type": "pellet_boiler",
+            "carrier": "biomass",
+            "cost_profile": "pellets",
+            "equipment_price_lei": 16099.1,
+            "installation_allowance_lei": 7000,
+            "requires_hydronic": true,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": true,
+            "capacity_basis": "catalog_nominal_output",
+            "confidence": "medium",
+            "efficiency": 0.95
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 16099.1,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.roinstal.com/centrala-pe-peleti-complet-echipata-thermostahl-pellet-compact-25-25-kw-randament-95-continut-apa-28-l-diam-cos-fum-80-mm-rezervor-peleti-55-kg.html",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.roinstal.com/centrala-pe-peleti-complet-echipata-thermostahl-pellet-compact-25-25-kw-randament-95-continut-apa-28-l-diam-cos-fum-80-mm-rezervor-peleti-55-kg.html",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "pellet-biodom27c5-30",
+      "external_id": "pellet-biodom27c5-30",
+      "category_id": "pellet_boiler",
+      "manufacturer": "BIODOM",
+      "model": "BIODOM 27 C5 — 30,8 kW",
+      "label": "BIODOM 27 C5 — 30,8 kW",
+      "evidence_status": "source_backed",
+      "description": "Manualul BIODOM declară 30,8 kW nominal și ~91,94% randament; preț reper RO pentru produs nou.",
+      "legacy_heating_compat": {
+        "technology_id": "pellet-boiler",
+        "technology_label": "Centrală pe peleți",
+        "system_type": "custom",
+        "generator_type": "pellet_boiler",
+        "carrier": "biomass",
+        "cost_profile": "pellets",
+        "installation_allowance_lei": 7500,
+        "requires_hydronic": true,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": true,
+        "capacity_basis": "catalog_nominal_output",
+        "confidence": "medium",
+        "source_kind": "romanian_market_price_plus_installation_allowance"
+      },
+      "technical_sources": [
+        {
+          "kind": "romanian_market_price_plus_installation_allowance",
+          "url": "https://m.benedekco.ro/centrala-termica-pe-peleti-biodom-b27-c5-30-kw-p1164",
+          "properties": {
+            "rated_power_kw": 30.8,
+            "technology_id": "pellet-boiler",
+            "technology_label": "Centrală pe peleți",
+            "system_type": "custom",
+            "generator_type": "pellet_boiler",
+            "carrier": "biomass",
+            "cost_profile": "pellets",
+            "equipment_price_lei": 18800,
+            "installation_allowance_lei": 7500,
+            "requires_hydronic": true,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": true,
+            "capacity_basis": "catalog_nominal_output",
+            "confidence": "medium",
+            "efficiency": 0.9194
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 18800,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://m.benedekco.ro/centrala-termica-pe-peleti-biodom-b27-c5-30-kw-p1164",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://m.benedekco.ro/centrala-termica-pe-peleti-biodom-b27-c5-30-kw-p1164",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "hp-aa-daikin-perfera-35a9",
+      "external_id": "FTXM35A-RXM35A9",
+      "category_id": "heat_pump",
+      "manufacturer": "Daikin",
+      "model": "Daikin Perfera FTXM35A / RXM35A9 — 4,0 kW încălzire",
+      "label": "Daikin Perfera FTXM35A / RXM35A9 — 4,0 kW încălzire",
+      "evidence_status": "source_backed",
+      "description": "Preț Daikin România + montaj publicat 1.200 lei. SCOP 5,20 și curba COP sunt certificate Eurovent pentru FTXM35A/RXM35A9. Sistem monosplit; distribuția pe mai multe încăperi rămâne verificare de proiectare.",
+      "legacy_heating_compat": {
+        "technology_id": "heat-pump-air-air",
+        "technology_label": "Pompă de căldură aer-aer",
+        "system_type": "heat_pump",
+        "generator_type": "heat_pump_air_air",
+        "carrier": "electricity",
+        "cost_profile": "electricity",
+        "installation_allowance_lei": 1200,
+        "requires_hydronic": false,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "catalog_nominal_heating_output",
+        "confidence": "high",
+        "source_kind": "manufacturer_ro_retail_plus_manufacturer_installation"
+      },
+      "technical_sources": [
+        {
+          "kind": "manufacturer_ro_retail_plus_manufacturer_installation",
+          "url": "https://www.buydaikin.ro/daikinb2c/daikinROB2C/ro_RO/Aer-condi%C8%9Bionat/12000-BTU/FTXM35A%2BRXM35A/p/U0IuRlRYTTM1QS9SWE0zNQ%3D%3D",
+          "properties": {
+            "rated_power_kw": 4,
+            "technology_id": "heat-pump-air-air",
+            "technology_label": "Pompă de căldură aer-aer",
+            "system_type": "heat_pump",
+            "generator_type": "heat_pump_air_air",
+            "carrier": "electricity",
+            "cost_profile": "electricity",
+            "equipment_price_lei": 6645.32,
+            "installation_allowance_lei": 1200,
+            "requires_hydronic": false,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "catalog_nominal_heating_output",
+            "confidence": "high",
+            "scop": 5.2
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 6645.32,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.buydaikin.ro/daikinb2c/daikinROB2C/ro_RO/Aer-condi%C8%9Bionat/12000-BTU/FTXM35A%2BRXM35A/p/U0IuRlRYTTM1QS9SWE0zNQ%3D%3D",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.buydaikin.ro/daikinb2c/daikinROB2C/ro_RO/Aer-condi%C8%9Bionat/12000-BTU/FTXM35A%2BRXM35A/p/U0IuRlRYTTM1QS9SWE0zNQ%3D%3D",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "hp-aa-daikin-perfera-42a",
+      "external_id": "FTXM42A-RXM42A",
+      "category_id": "heat_pump",
+      "manufacturer": "Daikin",
+      "model": "Daikin Perfera FTXM42A / RXM42A — 5,4 kW încălzire",
+      "label": "Daikin Perfera FTXM42A / RXM42A — 5,4 kW încălzire",
+      "evidence_status": "source_backed",
+      "description": "Preț Daikin România + montaj publicat 1.200 lei. SCOP 5,00 și curba COP sunt certificate Eurovent pentru FTXM42A/RXM42A. Sistem monosplit; distribuția pe mai multe încăperi rămâne verificare de proiectare.",
+      "legacy_heating_compat": {
+        "technology_id": "heat-pump-air-air",
+        "technology_label": "Pompă de căldură aer-aer",
+        "system_type": "heat_pump",
+        "generator_type": "heat_pump_air_air",
+        "carrier": "electricity",
+        "cost_profile": "electricity",
+        "installation_allowance_lei": 1200,
+        "requires_hydronic": false,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "catalog_nominal_heating_output",
+        "confidence": "high",
+        "source_kind": "manufacturer_ro_retail_plus_manufacturer_installation"
+      },
+      "technical_sources": [
+        {
+          "kind": "manufacturer_ro_retail_plus_manufacturer_installation",
+          "url": "https://buydaikin.ro/daikinb2c/daikinStoreROB2C/ro_RO/Aer-condi%C8%9Bionat/14000-BTU/FTXM42A%2BRXM42A/p/U0IuRlRYTTQyQS9SWE00Mg%3D%3D",
+          "properties": {
+            "rated_power_kw": 5.4,
+            "technology_id": "heat-pump-air-air",
+            "technology_label": "Pompă de căldură aer-aer",
+            "system_type": "heat_pump",
+            "generator_type": "heat_pump_air_air",
+            "carrier": "electricity",
+            "cost_profile": "electricity",
+            "equipment_price_lei": 7958.17,
+            "installation_allowance_lei": 1200,
+            "requires_hydronic": false,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "catalog_nominal_heating_output",
+            "confidence": "high",
+            "scop": 5
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 7958.17,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://buydaikin.ro/daikinb2c/daikinStoreROB2C/ro_RO/Aer-condi%C8%9Bionat/14000-BTU/FTXM42A%2BRXM42A/p/U0IuRlRYTTQyQS9SWE00Mg%3D%3D",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://buydaikin.ro/daikinb2c/daikinStoreROB2C/ro_RO/Aer-condi%C8%9Bionat/14000-BTU/FTXM42A%2BRXM42A/p/U0IuRlRYTTQyQS9SWE00Mg%3D%3D",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "hp-aa-daikin-perfera-50a8",
+      "external_id": "FTXM50A-RXM50A8",
+      "category_id": "heat_pump",
+      "manufacturer": "Daikin",
+      "model": "Daikin Perfera FTXM50A / RXM50A8 — 5,8 kW încălzire",
+      "label": "Daikin Perfera FTXM50A / RXM50A8 — 5,8 kW încălzire",
+      "evidence_status": "source_backed",
+      "description": "Daikin România declară 5,8 kW nominal, SCOP 4,75 și montaj 1.300 lei. Fără curbă COP multi-punct exactă pentru sufixul A8 în catalogul curent; raportul nu inventează valori lunare.",
+      "legacy_heating_compat": {
+        "technology_id": "heat-pump-air-air",
+        "technology_label": "Pompă de căldură aer-aer",
+        "system_type": "heat_pump",
+        "generator_type": "heat_pump_air_air",
+        "carrier": "electricity",
+        "cost_profile": "electricity",
+        "installation_allowance_lei": 1300,
+        "requires_hydronic": false,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "catalog_nominal_heating_output",
+        "confidence": "high",
+        "source_kind": "manufacturer_ro_retail_plus_manufacturer_installation"
+      },
+      "technical_sources": [
+        {
+          "kind": "manufacturer_ro_retail_plus_manufacturer_installation",
+          "url": "https://buydaikin.ro/daikinb2c/daikinROB2C/ro_RO/Aer-condi%C8%9Bionat/18000-BTU/FTXM50A-%2B-RXM50A8/p/U0IuRlRYTTUwQS9SWE01MEE4",
+          "properties": {
+            "rated_power_kw": 5.8,
+            "technology_id": "heat-pump-air-air",
+            "technology_label": "Pompă de căldură aer-aer",
+            "system_type": "heat_pump",
+            "generator_type": "heat_pump_air_air",
+            "carrier": "electricity",
+            "cost_profile": "electricity",
+            "equipment_price_lei": 9704.2,
+            "installation_allowance_lei": 1300,
+            "requires_hydronic": false,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "catalog_nominal_heating_output",
+            "confidence": "high",
+            "scop": 4.75
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 9704.2,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://buydaikin.ro/daikinb2c/daikinROB2C/ro_RO/Aer-condi%C8%9Bionat/18000-BTU/FTXM50A-%2B-RXM50A8/p/U0IuRlRYTTUwQS9SWE01MEE4",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://buydaikin.ro/daikinb2c/daikinROB2C/ro_RO/Aer-condi%C8%9Bionat/18000-BTU/FTXM50A-%2B-RXM50A8/p/U0IuRlRYTTUwQS9SWE01MEE4",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "hp-aa-daikin-perfera-60a",
+      "external_id": "FTXM60A-RXM60A",
+      "category_id": "heat_pump",
+      "manufacturer": "Daikin",
+      "model": "Daikin Perfera FTXM60A / RXM60A — 7,0 kW încălzire",
+      "label": "Daikin Perfera FTXM60A / RXM60A — 7,0 kW încălzire",
+      "evidence_status": "source_backed",
+      "description": "Daikin România declară 7,0 kW nominal, COP 3,61, SCOP 4,30 și montaj 1.300 lei. Fără curbă COP multi-punct source-backed în catalogul curent.",
+      "legacy_heating_compat": {
+        "technology_id": "heat-pump-air-air",
+        "technology_label": "Pompă de căldură aer-aer",
+        "system_type": "heat_pump",
+        "generator_type": "heat_pump_air_air",
+        "carrier": "electricity",
+        "cost_profile": "electricity",
+        "installation_allowance_lei": 1300,
+        "requires_hydronic": false,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "catalog_nominal_heating_output",
+        "confidence": "high",
+        "source_kind": "manufacturer_ro_retail_plus_manufacturer_installation"
+      },
+      "technical_sources": [
+        {
+          "kind": "manufacturer_ro_retail_plus_manufacturer_installation",
+          "url": "https://buydaikin.ro/daikinb2c/daikinStoreROB2C/ro_RO/Aer-condi%C8%9Bionat/21000-BTU/FTXM60A-%2B-RXM60A/p/U0IuRlRYTTYwQS9SWE02MEE%3D",
+          "properties": {
+            "rated_power_kw": 7,
+            "technology_id": "heat-pump-air-air",
+            "technology_label": "Pompă de căldură aer-aer",
+            "system_type": "heat_pump",
+            "generator_type": "heat_pump_air_air",
+            "carrier": "electricity",
+            "cost_profile": "electricity",
+            "equipment_price_lei": 10605.65,
+            "installation_allowance_lei": 1300,
+            "requires_hydronic": false,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "catalog_nominal_heating_output",
+            "confidence": "high",
+            "scop": 4.3
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 10605.65,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://buydaikin.ro/daikinb2c/daikinStoreROB2C/ro_RO/Aer-condi%C8%9Bionat/21000-BTU/FTXM60A-%2B-RXM60A/p/U0IuRlRYTTYwQS9SWE02MEE%3D",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://buydaikin.ro/daikinb2c/daikinStoreROB2C/ro_RO/Aer-condi%C8%9Bionat/21000-BTU/FTXM60A-%2B-RXM60A/p/U0IuRlRYTTYwQS9SWE02MEE%3D",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "hp-aa-daikin-perfera-71a",
+      "external_id": "FTXM71A-RXM71A",
+      "category_id": "heat_pump",
+      "manufacturer": "Daikin",
+      "model": "Daikin Perfera FTXM71A / RXM71A — 8,2 kW încălzire",
+      "label": "Daikin Perfera FTXM71A / RXM71A — 8,2 kW încălzire",
+      "evidence_status": "source_backed",
+      "description": "Daikin România declară 8,2 kW nominal, COP 3,19, SCOP 4,10 și montaj 1.300 lei. Fără curbă COP multi-punct source-backed în catalogul curent.",
+      "legacy_heating_compat": {
+        "technology_id": "heat-pump-air-air",
+        "technology_label": "Pompă de căldură aer-aer",
+        "system_type": "heat_pump",
+        "generator_type": "heat_pump_air_air",
+        "carrier": "electricity",
+        "cost_profile": "electricity",
+        "installation_allowance_lei": 1300,
+        "requires_hydronic": false,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "catalog_nominal_heating_output",
+        "confidence": "high",
+        "source_kind": "manufacturer_ro_retail_plus_manufacturer_installation"
+      },
+      "technical_sources": [
+        {
+          "kind": "manufacturer_ro_retail_plus_manufacturer_installation",
+          "url": "https://www.buydaikin.ro/daikinb2c/daikinStoreROB2C/ro_RO/Aer-condi%C8%9Bionat/24000-BTU/FTXM71A-%2B-RXM71A/p/U0IuRlRYTTcxQS9SWE03MUE%3D",
+          "properties": {
+            "rated_power_kw": 8.2,
+            "technology_id": "heat-pump-air-air",
+            "technology_label": "Pompă de căldură aer-aer",
+            "system_type": "heat_pump",
+            "generator_type": "heat_pump_air_air",
+            "carrier": "electricity",
+            "cost_profile": "electricity",
+            "equipment_price_lei": 13768.59,
+            "installation_allowance_lei": 1300,
+            "requires_hydronic": false,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "catalog_nominal_heating_output",
+            "confidence": "high",
+            "scop": 4.1
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 13768.59,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.buydaikin.ro/daikinb2c/daikinStoreROB2C/ro_RO/Aer-condi%C8%9Bionat/24000-BTU/FTXM71A-%2B-RXM71A/p/U0IuRlRYTTcxQS9SWE03MUE%3D",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.buydaikin.ro/daikinb2c/daikinStoreROB2C/ro_RO/Aer-condi%C8%9Bionat/24000-BTU/FTXM71A-%2B-RXM71A/p/U0IuRlRYTTcxQS9SWE03MUE%3D",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "hp-aa-daikin-perfera-2x42a",
+      "external_id": "2x-FTXM42A-RXM42A",
+      "category_id": "heat_pump",
+      "manufacturer": "Daikin",
+      "model": "2 × Daikin Perfera FTXM42A / RXM42A — 10,8 kW încălzire",
+      "label": "2 × Daikin Perfera FTXM42A / RXM42A — 10,8 kW încălzire",
+      "evidence_status": "source_backed",
+      "description": "Pachet de 2 sisteme monosplit independente pentru zonare/multiple încăperi. CAPEX = 2 × preț echipament + 2 × montaj publicat de Daikin România; distribuția exactă pe camere se verifică la proiectare.",
+      "legacy_heating_compat": {
+        "technology_id": "heat-pump-air-air",
+        "technology_label": "Pompă de căldură aer-aer",
+        "system_type": "heat_pump",
+        "generator_type": "heat_pump_air_air",
+        "carrier": "electricity",
+        "cost_profile": "electricity",
+        "installation_allowance_lei": 2400,
+        "requires_hydronic": false,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "sum_of_catalog_nominal_heating_outputs",
+        "confidence": "medium",
+        "source_kind": "derived_bundle_from_manufacturer_ro_retail_and_installation"
+      },
+      "technical_sources": [
+        {
+          "kind": "derived_bundle_from_manufacturer_ro_retail_and_installation",
+          "url": "https://buydaikin.ro/daikinb2c/daikinStoreROB2C/ro_RO/Aer-condi%C8%9Bionat/14000-BTU/FTXM42A%2BRXM42A/p/U0IuRlRYTTQyQS9SWE00Mg%3D%3D",
+          "properties": {
+            "rated_power_kw": 10.8,
+            "technology_id": "heat-pump-air-air",
+            "technology_label": "Pompă de căldură aer-aer",
+            "system_type": "heat_pump",
+            "generator_type": "heat_pump_air_air",
+            "carrier": "electricity",
+            "cost_profile": "electricity",
+            "equipment_price_lei": 15916.34,
+            "installation_allowance_lei": 2400,
+            "requires_hydronic": false,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "sum_of_catalog_nominal_heating_outputs",
+            "confidence": "medium",
+            "scop": 5
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 15916.34,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://buydaikin.ro/daikinb2c/daikinStoreROB2C/ro_RO/Aer-condi%C8%9Bionat/14000-BTU/FTXM42A%2BRXM42A/p/U0IuRlRYTTQyQS9SWE00Mg%3D%3D",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://buydaikin.ro/daikinb2c/daikinStoreROB2C/ro_RO/Aer-condi%C8%9Bionat/14000-BTU/FTXM42A%2BRXM42A/p/U0IuRlRYTTQyQS9SWE00Mg%3D%3D",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "hp-aa-daikin-perfera-3x35a9",
+      "external_id": "3x-FTXM35A-RXM35A9",
+      "category_id": "heat_pump",
+      "manufacturer": "Daikin",
+      "model": "3 × Daikin Perfera FTXM35A / RXM35A9 — 12,0 kW încălzire",
+      "label": "3 × Daikin Perfera FTXM35A / RXM35A9 — 12,0 kW încălzire",
+      "evidence_status": "source_backed",
+      "description": "Pachet de 3 sisteme monosplit independente pentru zonare/multiple încăperi. CAPEX = 3 × preț echipament + 3 × montaj publicat de Daikin România; distribuția exactă pe camere se verifică la proiectare.",
+      "legacy_heating_compat": {
+        "technology_id": "heat-pump-air-air",
+        "technology_label": "Pompă de căldură aer-aer",
+        "system_type": "heat_pump",
+        "generator_type": "heat_pump_air_air",
+        "carrier": "electricity",
+        "cost_profile": "electricity",
+        "installation_allowance_lei": 3600,
+        "requires_hydronic": false,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "sum_of_catalog_nominal_heating_outputs",
+        "confidence": "medium",
+        "source_kind": "derived_bundle_from_manufacturer_ro_retail_and_installation"
+      },
+      "technical_sources": [
+        {
+          "kind": "derived_bundle_from_manufacturer_ro_retail_and_installation",
+          "url": "https://www.buydaikin.ro/daikinb2c/daikinROB2C/ro_RO/Aer-condi%C8%9Bionat/12000-BTU/FTXM35A%2BRXM35A/p/U0IuRlRYTTM1QS9SWE0zNQ%3D%3D",
+          "properties": {
+            "rated_power_kw": 12,
+            "technology_id": "heat-pump-air-air",
+            "technology_label": "Pompă de căldură aer-aer",
+            "system_type": "heat_pump",
+            "generator_type": "heat_pump_air_air",
+            "carrier": "electricity",
+            "cost_profile": "electricity",
+            "equipment_price_lei": 19935.96,
+            "installation_allowance_lei": 3600,
+            "requires_hydronic": false,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "sum_of_catalog_nominal_heating_outputs",
+            "confidence": "medium",
+            "scop": 5.2
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 19935.96,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.buydaikin.ro/daikinb2c/daikinROB2C/ro_RO/Aer-condi%C8%9Bionat/12000-BTU/FTXM35A%2BRXM35A/p/U0IuRlRYTTM1QS9SWE0zNQ%3D%3D",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.buydaikin.ro/daikinb2c/daikinROB2C/ro_RO/Aer-condi%C8%9Bionat/12000-BTU/FTXM35A%2BRXM35A/p/U0IuRlRYTTM1QS9SWE0zNQ%3D%3D",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "hp-aa-daikin-perfera-3x42a",
+      "external_id": "3x-FTXM42A-RXM42A",
+      "category_id": "heat_pump",
+      "manufacturer": "Daikin",
+      "model": "3 × Daikin Perfera FTXM42A / RXM42A — 16,2 kW încălzire",
+      "label": "3 × Daikin Perfera FTXM42A / RXM42A — 16,2 kW încălzire",
+      "evidence_status": "source_backed",
+      "description": "Pachet de 3 sisteme monosplit independente pentru zonare/multiple încăperi. CAPEX = 3 × preț echipament + 3 × montaj publicat de Daikin România; distribuția exactă pe camere se verifică la proiectare.",
+      "legacy_heating_compat": {
+        "technology_id": "heat-pump-air-air",
+        "technology_label": "Pompă de căldură aer-aer",
+        "system_type": "heat_pump",
+        "generator_type": "heat_pump_air_air",
+        "carrier": "electricity",
+        "cost_profile": "electricity",
+        "installation_allowance_lei": 3600,
+        "requires_hydronic": false,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "sum_of_catalog_nominal_heating_outputs",
+        "confidence": "medium",
+        "source_kind": "derived_bundle_from_manufacturer_ro_retail_and_installation"
+      },
+      "technical_sources": [
+        {
+          "kind": "derived_bundle_from_manufacturer_ro_retail_and_installation",
+          "url": "https://buydaikin.ro/daikinb2c/daikinStoreROB2C/ro_RO/Aer-condi%C8%9Bionat/14000-BTU/FTXM42A%2BRXM42A/p/U0IuRlRYTTQyQS9SWE00Mg%3D%3D",
+          "properties": {
+            "rated_power_kw": 16.2,
+            "technology_id": "heat-pump-air-air",
+            "technology_label": "Pompă de căldură aer-aer",
+            "system_type": "heat_pump",
+            "generator_type": "heat_pump_air_air",
+            "carrier": "electricity",
+            "cost_profile": "electricity",
+            "equipment_price_lei": 23874.51,
+            "installation_allowance_lei": 3600,
+            "requires_hydronic": false,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "sum_of_catalog_nominal_heating_outputs",
+            "confidence": "medium",
+            "scop": 5
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 23874.51,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://buydaikin.ro/daikinb2c/daikinStoreROB2C/ro_RO/Aer-condi%C8%9Bionat/14000-BTU/FTXM42A%2BRXM42A/p/U0IuRlRYTTQyQS9SWE00Mg%3D%3D",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://buydaikin.ro/daikinb2c/daikinStoreROB2C/ro_RO/Aer-condi%C8%9Bionat/14000-BTU/FTXM42A%2BRXM42A/p/U0IuRlRYTTQyQS9SWE00Mg%3D%3D",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    },
+    {
+      "id": "hp-aa-daikin-perfera-4x42a",
+      "external_id": "4x-FTXM42A-RXM42A",
+      "category_id": "heat_pump",
+      "manufacturer": "Daikin",
+      "model": "4 × Daikin Perfera FTXM42A / RXM42A — 21,6 kW încălzire",
+      "label": "4 × Daikin Perfera FTXM42A / RXM42A — 21,6 kW încălzire",
+      "evidence_status": "source_backed",
+      "description": "Pachet de 4 sisteme monosplit independente pentru zonare/multiple încăperi. CAPEX = 4 × preț echipament + 4 × montaj publicat de Daikin România; distribuția exactă pe camere se verifică la proiectare.",
+      "legacy_heating_compat": {
+        "technology_id": "heat-pump-air-air",
+        "technology_label": "Pompă de căldură aer-aer",
+        "system_type": "heat_pump",
+        "generator_type": "heat_pump_air_air",
+        "carrier": "electricity",
+        "cost_profile": "electricity",
+        "installation_allowance_lei": 4800,
+        "requires_hydronic": false,
+        "requires_existing_gas": false,
+        "requires_existing_high_power_electric": false,
+        "requires_existing_biomass_infrastructure": false,
+        "capacity_basis": "sum_of_catalog_nominal_heating_outputs",
+        "confidence": "medium",
+        "source_kind": "derived_bundle_from_manufacturer_ro_retail_and_installation"
+      },
+      "technical_sources": [
+        {
+          "kind": "derived_bundle_from_manufacturer_ro_retail_and_installation",
+          "url": "https://buydaikin.ro/daikinb2c/daikinStoreROB2C/ro_RO/Aer-condi%C8%9Bionat/14000-BTU/FTXM42A%2BRXM42A/p/U0IuRlRYTTQyQS9SWE00Mg%3D%3D",
+          "properties": {
+            "rated_power_kw": 21.6,
+            "technology_id": "heat-pump-air-air",
+            "technology_label": "Pompă de căldură aer-aer",
+            "system_type": "heat_pump",
+            "generator_type": "heat_pump_air_air",
+            "carrier": "electricity",
+            "cost_profile": "electricity",
+            "equipment_price_lei": 31832.68,
+            "installation_allowance_lei": 4800,
+            "requires_hydronic": false,
+            "requires_existing_gas": false,
+            "requires_existing_high_power_electric": false,
+            "requires_existing_biomass_infrastructure": false,
+            "capacity_basis": "sum_of_catalog_nominal_heating_outputs",
+            "confidence": "medium",
+            "scop": 5
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Catalog reference",
+          "price_lei": 31832.68,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://buydaikin.ro/daikinb2c/daikinStoreROB2C/ro_RO/Aer-condi%C8%9Bionat/14000-BTU/FTXM42A%2BRXM42A/p/U0IuRlRYTTQyQS9SWE00Mg%3D%3D",
+          "observed_on": "2026-09-25"
+        }
+      ],
+      "image": {
+        "source_page": "https://buydaikin.ro/daikinb2c/daikinStoreROB2C/ro_RO/Aer-condi%C8%9Bionat/14000-BTU/FTXM42A%2BRXM42A/p/U0IuRlRYTTQyQS9SWE00Mg%3D%3D",
+        "rights_basis": "link_only",
+        "status": "not_imported"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "heating_compat_ready"
+      }
+    }
+  ],
+  "heating_catalog_version": "ro-heating-real-products-2026-09-25-v7-air-air-zoned-bundles",
+  "performance_points": [
+    {
+      "product_id": "hp-ariston-5",
+      "outdoor_temperature_c": -7,
+      "flow_temperature_c": 35,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 5,
+      "cop": 2.9,
+      "test_standard": "EN 14511 / manufacturer declared operating point",
+      "source_kind": "manufacturer_technical_data",
+      "source_url": "https://www.ariston.com/en-uk/products/heat-pumps/air-source-heat-pumps/nimbus-pocket-m-net-r32",
+      "note": "Nominal heating point published by Ariston for Nimbus Pocket M NET R32."
+    },
+    {
+      "product_id": "hp-ariston-5",
+      "outdoor_temperature_c": 7,
+      "flow_temperature_c": 35,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 5,
+      "cop": 5,
+      "test_standard": "EN 14511 / manufacturer declared operating point",
+      "source_kind": "manufacturer_technical_data",
+      "source_url": "https://www.ariston.com/en-uk/products/heat-pumps/air-source-heat-pumps/nimbus-pocket-m-net-r32",
+      "note": "Nominal heating point published by Ariston for Nimbus Pocket M NET R32."
+    },
+    {
+      "product_id": "hp-ariston-8",
+      "outdoor_temperature_c": -7,
+      "flow_temperature_c": 35,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 7.41,
+      "cop": 3,
+      "test_standard": "EN 14511 / manufacturer declared operating point",
+      "source_kind": "manufacturer_technical_data",
+      "source_url": "https://www.ariston.com/en-uk/products/heat-pumps/air-source-heat-pumps/nimbus-pocket-m-net-r32",
+      "note": "Nominal heating point published by Ariston for Nimbus Pocket M NET R32."
+    },
+    {
+      "product_id": "hp-ariston-8",
+      "outdoor_temperature_c": 7,
+      "flow_temperature_c": 35,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 8,
+      "cop": 4.8,
+      "test_standard": "EN 14511 / manufacturer declared operating point",
+      "source_kind": "manufacturer_technical_data",
+      "source_url": "https://www.ariston.com/en-uk/products/heat-pumps/air-source-heat-pumps/nimbus-pocket-m-net-r32",
+      "note": "Nominal heating point published by Ariston for Nimbus Pocket M NET R32."
+    },
+    {
+      "product_id": "hp-ariston-12",
+      "outdoor_temperature_c": -7,
+      "flow_temperature_c": 35,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 9.51,
+      "cop": 3.2,
+      "test_standard": "EN 14511 / manufacturer declared operating point",
+      "source_kind": "manufacturer_technical_data",
+      "source_url": "https://www.ariston.com/en-uk/products/heat-pumps/air-source-heat-pumps/nimbus-pocket-m-net-r32",
+      "note": "Nominal heating point published by Ariston for Nimbus Pocket M NET R32."
+    },
+    {
+      "product_id": "hp-ariston-12",
+      "outdoor_temperature_c": 7,
+      "flow_temperature_c": 35,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 12,
+      "cop": 4.9,
+      "test_standard": "EN 14511 / manufacturer declared operating point",
+      "source_kind": "manufacturer_technical_data",
+      "source_url": "https://www.ariston.com/en-uk/products/heat-pumps/air-source-heat-pumps/nimbus-pocket-m-net-r32",
+      "note": "Nominal heating point published by Ariston for Nimbus Pocket M NET R32."
+    },
+    {
+      "product_id": "hp-ariston-15",
+      "outdoor_temperature_c": -7,
+      "flow_temperature_c": 35,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 11,
+      "cop": 3.1,
+      "test_standard": "EN 14511 / manufacturer declared operating point",
+      "source_kind": "manufacturer_technical_data",
+      "source_url": "https://www.ariston.com/en-uk/products/heat-pumps/air-source-heat-pumps/nimbus-pocket-m-net-r32",
+      "note": "Nominal heating point published by Ariston for Nimbus Pocket M NET R32."
+    },
+    {
+      "product_id": "hp-ariston-15",
+      "outdoor_temperature_c": 7,
+      "flow_temperature_c": 35,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 15,
+      "cop": 4.7,
+      "test_standard": "EN 14511 / manufacturer declared operating point",
+      "source_kind": "manufacturer_technical_data",
+      "source_url": "https://www.ariston.com/en-uk/products/heat-pumps/air-source-heat-pumps/nimbus-pocket-m-net-r32",
+      "note": "Nominal heating point published by Ariston for Nimbus Pocket M NET R32."
+    },
+    {
+      "product_id": "hp-lg-therma-v-hm071mr-u44",
+      "outdoor_temperature_c": 7,
+      "flow_temperature_c": 35,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 7,
+      "cop": 4.7,
+      "test_standard": "EN 14511 / manufacturer declared operating point",
+      "source_kind": "manufacturer_technical_data",
+      "source_url": "https://www.lg.com/ro/pompe-de-caldura/lg-therma-v-r32-monobloc-s",
+      "note": "LG Romania declared heating performance."
+    },
+    {
+      "product_id": "hp-lg-therma-v-hm071mr-u44",
+      "outdoor_temperature_c": 7,
+      "flow_temperature_c": 55,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 5.5,
+      "cop": 2.7,
+      "test_standard": "EN 14511 / manufacturer declared operating point",
+      "source_kind": "manufacturer_technical_data",
+      "source_url": "https://www.lg.com/ro/pompe-de-caldura/lg-therma-v-r32-monobloc-s",
+      "note": "LG Romania declared heating performance."
+    },
+    {
+      "product_id": "hp-lg-therma-v-hm071mr-u44",
+      "outdoor_temperature_c": 2,
+      "flow_temperature_c": 35,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 5.6,
+      "cop": 3.55,
+      "test_standard": "EN 14511 / manufacturer declared operating point",
+      "source_kind": "manufacturer_technical_data",
+      "source_url": "https://www.lg.com/ro/pompe-de-caldura/lg-therma-v-r32-monobloc-s",
+      "note": "LG Romania declared heating performance."
+    },
+    {
+      "product_id": "hp-nibe-s2125-8-400v",
+      "outdoor_temperature_c": -7,
+      "flow_temperature_c": 35,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 5.52,
+      "cop": 3.21,
+      "test_standard": "EN 14511 / manufacturer declared operating point",
+      "source_kind": "manufacturer_technical_data",
+      "source_url": "https://www.nibe.eu/download/18.712dd4e31961ba0902e77a/1762499304723/FLY_NIBE_S2125_FR_web.pdf",
+      "note": "NIBE S2125 technical data, maximum load."
+    },
+    {
+      "product_id": "hp-nibe-s2125-8-400v",
+      "outdoor_temperature_c": -7,
+      "flow_temperature_c": 55,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 5.17,
+      "cop": 2.29,
+      "test_standard": "EN 14511 / manufacturer declared operating point",
+      "source_kind": "manufacturer_technical_data",
+      "source_url": "https://www.nibe.eu/download/18.712dd4e31961ba0902e77a/1762499304723/FLY_NIBE_S2125_FR_web.pdf",
+      "note": "NIBE S2125 technical data, maximum load."
+    },
+    {
+      "product_id": "hp-nibe-s2125-8-400v",
+      "outdoor_temperature_c": 2,
+      "flow_temperature_c": 35,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 3.2,
+      "cop": 4.44,
+      "test_standard": "EN 14511 / manufacturer declared operating point",
+      "source_kind": "manufacturer_technical_data",
+      "source_url": "https://www.nibe.eu/download/18.712dd4e31961ba0902e77a/1762499304723/FLY_NIBE_S2125_FR_web.pdf",
+      "note": "NIBE S2125 technical data, partial load."
+    },
+    {
+      "product_id": "hp-mitsubishi-ecodan-puz-swm80vaa",
+      "outdoor_temperature_c": 7,
+      "flow_temperature_c": 35,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 6,
+      "cop": 5.02,
+      "test_standard": "EN 14511 / manufacturer declared operating point",
+      "source_kind": "manufacturer_technical_data",
+      "source_url": "https://confort.mitsubishielectric.fr/professionnel/modele/ecodan-power-inverter-silence-ersf-e-puz-swm",
+      "note": "Mitsubishi Ecodan published COP A7/W35; nominal output cross-checked on PUZ-SWM80VAA product information."
+    },
+    {
+      "product_id": "hp-mitsubishi-ecodan-puz-swm80vaa",
+      "outdoor_temperature_c": 7,
+      "flow_temperature_c": 55,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": null,
+      "cop": 2.5,
+      "test_standard": "EN 14511 / manufacturer declared operating point",
+      "source_kind": "manufacturer_technical_data",
+      "source_url": "https://confort.mitsubishielectric.fr/professionnel/modele/ecodan-power-inverter-silence-ersf-e-puz-swm",
+      "note": "Mitsubishi Ecodan published COP +7/W55."
+    },
+    {
+      "product_id": "hp-mitsubishi-ecodan-puz-swm80vaa",
+      "outdoor_temperature_c": -7,
+      "flow_temperature_c": 35,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": null,
+      "cop": 3.05,
+      "test_standard": "EN 14511 / manufacturer declared operating point",
+      "source_kind": "manufacturer_technical_data",
+      "source_url": "https://confort.mitsubishielectric.fr/professionnel/modele/ecodan-power-inverter-silence-ersf-e-puz-swm",
+      "note": "Mitsubishi Ecodan published COP -7/W35."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-35a9",
+      "outdoor_temperature_c": -20,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 2.5,
+      "cop": 3.15,
+      "test_standard": "EN 14825 / Eurovent certified air-air heating",
+      "source_kind": "eurovent_certified_performance",
+      "source_url": "https://www.eurovent-certification.com/en/catalog/program/certificate/participant/model/show/202165126",
+      "note": "TOL; pentru air-air câmpul flow_temperature_c=20°C reprezintă condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-35a9",
+      "outdoor_temperature_c": -7,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 2.22,
+      "cop": 3.47,
+      "test_standard": "EN 14825 / Eurovent certified air-air heating",
+      "source_kind": "eurovent_certified_performance",
+      "source_url": "https://www.eurovent-certification.com/en/catalog/program/certificate/participant/model/show/202165126",
+      "note": "EN 14825 part-load A; pentru air-air câmpul flow_temperature_c=20°C reprezintă condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-35a9",
+      "outdoor_temperature_c": 2,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 1.41,
+      "cop": 5.18,
+      "test_standard": "EN 14825 / Eurovent certified air-air heating",
+      "source_kind": "eurovent_certified_performance",
+      "source_url": "https://www.eurovent-certification.com/en/catalog/program/certificate/participant/model/show/202165126",
+      "note": "EN 14825 part-load B; pentru air-air câmpul flow_temperature_c=20°C reprezintă condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-35a9",
+      "outdoor_temperature_c": 7,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 0.95,
+      "cop": 6.48,
+      "test_standard": "EN 14825 / Eurovent certified air-air heating",
+      "source_kind": "eurovent_certified_performance",
+      "source_url": "https://www.eurovent-certification.com/en/catalog/program/certificate/participant/model/show/202165126",
+      "note": "EN 14825 part-load C; pentru air-air câmpul flow_temperature_c=20°C reprezintă condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-35a9",
+      "outdoor_temperature_c": 12,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 1.05,
+      "cop": 8,
+      "test_standard": "EN 14825 / Eurovent certified air-air heating",
+      "source_kind": "eurovent_certified_performance",
+      "source_url": "https://www.eurovent-certification.com/en/catalog/program/certificate/participant/model/show/202165126",
+      "note": "EN 14825 part-load D; pentru air-air câmpul flow_temperature_c=20°C reprezintă condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-42a",
+      "outdoor_temperature_c": -10,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 4,
+      "cop": 2.91,
+      "test_standard": "EN 14825 / Eurovent certified air-air heating",
+      "source_kind": "eurovent_certified_performance",
+      "source_url": "https://www.eurovent-certification.com/en/catalog/program/certificate/participant/model/show/202109590",
+      "note": "TOL; pentru air-air câmpul flow_temperature_c=20°C reprezintă condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-42a",
+      "outdoor_temperature_c": -7,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 3.54,
+      "cop": 3.26,
+      "test_standard": "EN 14825 / Eurovent certified air-air heating",
+      "source_kind": "eurovent_certified_performance",
+      "source_url": "https://www.eurovent-certification.com/en/catalog/program/certificate/participant/model/show/202109590",
+      "note": "EN 14825 part-load A; pentru air-air câmpul flow_temperature_c=20°C reprezintă condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-42a",
+      "outdoor_temperature_c": 2,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 2.16,
+      "cop": 4.98,
+      "test_standard": "EN 14825 / Eurovent certified air-air heating",
+      "source_kind": "eurovent_certified_performance",
+      "source_url": "https://www.eurovent-certification.com/en/catalog/program/certificate/participant/model/show/202109590",
+      "note": "EN 14825 part-load B; pentru air-air câmpul flow_temperature_c=20°C reprezintă condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-42a",
+      "outdoor_temperature_c": 7,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 1.39,
+      "cop": 6.3,
+      "test_standard": "EN 14825 / Eurovent certified air-air heating",
+      "source_kind": "eurovent_certified_performance",
+      "source_url": "https://www.eurovent-certification.com/en/catalog/program/certificate/participant/model/show/202109590",
+      "note": "EN 14825 part-load C; pentru air-air câmpul flow_temperature_c=20°C reprezintă condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-42a",
+      "outdoor_temperature_c": 12,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 1.55,
+      "cop": 7.74,
+      "test_standard": "EN 14825 / Eurovent certified air-air heating",
+      "source_kind": "eurovent_certified_performance",
+      "source_url": "https://www.eurovent-certification.com/en/catalog/program/certificate/participant/model/show/202109590",
+      "note": "EN 14825 part-load D; pentru air-air câmpul flow_temperature_c=20°C reprezintă condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-50a8",
+      "outdoor_temperature_c": 7,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 5.8,
+      "cop": 4,
+      "test_standard": "manufacturer declared nominal heating point",
+      "source_kind": "manufacturer_ro_technical_data",
+      "source_url": "https://buydaikin.ro/daikinb2c/daikinROB2C/ro_RO/Aer-condi%C8%9Bionat/18000-BTU/FTXM50A-%2B-RXM50A8/p/U0IuRlRYTTUwQS9SWE01MEE4",
+      "note": "COP nominal declarat; pentru air-air flow_temperature_c=20°C este condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-60a",
+      "outdoor_temperature_c": 7,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 7,
+      "cop": 3.61,
+      "test_standard": "manufacturer declared nominal heating point",
+      "source_kind": "manufacturer_ro_technical_data",
+      "source_url": "https://buydaikin.ro/daikinb2c/daikinStoreROB2C/ro_RO/Aer-condi%C8%9Bionat/21000-BTU/FTXM60A-%2B-RXM60A/p/U0IuRlRYTTYwQS9SWE02MEE%3D",
+      "note": "COP nominal declarat; pentru air-air flow_temperature_c=20°C este condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-71a",
+      "outdoor_temperature_c": 7,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 8.2,
+      "cop": 3.19,
+      "test_standard": "manufacturer declared nominal heating point",
+      "source_kind": "manufacturer_ro_technical_data",
+      "source_url": "https://www.buydaikin.ro/daikinb2c/daikinStoreROB2C/ro_RO/Aer-condi%C8%9Bionat/24000-BTU/FTXM71A-%2B-RXM71A/p/U0IuRlRYTTcxQS9SWE03MUE%3D",
+      "note": "COP nominal declarat; pentru air-air flow_temperature_c=20°C este condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-2x42a",
+      "outdoor_temperature_c": -10,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 8,
+      "cop": 2.91,
+      "test_standard": "EN 14825 / Eurovent certified air-air heating",
+      "source_kind": "derived_bundle_from_source_backed_cop_curve",
+      "source_url": "https://www.eurovent-certification.com/en/catalog/program/certificate/participant/model/show/202109590",
+      "note": "2 unități identice: COP neschimbat, capacitatea termică însumată. TOL; pentru air-air câmpul flow_temperature_c=20°C reprezintă condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-2x42a",
+      "outdoor_temperature_c": -7,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 7.08,
+      "cop": 3.26,
+      "test_standard": "EN 14825 / Eurovent certified air-air heating",
+      "source_kind": "derived_bundle_from_source_backed_cop_curve",
+      "source_url": "https://www.eurovent-certification.com/en/catalog/program/certificate/participant/model/show/202109590",
+      "note": "2 unități identice: COP neschimbat, capacitatea termică însumată. EN 14825 part-load A; pentru air-air câmpul flow_temperature_c=20°C reprezintă condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-2x42a",
+      "outdoor_temperature_c": 2,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 4.32,
+      "cop": 4.98,
+      "test_standard": "EN 14825 / Eurovent certified air-air heating",
+      "source_kind": "derived_bundle_from_source_backed_cop_curve",
+      "source_url": "https://www.eurovent-certification.com/en/catalog/program/certificate/participant/model/show/202109590",
+      "note": "2 unități identice: COP neschimbat, capacitatea termică însumată. EN 14825 part-load B; pentru air-air câmpul flow_temperature_c=20°C reprezintă condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-2x42a",
+      "outdoor_temperature_c": 7,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 2.78,
+      "cop": 6.3,
+      "test_standard": "EN 14825 / Eurovent certified air-air heating",
+      "source_kind": "derived_bundle_from_source_backed_cop_curve",
+      "source_url": "https://www.eurovent-certification.com/en/catalog/program/certificate/participant/model/show/202109590",
+      "note": "2 unități identice: COP neschimbat, capacitatea termică însumată. EN 14825 part-load C; pentru air-air câmpul flow_temperature_c=20°C reprezintă condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-2x42a",
+      "outdoor_temperature_c": 12,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 3.1,
+      "cop": 7.74,
+      "test_standard": "EN 14825 / Eurovent certified air-air heating",
+      "source_kind": "derived_bundle_from_source_backed_cop_curve",
+      "source_url": "https://www.eurovent-certification.com/en/catalog/program/certificate/participant/model/show/202109590",
+      "note": "2 unități identice: COP neschimbat, capacitatea termică însumată. EN 14825 part-load D; pentru air-air câmpul flow_temperature_c=20°C reprezintă condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-3x35a9",
+      "outdoor_temperature_c": -20,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 7.5,
+      "cop": 3.15,
+      "test_standard": "EN 14825 / Eurovent certified air-air heating",
+      "source_kind": "derived_bundle_from_source_backed_cop_curve",
+      "source_url": "https://www.eurovent-certification.com/en/catalog/program/certificate/participant/model/show/202165126",
+      "note": "3 unități identice: COP neschimbat, capacitatea termică însumată. TOL; pentru air-air câmpul flow_temperature_c=20°C reprezintă condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-3x35a9",
+      "outdoor_temperature_c": -7,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 6.66,
+      "cop": 3.47,
+      "test_standard": "EN 14825 / Eurovent certified air-air heating",
+      "source_kind": "derived_bundle_from_source_backed_cop_curve",
+      "source_url": "https://www.eurovent-certification.com/en/catalog/program/certificate/participant/model/show/202165126",
+      "note": "3 unități identice: COP neschimbat, capacitatea termică însumată. EN 14825 part-load A; pentru air-air câmpul flow_temperature_c=20°C reprezintă condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-3x35a9",
+      "outdoor_temperature_c": 2,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 4.23,
+      "cop": 5.18,
+      "test_standard": "EN 14825 / Eurovent certified air-air heating",
+      "source_kind": "derived_bundle_from_source_backed_cop_curve",
+      "source_url": "https://www.eurovent-certification.com/en/catalog/program/certificate/participant/model/show/202165126",
+      "note": "3 unități identice: COP neschimbat, capacitatea termică însumată. EN 14825 part-load B; pentru air-air câmpul flow_temperature_c=20°C reprezintă condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-3x35a9",
+      "outdoor_temperature_c": 7,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 2.85,
+      "cop": 6.48,
+      "test_standard": "EN 14825 / Eurovent certified air-air heating",
+      "source_kind": "derived_bundle_from_source_backed_cop_curve",
+      "source_url": "https://www.eurovent-certification.com/en/catalog/program/certificate/participant/model/show/202165126",
+      "note": "3 unități identice: COP neschimbat, capacitatea termică însumată. EN 14825 part-load C; pentru air-air câmpul flow_temperature_c=20°C reprezintă condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-3x35a9",
+      "outdoor_temperature_c": 12,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 3.15,
+      "cop": 8,
+      "test_standard": "EN 14825 / Eurovent certified air-air heating",
+      "source_kind": "derived_bundle_from_source_backed_cop_curve",
+      "source_url": "https://www.eurovent-certification.com/en/catalog/program/certificate/participant/model/show/202165126",
+      "note": "3 unități identice: COP neschimbat, capacitatea termică însumată. EN 14825 part-load D; pentru air-air câmpul flow_temperature_c=20°C reprezintă condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-3x42a",
+      "outdoor_temperature_c": -10,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 12,
+      "cop": 2.91,
+      "test_standard": "EN 14825 / Eurovent certified air-air heating",
+      "source_kind": "derived_bundle_from_source_backed_cop_curve",
+      "source_url": "https://www.eurovent-certification.com/en/catalog/program/certificate/participant/model/show/202109590",
+      "note": "3 unități identice: COP neschimbat, capacitatea termică însumată. TOL; pentru air-air câmpul flow_temperature_c=20°C reprezintă condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-3x42a",
+      "outdoor_temperature_c": -7,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 10.62,
+      "cop": 3.26,
+      "test_standard": "EN 14825 / Eurovent certified air-air heating",
+      "source_kind": "derived_bundle_from_source_backed_cop_curve",
+      "source_url": "https://www.eurovent-certification.com/en/catalog/program/certificate/participant/model/show/202109590",
+      "note": "3 unități identice: COP neschimbat, capacitatea termică însumată. EN 14825 part-load A; pentru air-air câmpul flow_temperature_c=20°C reprezintă condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-3x42a",
+      "outdoor_temperature_c": 2,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 6.48,
+      "cop": 4.98,
+      "test_standard": "EN 14825 / Eurovent certified air-air heating",
+      "source_kind": "derived_bundle_from_source_backed_cop_curve",
+      "source_url": "https://www.eurovent-certification.com/en/catalog/program/certificate/participant/model/show/202109590",
+      "note": "3 unități identice: COP neschimbat, capacitatea termică însumată. EN 14825 part-load B; pentru air-air câmpul flow_temperature_c=20°C reprezintă condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-3x42a",
+      "outdoor_temperature_c": 7,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 4.17,
+      "cop": 6.3,
+      "test_standard": "EN 14825 / Eurovent certified air-air heating",
+      "source_kind": "derived_bundle_from_source_backed_cop_curve",
+      "source_url": "https://www.eurovent-certification.com/en/catalog/program/certificate/participant/model/show/202109590",
+      "note": "3 unități identice: COP neschimbat, capacitatea termică însumată. EN 14825 part-load C; pentru air-air câmpul flow_temperature_c=20°C reprezintă condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-3x42a",
+      "outdoor_temperature_c": 12,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 4.65,
+      "cop": 7.74,
+      "test_standard": "EN 14825 / Eurovent certified air-air heating",
+      "source_kind": "derived_bundle_from_source_backed_cop_curve",
+      "source_url": "https://www.eurovent-certification.com/en/catalog/program/certificate/participant/model/show/202109590",
+      "note": "3 unități identice: COP neschimbat, capacitatea termică însumată. EN 14825 part-load D; pentru air-air câmpul flow_temperature_c=20°C reprezintă condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-4x42a",
+      "outdoor_temperature_c": -10,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 16,
+      "cop": 2.91,
+      "test_standard": "EN 14825 / Eurovent certified air-air heating",
+      "source_kind": "derived_bundle_from_source_backed_cop_curve",
+      "source_url": "https://www.eurovent-certification.com/en/catalog/program/certificate/participant/model/show/202109590",
+      "note": "4 unități identice: COP neschimbat, capacitatea termică însumată. TOL; pentru air-air câmpul flow_temperature_c=20°C reprezintă condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-4x42a",
+      "outdoor_temperature_c": -7,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 14.16,
+      "cop": 3.26,
+      "test_standard": "EN 14825 / Eurovent certified air-air heating",
+      "source_kind": "derived_bundle_from_source_backed_cop_curve",
+      "source_url": "https://www.eurovent-certification.com/en/catalog/program/certificate/participant/model/show/202109590",
+      "note": "4 unități identice: COP neschimbat, capacitatea termică însumată. EN 14825 part-load A; pentru air-air câmpul flow_temperature_c=20°C reprezintă condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-4x42a",
+      "outdoor_temperature_c": 2,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 8.64,
+      "cop": 4.98,
+      "test_standard": "EN 14825 / Eurovent certified air-air heating",
+      "source_kind": "derived_bundle_from_source_backed_cop_curve",
+      "source_url": "https://www.eurovent-certification.com/en/catalog/program/certificate/participant/model/show/202109590",
+      "note": "4 unități identice: COP neschimbat, capacitatea termică însumată. EN 14825 part-load B; pentru air-air câmpul flow_temperature_c=20°C reprezintă condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-4x42a",
+      "outdoor_temperature_c": 7,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 5.56,
+      "cop": 6.3,
+      "test_standard": "EN 14825 / Eurovent certified air-air heating",
+      "source_kind": "derived_bundle_from_source_backed_cop_curve",
+      "source_url": "https://www.eurovent-certification.com/en/catalog/program/certificate/participant/model/show/202109590",
+      "note": "4 unități identice: COP neschimbat, capacitatea termică însumată. EN 14825 part-load C; pentru air-air câmpul flow_temperature_c=20°C reprezintă condiția interioară de referință, nu tur hidronic."
+    },
+    {
+      "product_id": "hp-aa-daikin-perfera-4x42a",
+      "outdoor_temperature_c": 12,
+      "flow_temperature_c": 20,
+      "return_temperature_c": null,
+      "delta_t_k": null,
+      "heating_capacity_kw": 6.2,
+      "cop": 7.74,
+      "test_standard": "EN 14825 / Eurovent certified air-air heating",
+      "source_kind": "derived_bundle_from_source_backed_cop_curve",
+      "source_url": "https://www.eurovent-certification.com/en/catalog/program/certificate/participant/model/show/202109590",
+      "note": "4 unități identice: COP neschimbat, capacitatea termică însumată. EN 14825 part-load D; pentru air-air câmpul flow_temperature_c=20°C reprezintă condiția interioară de referință, nu tur hidronic."
+    }
+  ],
+  "seasonal_performance": [
+    {
+      "product_id": "hp-nibe-s2125-8-400v",
+      "climate": "average",
+      "application_temperature_c": 35,
+      "scop": 5,
+      "design_load_kw": 5.3,
+      "source_kind": "manufacturer_technical_data",
+      "source_url": "https://www.nibe.eu/download/18.712dd4e31961ba0902e77a/1762499304723/FLY_NIBE_S2125_FR_web.pdf",
+      "test_standard": "EN 14825"
+    },
+    {
+      "product_id": "hp-nibe-s2125-8-400v",
+      "climate": "average",
+      "application_temperature_c": 55,
+      "scop": 3.7,
+      "design_load_kw": 5.3,
+      "source_kind": "manufacturer_technical_data",
+      "source_url": "https://www.nibe.eu/download/18.712dd4e31961ba0902e77a/1762499304723/FLY_NIBE_S2125_FR_web.pdf",
+      "test_standard": "EN 14825"
+    }
+  ],
+  "batch": {
+    "batch_id": "energy-product-unified-2026-10-01",
+    "source_name": "repo_unified_energy_product_catalog",
+    "note": "Unified source pack: 40 heating products + cross-category products; legacy heating store retained only for shadow parity."
+  }
+}

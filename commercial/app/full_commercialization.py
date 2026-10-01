@@ -107,6 +107,8 @@ def _active_families(measures: ParametricMeasuresV1) -> set[str]:
         active.add("floor")
     if measures.window_replacement_fraction > 1e-9:
         active.add("windows")
+    if measures.ventilation_heat_recovery_efficiency_target > 1e-9:
+        active.add("ventilation")
     if measures.pv_added_kwp > 1e-9:
         active.add("pv")
     if measures.solar_thermal_added_m2 > 1e-9:

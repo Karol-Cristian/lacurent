@@ -70,6 +70,24 @@ from .full_commercialization import (
     FullProductBackedOptimizationRequestV1,
     run_full_product_backed_optimization,
 )
+from .energy_product_catalog_store import (
+    read_energy_product_candidate_window_d1,
+)
+from .energy_product_teo_adapter import (
+    HrvFinalistCommercializationRequestV1,
+    PvCatalogFinalistCommercializationRequestV1,
+    RadiatorFinalistCommercializationRequestV1,
+    UnderfloorPipeFinalistBomRequestV1,
+    UnderfloorSystemFinalistBomRequestV1,
+    WallCatalogFinalistCommercializationRequestV1,
+    commercialize_hrv_finalist,
+    commercialize_pv_finalist_from_catalog,
+    commercialize_radiator_bom_from_finalist,
+    commercialize_underfloor_pipe_bom_from_finalist,
+    commercialize_underfloor_system_bom_from_finalist,
+    pv_products_from_catalog_window,
+    wall_products_from_catalog_window,
+)
 from .heating_optimization import (
     HeatingBranchSummaryV1,
     apply_supplemental_heating_technology,
@@ -113,6 +131,12 @@ from .simulation_facts import (
     get_published_simulation_fact,
     list_published_simulation_facts,
 )
+from .impact import (
+    authenticated_user_id,
+    read_public_impact_summary,
+    save_impact_snapshot,
+)
+from . import account
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = BASE_DIR / "data"
@@ -2234,6 +2258,882 @@ async def full_product_backed_optimization_api(
     return JSONResponse(model_to_dict(result))
 
 
+@app.post("/api/optimization/commercialize/wall-finalist-catalog")
+async def wall_finalist_catalog_commercialization_api(
+    payload: WallCatalogFinalistCommercializationRequestV1,
+    request: Request,
+) -> JSONResponse:
+    """Discretize one TEO wall-R finalist against bounded source-backed D1 SKUs."""
+
+    env = request.scope.get("env")
+    db = getattr(env, "DB", None) if env is not None else None
+    if db is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Energy product catalog D1 is unavailable.",
+        )
+
+    try:
+        window = await read_energy_product_candidate_window_d1(
+            db,
+            "wall_insulation",
+            limit=payload.category_limit,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Energy product catalog D1 read failed.",
+        ) from exc
+
+    products = wall_products_from_catalog_window(window)
+    if not products:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": (
+                    "No wall-insulation product has complete source-backed "
+                    "thermal and package-price data."
+                ),
+                "loadedProducts": int(window.get("loaded_products") or 0),
+                "blockedProducts": list(window.get("blocked_products") or []),
+            },
+        )
+
+    try:
+        result = commercialize_wall_candidate(
+            WallCommercializationRequestV1(
+                baseline=payload.baseline,
+                raw_candidate=payload.raw_candidate,
+                products=products,
+                nonmaterial_installed_cost_per_m2_lei=(
+                    payload.nonmaterial_installed_cost_per_m2_lei
+                ),
+            ),
+            await _optimizer_cost_catalog(request),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    return JSONResponse(
+        {
+            "commercialization": model_to_dict(result),
+            "catalogWindow": {
+                "mode": window.get("catalog_mode"),
+                "loadedProducts": int(window.get("loaded_products") or 0),
+                "commercialProducts": len(products),
+                "blockedProducts": list(window.get("blocked_products") or []),
+            },
+            "stage": "wall_finalist_catalog_discretization",
+        }
+    )
+
+
+@app.post("/api/optimization/commercialize/pv-finalist-catalog")
+async def pv_finalist_catalog_commercialization_api(
+    payload: PvCatalogFinalistCommercializationRequestV1,
+    request: Request,
+) -> JSONResponse:
+    """Round one TEO PV finalist to whole source-backed D1 modules and recalculate."""
+
+    env = request.scope.get("env")
+    db = getattr(env, "DB", None) if env is not None else None
+    if db is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Energy product catalog D1 is unavailable.",
+        )
+
+    try:
+        window = await read_energy_product_candidate_window_d1(
+            db,
+            "pv_module",
+            limit=payload.category_limit,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Energy product catalog D1 read failed.",
+        ) from exc
+
+    products = pv_products_from_catalog_window(window)
+    if not products:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": (
+                    "No PV module has complete source-backed power "
+                    "and unit-price data."
+                ),
+                "loadedProducts": int(window.get("loaded_products") or 0),
+                "blockedProducts": list(window.get("blocked_products") or []),
+            },
+        )
+
+    try:
+        commercial = commercialize_pv_finalist_from_catalog(
+            payload.raw_candidate,
+            products,
+            activation_cost_lei=payload.activation_cost_lei,
+            nonmodule_installed_cost_per_kwp_lei=(
+                payload.nonmodule_installed_cost_per_kwp_lei
+            ),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    pv_line = next(
+        (
+            line
+            for line in commercial.cost_breakdown
+            if line.family == "pv"
+        ),
+        None,
+    )
+    return JSONResponse(
+        {
+            "candidate": model_to_dict(commercial),
+            "matchedProduct": (
+                None
+                if pv_line is None
+                else {
+                    "productId": pv_line.product_id,
+                    "sku": pv_line.sku,
+                    "moduleCount": pv_line.quantity,
+                    "realizedAddedKwp": pv_line.parameter_value,
+                    "materialSubtotalLei": pv_line.material_subtotal_lei,
+                    "nonmaterialSubtotalLei": (
+                        pv_line.nonmaterial_subtotal_lei
+                    ),
+                }
+            ),
+            "catalogWindow": {
+                "mode": window.get("catalog_mode"),
+                "loadedProducts": int(window.get("loaded_products") or 0),
+                "commercialProducts": len(products),
+                "blockedProducts": list(window.get("blocked_products") or []),
+            },
+            "stage": "pv_finalist_catalog_discretization",
+        }
+    )
+
+
+@app.post("/api/optimization/commercialize/hrv-finalist")
+async def hrv_finalist_commercialization_api(
+    payload: HrvFinalistCommercializationRequestV1,
+    request: Request,
+) -> JSONResponse:
+    """Bounded D1 HRV match followed by one canonical finalist recalculation."""
+
+    env = request.scope.get("env")
+    db = getattr(env, "DB", None) if env is not None else None
+    if db is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Energy product catalog D1 is unavailable.",
+        )
+
+    try:
+        window = await read_energy_product_candidate_window_d1(
+            db,
+            "hrv_unit",
+            limit=payload.category_limit,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Energy product catalog D1 read failed.",
+        ) from exc
+
+    candidates = list(window.get("candidates") or [])
+    if not candidates:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": "No source-backed HRV product is TEO-ready.",
+                "loadedProducts": int(window.get("loaded_products") or 0),
+                "blockedProducts": list(window.get("blocked_products") or []),
+            },
+        )
+
+    try:
+        commercial, match = commercialize_hrv_finalist(
+            payload.raw_candidate,
+            candidates,
+            fan_operation_hours_per_year=(
+                payload.fan_operation_hours_per_year
+            ),
+            installation_allowance_lei=payload.installation_allowance_lei,
+            max_specific_power_input_w_m3h=(
+                payload.max_specific_power_input_w_m3h
+            ),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    return JSONResponse(
+        {
+            "candidate": model_to_dict(commercial),
+            "matchedProduct": {
+                "productId": match.product_id,
+                "maxAirflowM3h": match.max_airflow_m3h,
+                "heatRecoveryEfficiency": match.heat_recovery_efficiency,
+                "specificPowerInputWPerM3h": (
+                    match.specific_power_input_w_m3h
+                ),
+                "unitPriceLei": match.unit_price_lei,
+                "selectionBasis": match.selection_basis,
+            },
+            "catalogWindow": {
+                "mode": window.get("catalog_mode"),
+                "loadedProducts": int(window.get("loaded_products") or 0),
+                "teoReadyProducts": int(window.get("teo_ready_products") or 0),
+                "blockedProducts": list(window.get("blocked_products") or []),
+            },
+            "stage": "hrv_finalist_product_recheck",
+        }
+    )
+
+
+@app.post("/api/optimization/commercialize/radiator-finalist")
+async def radiator_finalist_commercialization_api(
+    payload: RadiatorFinalistCommercializationRequestV1,
+    request: Request,
+) -> JSONResponse:
+    """Bounded radiator D1 match derived from the canonical finalist design load."""
+
+    env = request.scope.get("env")
+    db = getattr(env, "DB", None) if env is not None else None
+    if db is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Energy product catalog D1 is unavailable.",
+        )
+    try:
+        window = await read_energy_product_candidate_window_d1(
+            db,
+            "radiator",
+            limit=payload.category_limit,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Energy product catalog D1 read failed.",
+        ) from exc
+
+    candidates = list(window.get("candidates") or [])
+    if not candidates:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": "No source-backed radiator product is TEO-ready.",
+                "loadedProducts": int(window.get("loaded_products") or 0),
+                "blockedProducts": list(window.get("blocked_products") or []),
+            },
+        )
+    try:
+        commercial, match = commercialize_radiator_bom_from_finalist(
+            payload.raw_candidate,
+            candidates,
+            installation_allowance_lei_per_unit=(
+                payload.installation_allowance_lei_per_unit
+            ),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    return JSONResponse(
+        {
+            "candidate": model_to_dict(commercial),
+            "matchedProduct": {
+                "productId": match.product_id,
+                "quantity": match.quantity,
+                "outputPerUnitW": match.output_per_unit_w,
+                "availableOutputW": match.available_output_w,
+                "equipmentSubtotalLei": match.equipment_subtotal_lei,
+                "selectionBasis": match.selection_basis,
+            },
+            "catalogWindow": {
+                "mode": window.get("catalog_mode"),
+                "loadedProducts": int(window.get("loaded_products") or 0),
+                "teoReadyProducts": int(window.get("teo_ready_products") or 0),
+                "blockedProducts": list(window.get("blocked_products") or []),
+            },
+            "stage": "radiator_finalist_bom_recheck",
+        }
+    )
+
+
+@app.post("/api/optimization/commercialize/underfloor-pipe-finalist")
+async def underfloor_pipe_finalist_commercialization_api(
+    payload: UnderfloorPipeFinalistBomRequestV1,
+    request: Request,
+) -> JSONResponse:
+    """Bounded UFH pipe BOM after explicit floor-system design inputs exist."""
+
+    env = request.scope.get("env")
+    db = getattr(env, "DB", None) if env is not None else None
+    if db is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Energy product catalog D1 is unavailable.",
+        )
+    try:
+        window = await read_energy_product_candidate_window_d1(
+            db,
+            "underfloor_pipe",
+            limit=payload.category_limit,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Energy product catalog D1 read failed.",
+        ) from exc
+
+    candidates = list(window.get("candidates") or [])
+    if not candidates:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": "No source-backed underfloor pipe product is TEO-ready.",
+                "loadedProducts": int(window.get("loaded_products") or 0),
+                "blockedProducts": list(window.get("blocked_products") or []),
+            },
+        )
+    try:
+        commercial, match, design = (
+            commercialize_underfloor_pipe_bom_from_finalist(
+                payload.raw_candidate,
+                candidates,
+                active_area_m2=payload.active_area_m2,
+                spacing_mm=payload.spacing_mm,
+                max_loop_length_m=payload.max_loop_length_m,
+                connection_allowance_m=payload.connection_allowance_m,
+                verified_available_heat_output_w_m2=(
+                    payload.verified_available_heat_output_w_m2
+                ),
+                installation_allowance_lei=(
+                    payload.installation_allowance_lei
+                ),
+            )
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    return JSONResponse(
+        {
+            "candidate": model_to_dict(commercial),
+            "matchedProduct": {
+                "productId": match.product_id,
+                "coilCount": match.coil_count,
+                "purchasedLengthM": match.purchased_length_m,
+                "requiredLengthM": match.required_length_m,
+                "surplusLengthM": match.surplus_length_m,
+                "materialSubtotalLei": match.material_subtotal_lei,
+                "selectionBasis": match.selection_basis,
+            },
+            "designRequirement": {
+                "activeAreaM2": design.active_area_m2,
+                "spacingMm": design.spacing_mm,
+                "requiredPipeLengthM": design.required_pipe_length_m,
+                "maxLoopLengthM": design.max_loop_length_m,
+                "requiredLoopCount": design.required_loop_count,
+                "requiredHeatOutputW": design.required_heat_output_w,
+                "requiredHeatFluxWm2": design.required_heat_flux_w_m2,
+                "verifiedAvailableHeatOutputWm2": (
+                    design.verified_available_heat_output_w_m2
+                ),
+            },
+            "catalogWindow": {
+                "mode": window.get("catalog_mode"),
+                "loadedProducts": int(window.get("loaded_products") or 0),
+                "teoReadyProducts": int(window.get("teo_ready_products") or 0),
+                "blockedProducts": list(window.get("blocked_products") or []),
+            },
+            "stage": "underfloor_pipe_finalist_bom_recheck",
+        }
+    )
+
+
+@app.post("/api/optimization/commercialize/underfloor-system-finalist")
+async def underfloor_system_finalist_commercialization_api(
+    payload: UnderfloorSystemFinalistBomRequestV1,
+    request: Request,
+) -> JSONResponse:
+    """Build a bounded UFH pipe/manifold/control BOM from one TEO finalist."""
+
+    env = request.scope.get("env")
+    db = getattr(env, "DB", None) if env is not None else None
+    if db is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Energy product catalog D1 is unavailable.",
+        )
+
+    try:
+        pipe_window = await read_energy_product_candidate_window_d1(
+            db,
+            "underfloor_pipe",
+            limit=payload.category_limit,
+        )
+        manifold_window = await read_energy_product_candidate_window_d1(
+            db,
+            "underfloor_manifold",
+            limit=payload.category_limit,
+        )
+        control_window = None
+        if payload.control_zone_count is not None:
+            control_window = await read_energy_product_candidate_window_d1(
+                db,
+                "heating_control",
+                limit=payload.category_limit,
+            )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Energy product catalog D1 read failed.",
+        ) from exc
+
+    pipe_candidates = list(pipe_window.get("candidates") or [])
+    manifold_candidates = list(manifold_window.get("candidates") or [])
+    control_candidates = (
+        None
+        if control_window is None
+        else list(control_window.get("candidates") or [])
+    )
+
+    missing_categories: list[dict[str, Any]] = []
+    if not pipe_candidates:
+        missing_categories.append(
+            {
+                "category": "underfloor_pipe",
+                "blockedProducts": list(
+                    pipe_window.get("blocked_products") or []
+                ),
+            }
+        )
+    if not manifold_candidates:
+        missing_categories.append(
+            {
+                "category": "underfloor_manifold",
+                "blockedProducts": list(
+                    manifold_window.get("blocked_products") or []
+                ),
+            }
+        )
+    if (
+        payload.control_zone_count is not None
+        and not control_candidates
+    ):
+        missing_categories.append(
+            {
+                "category": "heating_control",
+                "blockedProducts": list(
+                    (control_window or {}).get("blocked_products") or []
+                ),
+            }
+        )
+    if missing_categories:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": (
+                    "Underfloor system BOM cannot be completed from the "
+                    "source-backed catalog."
+                ),
+                "missingCategories": missing_categories,
+            },
+        )
+
+    try:
+        commercial, pipe_match, manifold_match, control_match, design = (
+            commercialize_underfloor_system_bom_from_finalist(
+                payload.raw_candidate,
+                pipe_candidates,
+                manifold_candidates,
+                active_area_m2=payload.active_area_m2,
+                spacing_mm=payload.spacing_mm,
+                max_loop_length_m=payload.max_loop_length_m,
+                connection_allowance_m=payload.connection_allowance_m,
+                verified_available_heat_output_w_m2=(
+                    payload.verified_available_heat_output_w_m2
+                ),
+                control_products=control_candidates,
+                control_zone_count=payload.control_zone_count,
+                pipe_installation_allowance_lei=(
+                    payload.pipe_installation_allowance_lei
+                ),
+                manifold_installation_allowance_lei=(
+                    payload.manifold_installation_allowance_lei
+                ),
+                control_installation_allowance_lei=(
+                    payload.control_installation_allowance_lei
+                ),
+            )
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    return JSONResponse(
+        {
+            "candidate": model_to_dict(commercial),
+            "pipe": {
+                "productId": pipe_match.product_id,
+                "coilCount": pipe_match.coil_count,
+                "requiredLengthM": pipe_match.required_length_m,
+                "purchasedLengthM": pipe_match.purchased_length_m,
+                "surplusLengthM": pipe_match.surplus_length_m,
+                "materialSubtotalLei": pipe_match.material_subtotal_lei,
+            },
+            "manifold": {
+                "productId": manifold_match.product_id,
+                "quantity": manifold_match.quantity,
+                "unitCircuitCount": manifold_match.unit_circuit_count,
+                "requiredCircuitCount": manifold_match.required_circuit_count,
+                "availableCircuitCount": manifold_match.available_circuit_count,
+                "equipmentSubtotalLei": (
+                    manifold_match.equipment_subtotal_lei
+                ),
+            },
+            "control": (
+                None
+                if control_match is None
+                else {
+                    "productId": control_match.product_id,
+                    "quantity": control_match.quantity,
+                    "unitZoneCount": control_match.unit_zone_count,
+                    "requiredZoneCount": control_match.required_zone_count,
+                    "availableZoneCount": control_match.available_zone_count,
+                    "equipmentSubtotalLei": (
+                        control_match.equipment_subtotal_lei
+                    ),
+                }
+            ),
+            "designRequirement": {
+                "activeAreaM2": design.active_area_m2,
+                "spacingMm": design.spacing_mm,
+                "requiredPipeLengthM": design.required_pipe_length_m,
+                "maxLoopLengthM": design.max_loop_length_m,
+                "requiredLoopCount": design.required_loop_count,
+                "requiredHeatOutputW": design.required_heat_output_w,
+                "requiredHeatFluxWm2": design.required_heat_flux_w_m2,
+                "verifiedAvailableHeatOutputWm2": (
+                    design.verified_available_heat_output_w_m2
+                ),
+            },
+            "catalogWindows": {
+                "pipe": {
+                    "loadedProducts": int(
+                        pipe_window.get("loaded_products") or 0
+                    ),
+                    "teoReadyProducts": int(
+                        pipe_window.get("teo_ready_products") or 0
+                    ),
+                },
+                "manifold": {
+                    "loadedProducts": int(
+                        manifold_window.get("loaded_products") or 0
+                    ),
+                    "teoReadyProducts": int(
+                        manifold_window.get("teo_ready_products") or 0
+                    ),
+                },
+                "control": (
+                    None
+                    if control_window is None
+                    else {
+                        "loadedProducts": int(
+                            control_window.get("loaded_products") or 0
+                        ),
+                        "teoReadyProducts": int(
+                            control_window.get("teo_ready_products") or 0
+                        ),
+                    }
+                ),
+            },
+            "stage": "underfloor_system_finalist_bom_recheck",
+        }
+    )
+
+
+
+@app.post("/api/home-lab/bom")
+async def home_lab_catalog_bom_api(request: Request) -> JSONResponse:
+    """Resolve post-TEO engineering requirements to bounded D1 product rows.
+
+    This is deliberately downstream of TEO. It does not participate in search
+    cardinality and does not trigger a new canonical RBPE pass.
+    """
+
+    env = request.scope.get("env")
+    if env is None:
+        return JSONResponse({
+            "source": "local-unbound",
+            "available": False,
+            "stage": "post_teo_bom",
+            "items": [],
+        })
+    db = getattr(env, "DB", None)
+    if db is None:
+        raise HTTPException(status_code=503, detail="Energy product catalog D1 is unavailable.")
+
+    raw = await request.json()
+    requirements = raw.get("requirements") or []
+    if not isinstance(requirements, list):
+        raise HTTPException(status_code=422, detail="requirements must be a list.")
+
+    def heating_category(branch: str) -> str | None:
+        key = str(branch or "").strip().lower()
+        if key == "keep-current-heating":
+            return None
+        if "heat-pump" in key:
+            return "heat_pump"
+        if "condensing-gas" in key or "gas" in key:
+            return "gas_boiler"
+        if "electric-boiler" in key or "electric" in key:
+            return "electric_boiler"
+        if "pellet" in key:
+            return "pellet_boiler"
+        return None
+
+    def numeric(props: dict[str, Any], key: str) -> float | None:
+        value = props.get(key)
+        if value in (None, ""):
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    def cheapest_offer(product: dict[str, Any]) -> dict[str, Any] | None:
+        offers = [
+            item for item in (product.get("offers") or [])
+            if item.get("price_lei") not in (None, "")
+        ]
+        if not offers:
+            return None
+        return min(offers, key=lambda item: float(item.get("price_lei") or 0))
+
+    def product_card(product: dict[str, Any], *, quantity: float, quantity_unit: str,
+                     subtotal_lei: float | None, basis: str, requirement: dict[str, Any]) -> dict[str, Any]:
+        images = list(product.get("images") or [])
+        primary = images[0] if images else {}
+        offer = cheapest_offer(product) or {}
+        return {
+            "family": requirement.get("family"),
+            "categoryId": product.get("category_id"),
+            "productId": product.get("id"),
+            "manufacturer": product.get("manufacturer"),
+            "model": product.get("model"),
+            "label": product.get("label"),
+            "manufacturerSku": product.get("manufacturer_sku"),
+            "quantity": round(float(quantity), 3),
+            "quantityUnit": quantity_unit,
+            "unitPriceLei": offer.get("price_lei"),
+            "priceBasis": offer.get("price_basis"),
+            "subtotalLei": None if subtotal_lei is None else round(float(subtotal_lei), 2),
+            "supplier": offer.get("supplier"),
+            "sourceUrl": offer.get("source_url") or product.get("source_url"),
+            "imageUrl": primary.get("image_url"),
+            "imageSourceUrl": primary.get("source_url") or product.get("source_url"),
+            "imageRightsBasis": primary.get("rights_basis"),
+            "selectionBasis": basis,
+            "properties": product.get("properties") or {},
+        }
+
+    results: list[dict[str, Any]] = []
+    for requirement in requirements[:16]:
+        if not isinstance(requirement, dict):
+            continue
+        family = str(requirement.get("family") or "")
+        category_id = str(requirement.get("categoryId") or "")
+        if family == "heating":
+            category_id = heating_category(str(requirement.get("technologyBranch") or "")) or ""
+        if not category_id:
+            results.append({"family": family, "matched": False, "reason": "no_new_product_required"})
+            continue
+
+        try:
+            window = await read_energy_product_candidate_window_d1(db, category_id, limit=24)
+        except Exception:
+            results.append({"family": family, "matched": False, "reason": "catalog_read_failed"})
+            continue
+
+        products = [
+            p for p in (window.get("products") or [])
+            if not p.get("missing_teo_properties")
+        ]
+        if not products:
+            results.append({
+                "family": family,
+                "categoryId": category_id,
+                "matched": False,
+                "reason": "no_source_backed_product",
+            })
+            continue
+
+        selected: dict[str, Any] | None = None
+        quantity = 1.0
+        quantity_unit = "buc"
+        subtotal: float | None = None
+        basis = "bounded source-backed D1 match"
+
+        if category_id in {"wall_insulation", "roof_insulation", "floor_insulation"}:
+            area = max(float(requirement.get("requiredAreaM2") or 0), 0.0)
+            target_mm = max(float(requirement.get("targetThicknessMm") or 0), 0.0)
+            eligible = [
+                p for p in products
+                if (numeric(p.get("properties") or {}, "thickness_mm") or 0) + 1e-9 >= target_mm
+            ] or products
+            selected = min(
+                eligible,
+                key=lambda p: (
+                    abs((numeric(p.get("properties") or {}, "thickness_mm") or 0) - target_mm),
+                    float((cheapest_offer(p) or {}).get("price_lei") or 1e18),
+                ),
+            )
+            props = selected.get("properties") or {}
+            offer = cheapest_offer(selected)
+            package_area = numeric(props, "package_area_m2")
+            if offer and str(offer.get("price_basis") or "") == "lei_package":
+                if package_area is None and str(offer.get("quantity_unit") or "") == "m2":
+                    package_area = float(offer.get("quantity") or 0)
+                if package_area and package_area > 0:
+                    quantity = max(1, math.ceil(area / package_area))
+                    quantity_unit = "pachete"
+                    subtotal = quantity * float(offer.get("price_lei") or 0)
+            elif offer and str(offer.get("price_basis") or "") == "lei_per_m2":
+                quantity = area
+                quantity_unit = "m²"
+                subtotal = area * float(offer.get("price_lei") or 0)
+            basis = f"grosime ≥ {target_mm:.0f} mm; necesar {area:.1f} m²"
+
+        elif category_id == "window_system":
+            area = max(float(requirement.get("requiredAreaM2") or 0), 0.0)
+            target_uw = max(float(requirement.get("targetUw") or 0), 0.0)
+            eligible = [
+                p for p in products
+                if target_uw <= 0
+                or (numeric(p.get("properties") or {}, "uw_w_m2k") or 1e9) <= target_uw + 1e-9
+            ] or products
+            selected = min(
+                eligible,
+                key=lambda p: (
+                    numeric(p.get("properties") or {}, "uw_w_m2k") or 1e9,
+                    float((cheapest_offer(p) or {}).get("price_lei") or 1e18),
+                ),
+            )
+            offer = cheapest_offer(selected)
+            quantity = area
+            quantity_unit = "m²"
+            if offer and str(offer.get("price_basis") or "") == "lei_per_m2":
+                subtotal = area * float(offer.get("price_lei") or 0)
+            basis = f"Uw ≤ {target_uw:.2f} W/m²K; necesar {area:.1f} m²"
+
+        elif category_id == "solar_thermal_collector":
+            required_area = max(float(requirement.get("requiredAreaM2") or 0), 0.0)
+            eligible = [
+                p for p in products
+                if (numeric(p.get("properties") or {}, "aperture_area_m2") or 0) > 0
+            ]
+            if eligible:
+                selected = min(
+                    eligible,
+                    key=lambda p: float((cheapest_offer(p) or {}).get("price_lei") or 1e18)
+                    / max(numeric(p.get("properties") or {}, "aperture_area_m2") or 1, 1e-6),
+                )
+                unit_area = numeric(selected.get("properties") or {}, "aperture_area_m2") or 1
+                quantity = max(1, math.ceil(required_area / unit_area))
+                quantity_unit = "colectoare"
+                offer = cheapest_offer(selected)
+                if offer:
+                    subtotal = quantity * float(offer.get("price_lei") or 0)
+                basis = f"{required_area:.1f} m² necesari; {unit_area:.2f} m²/colector"
+
+        elif category_id == "pv_module":
+            required_wp = max(float(requirement.get("requiredPowerKwp") or 0), 0.0) * 1000.0
+            eligible = [p for p in products if (numeric(p.get("properties") or {}, "module_power_wp") or 0) > 0]
+            if eligible:
+                selected = min(
+                    eligible,
+                    key=lambda p: float((cheapest_offer(p) or {}).get("price_lei") or 1e18)
+                    / max(numeric(p.get("properties") or {}, "module_power_wp") or 1, 1),
+                )
+                module_wp = numeric(selected.get("properties") or {}, "module_power_wp") or 1
+                quantity = max(1, math.ceil(required_wp / module_wp))
+                quantity_unit = "panouri"
+                offer = cheapest_offer(selected)
+                if offer:
+                    subtotal = quantity * float(offer.get("price_lei") or 0)
+                basis = f"{required_wp/1000.0:.2f} kWp necesari; {module_wp:.0f} Wp/panou"
+
+        elif category_id == "hrv_unit":
+            airflow = max(float(requirement.get("requiredAirflowM3h") or 0), 0.0)
+            target_eff = max(float(requirement.get("targetEfficiency") or 0), 0.0)
+            eligible = [
+                p for p in products
+                if (numeric(p.get("properties") or {}, "max_airflow_m3h") or 0) >= airflow
+                and (numeric(p.get("properties") or {}, "heat_recovery_efficiency") or 0) >= target_eff
+            ]
+            if eligible:
+                selected = min(eligible, key=lambda p: float((cheapest_offer(p) or {}).get("price_lei") or 1e18))
+                offer = cheapest_offer(selected)
+                subtotal = None if offer is None else float(offer.get("price_lei") or 0)
+                basis = f"debit ≥ {airflow:.0f} m³/h; recuperare ≥ {target_eff*100:.0f}%"
+
+        elif category_id in {"heat_pump", "gas_boiler", "electric_boiler", "pellet_boiler"}:
+            required_kw = max(float(requirement.get("requiredPowerKw") or 0), 0.0)
+            technology_branch = str(requirement.get("technologyBranch") or "").strip()
+            technology_filtered = products
+            if category_id == "heat_pump" and technology_branch:
+                technology_filtered = [
+                    p for p in products
+                    if str((p.get("properties") or {}).get("technology_id") or "").strip()
+                    == technology_branch
+                ]
+            eligible = [
+                p for p in technology_filtered
+                if (numeric(p.get("properties") or {}, "rated_power_kw") or 0) + 1e-9 >= required_kw
+            ]
+            if eligible:
+                selected = min(
+                    eligible,
+                    key=lambda p: (
+                        float((cheapest_offer(p) or {}).get("price_lei") or 1e18),
+                        (numeric(p.get("properties") or {}, "rated_power_kw") or 1e18) - required_kw,
+                    ),
+                )
+                offer = cheapest_offer(selected)
+                subtotal = None if offer is None else float(offer.get("price_lei") or 0)
+                basis = f"putere nominală ≥ {required_kw:.1f} kW"
+
+        if selected is None:
+            results.append({
+                "family": family,
+                "categoryId": category_id,
+                "matched": False,
+                "reason": "no_product_satisfies_requirement",
+            })
+            continue
+
+        results.append({
+            "matched": True,
+            **product_card(
+                selected,
+                quantity=quantity,
+                quantity_unit=quantity_unit,
+                subtotal_lei=subtotal,
+                basis=basis,
+                requirement=requirement,
+            ),
+        })
+
+    return JSONResponse({
+        "source": "d1",
+        "stage": "post_teo_bom",
+        "items": results,
+    })
+
+
 @app.post("/api/optimization/candidate")
 async def optimization_candidate_api(
     payload: OptimizationCandidateRequestV1,
@@ -2518,6 +3418,111 @@ def _request_db(request: Request) -> Any:
     return getattr(env, "DB", None) if env is not None else None
 
 
+def _account_db(request: Request) -> Any:
+    db = _request_db(request)
+    if db is None:
+        raise HTTPException(status_code=503, detail="Stocarea contului Home Lab nu este disponibilă.")
+    return db
+
+
+async def _account_json_body(request: Request) -> dict[str, Any]:
+    try:
+        payload = await request.json()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Cererea trebuie să conțină JSON valid.") from exc
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Cererea trebuie să fie un obiect JSON.")
+    return payload
+
+
+def _account_error_response(exc: account.AccountError) -> JSONResponse:
+    return JSONResponse(
+        {"success": False, "error": str(exc)},
+        status_code=exc.status_code,
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+async def _require_account_user(request: Request) -> tuple[Any, dict[str, Any], str]:
+    db = _account_db(request)
+    token = account.bearer_token(request)
+    user = await account.current_user(db, token)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Autentificare necesară.")
+    return db, user, token
+
+
+@app.post("/api/register")
+async def account_register(request: Request) -> JSONResponse:
+    try:
+        result = await account.register(_account_db(request), await _account_json_body(request))
+    except account.AccountError as exc:
+        return _account_error_response(exc)
+    return JSONResponse(result, headers={"Cache-Control": "no-store"})
+
+
+@app.post("/api/login")
+async def account_login(request: Request) -> JSONResponse:
+    try:
+        result = await account.login(_account_db(request), await _account_json_body(request))
+    except account.AccountError as exc:
+        return _account_error_response(exc)
+    return JSONResponse(result, headers={"Cache-Control": "no-store"})
+
+
+@app.post("/api/logout")
+async def account_logout(request: Request) -> JSONResponse:
+    db = _account_db(request)
+    result = await account.logout(db, account.bearer_token(request))
+    return JSONResponse(result, headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/me")
+async def account_me(request: Request) -> JSONResponse:
+    db, user, _ = await _require_account_user(request)
+    del db
+    return JSONResponse(
+        {"success": True, "user": user},
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.post("/api/projects/save")
+async def account_project_save(request: Request) -> JSONResponse:
+    db, user, _ = await _require_account_user(request)
+    try:
+        result = await account.save_project(
+            db,
+            int(user["id"]),
+            await _account_json_body(request),
+        )
+    except account.AccountError as exc:
+        return _account_error_response(exc)
+    return JSONResponse(result, headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/projects/list")
+async def account_project_list(request: Request) -> JSONResponse:
+    db, user, _ = await _require_account_user(request)
+    result = await account.list_projects(db, int(user["id"]))
+    return JSONResponse(result, headers={"Cache-Control": "no-store"})
+
+
+@app.post("/api/projects/load")
+async def account_project_load(request: Request) -> JSONResponse:
+    db, user, _ = await _require_account_user(request)
+    payload = await _account_json_body(request)
+    try:
+        result = await account.load_project(
+            db,
+            int(user["id"]),
+            payload.get("projectId"),
+        )
+    except account.AccountError as exc:
+        return _account_error_response(exc)
+    return JSONResponse(result, headers={"Cache-Control": "no-store"})
+
+
 @app.get("/facts")
 async def facts_shortcut() -> RedirectResponse:
     return RedirectResponse("/home-lab/facts", status_code=308)
@@ -2615,6 +3620,59 @@ async def home_lab_editorial(request: Request) -> HTMLResponse:
             "energy_overview": home_lab_price_overview(),
         },
     )
+
+
+@app.get("/api/home-lab/impact/summary")
+async def home_lab_impact_summary(request: Request) -> JSONResponse:
+    env = request.scope.get("env")
+    db = getattr(env, "DB", None) if env is not None else None
+    if db is None:
+        return JSONResponse(
+            {
+                "available": False,
+                "scope": "user_saved_modelled",
+                "savedHouses": 0,
+                "reason": "d1_unavailable",
+            },
+            headers={"Cache-Control": "no-store"},
+        )
+    try:
+        payload = await read_public_impact_summary(db)
+    except Exception as exc:
+        print(
+            "[LaCurent] impact summary unavailable "
+            f"type={type(exc).__name__} detail={str(exc)[:240]}"
+        )
+        return JSONResponse(
+            {
+                "available": False,
+                "scope": "user_saved_modelled",
+                "savedHouses": 0,
+                "reason": "impact_store_unavailable",
+            },
+            headers={"Cache-Control": "no-store"},
+        )
+    return JSONResponse(payload, headers={"Cache-Control": "no-store"})
+
+
+@app.post("/api/home-lab/impact/save")
+async def home_lab_impact_save(request: Request) -> JSONResponse:
+    env = request.scope.get("env")
+    db = getattr(env, "DB", None) if env is not None else None
+    if db is None:
+        raise HTTPException(status_code=503, detail="Stocarea Home Lab Impact nu este disponibilă.")
+    owner_user_id = await authenticated_user_id(request, db)
+    if owner_user_id is None:
+        raise HTTPException(status_code=401, detail="Autentificare necesară pentru salvare.")
+    try:
+        raw = await request.json()
+        payload = raw if isinstance(raw, dict) else {}
+        result = await save_impact_snapshot(db, owner_user_id, payload)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return JSONResponse(result, headers={"Cache-Control": "no-store"})
 
 
 async def home_lab_next_calculation(request: Request) -> Response:

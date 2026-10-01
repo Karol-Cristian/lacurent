@@ -27,6 +27,7 @@ SERVICE_LABELS = {
     "heating": "Încălzire",
     "cooling": "Răcire",
     "dhw": "Apă caldă menajeră",
+    "ventilation": "Ventilație",
 }
 
 
@@ -204,13 +205,17 @@ def _service_carriers(result: Any) -> dict[str, tuple[str, str | None]]:
         "heating": (heating_carrier, heating_profile),
         "cooling": ("electricity", "electricity"),
         "dhw": (dhw_carrier, dhw_profile),
+        "ventilation": ("electricity", "electricity"),
     }
 
 
 def _service_cost_rows(result: Any, county: str | None) -> list[dict[str, Any]]:
     carriers = _service_carriers(result)
     rows: list[dict[str, Any]] = []
-    for service in ("heating", "cooling", "dhw"):
+    services = ["heating", "cooling", "dhw"]
+    if float(result.final_energy_by_service.get("ventilation", 0) or 0) > 1e-9:
+        services.append("ventilation")
+    for service in services:
         final_kwh = float(result.final_energy_by_service.get(service, 0) or 0)
         auxiliary_electricity_kwh = (
             float(result.heating_system.auxiliary_electricity_kwh)
@@ -334,6 +339,11 @@ def _monthly_cost_rows(
     heating_final_total = service_map["heating"]["final_kwh"]
     cooling_final_total = service_map["cooling"]["final_kwh"]
     dhw_final_total = service_map["dhw"]["final_kwh"]
+    ventilation_final_total = (
+        service_map["ventilation"]["final_kwh"]
+        if "ventilation" in service_map
+        else 0.0
+    )
     total_days = sum(MONTH_DAYS.values())
     rows: list[dict[str, Any]] = []
 
@@ -350,11 +360,18 @@ def _monthly_cost_rows(
             else 0.0
         )
         dhw_final = dhw_final_total * MONTH_DAYS.get(month, 365 / 12) / total_days
+        ventilation_final = (
+            ventilation_final_total
+            * MONTH_DAYS.get(month, 365 / 12)
+            / total_days
+        )
         service_final = {
             "heating": heating_final,
             "cooling": cooling_final,
             "dhw": dhw_final,
         }
+        if ventilation_final > 1e-9:
+            service_final["ventilation"] = ventilation_final
         service_costs: dict[str, float | None] = {}
         priced_total = 0.0
         complete = True

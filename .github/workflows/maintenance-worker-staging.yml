@@ -1,0 +1,136 @@
+name: Maintenance Worker Staging
+
+on:
+  push:
+    branches:
+      - codex/release-product-staging-integration
+    paths:
+      - ".github/workflows/maintenance-worker-staging.yml"
+      - "commercial/maintenance-worker/**"
+      - "commercial/tests/maintenance-worker.test.mjs"
+      - "commercial/tests/maintenance-route-switch.test.mjs"
+      - "scripts/cloudflare-maintenance-mode.mjs"
+  workflow_dispatch:
+
+concurrency:
+  group: maintenance-worker-staging
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_STAGING_API_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      MAINTENANCE_PREVIEW_URL: https://lacurent-maintenance-staging.lemnarukarol.workers.dev
+
+    steps:
+      - name: Check out staging SHA
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Validate maintenance contracts
+        run: |
+          node --check commercial/maintenance-worker/worker.mjs
+          node --check scripts/cloudflare-maintenance-mode.mjs
+          node --test commercial/tests/maintenance-worker.test.mjs
+          node --test commercial/tests/maintenance-route-switch.test.mjs
+
+      - name: Prepare route-less staging Worker
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          rm -rf .wrangler/maintenance-staging
+          mkdir -p .wrangler/maintenance-staging
+          cp commercial/maintenance-worker/worker.mjs .wrangler/maintenance-staging/worker.mjs
+          cp commercial/maintenance-worker/wrangler.toml .wrangler/maintenance-staging/wrangler.toml
+          python - <<'PY'
+          from pathlib import Path
+          path = Path(".wrangler/maintenance-staging/wrangler.toml")
+          text = path.read_text(encoding="utf-8")
+          text = text.replace(
+              'name = "lacurent-maintenance"',
+              'name = "lacurent-maintenance-staging"',
+          )
+          if "[[routes]]" in text or "custom_domain" in text or "zone_name" in text:
+              raise SystemExit("Maintenance staging Worker must not contain production routes.")
+          path.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Deploy staging maintenance Worker
+        working-directory: .wrangler/maintenance-staging
+        run: |
+          npm install --no-save wrangler@latest
+          npx wrangler deploy
+
+      - name: Smoke-test staging maintenance Worker
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const base = process.env.MAINTENANCE_PREVIEW_URL;
+
+          async function waitFor(path, expectedStatus, attempts = 30) {
+            let last = null;
+            for (let attempt = 1; attempt <= attempts; attempt++) {
+              try {
+                const response = await fetch(base + path, {redirect:"manual"});
+                const text = await response.text();
+                if (response.status === expectedStatus) return {response, text};
+                last = new Error(path + " returned " + response.status);
+              } catch (error) {
+                last = error;
+              }
+              await new Promise(resolve => setTimeout(resolve, Math.min(attempt, 5) * 1000));
+            }
+            throw last || new Error("Preview did not become ready");
+          }
+
+          const health = await waitFor("/__maintenance/health", 200);
+          const healthBody = JSON.parse(health.text);
+          if (healthBody.status !== "ready" || healthBody.mode !== "maintenance") {
+            throw new Error("Unexpected readiness payload: " + health.text);
+          }
+
+          const page = await waitFor("/", 503);
+          if (page.response.headers.get("x-lacurent-maintenance") !== "1") {
+            throw new Error("Missing maintenance marker header.");
+          }
+          if (!page.text.includes("Actualizăm LaCurent.")) {
+            throw new Error("Maintenance page copy missing.");
+          }
+
+          const api = await waitFor("/api/home-lab-next/calculate", 503);
+          const apiBody = JSON.parse(api.text);
+          if (apiBody.maintenance !== true) {
+            throw new Error("Maintenance API contract missing.");
+          }
+
+          console.log("Maintenance staging Worker PASS", {
+            url:base,
+            health:healthBody,
+            retryAfter:page.response.headers.get("retry-after"),
+          });
+          NODE
+
+      - name: Publish preview summary
+        run: |
+          {
+            echo "## Maintenance Worker staging"
+            echo
+            echo "- SHA: `$GITHUB_SHA`"
+            echo "- route-less deploy: PASS"
+            echo "- readiness endpoint: PASS"
+            echo "- browser 503 page: PASS"
+            echo "- API JSON 503: PASS"
+            echo "- no lacurent.com route was created"
+            echo "- preview: $MAINTENANCE_PREVIEW_URL"
+          } >> "$GITHUB_STEP_SUMMARY"

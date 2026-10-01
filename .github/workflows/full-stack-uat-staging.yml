@@ -1,0 +1,399 @@
+name: Full Stack UAT Staging
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/release-product-staging-integration
+    paths:
+      - ".github/workflows/full-stack-uat-staging.yml"
+      - "commercial/app/**"
+      - "commercial/data/**"
+      - "commercial/static/**"
+      - "commercial/templates/**"
+      - "commercial/reference-worker/**"
+      - "commercial/rbpe-router/**"
+      - "commercial/calc-gateway/**"
+      - "commercial/teo-worker/**"
+      - "commercial/teo-router/**"
+      - "commercial/staging-edge/**"
+      - "scripts/prepare-reference-cloudflare-worker.mjs"
+      - "scripts/prepare-teo-cloudflare-worker.mjs"
+      - "scripts/prepare-commercial-cloudflare-worker.mjs"
+      - "scripts/configure-full-stack-staging.mjs"
+
+concurrency:
+  group: full-stack-uat-staging
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-uat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_STAGING_API_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DB_NAME: lacurent-dev-db
+      UAT_URL: https://lacurent-uat.lemnarukarol.workers.dev
+
+    steps:
+      - name: Check out staging SHA
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Install uv and Wrangler
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade uv
+          npm install --no-save wrangler@latest
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Resolve verified development D1
+        run: |
+          set -euo pipefail
+          npx wrangler d1 list --json > /tmp/d1-list.json
+          python - <<'PY'
+          import json
+          import os
+          import tomllib
+          from pathlib import Path
+
+          raw = json.loads(Path("/tmp/d1-list.json").read_text())
+          rows = raw if isinstance(raw, list) else (
+              raw.get("result") or raw.get("databases") or raw.get("items") or []
+          )
+          target = os.environ["DB_NAME"]
+          match = next(
+              (row for row in rows if isinstance(row, dict) and str(row.get("name") or "") == target),
+              None,
+          )
+          if match is None:
+              raise SystemExit(f"Development D1 {target!r} not found.")
+          database_id = str(match.get("uuid") or match.get("id") or "").strip()
+          if not database_id:
+              raise SystemExit("Development D1 has no UUID.")
+
+          prod = tomllib.loads(
+              Path("commercial/cloudflare-worker/wrangler.toml").read_text(encoding="utf-8")
+          )
+          production_ids = {
+              str(item.get("database_id") or "")
+              for item in prod.get("d1_databases", [])
+              if str(item.get("database_id") or "")
+          }
+          if database_id in production_ids:
+              raise SystemExit("Safety gate: staging D1 UUID matches production.")
+
+          Path("/tmp/lacurent-uat-db-id").write_text(database_id, encoding="utf-8")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as fh:
+              fh.write(f"DB_ID={database_id}\n")
+          print(f"UAT D1 isolation PASS: {target} ({database_id})")
+          PY
+
+      - name: Verify development D1 release schema
+        run: |
+          set -euo pipefail
+          cat > /tmp/lacurent-uat-d1.toml <<EOF
+          name = "lacurent-uat-d1-check"
+          compatibility_date = "2026-10-01"
+
+          [[d1_databases]]
+          binding = "DB"
+          database_name = "$DB_NAME"
+          database_id = "$DB_ID"
+          EOF
+          QUERY="
+          SELECT
+            (SELECT COUNT(*) FROM energy_products) AS products,
+            (SELECT COUNT(*) FROM energy_product_heating_compat) AS heating,
+            (SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name IN (
+              'users','user_sessions','building_platform_projects','building_platform_project_drafts'
+            )) AS account_tables;
+          "
+          npx wrangler d1 execute "$DB_NAME" --config /tmp/lacurent-uat-d1.toml --remote --command "$QUERY" --json > /tmp/uat-d1.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          raw = json.loads(Path("/tmp/uat-d1.json").read_text())
+          def rows(value):
+              if isinstance(value, list):
+                  for item in value:
+                      found = rows(item)
+                      if found:
+                          return found
+              if isinstance(value, dict):
+                  if isinstance(value.get("results"), list):
+                      return value["results"]
+                  if isinstance(value.get("result"), list):
+                      return value["result"]
+                  for item in value.values():
+                      found = rows(item)
+                      if found:
+                          return found
+              return []
+          result = rows(raw)
+          if not result:
+              raise SystemExit("No D1 verification row.")
+          row = result[0]
+          if int(row.get("products") or 0) < 49:
+              raise SystemExit(f"UAT catalog incomplete: {row!r}")
+          if int(row.get("heating") or 0) < 40:
+              raise SystemExit(f"UAT heating compatibility incomplete: {row!r}")
+          if int(row.get("account_tables") or 0) != 4:
+              raise SystemExit(f"UAT account schema incomplete: {row!r}")
+          print("UAT D1 schema PASS", row)
+          PY
+
+      - name: Prepare Python Worker bundles
+        run: |
+          set -euo pipefail
+          node scripts/prepare-reference-cloudflare-worker.mjs
+          node scripts/prepare-teo-cloudflare-worker.mjs
+          node scripts/prepare-commercial-cloudflare-worker.mjs --name lacurent-staging-app
+          node scripts/configure-full-stack-staging.mjs --db-id "$DB_ID"
+
+      - name: Validate UAT edge contract
+        run: |
+          set -euo pipefail
+          node --check commercial/staging-edge/worker.mjs
+          node --check scripts/configure-full-stack-staging.mjs
+          node --test commercial/tests/staging-edge.test.mjs
+
+      - name: Install and sync RBPE Python bundle
+        working-directory: .wrangler/reference-rbpe-worker
+        run: |
+          set -euo pipefail
+          npm install --save-dev wrangler@latest
+          mkdir -p .bin
+          printf '#!/usr/bin/env bash\nexec npx wrangler "$@"\n' > .bin/wrangler
+          chmod +x .bin/wrangler
+          export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
+          uvx --from workers-py pywrangler sync --force
+
+      - name: Deploy four isolated RBPE staging shards
+        working-directory: .wrangler/reference-rbpe-worker
+        run: |
+          set -euo pipefail
+          cp wrangler.toml /tmp/uat-rbpe-template.toml
+          export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
+          for suffix in a b c d; do
+            python - "$suffix" <<'PY'
+          from pathlib import Path
+          import sys
+          suffix = sys.argv[1]
+          text = Path("/tmp/uat-rbpe-template.toml").read_text(encoding="utf-8")
+          text = text.replace(
+              'name = "lacurent-reference-rbpe"',
+              f'name = "lacurent-staging-rbpe-shard-{suffix}"',
+          )
+          if 'workers_dev = false' not in text:
+              raise SystemExit("RBPE staging shard must stay private.")
+          Path("wrangler.toml").write_text(text, encoding="utf-8")
+          PY
+            uvx --from workers-py pywrangler deploy
+          done
+
+      - name: Deploy isolated RBPE router and calculation gateway
+        run: |
+          set -euo pipefail
+          for dir in .wrangler/rbpe-router .wrangler/calc-gateway; do
+            (cd "$dir" && npm install --save-dev wrangler@latest && npx wrangler deploy)
+          done
+
+      - name: Install and sync TEO Python bundle
+        working-directory: .wrangler/teo-worker
+        run: |
+          set -euo pipefail
+          npm install --save-dev wrangler@latest
+          mkdir -p .bin
+          printf '#!/usr/bin/env bash\nexec npx wrangler "$@"\n' > .bin/wrangler
+          chmod +x .bin/wrangler
+          export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
+          uvx --from workers-py pywrangler sync --force
+
+      - name: Deploy four isolated TEO staging shards
+        working-directory: .wrangler/teo-worker
+        run: |
+          set -euo pipefail
+          cp wrangler.toml /tmp/uat-teo-template.toml
+          export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
+          for suffix in a b c d; do
+            python - "$suffix" <<'PY'
+          from pathlib import Path
+          import sys
+          suffix = sys.argv[1]
+          text = Path("/tmp/uat-teo-template.toml").read_text(encoding="utf-8")
+          text = text.replace(
+              'name = "lacurent-staging-teo-private"',
+              f'name = "lacurent-staging-teo-shard-{suffix}"',
+          )
+          if 'database_name = "lacurent-dev-db"' not in text:
+              raise SystemExit("TEO staging shard is not bound to development D1.")
+          if 'service = "lacurent-staging-rbpe-router"' not in text:
+              raise SystemExit("TEO staging shard is not bound to staging RBPE.")
+          Path("wrangler.toml").write_text(text, encoding="utf-8")
+          PY
+            uvx --from workers-py pywrangler deploy
+          done
+
+      - name: Deploy isolated TEO router
+        working-directory: .wrangler/teo-router
+        run: |
+          npm install --save-dev wrangler@latest
+          npx wrangler deploy
+
+      - name: Install and sync public staging Python app
+        working-directory: .wrangler/commercial-v2-worker
+        run: |
+          set -euo pipefail
+          npm install --save-dev wrangler@latest
+          mkdir -p .bin
+          printf '#!/usr/bin/env bash\nexec npx wrangler "$@"\n' > .bin/wrangler
+          chmod +x .bin/wrangler
+          export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
+          uvx --from workers-py pywrangler sync --force
+
+      - name: Deploy private staging application
+        working-directory: .wrangler/commercial-v2-worker
+        run: |
+          set -euo pipefail
+          export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
+          uvx --from workers-py pywrangler deploy
+
+      - name: Deploy public UAT edge last
+        working-directory: .wrangler/staging-edge
+        run: |
+          set -euo pipefail
+          npm install --save-dev wrangler@latest
+          npx wrangler deploy
+
+      - name: Smoke-test persistent full-stack UAT
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import time
+          import urllib.parse
+          import urllib.request
+
+          base = "https://lacurent-uat.lemnarukarol.workers.dev"
+
+          def get(path, attempts=30):
+              last = None
+              for attempt in range(1, attempts + 1):
+                  try:
+                      req = urllib.request.Request(base + path, headers={"User-Agent":"LaCurent-UAT-Smoke/1.0"})
+                      with urllib.request.urlopen(req, timeout=30) as response:
+                          return response, response.read().decode("utf-8")
+                  except Exception as exc:
+                      last = exc
+                      time.sleep(min(attempt, 5))
+              raise AssertionError(f"{path} unavailable: {last!r}")
+
+          health, raw = get("/__staging/health")
+          payload = json.loads(raw)
+          if health.status != 200 or payload.get("status") != "ok":
+              raise AssertionError(payload)
+
+          page, html = get("/home-lab-editorial")
+          if page.status != 200 or "data-editorial-lab" not in html:
+              raise AssertionError("Editorial UAT page unavailable.")
+
+          catalog_response, catalog_raw = get("/api/heating-products")
+          catalog = json.loads(catalog_raw)
+          if catalog_response.status != 200 or catalog.get("source") != "d1":
+              raise AssertionError({"status":catalog_response.status,"source":catalog.get("source")})
+
+          form = {
+              "project_name":"UAT topology smoke",
+              "locality_id":"@lc2|alba_iulia|III|-18|siruta-smoke|Smoke%20Locality|Alba",
+              "locality":"Smoke Locality",
+              "heated_floor_area_m2":"120",
+              "heated_volume_m3":"324",
+              "indoor_design_temperature_c":"21",
+              "building_type":"residential_individual",
+              "construction_year":"2005",
+              "wall_area_m2":"140",
+              "wall_u_value":"0.45",
+              "roof_area_m2":"70",
+              "roof_u_value":"0.25",
+              "floor_area_m2":"60",
+              "floor_u_value":"0.36",
+              "floor_boundary_type":"ground",
+              "window_area_m2":"20",
+              "window_u_value":"1.4",
+              "door_area_m2":"3",
+              "door_u_value":"1.7",
+              "air_changes_per_hour":"0.5",
+              "infiltration_air_changes_per_hour":"0.15",
+              "heating_system_type":"condensing_gas_boiler",
+              "heating_efficiency":"0.94",
+              "heating_carrier":"natural_gas",
+          }
+          req = urllib.request.Request(
+              base + "/api/home-lab-next/calculate",
+              data=urllib.parse.urlencode(form).encode("utf-8"),
+              headers={
+                  "Accept":"application/json",
+                  "Content-Type":"application/x-www-form-urlencoded",
+                  "User-Agent":"LaCurent-UAT-Smoke/1.0",
+              },
+          )
+          with urllib.request.urlopen(req, timeout=60) as response:
+              body = json.loads(response.read().decode("utf-8"))
+              if response.status != 200:
+                  raise AssertionError(response.status)
+              if response.headers.get("X-LaCurent-Calc") != "private-rbpe-sharded":
+                  raise AssertionError("UAT calculation bypassed RBPE staging topology.")
+              if body.get("energy_class") is None:
+                  raise AssertionError(body)
+
+          req = urllib.request.Request(
+              base + "/api/optimization/home-lab/v4/plan",
+              data=urllib.parse.urlencode({**form, "_optimization_mode":"auto_economic"}).encode("utf-8"),
+              headers={
+                  "Accept":"application/json",
+                  "Content-Type":"application/x-www-form-urlencoded",
+                  "User-Agent":"LaCurent-UAT-Smoke/1.0",
+              },
+          )
+          with urllib.request.urlopen(req, timeout=90) as response:
+              body = json.loads(response.read().decode("utf-8"))
+              if response.status != 200:
+                  raise AssertionError(response.status)
+              if response.headers.get("X-LaCurent-TEO") != "private-teo-sharded":
+                  raise AssertionError("UAT TEO bypassed staging TEO router.")
+              if body.get("optimizerVersion") != "teo-v4-browser":
+                  raise AssertionError(body)
+
+          print("Persistent full-stack UAT PASS", base)
+          PY
+
+      - name: Publish UAT URL
+        run: |
+          {
+            echo "## Persistent full-stack UAT"
+            echo
+            echo "- SHA: `$GITHUB_SHA`"
+            echo "- URL: $UAT_URL/home-lab-editorial"
+            echo "- D1: lacurent-dev-db"
+            echo "- RBPE: four isolated staging shards + router + calc gateway"
+            echo "- TEO: four isolated staging shards + router"
+            echo "- public staging app: private service"
+            echo "- UAT edge: workers.dev only; no lacurent.com routes"
+            echo "- topology smoke: PASS"
+          } >> "$GITHUB_STEP_SUMMARY"

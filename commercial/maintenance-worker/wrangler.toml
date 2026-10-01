@@ -1,0 +1,8 @@
+name = "lacurent-maintenance"
+main = "worker.mjs"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+# Intentionally no production routes here.
+# The Worker is pre-deployed and route activation is handled separately so a
+# normal deploy can never put the public site into maintenance accidentally.
