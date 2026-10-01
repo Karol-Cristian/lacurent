@@ -23,6 +23,52 @@ function normalizeSemanticReport(text) {
     .trim();
 }
 
+async function fillRequiredHouse(page) {
+  await page.locator("#heatedArea").fill("120");
+  await page.locator("#heatedLevels").selectOption("2");
+  await page.locator("#averageHeight").fill("2.7");
+  await page.locator('[name="indoor_design_temperature_c"]').selectOption("21");
+  await page.locator('[name="construction_year"]').fill("2005");
+  await page.locator('[name="dhw_occupants"]').selectOption("4");
+}
+
+async function fillRequiredEnvelope(page) {
+  await page.locator("#wallStructure").selectOption("efficient_brick");
+  await page.locator("#wallStructureThickness").fill("30");
+  await page.locator("#wallInsulationMaterial").selectOption("eps");
+  await page.locator("#wallIns").fill("10");
+  await page.locator("#topBoundary").selectOption("cold_attic");
+  await page.locator("#roofInsulationMaterial").selectOption("mineral_wool");
+  await page.locator("#roofIns").fill("20");
+  await page.locator("#floorBoundary").selectOption("ground");
+  await page.locator("#floorInsulationMaterial").selectOption("xps");
+  await page.locator("#floorIns").fill("10");
+  await page.locator("#windowArea").fill("18");
+  await page.locator("#glazing").selectOption("triple_low_e_faces_2_and_5");
+  await page.locator("#orientation").selectOption("south");
+}
+
+async function fillRequiredSystems(page) {
+  await page.locator("#heatingChoice").selectOption("condensing_gas_boiler");
+  await page.locator("#heatingEmitter").selectOption("radiators_low_temp");
+  await page.locator("#heatingDistribution").selectOption("hydronic_insulated");
+  await page.locator("#heatingStorage").selectOption("none");
+  await page.locator("#heatingControl").selectOption("thermostatic_valves");
+  await page.locator("#dhwSystem").selectOption("same_as_heating");
+  await page.locator("#ventilation").selectOption("natural");
+  const calcPromise = page.waitForResponse(
+    response => {
+      try {
+        return new URL(response.url()).pathname === "/api/home-lab-next/calculate"
+          && response.request().method() === "POST";
+      } catch { return false; }
+    },
+    {timeout:45000},
+  );
+  await page.locator("#cooling").selectOption("none");
+  return calcPromise;
+}
+
 async function runOnce(browser, ordinal) {
   const context = await browser.newContext({viewport:{width:1280,height:900}});
   const page = await context.newPage();
@@ -84,37 +130,24 @@ async function runOnce(browser, ordinal) {
 
     const marker = page.locator('#edLocationMap .ed-map-locality[data-climate-zone="III"]').first();
     await marker.waitFor({state:"visible",timeout:10000});
-    const calcPromise = page.waitForResponse(
-      response => {
-        try {
-          return new URL(response.url()).pathname === "/api/home-lab-next/calculate"
-            && response.request().method() === "POST";
-        } catch { return false; }
-      },
-      {timeout:45000},
-    );
     await marker.dispatchEvent("click");
-    const calc = await calcPromise;
-    if (calc.status() !== 200) throw new Error("Baseline RBPE returned HTTP " + calc.status());
 
-    for (const pageName of ["house","envelope","systems","renewables"]) {
-      if (pageName === "house") {
-        const confirmation = page.locator("#edHouseValuesConfirmed");
-        if (await confirmation.count()) {
-          await confirmation.check();
-        }
-      }
-      await page.locator('[data-page="' + pageName + '"] [data-next]').click();
-      const nextName =
-        pageName === "house" ? "envelope"
-        : pageName === "envelope" ? "systems"
-        : pageName === "systems" ? "renewables"
-        : "goal";
-      await page.locator('[data-page="' + nextName + '"].is-active').waitFor({
-        state:"visible",
-        timeout:15000,
-      });
-    }
+    await fillRequiredHouse(page);
+    await page.locator('[data-page="house"] [data-next]').click();
+    await page.locator('[data-page="envelope"].is-active').waitFor({state:"visible",timeout:15000});
+
+    await fillRequiredEnvelope(page);
+    await page.locator('[data-page="envelope"] [data-next]').click();
+    await page.locator('[data-page="systems"].is-active').waitFor({state:"visible",timeout:15000});
+
+    const calc = await fillRequiredSystems(page);
+    if (calc.status() !== 200) throw new Error("Baseline RBPE returned HTTP " + calc.status());
+    await page.locator('[data-page="systems"] [data-next]').click();
+    await page.locator('[data-page="renewables"].is-active').waitFor({state:"visible",timeout:15000});
+
+    await page.locator("#edHouseValuesConfirmed").check();
+    await page.locator('[data-page="renewables"] [data-next]').click();
+    await page.locator('[data-page="goal"].is-active').waitFor({state:"visible",timeout:15000});
 
     await page.locator("#runAnalysis").click();
     await page.waitForFunction(
