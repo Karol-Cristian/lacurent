@@ -986,6 +986,21 @@
   function validatePage(name) {
     const page = pages.find(p => p.dataset.page === name);
     if (!page) return true;
+    if (name === "house") {
+      const localityInput = $("#localityInput");
+      const localityId = String($("#localityId")?.value || "").trim();
+      if (localityInput) {
+        localityInput.setCustomValidity(
+          localityId
+            ? ""
+            : "Alege localitatea din sugestii sau direct de pe hartă."
+        );
+        if (!localityId) {
+          localityInput.reportValidity();
+          return false;
+        }
+      }
+    }
     if (name === "renewables") {
       const confirmation = $("#edHouseValuesConfirmed");
       if (confirmation) {
