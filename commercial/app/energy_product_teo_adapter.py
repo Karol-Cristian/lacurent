@@ -434,3 +434,209 @@ def commercialize_hrv_finalist(
         }
     )
     return CandidateEvaluationV1(**data), match
+
+
+@dataclass(frozen=True)
+class UnderfloorDesignRequirement:
+    active_area_m2: float
+    spacing_mm: float
+    required_pipe_length_m: float
+    max_loop_length_m: float
+    required_loop_count: int
+
+
+def design_underfloor_pipe_requirement(
+    *,
+    active_area_m2: float,
+    spacing_mm: float,
+    max_loop_length_m: float,
+    connection_allowance_m: float = 0.0,
+) -> UnderfloorDesignRequirement:
+    """Convert explicit UFH design geometry into a pipe-length/loop requirement.
+
+    No default spacing, active-area fraction, design heat flux or loop length is
+    invented here. Upstream design must provide those values explicitly.
+    """
+
+    area = float(active_area_m2)
+    spacing = float(spacing_mm) / 1000.0
+    max_loop = float(max_loop_length_m)
+    allowance = float(connection_allowance_m)
+    if not math.isfinite(area) or area <= 0:
+        raise ValueError("active_area_m2 must be a finite positive value.")
+    if not math.isfinite(spacing) or spacing <= 0:
+        raise ValueError("spacing_mm must be a finite positive value.")
+    if not math.isfinite(max_loop) or max_loop <= 0:
+        raise ValueError("max_loop_length_m must be a finite positive value.")
+    if not math.isfinite(allowance) or allowance < 0:
+        raise ValueError("connection_allowance_m must be finite and non-negative.")
+
+    required = area / spacing + allowance
+    loop_count = max(1, int(math.ceil(required / max_loop)))
+    return UnderfloorDesignRequirement(
+        active_area_m2=round(area, 3),
+        spacing_mm=round(spacing * 1000.0, 1),
+        required_pipe_length_m=round(required, 2),
+        max_loop_length_m=round(max_loop, 2),
+        required_loop_count=loop_count,
+    )
+
+
+def add_radiator_bom_to_finalist(
+    candidate: CandidateEvaluationV1,
+    products: Iterable[ProductCandidate],
+    *,
+    required_output_w: float,
+    flow_temperature_c: float,
+    return_temperature_c: float,
+    room_temperature_c: float,
+    installation_allowance_lei_per_unit: float = 0.0,
+) -> tuple[CandidateEvaluationV1, RadiatorMatch]:
+    """Attach an exact radiator BOM after TEO has fixed load and temperatures.
+
+    Product selection does not change the building physics as long as the
+    selected emitters satisfy the already-modeled design condition. Therefore
+    only CAPEX/ROI is re-priced here; annual energy is intentionally unchanged.
+    """
+
+    match = match_radiators(
+        products,
+        required_output_w=required_output_w,
+        flow_temperature_c=flow_temperature_c,
+        return_temperature_c=return_temperature_c,
+        room_temperature_c=room_temperature_c,
+    )
+    install = float(installation_allowance_lei_per_unit)
+    if not math.isfinite(install) or install < 0:
+        raise ValueError(
+            "installation_allowance_lei_per_unit must be finite and non-negative."
+        )
+    equipment = match.equipment_subtotal_lei
+    if equipment is None:
+        raise ValueError("Radiator BOM requires an explicit current product price.")
+    nonmaterial = install * match.quantity
+    exact_capex = float(equipment) + nonmaterial
+
+    lines = [
+        line
+        for line in candidate.cost_breakdown
+        if line.family != "heating_emitter"
+    ]
+    lines.append(
+        CostLineV1(
+            family="heating_emitter",
+            capex_lei=round(exact_capex, 2),
+            parameter_value=round(float(required_output_w) / 1000.0, 6),
+            parameter_unit="kW_required_at_design_condition",
+            source_kind="commercial_product_dimensioned_bom",
+            confidence="source_backed_product_output",
+            catalog_unit="whole_radiator_units",
+            note=match.selection_basis,
+            product_id=match.product_id,
+            quantity=float(match.quantity),
+            quantity_unit="radiators",
+            material_subtotal_lei=round(float(equipment), 2),
+            nonmaterial_subtotal_lei=round(nonmaterial, 2),
+            design_available_capacity_kw=round(
+                match.available_output_w / 1000.0,
+                6,
+            ),
+            capacity_basis=(
+                f"corrected_output_at_{flow_temperature_c:g}/"
+                f"{return_temperature_c:g}/{room_temperature_c:g}C"
+            ),
+        )
+    )
+    capex = sum(float(line.capex_lei) for line in lines)
+    saving = float(candidate.annual_saving_lei)
+    payback = capex / saving if capex > 0 and saving > 0 else None
+    roi = 100.0 * saving / capex if capex > 0 else None
+
+    data = model_to_dict(candidate)
+    data.update(
+        {
+            "capex_lei": round(capex, 2),
+            "payback_years": None if payback is None else round(payback, 4),
+            "roi_percent_per_year": None if roi is None else round(roi, 4),
+            "cost_breakdown": [model_to_dict(line) for line in lines],
+            "cost_source": "radiator_bom_dimensioned_from_finalist",
+            "commercialization_status": "partially_discretized",
+            "assumptions": [
+                *candidate.assumptions,
+                "Radiator SKU selection is downstream of TEO and uses the finalist design heat-output requirement and water temperatures.",
+                "Radiator matching changes CAPEX only; canonical energy is unchanged because the selected BOM satisfies the already-modeled emitter condition.",
+            ],
+        }
+    )
+    return CandidateEvaluationV1(**data), match
+
+
+def add_underfloor_pipe_bom_to_finalist(
+    candidate: CandidateEvaluationV1,
+    products: Iterable[ProductCandidate],
+    *,
+    design: UnderfloorDesignRequirement,
+    installation_allowance_lei: float = 0.0,
+) -> tuple[CandidateEvaluationV1, UnderfloorPipeMatch]:
+    """Attach whole-coil UFH pipe BOM after explicit system layout design."""
+
+    match = match_underfloor_pipe(
+        products,
+        required_pipe_length_m=design.required_pipe_length_m,
+    )
+    install = float(installation_allowance_lei)
+    if not math.isfinite(install) or install < 0:
+        raise ValueError("installation_allowance_lei must be finite and non-negative.")
+    material = match.material_subtotal_lei
+    if material is None:
+        raise ValueError("Underfloor pipe BOM requires an explicit package price.")
+    exact_capex = float(material) + install
+
+    lines = [
+        line
+        for line in candidate.cost_breakdown
+        if line.family != "underfloor_pipe"
+    ]
+    lines.append(
+        CostLineV1(
+            family="underfloor_pipe",
+            capex_lei=round(exact_capex, 2),
+            parameter_value=round(design.required_pipe_length_m, 3),
+            parameter_unit="m_required_pipe",
+            source_kind="commercial_product_dimensioned_bom",
+            confidence="source_backed_product_package",
+            catalog_unit="whole_pipe_coils",
+            note=(
+                f"{match.selection_basis} "
+                f"Design: {design.active_area_m2:g} m2 active area, "
+                f"{design.spacing_mm:g} mm spacing, "
+                f"{design.required_loop_count} loop(s) at max "
+                f"{design.max_loop_length_m:g} m."
+            ),
+            product_id=match.product_id,
+            quantity=float(match.coil_count),
+            quantity_unit="coils",
+            material_subtotal_lei=round(float(material), 2),
+            nonmaterial_subtotal_lei=round(install, 2),
+        )
+    )
+    capex = sum(float(line.capex_lei) for line in lines)
+    saving = float(candidate.annual_saving_lei)
+    payback = capex / saving if capex > 0 and saving > 0 else None
+    roi = 100.0 * saving / capex if capex > 0 else None
+    data = model_to_dict(candidate)
+    data.update(
+        {
+            "capex_lei": round(capex, 2),
+            "payback_years": None if payback is None else round(payback, 4),
+            "roi_percent_per_year": None if roi is None else round(roi, 4),
+            "cost_breakdown": [model_to_dict(line) for line in lines],
+            "cost_source": "underfloor_pipe_bom_from_explicit_design",
+            "commercialization_status": "partially_discretized",
+            "assumptions": [
+                *candidate.assumptions,
+                "Underfloor pipe is a BOM step after explicit active area, spacing and loop-length design; it is not a TEO search variable.",
+            ],
+        }
+    )
+    return CandidateEvaluationV1(**data), match
