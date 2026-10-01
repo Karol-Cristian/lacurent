@@ -29,8 +29,9 @@ class _Statement:
         self._params: tuple[Any, ...] = ()
 
     def bind(self, *params: Any) -> "_Statement":
-        self._params = params
-        return self
+        bound = _Statement(self._connection, self._sql)
+        bound._params = params
+        return bound
 
     async def run(self) -> _Result:
         cursor = self._connection.execute(self._sql, self._params)
@@ -77,6 +78,12 @@ def test_unified_d1_heating_runtime_queries_execute_against_release_migrations()
     db = _migrated_database()
 
     async def exercise() -> None:
+        await heating_store._ensure_heating_catalog_d1(db)
+        parametric_count = db.connection.execute(
+            "SELECT COUNT(*) FROM heating_parametric_nodes"
+        ).fetchone()[0]
+        assert parametric_count == heating_store.HEATING_PARAMETRIC_NODE_TOTAL
+
         branch = await heating_store._read_heating_branch_catalog_d1(
             db, "heat-pump-air-water"
         )
@@ -91,6 +98,7 @@ def test_unified_d1_heating_runtime_queries_execute_against_release_migrations()
         assert summary["catalog_stats"]["products"] == 40
         assert summary["catalog_stats"]["performance_points"] == 50
         assert summary["catalog_stats"]["seasonal_points"] == 2
+        assert summary["catalog_stats"]["parametric_nodes"] == heating_store.HEATING_PARAMETRIC_NODE_TOTAL
         assert summary["technology_summaries"]
 
         public_products = await heating_store.read_heating_public_products_from_d1(db)
