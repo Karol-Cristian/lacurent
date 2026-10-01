@@ -13,6 +13,7 @@
   const classicStorageKey = `lacurent-home-lab-next-v1:${root.dataset.partnerId || "official"}`;
   const impactProjectStorageKey = `${storageKey}:impact-project-id`;
   const authTokenStorageKey = "lacurent_auth_token";
+  const accountProjectStorageKey = `${storageKey}:account-project-id`;
   const localAutosaveAllowed = () => window.LaCurentPrivacy?.allowsLocalAutosave?.() === true;
   const pages = [...root.querySelectorAll("[data-page]")];
   const wizardOrder = ["intro", "house", "envelope", "systems", "renewables", "goal"];
@@ -43,6 +44,14 @@
   const classDialog = $("#classDialog");
   const classReferenceOpen = $("#edClassReferenceOpen");
   const classReferenceBody = $("#edClassReferenceBody");
+  const accountDialog = $("#edAccountDialog");
+  const accountOpen = $("#edAccountOpen");
+  const accountQuickSave = $("#edProjectQuickSave");
+  const accountSignedOut = $("#edAccountSignedOut");
+  const accountSignedIn = $("#edAccountSignedIn");
+  const accountSignedOutState = $("#edAccountSignedOutState");
+  const projectSaveState = $("#edProjectSaveState");
+  const projectsList = $("#edProjectsList");
   const stageEls = Object.fromEntries([...document.querySelectorAll("[data-run-stage]")].map(el => [el.dataset.runStage, el]));
 
   const WALL_STRUCTURE_PRESETS = Object.freeze({
@@ -103,6 +112,8 @@
   let draftDirty = false;
   let suppressLocalAutosave = false;
   let volatileImpactProjectId = "";
+  let currentProjectId = "";
+  let accountUser = null;
   const MAP_MIN_ZOOM = 1;
   const MAP_MAX_ZOOM = 6;
   const mapView = {zoom:1, centerX:null, centerY:null};
@@ -223,6 +234,7 @@
       legacyStorageHistoryKey,
       classicStorageKey,
       impactProjectStorageKey,
+      accountProjectStorageKey,
     ].forEach(key => localStorage.removeItem(key));
   }
 
@@ -233,6 +245,7 @@
     draftDirty = false;
     window.clearTimeout(autosaveTimer);
     clearEditorialLocalState();
+    currentProjectId = "";
     window.location.reload();
   }
 
@@ -399,6 +412,383 @@
     } catch (_) {}
     if (migrateLegacyEditorialDraft()) return true;
     return migrateClassicDraft();
+  }
+
+
+  function accountToken() {
+    try {
+      return String(localStorage.getItem(authTokenStorageKey) || "").trim();
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function setAccountState(node, message = "", kind = "") {
+    if (!node) return;
+    node.textContent = message;
+    node.classList.toggle("is-error", kind === "error");
+    node.classList.toggle("is-ok", kind === "ok");
+  }
+
+  function rememberAccountToken(token) {
+    try {
+      if (token) localStorage.setItem(authTokenStorageKey, String(token));
+      else localStorage.removeItem(authTokenStorageKey);
+    } catch (_) {}
+  }
+
+  function rememberCurrentProject(projectId) {
+    currentProjectId = String(projectId || "").trim();
+    try {
+      if (currentProjectId) {
+        localStorage.setItem(accountProjectStorageKey, currentProjectId);
+        localStorage.setItem(impactProjectStorageKey, currentProjectId);
+      } else {
+        localStorage.removeItem(accountProjectStorageKey);
+        localStorage.removeItem(impactProjectStorageKey);
+      }
+    } catch (_) {}
+  }
+
+  function restoreCurrentProjectId() {
+    try {
+      currentProjectId = String(localStorage.getItem(accountProjectStorageKey) || "").trim();
+    } catch (_) {
+      currentProjectId = "";
+    }
+  }
+
+  async function accountRequest(path, {method = "GET", body = null, auth = true} = {}) {
+    const headers = {"Accept":"application/json"};
+    if (body !== null) headers["Content-Type"] = "application/json";
+    if (auth) {
+      const token = accountToken();
+      if (!token) {
+        const error = new Error("Autentificare necesară.");
+        error.status = 401;
+        throw error;
+      }
+      headers.Authorization = "Bearer " + token;
+    }
+    const response = await fetch(path, {
+      method,
+      headers,
+      cache:"no-store",
+      body:body === null ? undefined : JSON.stringify(body),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data?.success === false) {
+      const error = new Error(data?.error || data?.detail || ("HTTP " + response.status));
+      error.status = response.status;
+      error.payload = data;
+      throw error;
+    }
+    return data;
+  }
+
+  function projectNameSuggestion() {
+    const explicit = String($("#edProjectName")?.value || "").trim();
+    if (explicit && explicit !== "Casa mea") return explicit;
+    const locality = String($("#localityInput")?.value || "").trim();
+    return locality ? "Casa " + locality : "Casa mea";
+  }
+
+  function accountWorkspaceSnapshot() {
+    return {
+      schemaVersion:"home_lab_editorial_workspace_v1",
+      draft:editorialDraftSnapshot(),
+      page:current,
+      furthestWizardIndex,
+      baselineResult:baselineResult || null,
+      optimizationResult:optimizationResult || null,
+      baselineInputFingerprint:baselineInputFingerprint || "",
+      teoInputFingerprint:teoInputFingerprint || "",
+      savedAt:new Date().toISOString(),
+    };
+  }
+
+  function syncAccountChrome() {
+    const signedIn = Boolean(accountUser && accountToken());
+    if (accountSignedOut) accountSignedOut.hidden = signedIn;
+    if (accountSignedIn) accountSignedIn.hidden = !signedIn;
+    if (accountQuickSave) accountQuickSave.hidden = !signedIn;
+    if (accountOpen) {
+      const firstName = String(accountUser?.name || "").trim().split(/\s+/)[0];
+      accountOpen.textContent = signedIn && firstName ? firstName : "Cont";
+    }
+    if (signedIn) {
+      if ($("#edAccountUserName")) $("#edAccountUserName").textContent = accountUser.name || "Cont Home Lab";
+      if ($("#edAccountUserEmail")) $("#edAccountUserEmail").textContent = accountUser.email || "";
+    }
+  }
+
+  function setAccountSession(result) {
+    rememberAccountToken(result?.token || "");
+    accountUser = result?.user || null;
+    syncAccountChrome();
+  }
+
+  function clearAccountSession() {
+    rememberAccountToken("");
+    accountUser = null;
+    syncAccountChrome();
+  }
+
+  async function refreshAccountSession() {
+    if (!accountToken()) {
+      accountUser = null;
+      syncAccountChrome();
+      return false;
+    }
+    try {
+      const result = await accountRequest("/api/me");
+      accountUser = result.user || null;
+      syncAccountChrome();
+      return Boolean(accountUser);
+    } catch (error) {
+      if (Number(error?.status) === 401) {
+        clearAccountSession();
+      } else {
+        setAccountState(accountSignedOutState, error?.message || "Contul nu poate fi verificat momentan.", "error");
+      }
+      return false;
+    }
+  }
+
+  function formatProjectUpdatedAt(value) {
+    if (!value) return "salvat";
+    const date = new Date(String(value).replace(" ", "T") + (String(value).includes("Z") ? "" : "Z"));
+    if (Number.isNaN(date.getTime())) return "salvat";
+    try {
+      return new Intl.DateTimeFormat("ro-RO", {dateStyle:"medium",timeStyle:"short"}).format(date);
+    } catch (_) {
+      return "salvat";
+    }
+  }
+
+  function renderAccountProjects(projects) {
+    if (!projectsList) return;
+    projectsList.replaceChildren();
+    const rows = Array.isArray(projects) ? projects : [];
+    if (!rows.length) {
+      const empty = document.createElement("p");
+      empty.className = "ed-account-empty";
+      empty.textContent = "Nu ai încă nicio casă salvată în cont.";
+      projectsList.appendChild(empty);
+      return;
+    }
+    rows.forEach(project => {
+      const projectId = String(project.project_id || project.projectId || "");
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "ed-account-project";
+      button.classList.toggle("is-current", projectId === currentProjectId);
+
+      const title = document.createElement("strong");
+      title.textContent = String(project.project_name || project.name || "Casa mea");
+      const meta = document.createElement("small");
+      meta.textContent = formatProjectUpdatedAt(project.updated_at || project.updatedAt);
+      const action = document.createElement("span");
+      action.textContent = projectId === currentProjectId ? "Deschisă" : "Deschide";
+
+      button.append(title, meta, action);
+      button.addEventListener("click", () => loadAccountProject(projectId));
+      projectsList.appendChild(button);
+    });
+  }
+
+  async function refreshAccountProjects() {
+    if (!accountUser) return;
+    if (projectsList) projectsList.innerHTML = '<p class="ed-hint">Se încarcă…</p>';
+    try {
+      const result = await accountRequest("/api/projects/list");
+      renderAccountProjects(result.projects || []);
+    } catch (error) {
+      if (projectsList) {
+        projectsList.replaceChildren();
+        const message = document.createElement("p");
+        message.className = "ed-account-empty";
+        message.textContent = error?.message || "Casele salvate nu pot fi încărcate.";
+        projectsList.appendChild(message);
+      }
+    }
+  }
+
+  function refreshUiAfterLoadedDraft(workspace) {
+    normalizeHeatingUi();
+    syncRenewableVisibility();
+    updateGeometryDisplay(false);
+    syncGoalField();
+    syncChoiceGroupSelections();
+    syncNzebPolicy();
+    syncDerivedAdvancedFields();
+    form.querySelectorAll("[data-optional-advanced]").forEach(refreshAdvancedFieldState);
+    syncTechnicalForm();
+
+    baselineResult = workspace?.baselineResult || null;
+    optimizationResult = workspace?.optimizationResult || null;
+    baselineInputFingerprint = String(workspace?.baselineInputFingerprint || "");
+    teoInputFingerprint = String(workspace?.teoInputFingerprint || "");
+    lastPlan = null;
+    branchResults = [];
+    furthestWizardIndex = Math.max(
+      -1,
+      Math.min(
+        wizardOrder.length - 1,
+        Number.isFinite(Number(workspace?.furthestWizardIndex))
+          ? Number(workspace.furthestWizardIndex)
+          : 0
+      )
+    );
+
+    resetTeoControlUi();
+    if (baselineResult) {
+      paintBaselineSummary(baselineResult, "Casă redeschisă din cont.");
+    }
+    if (optimizationResult) {
+      renderTeoResult();
+    }
+
+    const requestedPage = String(workspace?.page || "");
+    if (requestedPage === "report" && baselineResult && optimizationResult) {
+      renderReport();
+      showPage("report");
+    } else if (requestedPage === "goal" && optimizationResult) {
+      showPage("goal");
+    } else {
+      showPage("house");
+    }
+    if (!baselineResult) scheduleBaselineSummary(150);
+  }
+
+  async function loadAccountProject(projectId) {
+    if (!projectId) return;
+    setAccountState(projectSaveState, "Deschid casa…");
+    try {
+      const result = await accountRequest("/api/projects/load", {
+        method:"POST",
+        body:{projectId},
+      });
+      const project = result.project || {};
+      const workspace = project.workspace || {};
+      const draft = workspace.draft;
+      if (!draftHasFields(draft)) {
+        throw new Error("Casa salvată nu conține un draft Home Lab compatibil.");
+      }
+
+      suppressLocalAutosave = true;
+      const applied = applyEditorialDraft(draft, {preserveOverrides:true})
+        || applyEditorialDraft(draft, {preserveOverrides:false});
+      suppressLocalAutosave = false;
+      if (!applied) throw new Error("Casa salvată nu poate fi aplicată în această versiune Home Lab.");
+
+      rememberCurrentProject(project.projectId || projectId);
+      if ($("#edProjectName")) $("#edProjectName").value = String(project.name || "Casa mea");
+      draftDirty = true;
+      persistEditorialDraft({force:true});
+      refreshUiAfterLoadedDraft(workspace);
+      setAccountState(projectSaveState, "Casa a fost redeschisă.", "ok");
+      await refreshAccountProjects();
+      accountDialog?.close();
+    } catch (error) {
+      suppressLocalAutosave = false;
+      setAccountState(projectSaveState, error?.message || "Casa nu a putut fi deschisă.", "error");
+    }
+  }
+
+  async function saveCurrentAccountProject({quiet = false} = {}) {
+    if (!accountUser || !accountToken()) {
+      accountDialog?.showModal?.();
+      setAccountState(accountSignedOutState, "Conectează-te înainte de salvare.");
+      return false;
+    }
+    const name = projectNameSuggestion();
+    if ($("#edProjectName")) $("#edProjectName").value = name;
+    if (accountQuickSave) {
+      accountQuickSave.disabled = true;
+      accountQuickSave.textContent = "Salvez…";
+    }
+    setAccountState(projectSaveState, quiet ? "" : "Salvez casa în cont…");
+    try {
+      syncTechnicalForm();
+      const result = await accountRequest("/api/projects/save", {
+        method:"POST",
+        body:{
+          projectId:currentProjectId || undefined,
+          name,
+          workspace:accountWorkspaceSnapshot(),
+        },
+      });
+      rememberCurrentProject(result.projectId);
+      markDraftDirty();
+      persistEditorialDraft({force:true});
+      setAccountState(projectSaveState, "Casa este salvată în cont.", "ok");
+      if (accountQuickSave) accountQuickSave.textContent = "Salvat ✓";
+      await refreshAccountProjects();
+      window.setTimeout(() => {
+        if (accountQuickSave) accountQuickSave.textContent = "Salvează";
+      }, 1400);
+      return true;
+    } catch (error) {
+      setAccountState(projectSaveState, error?.message || "Salvarea nu a reușit.", "error");
+      if (accountQuickSave) accountQuickSave.textContent = "Salvează";
+      return false;
+    } finally {
+      if (accountQuickSave) accountQuickSave.disabled = false;
+    }
+  }
+
+  async function handleAccountAuthentication(event, mode) {
+    event.preventDefault();
+    const source = event.currentTarget;
+    const fields = Object.fromEntries(new FormData(source).entries());
+    setAccountState(accountSignedOutState, mode === "register" ? "Creez contul…" : "Verific datele…");
+    try {
+      const result = await accountRequest(
+        mode === "register" ? "/api/register" : "/api/login",
+        {method:"POST",body:fields,auth:false}
+      );
+      setAccountSession(result);
+      source.reset();
+      setAccountState(accountSignedOutState, "", "");
+      setAccountState(projectSaveState, "Cont conectat. Poți salva casa.", "ok");
+      await refreshAccountProjects();
+    } catch (error) {
+      setAccountState(accountSignedOutState, error?.message || "Autentificarea nu a reușit.", "error");
+    }
+  }
+
+  function initializeAccountUi() {
+    restoreCurrentProjectId();
+    syncAccountChrome();
+
+    accountOpen?.addEventListener("click", async () => {
+      if (typeof accountDialog?.showModal === "function") accountDialog.showModal();
+      else accountDialog?.setAttribute("open", "");
+      const signedIn = await refreshAccountSession();
+      if (signedIn) await refreshAccountProjects();
+    });
+    $("#edAccountClose")?.addEventListener("click", () => accountDialog?.close());
+    accountDialog?.addEventListener("click", event => {
+      if (event.target === accountDialog) accountDialog.close();
+    });
+    $("#edLoginForm")?.addEventListener("submit", event => handleAccountAuthentication(event, "login"));
+    $("#edRegisterForm")?.addEventListener("submit", event => handleAccountAuthentication(event, "register"));
+    $("#edAccountLogout")?.addEventListener("click", async () => {
+      try {
+        if (accountToken()) await accountRequest("/api/logout", {method:"POST"});
+      } catch (_) {}
+      clearAccountSession();
+      setAccountState(projectSaveState, "");
+      renderAccountProjects([]);
+    });
+    $("#edProjectSave")?.addEventListener("click", () => saveCurrentAccountProject());
+    accountQuickSave?.addEventListener("click", () => saveCurrentAccountProject({quiet:true}));
+    $("#edProjectsRefresh")?.addEventListener("click", refreshAccountProjects);
+
+    refreshAccountSession().then(signedIn => {
+      if (signedIn && accountDialog?.open) refreshAccountProjects();
+    });
   }
 
   function syncChoiceGroupSelections() {
@@ -4661,6 +5051,7 @@
       $("#edLocationMap").dataset.mapError = error?.message || "location-map-error";
     });
 
+  initializeAccountUi();
   syncGoalField();
   syncNzebPolicy();
   resetTeoControlUi();
