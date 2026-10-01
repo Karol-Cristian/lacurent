@@ -3365,3 +3365,110 @@ body{
   .ed-account-save-box .ed-account-state{grid-column:auto}
   .ed-account-save-box .ed-primary{width:100%}
 }
+
+
+/* Release clarity: explicit review of prefilled house data. */
+.ed-field-review{
+  display:inline-block;
+  margin-left:6px;
+  font-size:9px;
+  font-weight:750;
+  letter-spacing:.035em;
+  text-transform:uppercase;
+  color:var(--muted);
+}
+.ed-field-help{
+  display:block;
+  margin-top:7px;
+  font-size:10px;
+  line-height:1.45;
+  color:var(--muted);
+}
+.ed-confirm-card{
+  margin-top:22px;
+  padding:16px 17px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+  background:var(--soft);
+  cursor:pointer;
+}
+.ed-confirm-card input{
+  margin-top:3px;
+  width:18px;
+  height:18px;
+  flex:0 0 auto;
+}
+.ed-confirm-card span{display:grid;gap:4px}
+.ed-confirm-card b{font-size:14px}
+.ed-confirm-card small{font-size:11px;line-height:1.5;color:var(--muted)}
+
+.ed-floor-boundary-help{
+  margin-top:12px;
+  padding:14px 16px;
+  border:1px solid var(--line);
+  border-radius:15px;
+  background:rgba(255,255,255,.72);
+  display:grid;
+  gap:7px;
+}
+.ed-floor-boundary-help p{margin:0;font-size:11px;line-height:1.45;color:#4b515b}
+.ed-floor-boundary-help small{margin-top:3px;font-size:10px;line-height:1.45;color:var(--muted)}
+.ed-floor-layer-note{
+  margin-top:14px;
+  padding:14px 16px;
+  border:1px dashed #cfd5dc;
+  border-radius:15px;
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:7px;
+  font-size:10px;
+  color:#505761;
+}
+.ed-floor-layer-note strong{font-size:10px;color:var(--ink)}
+.ed-floor-layer-note i{font-style:normal;color:#9aa1aa}
+.ed-floor-layer-note small{
+  flex-basis:100%;
+  margin-top:4px;
+  line-height:1.5;
+  color:var(--muted);
+}
+
+.ed-report-next{
+  padding:44px 0;
+  border-bottom:1px solid var(--line);
+}
+.ed-report-next h2{
+  margin:0 0 20px;
+  font-size:28px;
+  letter-spacing:-.035em;
+}
+.ed-report-next-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+}
+.ed-report-next-grid button{
+  min-height:142px;
+  padding:18px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:#fff;
+  text-align:left;
+  cursor:pointer;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.ed-report-next-grid button:hover{border-color:#aeb6c0}
+.ed-report-next-grid b{font-size:14px;color:var(--ink)}
+.ed-report-next-grid span{font-size:11px;line-height:1.5;color:var(--muted)}
+.ed-report-next-note{margin:16px 0 0;font-size:11px;line-height:1.55;color:var(--muted)}
+
+@media (max-width:720px){
+  .ed-report-next-grid{grid-template-columns:1fr}
+  .ed-report-next-grid button{min-height:0}
+}
