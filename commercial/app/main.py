@@ -388,6 +388,8 @@ async def embed_frame_policy(request: Request, call_next: Any) -> Any:
     return response
 
 
+# --- TEO_SLIM_FORM_START ---
+
 def climate_options() -> list[str]:
     return [item["name"] for item in climate_data()["localities"]]
 
@@ -1345,6 +1347,9 @@ def user_error(exc: Exception) -> str:
     return str(exc)
 
 
+# --- TEO_SLIM_FORM_END ---
+
+
 def result_context(result: Any) -> dict[str, Any]:
     envelope = sorted(result.envelope_contributions, key=lambda item: item.value, reverse=True)
     service_max = max(result.final_energy_by_service.values()) or 1
@@ -1493,6 +1498,8 @@ async def location_data_api() -> StreamingResponse:
         },
     )
 
+
+# --- TEO_SLIM_INFRA_START ---
 
 @lru_cache(maxsize=1)
 def roi_cost_basis_seed() -> dict[str, Any]:
@@ -2166,6 +2173,8 @@ async def _optimizer_heating_commercial_branch_catalog(
         required_power_kw,
     )
 
+
+# --- TEO_SLIM_INFRA_END ---
 
 @app.get("/api/heating-products")
 async def heating_products_api(request: Request) -> JSONResponse:
@@ -3730,6 +3739,8 @@ async def home_lab_next_calculate_api(request: Request) -> Response:
     return await home_lab_next_calculation(request)
 
 
+# --- TEO_SLIM_API_START ---
+
 def _home_lab_optimizer_label(mode: OptimizationMode, form: dict[str, Any]) -> str:
     if mode == OptimizationMode.investment_budget:
         return f"Buget maxim {float(form.get('_investment_budget_lei') or 0):.0f} lei"
@@ -5152,6 +5163,8 @@ async def home_lab_optimization_v3_finalize_api(request: Request) -> JSONRespons
             status_code=422,
         )
 
+
+# --- TEO_SLIM_API_END ---
 
 @app.post("/api/optimization/home-lab/v2/plan")
 async def home_lab_optimization_v2_plan_api(request: Request) -> JSONResponse:
