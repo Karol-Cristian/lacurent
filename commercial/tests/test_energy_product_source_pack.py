@@ -115,3 +115,34 @@ def test_smoke_pack_is_materialized_as_deterministic_d1_seed():
         and "zehnder-comfoair-q350-hrv" in line
     ]
     assert zehnder_metric_rows == []
+
+
+def test_importer_writes_image_only_when_explicit_image_url_exists():
+    importer = _load_importer()
+    payload = importer.load(SOURCE_PACK)
+    payload["products"][0]["image"] = {
+        "image_url": "https://manufacturer.example/product.webp",
+        "source_page": "https://manufacturer.example/product",
+        "rights_basis": "manufacturer_feed_authorized",
+        "alt_text": "Product image",
+    }
+    normalized = importer.validate(payload)
+    sql = importer.build_sql(payload, normalized)
+
+    assert "INSERT OR REPLACE INTO energy_product_images" in sql
+    assert "manufacturer_feed_authorized" in sql
+    assert "https://manufacturer.example/product.webp" in sql
+    assert "INSERT OR REPLACE INTO energy_product_import_batches" in sql
+
+
+def test_current_source_pack_does_not_fake_direct_image_urls():
+    importer = _load_importer()
+    payload = importer.load(SOURCE_PACK)
+    normalized = importer.validate(payload)
+    sql = importer.build_sql(payload, normalized)
+
+    assert "INSERT OR REPLACE INTO energy_product_images" not in sql
+    assert all(
+        not (product.get("image") or {}).get("image_url")
+        for product in payload["products"]
+    )
