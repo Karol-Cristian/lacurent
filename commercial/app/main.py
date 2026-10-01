@@ -2855,6 +2855,228 @@ async def underfloor_system_finalist_commercialization_api(
     )
 
 
+
+@app.post("/api/home-lab/bom")
+async def home_lab_catalog_bom_api(request: Request) -> JSONResponse:
+    """Resolve post-TEO engineering requirements to bounded D1 product rows.
+
+    This is deliberately downstream of TEO. It does not participate in search
+    cardinality and does not trigger a new canonical RBPE pass.
+    """
+
+    env = request.scope.get("env")
+    db = getattr(env, "DB", None) if env is not None else None
+    if db is None:
+        raise HTTPException(status_code=503, detail="Energy product catalog D1 is unavailable.")
+
+    raw = await request.json()
+    requirements = raw.get("requirements") or []
+    if not isinstance(requirements, list):
+        raise HTTPException(status_code=422, detail="requirements must be a list.")
+
+    def heating_category(branch: str) -> str | None:
+        key = str(branch or "").strip().lower()
+        if key == "keep-current-heating":
+            return None
+        if "heat-pump" in key:
+            return "heat_pump"
+        if "condensing-gas" in key or "gas" in key:
+            return "gas_boiler"
+        if "electric-boiler" in key or "electric" in key:
+            return "electric_boiler"
+        if "pellet" in key:
+            return "pellet_boiler"
+        return None
+
+    def numeric(props: dict[str, Any], key: str) -> float | None:
+        value = props.get(key)
+        if value in (None, ""):
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    def cheapest_offer(product: dict[str, Any]) -> dict[str, Any] | None:
+        offers = [
+            item for item in (product.get("offers") or [])
+            if item.get("price_lei") not in (None, "")
+        ]
+        if not offers:
+            return None
+        return min(offers, key=lambda item: float(item.get("price_lei") or 0))
+
+    def product_card(product: dict[str, Any], *, quantity: float, quantity_unit: str,
+                     subtotal_lei: float | None, basis: str, requirement: dict[str, Any]) -> dict[str, Any]:
+        images = list(product.get("images") or [])
+        primary = images[0] if images else {}
+        offer = cheapest_offer(product) or {}
+        return {
+            "family": requirement.get("family"),
+            "categoryId": product.get("category_id"),
+            "productId": product.get("id"),
+            "manufacturer": product.get("manufacturer"),
+            "model": product.get("model"),
+            "label": product.get("label"),
+            "manufacturerSku": product.get("manufacturer_sku"),
+            "quantity": round(float(quantity), 3),
+            "quantityUnit": quantity_unit,
+            "unitPriceLei": offer.get("price_lei"),
+            "priceBasis": offer.get("price_basis"),
+            "subtotalLei": None if subtotal_lei is None else round(float(subtotal_lei), 2),
+            "supplier": offer.get("supplier"),
+            "sourceUrl": offer.get("source_url") or product.get("source_url"),
+            "imageUrl": primary.get("image_url"),
+            "imageSourceUrl": primary.get("source_url") or product.get("source_url"),
+            "imageRightsBasis": primary.get("rights_basis"),
+            "selectionBasis": basis,
+            "properties": product.get("properties") or {},
+        }
+
+    results: list[dict[str, Any]] = []
+    for requirement in requirements[:16]:
+        if not isinstance(requirement, dict):
+            continue
+        family = str(requirement.get("family") or "")
+        category_id = str(requirement.get("categoryId") or "")
+        if family == "heating":
+            category_id = heating_category(str(requirement.get("technologyBranch") or "")) or ""
+        if not category_id:
+            results.append({"family": family, "matched": False, "reason": "no_new_product_required"})
+            continue
+
+        try:
+            window = await read_energy_product_candidate_window_d1(db, category_id, limit=24)
+        except Exception:
+            results.append({"family": family, "matched": False, "reason": "catalog_read_failed"})
+            continue
+
+        products = [
+            p for p in (window.get("products") or [])
+            if not p.get("missing_teo_properties")
+        ]
+        if not products:
+            results.append({
+                "family": family,
+                "categoryId": category_id,
+                "matched": False,
+                "reason": "no_source_backed_product",
+            })
+            continue
+
+        selected: dict[str, Any] | None = None
+        quantity = 1.0
+        quantity_unit = "buc"
+        subtotal: float | None = None
+        basis = "bounded source-backed D1 match"
+
+        if category_id in {"wall_insulation", "roof_insulation", "floor_insulation"}:
+            area = max(float(requirement.get("requiredAreaM2") or 0), 0.0)
+            target_mm = max(float(requirement.get("targetThicknessMm") or 0), 0.0)
+            eligible = [
+                p for p in products
+                if (numeric(p.get("properties") or {}, "thickness_mm") or 0) + 1e-9 >= target_mm
+            ] or products
+            selected = min(
+                eligible,
+                key=lambda p: (
+                    abs((numeric(p.get("properties") or {}, "thickness_mm") or 0) - target_mm),
+                    float((cheapest_offer(p) or {}).get("price_lei") or 1e18),
+                ),
+            )
+            props = selected.get("properties") or {}
+            offer = cheapest_offer(selected)
+            package_area = numeric(props, "package_area_m2")
+            if offer and str(offer.get("price_basis") or "") == "lei_package":
+                if package_area is None and str(offer.get("quantity_unit") or "") == "m2":
+                    package_area = float(offer.get("quantity") or 0)
+                if package_area and package_area > 0:
+                    quantity = max(1, math.ceil(area / package_area))
+                    quantity_unit = "pachete"
+                    subtotal = quantity * float(offer.get("price_lei") or 0)
+            elif offer and str(offer.get("price_basis") or "") == "lei_per_m2":
+                quantity = area
+                quantity_unit = "m²"
+                subtotal = area * float(offer.get("price_lei") or 0)
+            basis = f"grosime ≥ {target_mm:.0f} mm; necesar {area:.1f} m²"
+
+        elif category_id == "pv_module":
+            required_wp = max(float(requirement.get("requiredPowerKwp") or 0), 0.0) * 1000.0
+            eligible = [p for p in products if (numeric(p.get("properties") or {}, "module_power_wp") or 0) > 0]
+            if eligible:
+                selected = min(
+                    eligible,
+                    key=lambda p: float((cheapest_offer(p) or {}).get("price_lei") or 1e18)
+                    / max(numeric(p.get("properties") or {}, "module_power_wp") or 1, 1),
+                )
+                module_wp = numeric(selected.get("properties") or {}, "module_power_wp") or 1
+                quantity = max(1, math.ceil(required_wp / module_wp))
+                quantity_unit = "panouri"
+                offer = cheapest_offer(selected)
+                if offer:
+                    subtotal = quantity * float(offer.get("price_lei") or 0)
+                basis = f"{required_wp/1000.0:.2f} kWp necesari; {module_wp:.0f} Wp/panou"
+
+        elif category_id == "hrv_unit":
+            airflow = max(float(requirement.get("requiredAirflowM3h") or 0), 0.0)
+            target_eff = max(float(requirement.get("targetEfficiency") or 0), 0.0)
+            eligible = [
+                p for p in products
+                if (numeric(p.get("properties") or {}, "max_airflow_m3h") or 0) >= airflow
+                and (numeric(p.get("properties") or {}, "heat_recovery_efficiency") or 0) >= target_eff
+            ]
+            if eligible:
+                selected = min(eligible, key=lambda p: float((cheapest_offer(p) or {}).get("price_lei") or 1e18))
+                offer = cheapest_offer(selected)
+                subtotal = None if offer is None else float(offer.get("price_lei") or 0)
+                basis = f"debit ≥ {airflow:.0f} m³/h; recuperare ≥ {target_eff*100:.0f}%"
+
+        elif category_id in {"heat_pump", "gas_boiler", "electric_boiler", "pellet_boiler"}:
+            required_kw = max(float(requirement.get("requiredPowerKw") or 0), 0.0)
+            eligible = [
+                p for p in products
+                if (numeric(p.get("properties") or {}, "rated_power_kw") or 0) + 1e-9 >= required_kw
+            ]
+            if eligible:
+                selected = min(
+                    eligible,
+                    key=lambda p: (
+                        float((cheapest_offer(p) or {}).get("price_lei") or 1e18),
+                        (numeric(p.get("properties") or {}, "rated_power_kw") or 1e18) - required_kw,
+                    ),
+                )
+                offer = cheapest_offer(selected)
+                subtotal = None if offer is None else float(offer.get("price_lei") or 0)
+                basis = f"putere nominală ≥ {required_kw:.1f} kW"
+
+        if selected is None:
+            results.append({
+                "family": family,
+                "categoryId": category_id,
+                "matched": False,
+                "reason": "no_product_satisfies_requirement",
+            })
+            continue
+
+        results.append({
+            "matched": True,
+            **product_card(
+                selected,
+                quantity=quantity,
+                quantity_unit=quantity_unit,
+                subtotal_lei=subtotal,
+                basis=basis,
+                requirement=requirement,
+            ),
+        })
+
+    return JSONResponse({
+        "source": "d1",
+        "stage": "post_teo_bom",
+        "items": results,
+    })
+
+
 @app.post("/api/optimization/candidate")
 async def optimization_candidate_api(
     payload: OptimizationCandidateRequestV1,
