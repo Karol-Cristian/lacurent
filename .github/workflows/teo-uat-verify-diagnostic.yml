@@ -41,8 +41,7 @@ jobs:
       - name: Install tools
         run: |
           python -m pip install --upgrade uv
-          npm install --no-save wrangler@latest playwright@1.55.0
-          npx playwright install --with-deps chromium
+          npm install --no-save wrangler@latest
 
       - name: Resolve development D1
         run: |
@@ -100,9 +99,90 @@ jobs:
           npm install --save-dev wrangler@latest
           npx wrangler deploy
 
-      - name: Run one full UAT TEO flow with 5xx body capture
-        env:
-          TEO_SOAK_RUNS: "1"
-          TEO_REQUIRE_SHARDED_ROUTES: "1"
+      - name: Probe VERIFY with and without router flow gate
         run: |
-          node scripts/soak-teo-production.mjs
+          python - <<'PY'
+          import json
+          import urllib.parse
+          import urllib.request
+          import urllib.error
+          import uuid
+
+          base = "https://lacurent-uat.lemnarukarol.workers.dev"
+          form = {
+              "project_name":"TEO router diagnostic",
+              "locality_id":"@lc2|alba_iulia|III|-18|siruta-smoke|Smoke%20Locality|Alba",
+              "locality":"Smoke Locality",
+              "heated_floor_area_m2":"120",
+              "heated_volume_m3":"324",
+              "indoor_design_temperature_c":"21",
+              "building_type":"residential_individual",
+              "construction_year":"2005",
+              "wall_area_m2":"140",
+              "wall_u_value":"0.45",
+              "roof_area_m2":"70",
+              "roof_u_value":"0.25",
+              "floor_area_m2":"60",
+              "floor_u_value":"0.36",
+              "floor_boundary_type":"ground",
+              "window_area_m2":"20",
+              "window_u_value":"1.4",
+              "door_area_m2":"3",
+              "door_u_value":"1.7",
+              "air_changes_per_hour":"0.5",
+              "infiltration_air_changes_per_hour":"0.15",
+              "heating_system_type":"condensing_gas_boiler",
+              "heating_efficiency":"0.94",
+              "heating_carrier":"natural_gas",
+              "_optimization_mode":"auto_economic",
+          }
+
+          def post_json(path, payload):
+              raw=json.dumps(payload).encode()
+              req=urllib.request.Request(base+path,data=raw,headers={"content-type":"application/json","accept":"application/json"})
+              try:
+                  with urllib.request.urlopen(req,timeout=90) as resp:
+                      body=resp.read().decode()
+                      return resp.status, dict(resp.headers), json.loads(body)
+              except urllib.error.HTTPError as exc:
+                  body=exc.read().decode()
+                  try: parsed=json.loads(body)
+                  except Exception: parsed={"raw":body}
+                  return exc.code, dict(exc.headers), parsed
+
+          status, headers, branch = post_json(
+              "/api/optimization/home-lab/v3/branch",
+              {"form":form,"branchId":"keep-current-heating","batch":[{}]},
+          )
+          print("BRANCH", status, headers.get("x-lacurent-teo"), headers.get("x-lacurent-teo-shard"), json.dumps(branch)[:1200])
+          if status != 200 or not branch.get("candidates"):
+              raise SystemExit("branch probe failed")
+          candidate=branch["candidates"][0]
+
+          status, headers, direct = post_json(
+              "/api/optimization/home-lab/v3/verify",
+              {"form":form,"branchId":"keep-current-heating","candidate":candidate},
+          )
+          print("VERIFY_DIRECT", status, headers.get("x-lacurent-teo"), headers.get("x-lacurent-teo-shard"), json.dumps(direct)[:1800])
+
+          run_id="diag-"+str(uuid.uuid4())
+          fs, fh, started=post_json(
+              "/api/optimization/home-lab/v4/flow/start",
+              {"runId":run_id,"plannedVerifications":1},
+          )
+          print("FLOW_START", fs, json.dumps(started))
+          if fs != 200:
+              raise SystemExit("flow start failed")
+
+          gated_form={**form, "_optimizer_run_id":run_id}
+          status2, headers2, gated = post_json(
+              "/api/optimization/home-lab/v3/verify",
+              {"form":gated_form,"runId":run_id,"branchId":"keep-current-heating","candidate":candidate},
+          )
+          print("VERIFY_GATED", status2, headers2.get("x-lacurent-teo"), headers2.get("x-lacurent-teo-shard"), json.dumps(gated)[:1800])
+
+          if status != 200:
+              raise SystemExit("direct VERIFY failed")
+          if status2 != 200:
+              raise SystemExit("gated VERIFY failed")
+          PY
