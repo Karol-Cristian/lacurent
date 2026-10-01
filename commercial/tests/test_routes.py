@@ -631,17 +631,18 @@ def test_company_home_is_commercial_landing() -> None:
     assert "data-lacurent-landing" in response.text
     assert "Nu promitem." in response.text
     assert "Calculăm." in response.text
-    assert "Spune-ne cum este casa ta." in response.text
+    assert "Fizică a clădirii, cost, investiție și produse comerciale" in response.text
     assert "MC001" in response.text
     assert "Rapid Building Physics Engine" in response.text
     assert "Techno-Economic Optimizer" in response.text
-    assert "regretul investiției" in response.text
+    assert "Energia și investiția, evaluate împreună." in response.text
     assert "Planul nu trebuie să se oprească la un calcul." in response.text
-    assert "Nu optimizăm doar consumul. Optimizăm decizia." in response.text
+    assert "Un singur indicator nu decide soluția." in response.text
     assert 'href="/home-lab-editorial"' in response.text
-    assert "/static/lacurent-landing.css?v=6" in response.text
+    assert "/static/lacurent-landing.css?v=7" in response.text
     assert 'href="/static/favicon.svg?v=6"' in response.text
-    assert 'class="lc-snap-page"' in response.text
+    assert 'href="/home-lab-editorial?account=1"' in response.text
+    assert 'class="lc-snap-page"' not in response.text
     assert 'href="/produse"' in response.text
     assert "produse reale" in response.text
 
