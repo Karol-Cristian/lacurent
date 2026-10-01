@@ -157,7 +157,7 @@ def test_expanded_source_pack_covers_multiple_teo_roles_and_categories():
     rockwool = by_id["rockwool-frontrock-casa-100"]["metric"]
     assert rockwool is not None
     assert rockwool["comparison_scope"] == "wall_insulation"
-    assert rockwool["denominator_price_lei"] == pytest.approx(223.06 / 2.88)
+    assert rockwool["denominator_price_lei"] == pytest.approx(round(223.06 / 2.88, 2))
     assert rockwool["numerator_value"] == pytest.approx(0.1 / 0.034)
 
     jinko = by_id["jinko-tiger-neo-jkm440n-54hl4r-v"]["metric"]
