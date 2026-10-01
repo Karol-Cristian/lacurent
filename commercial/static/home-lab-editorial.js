@@ -4547,49 +4547,47 @@
   }
 
   function renderMonthlyBillSection(result, optimizedAnnualBill) {
-    const profile = monthlyBillProfile(result);
-    if (!profile.length) return "";
-    const optimizedAverage = Number(optimizedAnnualBill) >= 0
-      ? Number(optimizedAnnualBill) / 12
-      : null;
-    const peak = Math.max(
-      1,
-      ...profile.map(row => Number(row.costLei || 0)),
-      Number.isFinite(optimizedAverage) ? optimizedAverage : 0
-    );
-    const averageHeight = Number.isFinite(optimizedAverage)
-      ? Math.max(2, Math.min(100, 100 * optimizedAverage / peak))
-      : 0;
-
+    const before = monthlyBillProfile(result);
+    if (!before.length) return "";
+    const baselineAnnual = Math.max(Number(result?.annual_cost_lei || 0), 0);
+    const finalAnnual = Math.max(Number(optimizedAnnualBill || 0), 0);
+    const factor = baselineAnnual > 1e-9 ? finalAnnual / baselineAnnual : 0;
+    const rows = before.map(row => ({
+      month:row.month,
+      before:Number(row.costLei || 0),
+      after:Number(row.costLei || 0) * factor,
+    }));
+    const peak = Math.max(1, ...rows.flatMap(row => [row.before,row.after]));
     return `
       <section class="ed-report-section ed-monthly-bills">
         <div class="ed-report-section-heading">
           <div>
-            <p class="ed-eyebrow">Facturi lunare</p>
-            <h2>Unde se concentrează costul pe parcursul anului</h2>
+            <p class="ed-eyebrow">COST LUNAR</p>
+            <h2>Înainte vs. după investiție</h2>
           </div>
-          <span>fără recalculare suplimentară</span>
+          <span>total anual verificat</span>
         </div>
-        <p>Profilul lunar al casei actuale distribuie factura anuală deja calculată după balanța lunară RBPE. Totalul anual rămâne exact; împărțirea pe luni este orientativă. Pentru rezultatul TEO afișăm media lunară a facturii finale, nu pretindem un al doilea profil lunar canonic.</p>
         <div class="ed-monthly-bill-legend">
-          <span><i class="is-current"></i> Casa actuală · profil lunar</span>
-          ${Number.isFinite(optimizedAverage) ? '<span><i class="is-teo-average"></i> După TEO · medie lunară ' + escapeHtml(money(optimizedAverage)) + '</span>' : ""}
+          <span><i class="is-current"></i> Înainte · ${escapeHtml(money(baselineAnnual))}/an</span>
+          <span><i class="is-teo-average"></i> După TEO · ${escapeHtml(money(finalAnnual))}/an</span>
         </div>
-        <div class="ed-monthly-bill-chart" role="img" aria-label="Profil lunar estimativ al facturii actuale și media lunară după optimizarea TEO">
-          ${profile.map(row => {
-            const currentHeight = Math.max(2, Math.min(100, 100 * Number(row.costLei || 0) / peak));
+        <div class="ed-monthly-bill-chart" role="img" aria-label="Cost lunar estimat înainte și după investiția recomandată de TEO">
+          ${rows.map(row => {
+            const beforeHeight = Math.max(2, Math.min(100, 100 * row.before / peak));
+            const afterHeight = Math.max(2, Math.min(100, 100 * row.after / peak));
             return `
               <div class="ed-monthly-bill-column">
                 <div class="ed-monthly-bill-bars">
-                  <i class="is-current" style="height:${fmt(currentHeight,1)}%"></i>
-                  ${Number.isFinite(optimizedAverage) ? '<i class="is-teo-average" style="height:' + escapeHtml(fmt(averageHeight,1)) + '%"></i>' : ""}
+                  <i class="is-current" style="height:${fmt(beforeHeight,1)}%"></i>
+                  <i class="is-teo-average" style="height:${fmt(afterHeight,1)}%"></i>
                 </div>
                 <b>${escapeHtml(row.month)}</b>
-                <small>${escapeHtml(money(row.costLei))}</small>
+                <small>${escapeHtml(money(row.before))} → ${escapeHtml(money(row.after))}</small>
               </div>
             `;
           }).join("")}
         </div>
+        <p class="ed-chart-note">Totalurile anuale sunt cele verificate de motor. Profilul lunar „după” păstrează distribuția climatică lunară a casei și o scalează la factura anuală TEO.</p>
       </section>
     `;
   }
@@ -4714,254 +4712,298 @@
     `;
   }
 
+  function reportComparisonBar(label, beforeValue, afterValue, formatter) {
+    const before = Math.max(Number(beforeValue || 0), 0);
+    const after = Math.max(Number(afterValue || 0), 0);
+    const peak = Math.max(before, after, 1);
+    return `
+      <article class="ed-report-compare-row">
+        <header><span>${escapeHtml(label)}</span><b>${escapeHtml(formatter(before))} → ${escapeHtml(formatter(after))}</b></header>
+        <div class="ed-report-compare-track">
+          <i class="is-before" style="width:${fmt(100 * before / peak,1)}%"></i>
+          <i class="is-after" style="width:${fmt(100 * after / peak,1)}%"></i>
+        </div>
+      </article>
+    `;
+  }
+
+  function reportHeatingPerformance(engineering) {
+    const heat = engineering?.heating || {};
+    const currentScop = parseDecimal($("#techHeatingScop")?.value, NaN);
+    const currentEtaRaw = parseDecimal($("#techHeatingEfficiency")?.value, NaN);
+    const currentEta = Number.isFinite(currentEtaRaw)
+      ? (currentEtaRaw <= 1.5 ? currentEtaRaw * 100 : currentEtaRaw)
+      : NaN;
+    const afterScop = Number(heat.scop_model);
+    const afterEffective = Number(heat.effective_system_performance);
+    const afterEta = Number(heat.efficiency_target);
+
+    if (Number.isFinite(afterScop) && afterScop > 1) {
+      return {
+        title:"SCOP sistem încălzire",
+        before:Number.isFinite(currentScop) ? currentScop : null,
+        after:afterScop,
+        suffix:"",
+        max:Math.max(5, afterScop, Number.isFinite(currentScop) ? currentScop : 0),
+      };
+    }
+    if (Number.isFinite(afterEffective) && afterEffective > 1.05) {
+      return {
+        title:"Performanță efectivă sistem",
+        before:Number.isFinite(currentScop) ? currentScop : null,
+        after:afterEffective,
+        suffix:"",
+        max:Math.max(5, afterEffective, Number.isFinite(currentScop) ? currentScop : 0),
+      };
+    }
+    const afterPercent = Number.isFinite(afterEta)
+      ? (afterEta <= 1.5 ? afterEta * 100 : afterEta)
+      : null;
+    if (afterPercent != null || Number.isFinite(currentEta)) {
+      return {
+        title:"Randament sezonier generator",
+        before:Number.isFinite(currentEta) ? currentEta : null,
+        after:afterPercent,
+        suffix:"%",
+        max:100,
+      };
+    }
+    return null;
+  }
+
+  function renderHeatingPerformanceSection(engineering) {
+    const perf = reportHeatingPerformance(engineering);
+    if (!perf) return "";
+    const before = perf.before == null ? null : Math.max(0, Number(perf.before));
+    const after = perf.after == null ? null : Math.max(0, Number(perf.after));
+    const max = Math.max(Number(perf.max || 1), before || 0, after || 0, 1);
+    const display = value => value == null ? "—" : fmt(value, perf.suffix === "%" ? 0 : 2) + perf.suffix;
+    return `
+      <section class="ed-report-section">
+        <div class="ed-report-section-heading">
+          <div>
+            <p class="ed-eyebrow">SISTEM TERMIC</p>
+            <h2>${escapeHtml(perf.title)}</h2>
+          </div>
+        </div>
+        <div class="ed-performance-compare">
+          <article>
+            <span>Înainte</span><strong>${escapeHtml(display(before))}</strong>
+            <div><i style="width:${before == null ? 0 : fmt(100 * before / max,1)}%"></i></div>
+          </article>
+          <article>
+            <span>După TEO</span><strong>${escapeHtml(display(after))}</strong>
+            <div><i class="is-after" style="width:${after == null ? 0 : fmt(100 * after / max,1)}%"></i></div>
+          </article>
+        </div>
+      </section>
+    `;
+  }
+
+  function catalogBomRequirements(engineering, opt) {
+    const selected = Array.isArray(opt?.selected) ? opt.selected : [];
+    const active = new Set(selected.map(row => String(row?.family || "")));
+    const geometry = baselineResult?.envelope_geometry || {};
+    const env = engineering?.envelope || {};
+    const ventilation = engineering?.ventilation || {};
+    const heating = engineering?.heating || {};
+    const pv = engineering?.pv || {};
+    const solar = engineering?.solar_thermal || {};
+    const heatedVolume = Number(
+      baselineResult?.input?.heated_volume_m3
+      ?? parseDecimal($("#heatedVolume")?.value, 0)
+      ?? 0
+    );
+    const rows = [];
+
+    const insulation = (family, categoryId, spec, area) => {
+      if (!active.has(family) || Number(spec?.added_r_m2k_w || 0) <= 1e-9) return;
+      rows.push({
+        family,
+        categoryId,
+        requiredAreaM2:Number(area || 0),
+        targetThicknessMm:10 * Number(spec?.equivalent_insulation_thickness_cm || 0),
+      });
+    };
+    insulation("wall","wall_insulation",env.wall,geometry.net_wall_area_m2);
+    insulation("roof","roof_insulation",env.roof,geometry.roof_area_m2);
+    insulation("floor","floor_insulation",env.floor,geometry.floor_area_m2);
+
+    const replacement = Number(env.windows?.replacement_fraction || 0);
+    if (active.has("windows") && replacement > 1e-9) {
+      rows.push({
+        family:"windows",
+        categoryId:"window_system",
+        requiredAreaM2:Number(geometry.window_area_m2 || 0) * replacement,
+        targetUw:Number(env.windows?.target_u_w_m2k || env.windows?.final_u_w_m2k || 0),
+      });
+    }
+
+    if (active.has("ventilation") && Number(ventilation.heat_recovery_efficiency || 0) > 0) {
+      rows.push({
+        family:"ventilation",
+        categoryId:"hrv_unit",
+        requiredAirflowM3h:Math.max(0, heatedVolume * Number(ventilation.air_changes_per_hour || 0)),
+        targetEfficiency:Number(ventilation.heat_recovery_efficiency || 0),
+      });
+    }
+
+    if (active.has("heating")) {
+      rows.push({
+        family:"heating",
+        technologyBranch:String(heating.technology_branch || heating.generator_type || ""),
+        requiredPowerKw:Number(heating.installed_power_target_kw || heating.design_required_power_kw || 0),
+      });
+    }
+
+    if (active.has("pv") && Number(pv.added_power_kwp || 0) > 1e-9) {
+      rows.push({
+        family:"pv",
+        categoryId:"pv_module",
+        requiredPowerKwp:Number(pv.added_power_kwp || 0),
+      });
+    }
+
+    if (active.has("solar_thermal") && Number(solar.added_area_m2 || 0) > 1e-9) {
+      rows.push({
+        family:"solar_thermal",
+        categoryId:"solar_thermal_collector",
+        requiredAreaM2:Number(solar.added_area_m2 || 0),
+      });
+    }
+    return rows;
+  }
+
+  function renderCatalogBomShell() {
+    return `
+      <section class="ed-report-section ed-technical-bom" id="edTechnicalBom">
+        <div class="ed-report-section-heading">
+          <div>
+            <p class="ed-eyebrow">LISTĂ DE MATERIALE</p>
+            <h2>Produse și cantități din catalogul LaCurent</h2>
+          </div>
+          <span>D1 · post-TEO</span>
+        </div>
+        <div id="edCatalogBom" class="ed-catalog-bom">
+          <p class="ed-hint">Potrivesc specificația TEO cu produsele source-backed din baza de date…</p>
+        </div>
+      </section>
+    `;
+  }
+
+  function bomQuantityLabel(item) {
+    const value = Number(item?.quantity);
+    if (!Number.isFinite(value)) return "—";
+    const unit = String(item?.quantityUnit || "buc");
+    return fmt(value, Number.isInteger(value) ? 0 : 1) + " " + unit;
+  }
+
+  function renderCatalogBomItems(items) {
+    const node = $("#edCatalogBom");
+    if (!node) return;
+    const rows = Array.isArray(items) ? items : [];
+    if (!rows.length) {
+      node.innerHTML = '<p class="ed-hint">TEO nu a selectat materiale sau echipamente noi pentru această configurație.</p>';
+      return;
+    }
+    node.innerHTML = rows.map(item => {
+      if (!item?.matched) {
+        const family = String(item?.family || "intervenție").replaceAll("_"," ");
+        const reason = item?.reason === "no_new_product_required"
+          ? "Sistemul existent rămâne în soluție."
+          : "Catalogul D1 nu are încă un SKU source-backed care să satisfacă această cerință.";
+        return `
+          <article class="ed-bom-product is-unmatched">
+            <div class="ed-bom-product-image"><span>—</span></div>
+            <div class="ed-bom-product-main">
+              <small>${escapeHtml(family)}</small>
+              <h3>Cerință tehnică fără SKU validat</h3>
+              <p>${escapeHtml(reason)}</p>
+            </div>
+          </article>
+        `;
+      }
+      const image = /^https?:\/\//i.test(String(item.imageUrl || ""))
+        ? '<img src="' + escapeHtml(item.imageUrl) + '" alt="' + escapeHtml(item.label || "Produs") + '" loading="lazy">'
+        : '<span>' + escapeHtml(String(item.manufacturer || "LC").slice(0,2).toUpperCase()) + '</span>';
+      const source = /^https?:\/\//i.test(String(item.sourceUrl || ""))
+        ? '<a href="' + escapeHtml(item.sourceUrl) + '" target="_blank" rel="noopener noreferrer">Sursa produsului ↗</a>'
+        : "";
+      return `
+        <article class="ed-bom-product">
+          <div class="ed-bom-product-image">${image}</div>
+          <div class="ed-bom-product-main">
+            <small>${escapeHtml(item.manufacturer || item.categoryId || "Produs")}</small>
+            <h3>${escapeHtml(item.label || item.model || item.productId)}</h3>
+            <p>${escapeHtml(item.selectionBasis || "")}</p>
+            <div class="ed-bom-product-meta">
+              <b>${escapeHtml(bomQuantityLabel(item))}</b>
+              ${item.subtotalLei == null ? "" : '<span>' + escapeHtml(money(item.subtotalLei)) + '</span>'}
+              ${item.supplier ? '<span>' + escapeHtml(item.supplier) + '</span>' : ""}
+            </div>
+            ${source}
+          </div>
+        </article>
+      `;
+    }).join("");
+  }
+
+  async function loadCatalogBom(engineering, opt) {
+    const requirements = catalogBomRequirements(engineering, opt);
+    if (!requirements.length) {
+      renderCatalogBomItems([]);
+      return;
+    }
+    try {
+      const response = await fetch("/api/home-lab/bom", {
+        method:"POST",
+        headers:{"Content-Type":"application/json","Accept":"application/json"},
+        body:JSON.stringify({requirements}),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload?.detail || "Lista de materiale nu poate fi încărcată.");
+      renderCatalogBomItems(payload.items || []);
+    } catch (error) {
+      const node = $("#edCatalogBom");
+      if (node) node.innerHTML = '<p class="ed-hint">' + escapeHtml(error?.message || "Lista de materiale nu poate fi încărcată.") + '</p>';
+    }
+  }
+
   function renderReport() {
     if (!baselineResult || !optimizationResult) return;
     const scenario = optimizationResult.scenario || {};
     const opt = optimizationResult.optimization || {};
     const parametric = opt.parametricEvaluation || {};
     const engineering = opt.engineeringSpec || {};
-    const baselineBill = baselineResult.annual_cost_lei;
-    const finalBill = parametric.annualBillLei ?? scenario.annual_cost_lei;
-    const locality = baselineResult.locality || $("#localityInput").value;
+    const baselineBill = Number(baselineResult.annual_cost_lei || 0);
+    const finalBill = Number(parametric.annualBillLei ?? scenario.annual_cost_lei ?? baselineBill);
+    const baselineFinal = Number(baselineResult.final_energy_kwh || 0);
+    const finalEnergy = Number(parametric.finalEnergyKwh ?? scenario.final_energy_kwh ?? baselineFinal);
 
     $("#reportIntro").textContent =
-      `Analiza pornește de la locuința din ${locality}. Geometria, anvelopa, instalațiile și regenerabilele sunt introduse cu aceeași granularitate ca în Home Lab-ul tehnic.`;
+      "Raportul nu repetă recomandările de pe pagina TEO. Aici vezi numai diferențele măsurabile și lista comercială rezultată.";
 
-    let html = `
-      <section class="ed-report-section">
-        <h2>Situația actuală</h2>
-        <p>Modelul folosește clima locală, geometria, straturile anvelopei și configurația instalațiilor declarate.</p>
-        <div class="ed-metrics">
-          ${metric("Energie finală", energy(baselineResult.final_energy_kwh))}
-          ${metric("Cost anual estimat", money(baselineBill))}
-          ${metric("Putere de calcul încălzire spații", baselineResult.design_heat_load_kw == null ? "—" : fmt(baselineResult.design_heat_load_kw,1) + " kW")}
-          ${metric("Clasă energetică", baselineResult.energy_class || "—")}
-        </div>
-      </section>
-
-      <section class="ed-report-section">
-        <h2>Rezumat economic al optimului TEO</h2>
-        <p>${escapeHtml(opt.rationale || "Rezultatul de mai jos este optimul parametric verificat; discretizarea comercială nu participă la această selecție.")}</p>
-        <div class="ed-report-callout">
-          <small>CAPEX parametric estimat</small><br>
-          <strong>${money(opt.capexLei)}</strong>
-        </div>
-        <div class="ed-metrics">
-          ${metric("Economii estimate", opt.annualSavingLei == null ? "Nedeterminate" : money(opt.annualSavingLei) + "/an")}
-          ${metric("Cost după intervenții", money(finalBill))}
-          ${metric("Recuperare", paybackDisplay(opt))}
-          ${metric("Putere finală necesară · spații", parametric.designHeatLoadKw == null ? "—" : fmt(parametric.designHeatLoadKw,1) + " kW")}
-        </div>
-        ${economicStatusText(opt) ? `<p class="ed-hint"><b>Interpretare economică:</b> ${escapeHtml(economicStatusText(opt))}</p>` : ""}
-        ${opt.simpleNetBenefitLeiByHorizon ? `
-          <h3>Beneficiu net simplu în timp</h3>
-          <p class="ed-hint">Economie anuală × orizont − CAPEX parametric. Fără finanțare, inflație, mentenanță, înlocuiri sau valoare reziduală; acestea vor aparține modelului lifecycle.</p>
-          <div class="ed-metrics">
-            ${(opt.economicHorizonsYears || [5,10,15,20,25]).map(years =>
-              metric(`${years} ani`, money(opt.simpleNetBenefitLeiByHorizon[String(years)]))
-            ).join("")}
-          </div>
-        ` : ""}
-      </section>
-    `;
-
+    let html = "";
     html += renderMonthlyBillSection(baselineResult, finalBill);
-
-    const nzebTarget = baselineResult?.nzeb_target || null;
-    const rerTotal = Number(
-      parametric.rerPercent
-      ?? scenario.rer_percent
-      ?? 0
-    );
-    const rerOnsite = Number(
-      parametric.onsiteRenewablePercent
-      ?? scenario.onsite_renewable_percent
-      ?? 0
-    );
-    const nzebTechnicalPass = Boolean(
-      nzebTarget
-      && candidateAvailableNzebPass(parametric, nzebTarget)
-    );
-    if (nzebTarget) {
-      html += `
-        <section class="ed-report-section">
-          <h2>nZEB · verificare tehnică modelată</h2>
-          <p>Home Lab verifică numeric partea pe care o poate demonstra din model. Garanțiile de origine și orice cerință suplimentară 2026 stabilită prin act oficial rămân verificări documentare externe.</p>
-          <div class="ed-metrics">
-            ${metric("Eprim final", parametric.primarySpecificKwhM2 == null ? "—" : fmt(parametric.primarySpecificKwhM2,1) + " / " + fmt(nzebTarget.primary_energy_kwh_m2_year,1) + " kWh/m²·an")}
-            ${metric("CO₂ final", parametric.co2SpecificKgM2 == null ? "—" : fmt(parametric.co2SpecificKgM2,1) + " / " + fmt(nzebTarget.co2_kg_m2_year,1) + " kgCO₂/m²·an")}
-            ${metric("RER tehnic", fmt(rerTotal,1) + "% / ≥" + fmt(nzebTarget.renewable_total_minimum_percent ?? 30,0) + "%")}
-            ${metric("SRE onsite", fmt(rerOnsite,1) + "% / ≥" + fmt(nzebTarget.renewable_onsite_minimum_percent ?? 10,0) + "%")}
-          </div>
-          <p class="ed-hint"><b>Status:</b> ${nzebTechnicalPass ? "pragurile tehnice controlabile de TEO sunt atinse" : "cel puțin un prag tehnic controlabil de TEO nu este atins"}. RER total este raportat separat; pentru conformare juridică completă, dovada pentru minimum ${fmt(nzebTarget.renewable_guarantee_of_origin_minimum_percent ?? 20,0)}% prin garanții de origine se verifică separat.</p>
-        </section>
-      `;
-    }
-
-    const env = engineering.envelope || {};
-    const bridges = engineering.thermal_bridges || {};
-    const ventilation = engineering.ventilation || {};
-    const heat = engineering.heating || {};
-    const pvSpec = engineering.pv || {};
-    const solarSpec = engineering.solar_thermal || {};
-    const familyCard = (label, spec) => {
-      if (!spec) return "";
-      return `
-        <div class="ed-measure">
-          <div>
-            <b>${escapeHtml(label)}</b><br>
-            <span>
-              U final ${spec.final_u_w_m2k == null ? "—" : fmt(spec.final_u_w_m2k,3) + " W/m²K"}
-              · ΔR ${fmt(spec.added_r_m2k_w || 0,2)} m²K/W
-              · λ calcul ${spec.reference_lambda_w_mk == null ? "—" : fmt(spec.reference_lambda_w_mk,3) + " W/mK"}
-              · grosime echiv. ${spec.equivalent_insulation_thickness_cm == null ? "—" : fmt(spec.equivalent_insulation_thickness_cm,1) + " cm"}
-            </span>
-          </div>
-        </div>`;
-    };
-
     html += `
       <section class="ed-report-section">
-        <h2>Optim TEO · specificație inginerească</h2>
-        <p>Acesta este designul parametric verificat. Nu conține SKU-uri și nu rotunjește soluția la trepte comerciale.</p>
-        ${familyCard("Pereți", env.wall)}
-        ${familyCard("Acoperiș / pod", env.roof)}
-        ${familyCard("Pardoseală", env.floor)}
-        <div class="ed-measure">
-          <div><b>Ferestre</b><br><span>
-            ${Number(env.windows?.replacement_fraction || 0) <= 1e-9
-              ? "Fără înlocuire TEO · Uw existent/rezultat " + (env.windows?.final_u_w_m2k == null ? "—" : fmt(env.windows.final_u_w_m2k,3) + " W/m²K")
-              : "Uw țintă " + (env.windows?.target_u_w_m2k == null ? "—" : fmt(env.windows.target_u_w_m2k,3) + " W/m²K")
-                + " · Uw rezultat " + (env.windows?.final_u_w_m2k == null ? "—" : fmt(env.windows.final_u_w_m2k,3) + " W/m²K")
-                + " · înlocuire " + fmt(100 * Number(env.windows?.replacement_fraction || 0),1) + "%"
-            }
-          </span></div>
-        </div>
-        <div class="ed-measure">
-          <div><b>Punți termice</b><br><span>
-            Σψ·L ${fmt(bridges.sum_psi_l_w_k || 0,2)} W/K
-            · ψ mediu ponderat ${bridges.weighted_mean_psi_w_mk == null ? "—" : fmt(bridges.weighted_mean_psi_w_mk,3) + " W/mK"}
-            · lungime totală ${fmt(bridges.total_length_m || 0,1)} m
-          </span></div>
-        </div>
-        <div class="ed-measure">
-          <div><b>Ventilație / infiltrații</b><br><span>
-            ACH ${fmt(ventilation.air_changes_per_hour || 0,2)}
-            · infiltrații ${fmt(ventilation.infiltration_air_changes_per_hour || 0,2)} 1/h
-            · η recuperare ${fmt(100 * Number(ventilation.heat_recovery_efficiency || 0),1)}%
-          </span></div>
-        </div>
-        <div class="ed-measure">
-          <div><b>Încălzire</b><br><span>
-            ramură ${escapeHtml(heat.technology_branch || heat.generator_type || "sistem existent")}
-            · putere de proiect ${fmt(heat.design_required_power_kw || 0,2)} kW
-            · țintă instalată ${fmt(heat.installed_power_target_kw || 0,2)} kW
-            ${heat.scop_model == null ? "" : " · SCOP model parametric " + fmt(heat.scop_model,2)}
-            ${heat.effective_system_performance == null ? "" : " · performanță efectivă sistem " + fmt(heat.effective_system_performance,2)}
-            ${heat.efficiency_target == null ? "" : " · η țintă " + fmt(100 * Number(heat.efficiency_target),1) + "%"}
-            ${heat.design_flow_temperature_c == null ? "" : " · tur " + fmt(heat.design_flow_temperature_c,0) + " °C"}
-            ${heat.design_return_temperature_c == null ? "" : " · retur " + fmt(heat.design_return_temperature_c,0) + " °C"}
-          </span></div>
-        </div>
-        <div class="ed-measure">
-          <div><b>Fotovoltaice</b><br><span>
-            ${fmt(pvSpec.installed_power_kwp || 0,2)} kWp total
-            · +${fmt(pvSpec.added_power_kwp || 0,2)} kWp TEO
-            ${pvSpec.orientation ? " · " + escapeHtml(pvSpec.orientation) : ""}
-            ${pvSpec.tilt_degrees == null ? "" : " · " + fmt(pvSpec.tilt_degrees,0) + "°"}
-            ${pvSpec.performance_ratio == null ? "" : " · PR " + fmt(pvSpec.performance_ratio,3)}
-          </span></div>
-        </div>
-        <div class="ed-measure">
-          <div><b>Solar termic</b><br><span>
-            ${fmt(solarSpec.collector_area_m2 || 0,2)} m² total
-            · +${fmt(solarSpec.added_area_m2 || 0,2)} m² TEO
-            ${solarSpec.system_efficiency == null ? "" : " · η " + fmt(100 * Number(solarSpec.system_efficiency),1) + "%"}
-          </span></div>
-        </div>
-        <p class="ed-hint">λ este valoarea de calcul folosită pentru conversia dintre rezistență termică și grosime; TEO optimizează în prezent ΔR/U, nu un material comercial. Valorile ψ sunt raportate din modelul fizic și nu sunt încă variabile independente de optimizare. Pentru pompele de căldură, SCOP-ul din această secțiune este modelul tehnic parametric al ramurii; COP/SCOP-ul produsului real se confirmă numai după discretizarea comercială.</p>
-      </section>
-
-      ${renderTechnicalBomSection(engineering, opt)}
-      <section class="ed-report-section">
-        <h2>Discretizare comercială</h2>
-        <p>Nu face parte din TEO. Produsele reale, grosimile comerciale, SKU-urile și curbele de producător se potrivesc ulterior peste această specificație inginerească, fără să redefinească optimul parametric.</p>
-      </section>
-    `;
-
-    if (scenario.annual_fuel_use && Object.keys(scenario.annual_fuel_use).length) {
-      html += `
-        <section class="ed-report-section">
-          <h2>Combustibil anual</h2>
-          <p>Necesarul fizic anual rezultat din configurația finală:</p>
-          ${Object.entries(scenario.annual_fuel_use).map(([key,val]) => `<div class="ed-measure"><span>${escapeHtml(key.replaceAll("_"," "))}</span><b>${typeof val === "number" ? fmt(val,1) : escapeHtml(JSON.stringify(val))}</b></div>`).join("")}
-        </section>
-      `;
-    }
-
-    html += `
-      <section class="ed-report-section">
-        <h2>Cum a fost verificat rezultatul</h2>
-        <p>Optimizerul a căutat parametric în browser, a evaluat separat ramurile de încălzire și a verificat finalistul cu motorul energetic complet. Selecția comercială este intenționat în afara TEO.</p>
-        <div class="ed-metrics">
-          ${metric("Candidați evaluați", fmt(opt.evaluatedCandidates || 0))}
-          ${metric("Evaluări parametrice", fmt(opt.parametricEvaluations || 0))}
-          ${metric("Verificări motor complet", fmt(opt.fullEngineVerifications || 0))}
-          ${metric("Timp calcul server", opt.calculationTimeMs == null ? "—" : fmt(opt.calculationTimeMs / 1000,1) + " s")}
-        </div>
-      </section>
-
-      <section class="ed-report-section">
-        <h2>Metodologie și ipoteze</h2>
-        <p><b>Metodologie:</b> ${escapeHtml(scenario.methodology_version || baselineResult.methodology_version || "—")}. ${escapeHtml(scenario.methodology_source || baselineResult.methodology_source || "")}</p>
-        <p><b>Date de preț:</b> ${scenario.price_retrieved_on ? "referință " + escapeHtml(scenario.price_retrieved_on) : "conform surselor active ale motorului"}.</p>
-        ${Array.isArray(scenario.assumptions) && scenario.assumptions.length ? `<h3>Ipoteze declarate de motor</h3><ul>${scenario.assumptions.map(x => `<li>${escapeHtml(x)}</li>`).join("")}</ul>` : ""}
-        ${Array.isArray(opt.warnings) && opt.warnings.length ? `<h3>Limitări / avertismente</h3><ul>${opt.warnings.map(x => `<li>${escapeHtml(x)}</li>`).join("")}</ul>` : ""}
-      </section>
-    `;
-    html += `
-      <section class="ed-report-section ed-report-professional-gate">
-        <p class="ed-eyebrow">Statutul raportului</p>
-        <h2>Calcul finalizat. Verificarea profesională este un pas separat.</h2>
-
-        <div class="ed-report-status-grid">
-          <div class="is-complete">
-            <span>Home Lab</span>
-            <strong><svg aria-hidden="true"><use href="#ed-i-check"></use></svg> Calcul tehnic finalizat</strong>
-          </div>
-          <div class="is-review">
-            <span>Utilizare oficială</span>
-            <strong><svg aria-hidden="true"><use href="#ed-i-info"></use></svg> Verificare profesională neefectuată</strong>
-          </div>
-        </div>
-
-        <p>Raportul Home Lab poate susține comparația tehnică și economică a opțiunilor. El nu înlocuiește documentele pe care legea le rezervă specialiștilor atestați și nici proiectul necesar executării lucrărilor, atunci când acesta este cerut.</p>
-
-        <details class="ed-report-review-details">
-          <summary><span>Când intră specialistul atestat?</span><b>+</b></summary>
+        <div class="ed-report-section-heading">
           <div>
-            <p><b>Certificat de performanță energetică / raport de audit energetic:</b> documentele oficiale se elaborează de auditor energetic pentru clădiri, în limitele dreptului său de practică.</p>
-            <p><b>Raport de conformare nZEB:</b> pentru documentația oficială aferentă unei clădiri noi, raportul este elaborat de auditor energetic pentru clădiri gradul I.</p>
-            <p><b>Proiect și execuție:</b> soluția trebuie preluată în documentația de proiect de specialiștii competenți și, unde legislația o cere, verificată de verificatori de proiecte atestați.</p>
+            <p class="ed-eyebrow">ÎNAINTE / DUPĂ</p>
+            <h2>Impactul soluției TEO</h2>
           </div>
-        </details>
-
-        <p class="ed-report-legal-note"><b>Important:</b> regimul concret depinde de clădire, tipul și amploarea intervenției, statutul de renovare majoră, autorizare și eventuale regimuri speciale. Home Lab nu presupune automat că o intervenție este autorizabilă sau că o clădire intră într-o anumită excepție legală.</p>
-
-        <div class="ed-impact-save">
-          <div>
-            <p class="ed-eyebrow">Home Lab Impact</p>
-            <h3>Salvează această analiză în cont.</h3>
-            <p>În agregatul public intră numai ultima versiune salvată a fiecărei case. Nu pretindem că intervenția a fost executată sau că economia a fost măsurată.</p>
-          </div>
-          <button type="button" class="ed-primary" id="edImpactSave">Salvează analiza</button>
-          <small id="edImpactSaveState"></small>
+        </div>
+        <div class="ed-report-compare">
+          ${reportComparisonBar("Cost anual", baselineBill, finalBill, money)}
+          ${reportComparisonBar("Energie finală", baselineFinal, finalEnergy, energy)}
         </div>
       </section>
     `;
+    html += renderHeatingPerformanceSection(engineering);
+    html += renderCatalogBomShell();
 
     $("#reportBody").innerHTML = html;
-    wireImpactSaveButton();
+    loadCatalogBom(engineering, opt);
   }
 
   $("#runAnalysis").addEventListener("click", runAnalysis);
