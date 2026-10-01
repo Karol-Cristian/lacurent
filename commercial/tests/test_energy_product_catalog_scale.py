@@ -286,9 +286,11 @@ def test_heating_finalist_window_stays_bounded_with_ten_thousand_products() -> N
 
 
 def test_large_catalog_does_not_change_teo_product_pass_budget() -> None:
-    main_source = (ROOT / "commercial" / "app" / "main.py").read_text(encoding="utf-8")
+    editorial_source = (
+        ROOT / "commercial" / "static" / "home-lab-editorial.js"
+    ).read_text(encoding="utf-8")
 
-    assert '"maxProductPasses":0' in main_source.replace(" ", "")
+    assert "maxProductPasses:0" in editorial_source.replace(" ", "")
     assert "COMMERCIAL_FINALIST_MAX_PRODUCTS" in (
         ROOT / "commercial" / "app" / "heating_catalog_store.py"
     ).read_text(encoding="utf-8")
