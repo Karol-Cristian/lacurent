@@ -111,6 +111,9 @@ class FakeStatement:
                 ]
             )
 
+        if "FROM energy_product_images" in self.sql:
+            return SimpleNamespace(results=[])
+
         if "FROM energy_product_offers" in self.sql:
             return SimpleNamespace(
                 results=[
