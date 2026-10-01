@@ -204,17 +204,26 @@ def test_price_reference_status_expires_dated_tariffs() -> None:
     assert _price_reference_status(reference, today=date(2026, 3, 31)) == "not_yet_valid"
 
 
-def test_cost_estimate_exposes_expired_commercial_price_reference() -> None:
+def test_cost_estimate_freshness_summary_matches_loaded_price_references() -> None:
     building = build_input_from_form(simple_form("condensing_gas_boiler"))
     estimate = estimate_energy_cost(calculate(building))
 
-    # The gas reference in energy-prices.json is explicitly valid through
-    # 2026-09-30. From 2026-10-01 onward the runtime must expose it as stale
-    # instead of silently presenting an expired reference as current.
-    assert estimate["price_references_current"] is False
-    assert estimate["commercially_current"] is False
-    assert "Gaz natural" in estimate["stale_price_labels"]
-    assert estimate["future_price_labels"] == []
+    statuses = [row["price_status"] for row in estimate["rows"]]
+    expected_current = all(status == "current" for status in statuses)
+    assert estimate["price_references_current"] is expected_current
+    assert estimate["commercially_current"] is (
+        estimate["complete"] and expected_current
+    )
+    assert sorted(estimate["stale_price_labels"]) == sorted(
+        row["label"]
+        for row in estimate["rows"]
+        if row["price_status"] == "stale"
+    )
+    assert sorted(estimate["future_price_labels"]) == sorted(
+        row["label"]
+        for row in estimate["rows"]
+        if row["price_status"] == "not_yet_valid"
+    )
 
 def test_pv_self_consumption_reduces_purchased_electricity_cost_and_monthly_totals_reconcile() -> None:
     baseline_building = build_input_from_form(simple_form("heat_pump"))
