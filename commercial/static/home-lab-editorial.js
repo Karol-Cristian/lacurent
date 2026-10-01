@@ -4051,6 +4051,228 @@
     return `<div class="ed-metric"><small>${escapeHtml(label)}</small><strong>${escapeHtml(value)}</strong></div>`;
   }
 
+  const MONTH_SHORT_LABELS = Object.freeze({
+    "1":"Ian","01":"Ian","jan":"Ian","january":"Ian","ian":"Ian","ianuarie":"Ian",
+    "2":"Feb","02":"Feb","feb":"Feb","february":"Feb","februarie":"Feb",
+    "3":"Mar","03":"Mar","mar":"Mar","march":"Mar","martie":"Mar",
+    "4":"Apr","04":"Apr","apr":"Apr","april":"Apr","aprilie":"Apr",
+    "5":"Mai","05":"Mai","may":"Mai","mai":"Mai",
+    "6":"Iun","06":"Iun","jun":"Iun","june":"Iun","iun":"Iun","iunie":"Iun",
+    "7":"Iul","07":"Iul","jul":"Iul","july":"Iul","iul":"Iul","iulie":"Iul",
+    "8":"Aug","08":"Aug","aug":"Aug","august":"Aug",
+    "9":"Sep","09":"Sep","sep":"Sep","september":"Sep","septembrie":"Sep",
+    "10":"Oct","oct":"Oct","october":"Oct","octombrie":"Oct",
+    "11":"Nov","nov":"Nov","november":"Nov","noiembrie":"Nov",
+    "12":"Dec","dec":"Dec","december":"Dec","decembrie":"Dec",
+  });
+
+  function shortMonthLabel(value, index) {
+    const key = String(value ?? "").trim().toLowerCase();
+    return MONTH_SHORT_LABELS[key] || ["Ian","Feb","Mar","Apr","Mai","Iun","Iul","Aug","Sep","Oct","Nov","Dec"][index] || String(value || "—");
+  }
+
+  function monthlyBillProfile(result) {
+    const rows = Array.isArray(result?.monthly) ? result.monthly : [];
+    const annualBill = Number(result?.annual_cost_lei);
+    if (rows.length !== 12 || !Number.isFinite(annualBill) || annualBill < 0) return [];
+
+    const annualHeatingUseful = rows.reduce((sum,row) => sum + Math.max(Number(row?.useful_heating_kwh || 0), 0), 0);
+    const annualCoolingUseful = rows.reduce((sum,row) => sum + Math.max(Number(row?.useful_cooling_kwh || 0), 0), 0);
+    const heatingFinal = Math.max(Number(result?.heating?.final_kwh || 0), 0);
+    const coolingFinal = Math.max(Number(result?.cooling?.final_kwh || 0), 0);
+    const totalFinal = Math.max(Number(result?.final_energy_kwh ?? result?.total_final_energy_kwh ?? 0), 0);
+    const otherFinal = Math.max(totalFinal - heatingFinal - coolingFinal, 0);
+    const totalDays = Math.max(rows.reduce((sum,row) => sum + Math.max(Number(row?.days || 0), 0), 0), 1);
+    const heatingRatio = annualHeatingUseful > 1e-9 ? heatingFinal / annualHeatingUseful : 0;
+    const coolingRatio = annualCoolingUseful > 1e-9 ? coolingFinal / annualCoolingUseful : 0;
+
+    const proxies = rows.map(row => (
+      Math.max(Number(row?.useful_heating_kwh || 0), 0) * heatingRatio
+      + Math.max(Number(row?.useful_cooling_kwh || 0), 0) * coolingRatio
+      + otherFinal * Math.max(Number(row?.days || 0), 0) / totalDays
+    ));
+    let proxyTotal = proxies.reduce((sum,value) => sum + value, 0);
+    if (proxyTotal <= 1e-9) {
+      for (let index=0; index<proxies.length; index++) {
+        proxies[index] = Math.max(Number(rows[index]?.days || 0), 1);
+      }
+      proxyTotal = proxies.reduce((sum,value) => sum + value, 0);
+    }
+
+    return rows.map((row,index) => ({
+      month:shortMonthLabel(row?.month, index),
+      costLei:annualBill * proxies[index] / proxyTotal,
+    }));
+  }
+
+  function renderMonthlyBillSection(result, optimizedAnnualBill) {
+    const profile = monthlyBillProfile(result);
+    if (!profile.length) return "";
+    const optimizedAverage = Number(optimizedAnnualBill) >= 0
+      ? Number(optimizedAnnualBill) / 12
+      : null;
+    const peak = Math.max(
+      1,
+      ...profile.map(row => Number(row.costLei || 0)),
+      Number.isFinite(optimizedAverage) ? optimizedAverage : 0
+    );
+    const averageHeight = Number.isFinite(optimizedAverage)
+      ? Math.max(2, Math.min(100, 100 * optimizedAverage / peak))
+      : 0;
+
+    return `
+      <section class="ed-report-section ed-monthly-bills">
+        <div class="ed-report-section-heading">
+          <div>
+            <p class="ed-eyebrow">Facturi lunare</p>
+            <h2>Unde se concentrează costul pe parcursul anului</h2>
+          </div>
+          <span>fără recalculare suplimentară</span>
+        </div>
+        <p>Profilul lunar al casei actuale distribuie factura anuală deja calculată după balanța lunară RBPE. Totalul anual rămâne exact; împărțirea pe luni este orientativă. Pentru rezultatul TEO afișăm media lunară a facturii finale, nu pretindem un al doilea profil lunar canonic.</p>
+        <div class="ed-monthly-bill-legend">
+          <span><i class="is-current"></i> Casa actuală · profil lunar</span>
+          ${Number.isFinite(optimizedAverage) ? '<span><i class="is-teo-average"></i> După TEO · medie lunară ' + escapeHtml(money(optimizedAverage)) + '</span>' : ""}
+        </div>
+        <div class="ed-monthly-bill-chart" role="img" aria-label="Profil lunar estimativ al facturii actuale și media lunară după optimizarea TEO">
+          ${profile.map(row => {
+            const currentHeight = Math.max(2, Math.min(100, 100 * Number(row.costLei || 0) / peak));
+            return `
+              <div class="ed-monthly-bill-column">
+                <div class="ed-monthly-bill-bars">
+                  <i class="is-current" style="height:${fmt(currentHeight,1)}%"></i>
+                  ${Number.isFinite(optimizedAverage) ? '<i class="is-teo-average" style="height:' + escapeHtml(fmt(averageHeight,1)) + '%"></i>' : ""}
+                </div>
+                <b>${escapeHtml(row.month)}</b>
+                <small>${escapeHtml(money(row.costLei))}</small>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  function technicalBomRows(engineering, opt) {
+    const selected = Array.isArray(opt?.selected) ? opt.selected : [];
+    const activeFamilies = new Set(selected.map(row => String(row?.family || "")));
+    const rows = [];
+    const geometry = baselineResult?.envelope_geometry || {};
+    const env = engineering?.envelope || {};
+    const ventilation = engineering?.ventilation || {};
+    const heating = engineering?.heating || {};
+    const pv = engineering?.pv || {};
+    const solar = engineering?.solar_thermal || {};
+    const heatedVolume = Number(
+      baselineResult?.input?.heated_volume_m3
+      ?? parseDecimal($("#heatedVolume")?.value)
+      ?? 0
+    );
+
+    const add = (family, label, quantity, specification) => {
+      rows.push({family,label,quantity,specification});
+    };
+
+    if (activeFamilies.has("wall") && Number(env.wall?.added_r_m2k_w || 0) > 1e-9) {
+      add(
+        "wall",
+        "Izolație pereți",
+        fmt(Number(geometry.net_wall_area_m2 || 0), 1) + " m²",
+        "ΔR " + fmt(env.wall.added_r_m2k_w, 2) + " m²K/W · grosime echiv. " + fmt(env.wall.equivalent_insulation_thickness_cm || 0, 1) + " cm · U final " + fmt(env.wall.final_u_w_m2k || 0, 3) + " W/m²K"
+      );
+    }
+    if (activeFamilies.has("roof") && Number(env.roof?.added_r_m2k_w || 0) > 1e-9) {
+      add(
+        "roof",
+        "Izolație acoperiș / pod",
+        fmt(Number(geometry.roof_area_m2 || 0), 1) + " m²",
+        "ΔR " + fmt(env.roof.added_r_m2k_w, 2) + " m²K/W · grosime echiv. " + fmt(env.roof.equivalent_insulation_thickness_cm || 0, 1) + " cm · U final " + fmt(env.roof.final_u_w_m2k || 0, 3) + " W/m²K"
+      );
+    }
+    if (activeFamilies.has("floor") && Number(env.floor?.added_r_m2k_w || 0) > 1e-9) {
+      add(
+        "floor",
+        "Izolație pardoseală",
+        fmt(Number(geometry.floor_area_m2 || 0), 1) + " m²",
+        "ΔR " + fmt(env.floor.added_r_m2k_w, 2) + " m²K/W · grosime echiv. " + fmt(env.floor.equivalent_insulation_thickness_cm || 0, 1) + " cm · U final " + fmt(env.floor.final_u_w_m2k || 0, 3) + " W/m²K"
+      );
+    }
+    const windowFraction = Number(env.windows?.replacement_fraction || 0);
+    if (activeFamilies.has("windows") && windowFraction > 1e-9) {
+      add(
+        "windows",
+        "Ferestre",
+        fmt(Number(geometry.window_area_m2 || 0) * windowFraction, 1) + " m²",
+        "Uw țintă " + fmt(env.windows?.target_u_w_m2k || env.windows?.final_u_w_m2k || 0, 2) + " W/m²K · înlocuire " + fmt(100 * windowFraction, 0) + "%"
+      );
+    }
+    if (activeFamilies.has("ventilation") && Number(ventilation.heat_recovery_efficiency || 0) > 0) {
+      const airflow = heatedVolume > 0
+        ? heatedVolume * Number(ventilation.air_changes_per_hour || 0)
+        : null;
+      add(
+        "ventilation",
+        "Ventilație cu recuperare",
+        airflow == null ? "1 sistem" : "≈ " + fmt(airflow, 0) + " m³/h",
+        "η recuperare " + fmt(100 * Number(ventilation.heat_recovery_efficiency || 0), 0) + "% · ACH " + fmt(ventilation.air_changes_per_hour || 0, 2)
+      );
+    }
+    if (activeFamilies.has("heating")) {
+      add(
+        "heating",
+        "Generator / sistem de încălzire",
+        "1 sistem · " + fmt(heating.installed_power_target_kw || heating.design_required_power_kw || 0, 1) + " kW",
+        String(heating.technology_branch || heating.generator_type || "tehnologie de selectat") + (heating.design_flow_temperature_c == null ? "" : " · tur " + fmt(heating.design_flow_temperature_c,0) + " °C")
+      );
+    }
+    if (activeFamilies.has("pv") && Number(pv.added_power_kwp || 0) > 1e-9) {
+      add(
+        "pv",
+        "Sistem fotovoltaic",
+        "+" + fmt(pv.added_power_kwp, 2) + " kWp",
+        "total " + fmt(pv.installed_power_kwp || 0, 2) + " kWp" + (pv.orientation ? " · " + pv.orientation : "") + (pv.tilt_degrees == null ? "" : " · " + fmt(pv.tilt_degrees,0) + "°")
+      );
+    }
+    if (activeFamilies.has("solar_thermal") && Number(solar.added_area_m2 || 0) > 1e-9) {
+      add(
+        "solar_thermal",
+        "Solar termic",
+        "+" + fmt(solar.added_area_m2, 1) + " m² colector",
+        "total " + fmt(solar.collector_area_m2 || 0, 1) + " m²" + (solar.system_efficiency == null ? "" : " · η " + fmt(100 * Number(solar.system_efficiency),0) + "%")
+      );
+    }
+    return rows;
+  }
+
+  function renderTechnicalBomSection(engineering, opt) {
+    const rows = technicalBomRows(engineering, opt);
+    return `
+      <section class="ed-report-section ed-technical-bom" id="edTechnicalBom">
+        <div class="ed-report-section-heading">
+          <div>
+            <p class="ed-eyebrow">BOM tehnic preliminar</p>
+            <h2>Lista de materiale și echipamente rezultată din TEO</h2>
+          </div>
+          <span>generată local</span>
+        </div>
+        <p>Aceasta este lista tehnică derivată din optimul TEO. Nu selectează încă un SKU și nu modifică optimizarea. Cantitățile comerciale, ambalajele, accesoriile și compatibilitatea de producător se confirmă în etapa de discretizare.</p>
+        <div class="ed-bom-table">
+          ${rows.length ? rows.map(row => `
+            <article>
+              <div><small>${escapeHtml(row.family)}</small><strong>${escapeHtml(row.label)}</strong></div>
+              <b>${escapeHtml(row.quantity)}</b>
+              <span>${escapeHtml(row.specification)}</span>
+            </article>
+          `).join("") : '<p class="ed-hint">TEO nu a selectat o intervenție cu cantitate materială pentru această configurație.</p>'}
+        </div>
+        <div class="ed-bom-actions">
+          <a class="ed-primary" href="/magazin?source=home-lab-bom">Deschide catalogul de produse <span>→</span></a>
+          <p>Catalogul este o etapă separată. Potrivirea source-backed în produse reale nu schimbă soluția parametrică TEO.</p>
+        </div>
+      </section>
+    `;
+  }
+
   function renderReport() {
     if (!baselineResult || !optimizationResult) return;
     const scenario = optimizationResult.scenario || {};
@@ -4101,6 +4323,8 @@
         ` : ""}
       </section>
     `;
+
+    html += renderMonthlyBillSection(baselineResult, finalBill);
 
     const nzebTarget = baselineResult?.nzeb_target || null;
     const rerTotal = Number(
@@ -4217,9 +4441,10 @@
         <p class="ed-hint">λ este valoarea de calcul folosită pentru conversia dintre rezistență termică și grosime; TEO optimizează în prezent ΔR/U, nu un material comercial. Valorile ψ sunt raportate din modelul fizic și nu sunt încă variabile independente de optimizare. Pentru pompele de căldură, SCOP-ul din această secțiune este modelul tehnic parametric al ramurii; COP/SCOP-ul produsului real se confirmă numai după discretizarea comercială.</p>
       </section>
 
+      ${renderTechnicalBomSection(engineering, opt)}
       <section class="ed-report-section">
         <h2>Discretizare comercială</h2>
-        <p>Nu face parte din TEO. Produsele reale, grosimile comerciale, SKU-urile și curbele de producător se vor potrivi ulterior peste această specificație inginerească, fără să redefinească optimul parametric.</p>
+        <p>Nu face parte din TEO. Produsele reale, grosimile comerciale, SKU-urile și curbele de producător se potrivesc ulterior peste această specificație inginerească, fără să redefinească optimul parametric.</p>
       </section>
     `;
 
@@ -4304,6 +4529,14 @@
     if (!optimizationResult) return;
     renderReport();
     showPage("report");
+  });
+  $("#openBomFromGoal")?.addEventListener("click", () => {
+    if (!optimizationResult) return;
+    renderReport();
+    showPage("report");
+    window.requestAnimationFrame(() => {
+      document.querySelector("#edTechnicalBom")?.scrollIntoView({behavior:"smooth",block:"start"});
+    });
   });
   $("#reportBack").addEventListener("click", () => showPage("goal"));
   $("#tryAgain").addEventListener("click", () => showPage("goal"));
