@@ -1295,6 +1295,26 @@ jobs:
           print("TEO route smoke PASS", shard, payload["searchPointCount"])
           PY
 
+      - name: Install Chromium for production Home Lab / TEO smoke
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Run production Home Lab / TEO browser smoke
+        env:
+          HOME_LAB_BASE_URL: https://lacurent.com
+        run: |
+          node scripts/smoke-home-lab-browser.mjs
+          echo "Production Home Lab / TEO browser smoke PASS"
+
+      - name: Run 10-pass production TEO reliability soak
+        env:
+          HOME_LAB_BASE_URL: https://lacurent.com
+          TEO_SOAK_RUNS: "10"
+        run: |
+          node scripts/soak-teo-production.mjs
+          echo "Production TEO 10/10 soak PASS"
+
       - name: Verify production custom domain
         working-directory: .wrangler/commercial-v2-worker
         run: |
@@ -1937,22 +1957,4 @@ jobs:
           print("staging health", status)
           PY
 
-      - name: Install Chromium for production Home Lab / TEO smoke
-        run: |
-          npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps chromium
 
-      - name: Run production Home Lab / TEO browser smoke
-        env:
-          HOME_LAB_BASE_URL: https://lacurent.com
-        run: |
-          node scripts/smoke-home-lab-browser.mjs
-          echo "Production Home Lab / TEO browser smoke PASS"
-
-      - name: Run 10-pass production TEO reliability soak
-        env:
-          HOME_LAB_BASE_URL: https://lacurent.com
-          TEO_SOAK_RUNS: "10"
-        run: |
-          node scripts/soak-teo-production.mjs
-          echo "Production TEO 10/10 soak PASS"
