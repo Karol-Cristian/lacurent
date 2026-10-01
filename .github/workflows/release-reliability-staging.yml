@@ -8,8 +8,13 @@ on:
     paths:
       - ".github/workflows/release-reliability-staging.yml"
       - ".github/workflows/commercial-v2-cloudflare-worker.yml"
+      - ".github/workflows/commercial-pr-checks.yml"
       - ".github/workflows/d1-catalog-staging.yml"
       - "commercial/app/**"
+      - "commercial/tests/**"
+      - "commercial/calc-gateway/**"
+      - "commercial/rbpe-router/**"
+      - "commercial/teo-router/**"
       - "commercial/static/home-lab-editorial.js"
       - "commercial/templates/home_lab_editorial.html"
       - "commercial/tests/test_energy_product_catalog_scale.py"
