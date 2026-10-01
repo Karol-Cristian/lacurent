@@ -16,6 +16,7 @@ def test_house_prefill_requires_explicit_confirmation() -> None:
     assert html.count("data-house-critical") >= 6
     assert "obligatoriu · verifică" in html
     assert "Confirmă că ai verificat valorile principale ale casei" in js
+    assert "Aceasta nu salvează casa." in html
     assert 'matches?.("[data-house-critical]")' in js
 
 
