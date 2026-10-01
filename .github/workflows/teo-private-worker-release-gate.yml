@@ -9,6 +9,9 @@ on:
       - commercial/tests/**
       - commercial/data/**
       - commercial/teo-worker/**
+      - commercial/teo-router/**
+      - commercial/static/home-lab-editorial.js
+      - scripts/configure-full-stack-staging.mjs
       - scripts/prepare-teo-cloudflare-worker.mjs
       - scripts/smoke-teo-private-service.py
       - tests/teo-private-worker-bundle.mjs
@@ -19,6 +22,9 @@ on:
       - commercial/tests/**
       - commercial/data/**
       - commercial/teo-worker/**
+      - commercial/teo-router/**
+      - commercial/static/home-lab-editorial.js
+      - scripts/configure-full-stack-staging.mjs
       - scripts/prepare-teo-cloudflare-worker.mjs
       - scripts/smoke-teo-private-service.py
       - tests/teo-private-worker-bundle.mjs
