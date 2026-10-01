@@ -20,6 +20,22 @@ export class ForecastArchive {
 
   async fetch(request) {
     const url = new URL(request.url);
+    if (request.method === 'POST' && url.pathname === '/curve') {
+      const payload = await request.json();
+      const kind = String(payload.kind || 'forecast');
+      const stamp = String(payload.timestamp || new Date().toISOString());
+      const partition = String(payload.partition || 'default');
+      const key = `curve:${kind}:${stamp}:${partition}`;
+      await this.ctx.storage.put(key, payload.data || {});
+      await this.ctx.storage.put(`status:last_curve_${kind}`, {
+        timestamp: stamp,
+        partition,
+        key,
+        resolution_minutes: payload.resolution_minutes || null,
+      });
+      return json({ stored: true, key });
+    }
+
     if (request.method === 'POST' && url.pathname === '/predictions') {
       const payload = await request.json();
       const writes = [];
@@ -103,6 +119,9 @@ export class ForecastArchive {
         last_truth_run: await this.ctx.storage.get('status:last_truth_run') || null,
         truth_source: await this.ctx.storage.get('status:truth_source') || null,
         truth_resolution_minutes: await this.ctx.storage.get('status:truth_resolution_minutes') || null,
+        last_forecast_curve: await this.ctx.storage.get('status:last_curve_forecast') || null,
+        last_truth_curve: await this.ctx.storage.get('status:last_curve_truth') || null,
+        curve_backend: 'durable_object',
       });
     }
 
