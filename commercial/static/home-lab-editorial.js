@@ -4266,8 +4266,8 @@
           `).join("") : '<p class="ed-hint">TEO nu a selectat o intervenție cu cantitate materială pentru această configurație.</p>'}
         </div>
         <div class="ed-bom-actions">
-          <a class="ed-primary" href="/magazin?source=home-lab-bom">Deschide catalogul de produse <span>→</span></a>
-          <p>Catalogul este o etapă separată. Potrivirea source-backed în produse reale nu schimbă soluția parametrică TEO.</p>
+          <a class="ed-primary" href="/magazin?source=home-lab-bom">Vezi demo-ul unui magazin partener <span>→</span></a>
+          <p>Acesta este un demo fictiv de magazin partener, nu catalogul comercial LACURENT. Potrivirea source-backed în produse reale rămâne o etapă separată și nu schimbă soluția parametrică TEO.</p>
         </div>
       </section>
     `;

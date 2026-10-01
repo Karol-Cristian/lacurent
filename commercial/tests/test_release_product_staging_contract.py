@@ -57,4 +57,5 @@ def test_teo_result_exposes_technical_bom_without_sku_claim() -> None:
     assert "BOM tehnic preliminar" in source
     assert "Nu selectează încă un SKU" in source
     assert 'href="/magazin?source=home-lab-bom"' in source
-    assert "Potrivirea source-backed în produse reale nu schimbă soluția parametrică TEO." in source
+    assert "demo fictiv de magazin partener" in source
+    assert "Potrivirea source-backed în produse reale rămâne o etapă separată" in source
