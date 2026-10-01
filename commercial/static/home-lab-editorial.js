@@ -986,6 +986,16 @@
   function validatePage(name) {
     const page = pages.find(p => p.dataset.page === name);
     if (!page) return true;
+    if (name === "house") {
+      const confirmation = $("#edHouseValuesConfirmed");
+      if (confirmation) {
+        confirmation.setCustomValidity(
+          confirmation.checked
+            ? ""
+            : "Confirmă că ai verificat valorile principale ale casei înainte de a continua."
+        );
+      }
+    }
     const fields = [...page.querySelectorAll("input:not([type=hidden]),select")].filter(el => !el.disabled && !el.closest("[hidden]"));
     for (const field of fields) {
       if (field.matches("[data-decimal-input]")) {
@@ -4971,6 +4981,11 @@
   });
   $("#reportBack").addEventListener("click", () => showPage("goal"));
   $("#tryAgain").addEventListener("click", () => showPage("goal"));
+  $("#edReportEditHouse")?.addEventListener("click", () => showPage("house"));
+  $("#edReportSaveProject")?.addEventListener("click", () => saveCurrentAccountProject());
+  $("#edReportBom")?.addEventListener("click", () => {
+    document.querySelector("#edTechnicalBom")?.scrollIntoView({behavior:"smooth", block:"start"});
+  });
 
   function openLog() {
     logDialogBody.textContent = logLines.join("\n");
@@ -5012,6 +5027,13 @@
 
   form.addEventListener("input", event => {
     if (event.target?.type === "hidden") return;
+    if (event.isTrusted && event.target?.matches?.("[data-house-critical]")) {
+      const confirmation = $("#edHouseValuesConfirmed");
+      if (confirmation) {
+        confirmation.checked = false;
+        confirmation.setCustomValidity("");
+      }
+    }
     if (event.target?.matches?.("[data-optional-advanced]") && event.isTrusted) {
       markAdvancedManual(event.target);
     } else if (event.isTrusted) {
@@ -5023,6 +5045,13 @@
   });
   form.addEventListener("change", event => {
     if (event.target?.type === "hidden") return;
+    if (event.isTrusted && event.target?.matches?.("[data-house-critical]")) {
+      const confirmation = $("#edHouseValuesConfirmed");
+      if (confirmation) {
+        confirmation.checked = false;
+        confirmation.setCustomValidity("");
+      }
+    }
     if (event.target?.matches?.("[data-optional-advanced]") && event.isTrusted) {
       markAdvancedManual(event.target);
     } else if (event.isTrusted) {
