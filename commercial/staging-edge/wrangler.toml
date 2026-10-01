@@ -1,0 +1,21 @@
+name = "lacurent-uat"
+main = "worker.mjs"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+[[services]]
+binding = "PUBLIC_APP"
+service = "lacurent-staging-app"
+remote = true
+
+[[services]]
+binding = "CALC_GATEWAY"
+service = "lacurent-staging-home-lab-calc"
+remote = true
+
+[[services]]
+binding = "TEO_ROUTER"
+service = "lacurent-staging-teo-router"
+remote = true
+
+# Intentionally no lacurent.com route. This Worker is the persistent UAT edge.
