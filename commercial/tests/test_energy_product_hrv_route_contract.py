@@ -196,3 +196,23 @@ def test_wall_finalist_catalog_route_uses_d1_products_downstream_of_teo():
     assert '"stage": "wall_finalist_catalog_discretization"' in section
     assert "run_parametric_optimization(" not in section
     assert "run_physics_informed_optimization(" not in section
+
+
+
+def test_pv_finalist_catalog_route_rounds_only_after_teo_search():
+    source = MAIN.read_text(encoding="utf-8")
+    section = source.split(
+        '@app.post("/api/optimization/commercialize/pv-finalist-catalog")',
+        1,
+    )[1].split(
+        '@app.post("/api/optimization/commercialize/hrv-finalist")',
+        1,
+    )[0]
+
+    assert '"pv_module"' in section
+    assert "pv_products_from_catalog_window(window)" in section
+    assert "commercialize_pv_finalist_from_catalog(" in section
+    assert "payload.nonmodule_installed_cost_per_kwp_lei" in section
+    assert '"stage": "pv_finalist_catalog_discretization"' in section
+    assert "run_parametric_optimization(" not in section
+    assert "run_physics_informed_optimization(" not in section
