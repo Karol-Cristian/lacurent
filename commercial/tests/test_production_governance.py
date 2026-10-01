@@ -17,13 +17,19 @@ def test_commercial_pr_checks_run_for_every_pr_to_production_branch() -> None:
     assert "paths-ignore:" not in trigger_section
 
 
-def test_production_workflow_blocks_non_pr_push_deployments() -> None:
+def test_production_workflow_requires_explicit_manual_promotion_or_rollback() -> None:
     source = PROD_WORKFLOW.read_text(encoding="utf-8")
-    assert "Require merged PR origin for production pushes" in source
-    assert "github.event_name == 'push'" in source
-    assert "/commits/{sha}/pulls" in source
+    trigger_section = source.split("concurrency:", 1)[0]
+
+    assert "workflow_dispatch:" in trigger_section
+    assert "\n  push:" not in trigger_section
+    assert "release_sha:" in trigger_section
+    assert "promotion_mode:" in trigger_section
+    assert "Validate explicit production promotion or rollback" in source
+    assert "Promotion SHA must equal current production branch HEAD" in source
+    assert "Rollback SHA must be an ancestor of current production HEAD" in source
+    assert "/commits/{release_sha}/pulls" in source
     assert "merge_commit_sha" in source
-    assert "Direct-push deployments are blocked." in source
     assert "pull-requests: read" in source
 
 
