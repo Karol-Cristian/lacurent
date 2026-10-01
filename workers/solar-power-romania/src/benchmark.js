@@ -1,6 +1,6 @@
 import { ROMANIA_REFERENCE_CELLS } from './regions.js';
-import { MODEL_REGISTRY, fetchMultiPointModelForecast, fetchSatelliteTruth } from './provider.js';
-import { HORIZONS } from './archive.js';
+import { MODEL_REGISTRY, fetchMultiPointModelForecast, fetchSatelliteTruth, forecastBlock } from './provider.js';
+import { HORIZONS_MIN } from './archive.js';
 
 export const BENCHMARK_CELLS = Object.freeze(
   ['satu-mare', 'cluj', 'iasi', 'brasov', 'bucharest', 'craiova', 'constanta', 'timisoara']
@@ -13,30 +13,63 @@ function archiveStub(env) {
   return env.ARCHIVE.get(id);
 }
 
-function isoHour(ms) {
-  return new Date(Math.floor(ms / 3600000) * 3600000).toISOString().slice(0, 13) + ':00';
+function utcMs(time) {
+  if (!time) return NaN;
+  const value = String(time);
+  return Date.parse(value.endsWith('Z') ? value : `${value}Z`);
 }
 
-function epoch(time) {
-  if (!time) return NaN;
-  return Date.parse(String(time).endsWith('Z') ? time : `${time}Z`);
+function isoMinute(ms) {
+  return new Date(ms).toISOString().slice(0, 16);
+}
+
+function floorQuarter(ms) {
+  return Math.floor(ms / (15 * 60000)) * 15 * 60000;
 }
 
 function closestIndex(times, targetMs) {
   let best = -1;
   let dist = Number.POSITIVE_INFINITY;
   for (let i = 0; i < times.length; i += 1) {
-    const d = Math.abs(epoch(times[i]) - targetMs);
+    const d = Math.abs(utcMs(times[i]) - targetMs);
     if (d < dist) { best = i; dist = d; }
   }
-  return best;
+  return { index: best, distance_ms: dist };
+}
+
+function dayPath(iso) {
+  const date = iso.slice(0, 10).replaceAll('-', '/');
+  const stamp = iso.slice(11, 16).replace(':', '');
+  return { date, stamp };
+}
+
+async function putR2(env, key, value) {
+  if (!env.ARCHIVE_R2) return null;
+  await env.ARCHIVE_R2.put(key, JSON.stringify(value), {
+    httpMetadata: { contentType: 'application/json' },
+    customMetadata: { format: 'solar-power-v1' },
+  });
+  return key;
+}
+
+function compactCurve(block) {
+  return {
+    time: block?.time || [],
+    gti_wm2: block?.global_tilted_irradiance || [],
+    ghi_wm2: block?.shortwave_radiation || [],
+    dni_wm2: block?.direct_normal_irradiance || [],
+    cloud_pct: block?.cloud_cover || [],
+    temperature_c: block?.temperature_2m || [],
+  };
 }
 
 async function storePredictions(env, issuedAtMs) {
-  const rows = [];
+  const issuedAt = new Date(issuedAtMs).toISOString();
+  const scoreRows = [];
+  const archiveModels = {};
   const modelResults = await Promise.all(Object.keys(MODEL_REGISTRY).map(async (modelKey) => {
     try {
-      const result = await fetchMultiPointModelForecast(modelKey, BENCHMARK_CELLS, { tilt: 30, azimuth: 0, days: 2 });
+      const result = await fetchMultiPointModelForecast(modelKey, BENCHMARK_CELLS, { tilt: 30, azimuth: 0, forecastQuarterHours: 193 });
       return { modelKey, result };
     } catch (error) {
       return { modelKey, error: String(error?.message || error) };
@@ -45,19 +78,24 @@ async function storePredictions(env, issuedAtMs) {
 
   for (const { modelKey, result } of modelResults) {
     if (!result) continue;
+    archiveModels[modelKey] = [];
     result.rows.forEach((data, i) => {
-      const times = data.hourly?.time || [];
-      for (const horizon of HORIZONS) {
-        const targetMs = issuedAtMs + horizon * 3600000;
-        const k = closestIndex(times, targetMs);
-        if (k < 0) continue;
-        rows.push({
-          issued_at: new Date(issuedAtMs).toISOString(),
-          valid_at: isoHour(epoch(times[k])),
+      const block = forecastBlock(data);
+      if (!block?.time?.length) return;
+      archiveModels[modelKey].push({ cell_id: BENCHMARK_CELLS[i].id, curve: compactCurve(block) });
+      for (const horizonMin of HORIZONS_MIN) {
+        const targetMs = issuedAtMs + horizonMin * 60000;
+        const nearest = closestIndex(block.time, targetMs);
+        if (nearest.index < 0 || nearest.distance_ms > 10 * 60000) continue;
+        const k = nearest.index;
+        scoreRows.push({
+          issued_at: issuedAt,
+          valid_at: isoMinute(utcMs(block.time[k])),
           cell_id: BENCHMARK_CELLS[i].id,
           model: modelKey,
-          horizon_h: horizon,
-          gti_wm2: Number(data.hourly?.global_tilted_irradiance?.[k] || 0),
+          horizon_min: horizonMin,
+          effective_horizon_min: Math.round((utcMs(block.time[k]) - issuedAtMs) / 60000),
+          gti_wm2: Number(block.global_tilted_irradiance?.[k] || 0),
         });
       }
     });
@@ -66,47 +104,97 @@ async function storePredictions(env, issuedAtMs) {
   const response = await archiveStub(env).fetch('https://archive/predictions', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ issued_at: new Date(issuedAtMs).toISOString(), rows }),
+    body: JSON.stringify({ issued_at: issuedAt, rows: scoreRows }),
   });
-  return { stored: rows.length, models: modelResults.map((x) => ({ model: x.modelKey, ok: Boolean(x.result), error: x.error || null })), archive: await response.json() };
+  const path = dayPath(issuedAt);
+  const r2Key = await putR2(env, `forecast-runs/${path.date}/${path.stamp}Z.json`, {
+    issued_at: issuedAt,
+    resolution_minutes: 15,
+    retention_intent: 'immutable forecast curve for audit and later re-scoring',
+    cells: BENCHMARK_CELLS,
+    models: archiveModels,
+  });
+  return {
+    stored_for_scoring: scoreRows.length,
+    full_curve_r2_key: r2Key,
+    models: modelResults.map((x) => ({ model: x.modelKey, ok: Boolean(x.result), error: x.error || null })),
+    archive: await response.json(),
+  };
+}
+
+function inferNativeResolutionMinutes(times) {
+  if (!times || times.length < 2) return null;
+  const deltas = [];
+  for (let i = 1; i < Math.min(times.length, 12); i += 1) {
+    const d = Math.round((utcMs(times[i]) - utcMs(times[i - 1])) / 60000);
+    if (d > 0) deltas.push(d);
+  }
+  if (!deltas.length) return null;
+  deltas.sort((a, b) => a - b);
+  return deltas[Math.floor(deltas.length / 2)];
 }
 
 async function scoreSatelliteTruth(env, nowMs) {
   const end = new Date(nowMs);
-  const start = new Date(nowMs - 36 * 3600000);
+  const start = new Date(nowMs - 30 * 3600000);
   const startDate = start.toISOString().slice(0, 10);
   const endDate = end.toISOString().slice(0, 10);
   const truth = await fetchSatelliteTruth(BENCHMARK_CELLS, {
-    startDate,
-    endDate,
-    tilt: 30,
-    azimuth: 0,
-    apiKey: env.OPEN_METEO_API_KEY,
+    startDate, endDate, tilt: 30, azimuth: 0, apiKey: env.OPEN_METEO_API_KEY,
   });
 
-  const cutoffMs = nowMs - 60 * 60000;
-  const rows = [];
+  const newestTarget = floorQuarter(nowMs - 30 * 60000);
+  const oldestTarget = newestTarget - 120 * 60000;
+  const targetTimes = [];
+  for (let t = oldestTarget; t <= newestTarget; t += 15 * 60000) targetTimes.push(t);
+
+  const scoreRows = [];
+  const rawTruth = [];
+  let nativeResolutionMinutes = null;
   truth.rows.forEach((data, i) => {
-    const times = data.hourly?.time || [];
-    const gti = data.hourly?.global_tilted_irradiance || [];
-    for (let k = 0; k < times.length; k += 1) {
-      const t = epoch(times[k]);
-      if (!Number.isFinite(t) || t > cutoffMs || t < nowMs - 30 * 3600000) continue;
-      if (!Number.isFinite(Number(gti[k]))) continue;
-      rows.push({
-        valid_at: isoHour(t),
+    const block = data?.hourly || data?.minutely_15;
+    const times = block?.time || [];
+    const gti = block?.global_tilted_irradiance || [];
+    if (!nativeResolutionMinutes) nativeResolutionMinutes = inferNativeResolutionMinutes(times);
+    const cellRows = [];
+    for (const targetMs of targetTimes) {
+      const nearest = closestIndex(times, targetMs);
+      if (nearest.index < 0 || nearest.distance_ms > 10 * 60000) continue;
+      const value = Number(gti[nearest.index]);
+      if (!Number.isFinite(value)) continue;
+      const row = {
+        valid_at: isoMinute(targetMs),
+        source_at: isoMinute(utcMs(times[nearest.index])),
+        source_offset_min: Math.round((utcMs(times[nearest.index]) - targetMs) / 60000),
         cell_id: BENCHMARK_CELLS[i].id,
-        gti_wm2: Number(gti[k]),
-      });
+        gti_wm2: value,
+      };
+      scoreRows.push(row);
+      cellRows.push(row);
     }
+    rawTruth.push({ cell_id: BENCHMARK_CELLS[i].id, rows: cellRows });
   });
 
+  const observedAt = new Date(nowMs).toISOString();
   const response = await archiveStub(env).fetch('https://archive/observations', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ observed_at: new Date(nowMs).toISOString(), source: truth.source, rows }),
+    body: JSON.stringify({
+      observed_at: observedAt,
+      source: `${truth.source}; native satellite resampled to 15-minute benchmark slots`,
+      resolution_minutes: nativeResolutionMinutes,
+      rows: scoreRows,
+    }),
   });
-  return { observations: rows.length, archive: await response.json() };
+  const path = dayPath(observedAt);
+  const r2Key = await putR2(env, `truth-runs/${path.date}/${path.stamp}Z.json`, {
+    observed_at: observedAt,
+    source: truth.source,
+    native_resolution_minutes: nativeResolutionMinutes,
+    benchmark_resolution_minutes: 15,
+    rows: rawTruth,
+  });
+  return { observations: scoreRows.length, native_resolution_minutes: nativeResolutionMinutes, truth_r2_key: r2Key, archive: await response.json() };
 }
 
 export async function getBenchmarkMetrics(env) {
@@ -115,7 +203,7 @@ export async function getBenchmarkMetrics(env) {
 }
 
 export async function runBenchmarkCycle(env, nowMs = Date.now()) {
-  const cycle = { started_at: new Date(nowMs).toISOString(), prediction: null, truth: null, errors: [] };
+  const cycle = { started_at: new Date(nowMs).toISOString(), resolution_minutes: 15, prediction: null, truth: null, errors: [] };
   try {
     cycle.prediction = await storePredictions(env, nowMs);
   } catch (error) {
