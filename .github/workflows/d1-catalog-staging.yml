@@ -3,6 +3,15 @@ name: D1 Catalog Staging Verification
 on:
   workflow_dispatch:
   workflow_call:
+  push:
+    branches:
+      - codex/release-product-staging-integration
+    paths:
+      - ".github/workflows/d1-catalog-staging.yml"
+      - "migrations/015_energy_product_catalog.sql"
+      - "migrations/016_energy_product_catalog_smoke_pack.sql"
+      - "migrations/017_unify_energy_product_catalog.sql"
+      - "scripts/build-energy-product-catalog-d1-import.py"
 
 concurrency:
   group: d1-catalog-staging-${{ github.ref }}
