@@ -264,6 +264,7 @@ jobs:
       - name: Prepare Cloudflare Worker bundle
         run: node scripts/prepare-commercial-cloudflare-worker.mjs
 
+      # Pin Wrangler: npm `latest` briefly resolved to an unpublished 4.146.0 tarball on 2026-10-01.
       - name: Install current Wrangler
         working-directory: .wrangler/commercial-v2-worker
         run: |
