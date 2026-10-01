@@ -33,6 +33,16 @@ async function callRpc(env, key, method, args) {
       args[0], args[1], args[2],
     );
   }
+  if (method === "verify_teo_candidate_json") {
+    return await binding.verify_teo_candidate_json(
+      args[0], args[1], args[2], args[3], args[4], args[5],
+    );
+  }
+  if (method === "commercialize_teo_candidate_json") {
+    return await binding.commercialize_teo_candidate_json(
+      args[0], args[1], args[2], args[3],
+    );
+  }
   throw new Error("unsupported_rpc_method");
 }
 
@@ -134,6 +144,46 @@ export default class extends WorkerEntrypoint {
       this.env,
       "build_product_wall_insulation_scenario_json",
       [payload, requirementPayload, productPayload],
+    );
+  }
+
+  async verify_teo_candidate_json(
+    optimizationRequestPayload,
+    fastCandidatePayload,
+    branchId,
+    catalogPayload,
+    heatingCatalogPayload,
+    baselineAnnualBillLei,
+  ) {
+    return routeRpc(
+      this.env,
+      "verify_teo_candidate_json",
+      [
+        optimizationRequestPayload,
+        fastCandidatePayload,
+        branchId,
+        catalogPayload,
+        heatingCatalogPayload,
+        baselineAnnualBillLei,
+      ],
+    );
+  }
+
+  async commercialize_teo_candidate_json(
+    candidatePayload,
+    originalBuildingPayload,
+    heatingCatalogPayload,
+    branchId,
+  ) {
+    return routeRpc(
+      this.env,
+      "commercialize_teo_candidate_json",
+      [
+        candidatePayload,
+        originalBuildingPayload,
+        heatingCatalogPayload,
+        branchId,
+      ],
     );
   }
 
