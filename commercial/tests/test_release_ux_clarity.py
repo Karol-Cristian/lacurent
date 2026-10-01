@@ -41,19 +41,18 @@ def test_floor_boundary_and_insulation_position_are_explained() -> None:
     assert "nu diferențiază separat izolația montată deasupra față de cea de sub placă" in html
 
 
-def test_report_has_only_available_next_actions() -> None:
+def test_report_is_visual_and_does_not_duplicate_teo_next_actions() -> None:
     html = HTML.read_text(encoding="utf-8")
     js = JS.read_text(encoding="utf-8")
     css = CSS.read_text(encoding="utf-8")
 
-    assert "CE URMEAZĂ" in html
-    assert 'id="edReportEditHouse"' in html
-    assert 'id="edReportSaveProject"' in html
-    assert 'id="edReportBom"' in html
-    assert "Revizuiește casa" in html
-    assert "Salvează casa în cont" in html
-    assert "Vezi lista tehnică" in html
-    assert "edReportEditHouse" in js
-    assert "saveCurrentAccountProject()" in js
-    assert 'document.querySelector("#edTechnicalBom")' in js
-    assert ".ed-report-next" in css
+    assert "RAPORT VIZUAL · LACURENT" in html
+    assert "Casa înainte și după TEO" in html
+    assert "CE URMEAZĂ" not in html
+    assert 'id="edReportEditHouse"' not in html
+    assert 'id="edReportSaveProject"' not in html
+    assert 'id="edReportBom"' not in html
+    assert "Înainte vs. după investiție" in js
+    assert "Produse și cantități din catalogul LaCurent" in js
+    assert ".ed-report-compare" in css
+    assert ".ed-bom-product" in css
