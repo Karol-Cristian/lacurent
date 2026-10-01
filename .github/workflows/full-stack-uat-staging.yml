@@ -389,6 +389,7 @@ jobs:
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
 
+      # Final VERIFY regression: this must exercise the private shards, not a local fallback.
       - name: Run 25-pass sharded TEO UAT soak through report
         env:
           HOME_LAB_BASE_URL: https://lacurent-uat.lemnarukarol.workers.dev
