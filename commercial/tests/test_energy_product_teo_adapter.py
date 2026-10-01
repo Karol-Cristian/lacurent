@@ -10,6 +10,7 @@ from commercial.app.energy_product_teo_adapter import (
     add_radiator_bom_to_finalist,
     add_underfloor_pipe_bom_to_finalist,
     commercialize_hrv_finalist,
+    commercialize_pv_finalist_from_catalog,
     commercialize_radiator_bom_from_finalist,
     commercialize_underfloor_pipe_bom_from_finalist,
     commercialize_underfloor_system_bom_from_finalist,
@@ -20,6 +21,7 @@ from commercial.app.energy_product_teo_adapter import (
     match_radiators,
     match_underfloor_manifolds,
     match_underfloor_pipe,
+    pv_products_from_catalog_window,
     radiator_output_at_design_condition_w,
     wall_products_from_catalog_window,
 )
@@ -689,3 +691,101 @@ def test_universal_wall_products_can_discretize_a_teo_finalist():
     )
     assert wall_line.material_subtotal_lei is not None
     assert wall_line.nonmaterial_subtotal_lei is not None
+
+
+
+def test_universal_catalog_pv_row_converts_to_whole_module_product():
+    rows = _load_source_rows()
+    jinko = next(
+        row
+        for row in rows
+        if row["product"]["id"] == "jinko-tiger-neo-jkm440n-54hl4r-v"
+    )
+    window = {
+        "products": [
+            {
+                **jinko["product"],
+                "id": jinko["product"]["id"],
+                "properties": jinko["adapted_properties"],
+                "offers": jinko["product"].get("offers") or [],
+            }
+        ]
+    }
+
+    products = pv_products_from_catalog_window(window)
+
+    assert len(products) == 1
+    product = products[0]
+    assert product.product_id == "jinko-tiger-neo-jkm440n-54hl4r-v"
+    assert product.module_power_wp == pytest.approx(440)
+    assert product.module_price_lei == pytest.approx(339)
+
+
+def test_pv_finalist_rounds_to_whole_d1_modules_and_recalculates():
+    baseline = _underfloor_test_building()
+    raw = evaluate_parametric_candidate(
+        baseline,
+        ParametricMeasuresV1(pv_added_kwp=2.1),
+        {
+            "catalog_version": "test",
+            "source": "test",
+            "costs": {
+                "pv": {
+                    "cost_lei": 4200,
+                    "unit": "lei_per_kwp",
+                    "source_kind": "test",
+                    "confidence": "test",
+                }
+            },
+        },
+    )
+
+    rows = _load_source_rows()
+    jinko = next(
+        row
+        for row in rows
+        if row["product"]["id"] == "jinko-tiger-neo-jkm440n-54hl4r-v"
+    )
+    products = pv_products_from_catalog_window(
+        {
+            "products": [
+                {
+                    **jinko["product"],
+                    "id": jinko["product"]["id"],
+                    "properties": jinko["adapted_properties"],
+                    "offers": jinko["product"].get("offers") or [],
+                }
+            ]
+        }
+    )
+
+    commercial = commercialize_pv_finalist_from_catalog(
+        raw,
+        products,
+        activation_cost_lei=1000,
+        nonmodule_installed_cost_per_kwp_lei=1800,
+    )
+
+    assert commercial.resulting_configuration is not None
+    realized_kwp = (
+        commercial.resulting_configuration.renewables.pv.installed_power_kwp
+    )
+    assert realized_kwp >= 2.1
+    assert realized_kwp == pytest.approx(5 * 0.44)
+    line = next(
+        item
+        for item in commercial.cost_breakdown
+        if item.family == "pv"
+    )
+    assert line.product_id == "jinko-tiger-neo-jkm440n-54hl4r-v"
+    assert line.quantity == pytest.approx(5)
+    assert line.material_subtotal_lei == pytest.approx(5 * 339)
+    recalculated = calculate(
+        commercial.resulting_configuration,
+        include_reference=False,
+    )
+    assert commercial.final_energy_kwh == pytest.approx(
+        recalculated.total_final_energy_kwh,
+        abs=1e-3,
+    )
+    assert commercial.cost_source == "pv_catalog_discretized_recalculated"
