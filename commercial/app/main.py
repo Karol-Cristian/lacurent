@@ -3611,12 +3611,16 @@ async def sitemap_xml(request: Request) -> Response:
 @app.get("/home-lab-editorial", response_class=HTMLResponse)
 async def home_lab_editorial(request: Request) -> HTMLResponse:
     """Primary Home Lab UI using the Technical Editorial experience."""
+    context = calculator_context()
+    # A new Home Lab analysis must not inherit calculator demo locality values.
+    # Saved/draft projects may still restore explicit user data client-side.
+    context["values"] = {"locality_id": "", "locality": ""}
     return templates.TemplateResponse(
         request,
         "home_lab_editorial.html",
         {
             "request": request,
-            **calculator_context(),
+            **context,
             "energy_overview": home_lab_price_overview(),
         },
     )
