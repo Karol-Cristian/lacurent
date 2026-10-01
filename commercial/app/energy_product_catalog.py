@@ -255,9 +255,54 @@ def compute_primary_value_metric(
     }
 
 
+def normalize_teo_properties(
+    category_id: str,
+    properties: Mapping[str, object],
+) -> dict[str, object]:
+    """Normalize source-backed declared fields to stable TEO property keys.
+
+    Aliases are created only when the declared operating condition makes the
+    equivalence explicit. The original source properties remain authoritative
+    and should stay stored alongside these normalized aliases.
+    """
+
+    normalized = dict(properties)
+    if category_id == "radiator":
+        if (
+            normalized.get("heat_output_w_dt50") in (None, "")
+            and normalized.get("heat_output_w_75_65_20") not in (None, "")
+        ):
+            # 75/65/20 °C has mean water temperature 70 °C, hence ΔT = 50 K.
+            normalized["heat_output_w_dt50"] = normalized[
+                "heat_output_w_75_65_20"
+            ]
+    elif category_id == "hrv_unit":
+        if (
+            normalized.get("max_airflow_m3h") in (None, "")
+            and normalized.get("max_airflow_m3h_at_200_pa") not in (None, "")
+        ):
+            normalized["max_airflow_m3h"] = normalized[
+                "max_airflow_m3h_at_200_pa"
+            ]
+        if (
+            normalized.get("specific_power_input_w_m3h") in (None, "")
+            and normalized.get("sfp_wh_m3_at_350_m3h_100pa") not in (None, "")
+        ):
+            # Wh/m3 is numerically W/(m3/h).
+            normalized["specific_power_input_w_m3h"] = normalized[
+                "sfp_wh_m3_at_350_m3h_100pa"
+            ]
+    return normalized
+
+
 def missing_teo_properties(category_id: str, properties: Mapping[str, object]) -> list[str]:
     category = CATEGORY_DEFINITIONS[category_id]
-    return [key for key in category.required_properties if properties.get(key) in (None, "")]
+    normalized = normalize_teo_properties(category_id, properties)
+    return [
+        key
+        for key in category.required_properties
+        if normalized.get(key) in (None, "")
+    ]
 
 
 def teo_role(category_id: str) -> str:
