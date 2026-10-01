@@ -4,6 +4,7 @@ from pathlib import Path
 COMMERCIAL_DIR = Path(__file__).resolve().parents[1]
 JS_PATH = COMMERCIAL_DIR / "static" / "home-lab-editorial.js"
 HTML_PATH = COMMERCIAL_DIR / "templates" / "home_lab_editorial.html"
+MAIN_PATH = COMMERCIAL_DIR / "app" / "main.py"
 
 
 def _function_block(source: str, name: str, next_name: str) -> str:
@@ -12,50 +13,33 @@ def _function_block(source: str, name: str, next_name: str) -> str:
     return source[start:end]
 
 
-def test_release_product_additions_are_client_only() -> None:
+def test_monthly_bill_profile_remains_client_side() -> None:
     source = JS_PATH.read_text(encoding="utf-8")
-
-    monthly = _function_block(
-        source,
-        "monthlyBillProfile",
-        "renderMonthlyBillSection",
-    )
-    bom = _function_block(
-        source,
-        "technicalBomRows",
-        "renderTechnicalBomSection",
-    )
-
-    for block in (monthly, bom):
-        assert "fetch(" not in block
-        assert "/api/" not in block
-        assert "new Worker" not in block
-
+    monthly = _function_block(source, "monthlyBillProfile", "renderMonthlyBillSection")
+    assert "fetch(" not in monthly
+    assert "/api/" not in monthly
+    assert "new Worker" not in monthly
     assert "maxCanonicalPasses:5" in source
     assert "maxProductPasses:0" in source
 
 
-def test_monthly_bill_copy_does_not_claim_a_second_canonical_profile() -> None:
+def test_visual_report_labels_scaled_monthly_profile_honestly() -> None:
     source = JS_PATH.read_text(encoding="utf-8")
-    section = _function_block(
-        source,
-        "renderMonthlyBillSection",
-        "technicalBomRows",
-    )
-
-    assert "Totalul anual rămâne exact" in section
-    assert "împărțirea pe luni este orientativă" in section
-    assert "media lunară a facturii finale" in section
+    section = _function_block(source, "renderMonthlyBillSection", "technicalBomRows")
+    assert "Înainte vs. după investiție" in section
+    assert "Totalurile anuale sunt cele verificate de motor" in section
+    assert "scalează la factura anuală TEO" in section
 
 
-def test_teo_result_exposes_technical_bom_without_sku_claim() -> None:
+def test_teo_result_opens_real_post_teo_catalog_bom() -> None:
     source = JS_PATH.read_text(encoding="utf-8")
     html = HTML_PATH.read_text(encoding="utf-8")
+    main = MAIN_PATH.read_text(encoding="utf-8")
 
     assert 'id="openBomFromGoal"' in html
-    assert "Generează lista de materiale" in html
-    assert "BOM tehnic preliminar" in source
-    assert "Nu selectează încă un SKU" in source
-    assert 'href="/magazin?source=home-lab-bom"' in source
-    assert "demo fictiv de magazin partener" in source
-    assert "Potrivirea source-backed în produse reale rămâne o etapă separată" in source
+    assert "Vezi lista reală de materiale" in html
+    assert 'fetch("/api/home-lab/bom"' in source
+    assert "Produse și cantități din catalogul LaCurent" in source
+    assert 'href="/magazin?source=home-lab-bom"' not in source
+    assert '@app.post("/api/home-lab/bom")' in main
+    assert '"stage": "post_teo_bom"' in main
