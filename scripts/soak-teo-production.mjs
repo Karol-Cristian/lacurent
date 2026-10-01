@@ -3,6 +3,9 @@ import crypto from "node:crypto";
 
 const baseUrl = String(process.env.HOME_LAB_BASE_URL || "").replace(/\/$/, "");
 const runs = Number(process.env.TEO_SOAK_RUNS || 10);
+const requireShardedRoutes = String(
+  process.env.TEO_REQUIRE_SHARDED_ROUTES ?? "1"
+).trim() !== "0";
 if (!baseUrl) throw new Error("HOME_LAB_BASE_URL is required");
 
 function percentile(values, p) {
@@ -142,21 +145,23 @@ async function runOnce(browser, ordinal) {
       || row.path.endsWith("/v4/flow/start")
     );
     if (!criticalRoutes.length) throw new Error("No TEO API responses were observed.");
-    for (const row of criticalRoutes) {
-      const isFlowControl =
-        row.path.endsWith("/v4/flow/start")
-        || row.path.includes("/v4/flow/");
-      const expectedRoute = isFlowControl
-        ? "router-flow-d1"
-        : "private-teo-sharded";
-      if (row.route !== expectedRoute) {
-        throw new Error(
-          "Unexpected TEO route ownership: expected " + expectedRoute + " :: " +
-          JSON.stringify(row)
-        );
-      }
-      if (!isFlowControl && !row.shard) {
-        throw new Error("Heavy TEO route did not expose a shard: " + JSON.stringify(row));
+    if (requireShardedRoutes) {
+      for (const row of criticalRoutes) {
+        const isFlowControl =
+          row.path.endsWith("/v4/flow/start")
+          || row.path.includes("/v4/flow/");
+        const expectedRoute = isFlowControl
+          ? "router-flow-d1"
+          : "private-teo-sharded";
+        if (row.route !== expectedRoute) {
+          throw new Error(
+            "Unexpected TEO route ownership: expected " + expectedRoute + " :: " +
+            JSON.stringify(row)
+          );
+        }
+        if (!isFlowControl && !row.shard) {
+          throw new Error("Heavy TEO route did not expose a shard: " + JSON.stringify(row));
+        }
       }
     }
 
