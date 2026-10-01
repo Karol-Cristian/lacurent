@@ -65,7 +65,7 @@ async function fillRequiredSystems(page) {
     },
     {timeout:45000},
   );
-  await page.locator("#cooling").selectOption("none");
+  await page.locator("#cooling").selectOption("split");
   return calcPromise;
 }
 
@@ -133,6 +133,10 @@ async function runOnce(browser, ordinal) {
     await marker.dispatchEvent("click");
 
     await fillRequiredHouse(page);
+    const houseConfirmation = page.locator('[data-page="house"] #edHouseValuesConfirmed');
+    if (await houseConfirmation.count() && await houseConfirmation.isVisible()) {
+      await houseConfirmation.check();
+    }
     await page.locator('[data-page="house"] [data-next]').click();
     await page.locator('[data-page="envelope"].is-active').waitFor({state:"visible",timeout:15000});
 
@@ -145,7 +149,10 @@ async function runOnce(browser, ordinal) {
     await page.locator('[data-page="systems"] [data-next]').click();
     await page.locator('[data-page="renewables"].is-active').waitFor({state:"visible",timeout:15000});
 
-    await page.locator("#edHouseValuesConfirmed").check();
+    const preTeoConfirmation = page.locator('[data-page="renewables"] #edHouseValuesConfirmed');
+    if (await preTeoConfirmation.count() && await preTeoConfirmation.isVisible() && !(await preTeoConfirmation.isChecked())) {
+      await preTeoConfirmation.check();
+    }
     await page.locator('[data-page="renewables"] [data-next]').click();
     await page.locator('[data-page="goal"].is-active').waitFor({state:"visible",timeout:15000});
 
