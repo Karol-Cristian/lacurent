@@ -938,7 +938,11 @@ def test_private_teo_topology_is_sharded_and_route_isolated() -> None:
     assert 'request.headers.get("x-lacurent-flow-gated"' in main
     assert "if run_id and not router_flow_gated" in main
     assert ".wrangler/teo-worker" in prepare
-    assert "copyDirectory(path.join(commercialRoot, \"app\")" in prepare
+    assert 'path.join(targetAppDir, "teo_service.py")' in prepare
+    assert "copyModuleClosure(serviceSource)" in prepare
+    assert 'path.join(commercialRoot, "static")' not in prepare
+    assert 'path.join(commercialRoot, "templates")' not in prepare
+    assert 'copyDirectory(path.join(commercialRoot, "app")' not in prepare
     assert "Deploy four private TEO shards" in workflow
     assert "Deploy private TEO router" in workflow
     assert "Run 10-pass production TEO reliability soak" in workflow
