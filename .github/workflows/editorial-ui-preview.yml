@@ -1,3 +1,4 @@
+# Release-infrastructure changes also touch this file intentionally so the required preview gate runs on the exact candidate SHA.
 name: Editorial UI Preview
 
 on:
