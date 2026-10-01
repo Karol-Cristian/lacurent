@@ -3511,3 +3511,13 @@ body{
   .ed-bom-product-image{width:76px;height:72px}
   .ed-monthly-bill-column small{font-size:7px;transform:none;min-height:32px}
 }
+
+/* Strict-input flow: empty required choices are visibly unresolved. */
+.ed-page[data-page="house"] select:required:invalid,
+.ed-page[data-page="envelope"] select:required:invalid,
+.ed-page[data-page="systems"] select:required:invalid{
+  color:#8b949d;
+}
+.ed-final-input-confirmation{
+  margin-top:26px;
+}
