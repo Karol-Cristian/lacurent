@@ -52,7 +52,7 @@ CATEGORY_DEFINITIONS: dict[str, CategoryDefinition] = {
     "radiator": CategoryDefinition(
         "radiator", "Calorifere", "heating_emitter", "finalist_match",
         "radiator_dt50", "heat_output_per_price", "W_dt50/lei",
-        ("heat_output_w_dt50",),
+        ("heat_output_w_dt50", "radiator_exponent_n"),
         ("technical_datasheet", "declaration_of_performance_if_applicable"),
     ),
     "fan_coil": CategoryDefinition(
