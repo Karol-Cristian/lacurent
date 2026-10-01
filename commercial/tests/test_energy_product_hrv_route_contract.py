@@ -55,3 +55,32 @@ def test_hrv_adapter_requires_canonical_recalculation_with_product_fan_data():
     assert '"fan_operation_hours_per_year": hours' in section
     assert "result = calculate(realized_building, include_reference=False)" in section
     assert "priced = estimate_energy_cost(result)" in section
+
+
+def test_emitter_and_underfloor_routes_use_bounded_category_windows():
+    source = MAIN.read_text(encoding="utf-8")
+
+    radiator = source.split(
+        '@app.post("/api/optimization/commercialize/radiator-finalist")',
+        1,
+    )[1].split(
+        '@app.post("/api/optimization/commercialize/underfloor-pipe-finalist")',
+        1,
+    )[0]
+    assert 'read_energy_product_candidate_window_d1(' in radiator
+    assert '"radiator"' in radiator
+    assert 'commercialize_radiator_bom_from_finalist(' in radiator
+    assert "run_parametric_optimization(" not in radiator
+
+    underfloor = source.split(
+        '@app.post("/api/optimization/commercialize/underfloor-pipe-finalist")',
+        1,
+    )[1].split(
+        '@app.post("/api/optimization/candidate")',
+        1,
+    )[0]
+    assert 'read_energy_product_candidate_window_d1(' in underfloor
+    assert '"underfloor_pipe"' in underfloor
+    assert 'commercialize_underfloor_pipe_bom_from_finalist(' in underfloor
+    assert "verified_available_heat_output_w_m2" in underfloor
+    assert "run_parametric_optimization(" not in underfloor
