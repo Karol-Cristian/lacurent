@@ -29,7 +29,7 @@ def test_home_lab_is_presented_as_a_plan_not_an_experiment():
     assert "Home Lab <small>by LaCurent</small>" in editorial
     assert "Construiește planul energetic al casei tale." in editorial
     assert "Comparăm ce merită" in editorial
-    assert "Planul energetic al casei tale" in editorial
+    assert "Casa înainte și după TEO" in editorial
     assert ">Planul meu</span>" in editorial
     assert "Cel mai bun rezultat economic" in editorial
 
