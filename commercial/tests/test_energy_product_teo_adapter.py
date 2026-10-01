@@ -14,6 +14,7 @@ from commercial.app.energy_product_teo_adapter import (
     match_underfloor_pipe,
     radiator_output_at_design_condition_w,
 )
+from commercial.app.engine import calculate
 from commercial.app.models import BuildingInput
 from commercial.app.optimization import (
     ParametricMeasuresV1,
@@ -199,7 +200,15 @@ def test_hrv_finalist_recalculates_house_with_product_fan_electricity():
     )
     assert ventilation_line.product_id == "hrv-source-backed"
     assert ventilation_line.capex_lei == pytest.approx(15000)
-    assert commercial.final_energy_kwh > raw.final_energy_kwh
+    realized = calculate(
+        commercial.resulting_configuration,
+        include_reference=False,
+    )
+    assert realized.final_energy_by_service["ventilation"] > 0
+    assert commercial.final_energy_kwh == pytest.approx(
+        realized.total_final_energy_kwh,
+        abs=1e-3,
+    )
     assert commercial.cost_source == "hrv_product_discretized_recalculated"
 
 
