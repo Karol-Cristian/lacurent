@@ -9,10 +9,13 @@ on:
       - ".github/workflows/release-reliability-staging.yml"
       - ".github/workflows/commercial-v2-cloudflare-worker.yml"
       - ".github/workflows/commercial-pr-checks.yml"
+      - ".github/workflows/maintenance-worker-staging.yml"
+      - ".github/workflows/maintenance-mode-production.yml"
       - ".github/workflows/d1-catalog-staging.yml"
       - "commercial/app/**"
       - "commercial/tests/**"
       - "commercial/calc-gateway/**"
+      - "commercial/maintenance-worker/**"
       - "commercial/rbpe-router/**"
       - "commercial/teo-router/**"
       - "commercial/static/home-lab-editorial.js"
@@ -24,6 +27,7 @@ on:
       - "commercial/tests/test_maintenance_notice_contract.py"
       - "scripts/release-rbpe-stress.mjs"
       - "scripts/release-browser-matrix.mjs"
+      - "scripts/cloudflare-maintenance-mode.mjs"
       - "scripts/soak-teo-production.mjs"
 
 concurrency:
