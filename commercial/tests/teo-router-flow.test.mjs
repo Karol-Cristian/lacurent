@@ -1,114 +1,5 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import router from "../teo-router/worker.mjs";
-
-class MockStatement {
-  constructor(db, sql) {
-    this.db = db;
-    this.sql = sql.replace(/\s+/g, " ").trim();
-    this.params = [];
-  }
-  bind(...params) {
-    this.params = params;
-    return this;
-  }
-  async all() {
-    if (this.sql.startsWith("SELECT run_id")) {
-      const row = this.db.rows.get(String(this.params[0] || ""));
-      return {results:row ? [{...row}] : []};
-    }
-    throw new Error("Unsupported all SQL: " + this.sql);
-  }
-  async run() {
-    const sql = this.sql;
-    if (sql.startsWith("CREATE TABLE") || sql.startsWith("CREATE INDEX") || sql.startsWith("DELETE FROM")) {
-      return {success:true};
-    }
-    if (sql.startsWith("INSERT INTO teo_verification_runs")) {
-      const [runId, planned] = this.params;
-      this.db.rows.set(String(runId), {
-        run_id:String(runId),
-        status:"ready",
-        planned_verifications:Number(planned),
-        verified_count:0,
-        next_allowed_at_ms:0,
-        in_flight:0,
-        lease_token:null,
-        lease_expires_at_ms:0,
-        updated_at:"now",
-      });
-      return {success:true};
-    }
-    if (sql.includes("SET status='running'")) {
-      const [token, expires, runId, nowA, nowB] = this.params;
-      const row = this.db.rows.get(String(runId));
-      if (
-        row &&
-        row.verified_count < row.planned_verifications &&
-        row.next_allowed_at_ms <= Number(nowA) &&
-        (!row.in_flight || row.lease_expires_at_ms <= Number(nowB))
-      ) {
-        Object.assign(row, {
-          status:"running",
-          in_flight:1,
-          lease_token:String(token),
-          lease_expires_at_ms:Number(expires),
-        });
-      }
-      return {success:true};
-    }
-    if (sql.includes("verified_count=verified_count+1")) {
-      const [nextAllowed, runId, token] = this.params;
-      const row = this.db.rows.get(String(runId));
-      if (row && row.lease_token === token) {
-        row.verified_count += 1;
-        row.status = row.verified_count >= row.planned_verifications ? "complete" : "cooldown";
-        row.next_allowed_at_ms = Number(nextAllowed);
-        row.in_flight = 0;
-        row.lease_token = null;
-        row.lease_expires_at_ms = 0;
-      }
-      return {success:true};
-    }
-    if (sql.includes("SET status='cooldown'")) {
-      const [nextAllowed, runId, token] = this.params;
-      const row = this.db.rows.get(String(runId));
-      if (row && row.lease_token === token) {
-        Object.assign(row, {
-          status:"cooldown",
-          next_allowed_at_ms:Number(nextAllowed),
-          in_flight:0,
-          lease_token:null,
-          lease_expires_at_ms:0,
-        });
-      }
-      return {success:true};
-    }
-    if (sql.includes("SET status='complete'")) {
-      const [runId] = this.params;
-      const row = this.db.rows.get(String(runId));
-      if (row) {
-        Object.assign(row, {
-          status:"complete",
-          in_flight:0,
-          lease_token:null,
-          lease_expires_at_ms:0,
-        });
-      }
-      return {success:true};
-    }
-    throw new Error("Unsupported run SQL: " + sql);
-  }
-}
-
-class MockD1 {
-  constructor() {
-    this.rows = new Map();
-  }
-  prepare(sql) {
-    return new MockStatement(this, sql);
-  }
-}
 
 function shard(status, label, assertions = () => {}) {
   return {
@@ -122,8 +13,17 @@ function shard(status, label, assertions = () => {}) {
   };
 }
 
-function envWithShards(statuses) {
-  const db = new MockD1();
+function quotaExhaustedDb() {
+  return {
+    prepare() {
+      throw new Error(
+        "D1_ERROR: Your account has exceeded D1's free tier daily row write limit."
+      );
+    },
+  };
+}
+
+function envWithShards(statuses, {db=quotaExhaustedDb()} = {}) {
   return {
     DB:db,
     TEO_A:shard(statuses[0], "a", request => {
@@ -141,73 +41,119 @@ function envWithShards(statuses) {
   };
 }
 
-async function start(env, runId="run-1") {
-  const response = await router.fetch(
-    new Request("https://lacurent.com/api/optimization/home-lab/v4/flow/start", {
-      method:"POST",
-      headers:{"content-type":"application/json"},
-      body:JSON.stringify({runId,plannedVerifications:1}),
-    }),
-    env,
+async function freshRouter(label) {
+  const moduleUrl = new URL(
+    `../teo-router/worker.mjs?${encodeURIComponent(label)}-${Date.now()}-${Math.random()}`,
+    import.meta.url,
   );
-  assert.equal(response.status, 200);
-  return await response.json();
+  return (await import(moduleUrl.href)).default;
 }
 
-async function verify(env, runId="run-1") {
-  return await router.fetch(
-    new Request("https://lacurent.com/api/optimization/home-lab/v3/verify", {
-      method:"POST",
-      headers:{"content-type":"application/json"},
-      body:JSON.stringify({
-        runId,
-        branchId:"keep-current-heating",
-        candidate:{candidate_id:"candidate-1"},
-        form:{_optimizer_run_id:runId},
-      }),
-    }),
-    env,
+function startRequest(runId="run-1", plannedVerifications=3) {
+  return new Request("https://lacurent.com/api/optimization/home-lab/v4/flow/start", {
+    method:"POST",
+    headers:{"content-type":"application/json"},
+    body:JSON.stringify({runId,plannedVerifications}),
+  });
+}
+
+function statusRequest(runId="run-1") {
+  return new Request(
+    `https://lacurent.com/api/optimization/home-lab/v4/flow/${encodeURIComponent(runId)}`,
   );
 }
 
-test("TEO router owns flow state and completes one successful VERIFY", async () => {
+function finishRequest(runId="run-1") {
+  return new Request(
+    `https://lacurent.com/api/optimization/home-lab/v4/flow/${encodeURIComponent(runId)}/finish`,
+    {method:"POST",headers:{"content-type":"application/json"},body:"{}"},
+  );
+}
+
+function verifyRequest(runId="run-1") {
+  return new Request("https://lacurent.com/api/optimization/home-lab/v3/verify", {
+    method:"POST",
+    headers:{"content-type":"application/json"},
+    body:JSON.stringify({
+      runId,
+      branchId:"keep-current-heating",
+      candidate:{candidate_id:"candidate-1"},
+      form:{_optimizer_run_id:runId},
+    }),
+  });
+}
+
+test("TEO flow control remains API-compatible without touching D1", async () => {
+  const router = await freshRouter("stateless-flow");
   const env = envWithShards([200,200,200,200]);
-  const started = await start(env);
-  assert.equal(started.storage, "router-d1");
-  assert.equal(started.ready, true);
 
-  const response = await verify(env);
-  assert.equal(response.status, 200);
-  assert.equal(response.headers.get("x-lacurent-teo"), "private-teo-sharded");
-  const body = await response.json();
-  assert.equal(body.workerFlow.verifiedCount, 1);
-  assert.equal(body.workerFlow.status, "complete");
+  const startedResponse = await router.fetch(startRequest("stateless", 3), env);
+  assert.equal(startedResponse.status, 200);
+  assert.equal(startedResponse.headers.get("x-lacurent-teo"), "router-flow-stateless");
+  const started = await startedResponse.json();
+  assert.equal(started.storage, "router-stateless");
+  assert.equal(started.ready, true);
+  assert.equal(started.plannedVerifications, 3);
+
+  const statusResponse = await router.fetch(statusRequest("stateless"), env);
+  assert.equal(statusResponse.status, 200);
+  const status = await statusResponse.json();
+  assert.equal(status.storage, "router-stateless");
+  assert.equal(status.ready, true);
+
+  const finishResponse = await router.fetch(finishRequest("stateless"), env);
+  assert.equal(finishResponse.status, 200);
+  const finished = await finishResponse.json();
+  assert.equal(finished.storage, "router-stateless");
+  assert.equal(finished.status, "complete");
+  assert.equal(finished.ready, false);
 });
 
-test("TEO router fails over a heavy VERIFY without changing the flow slot", async () => {
+test("D1 write-quota exhaustion cannot block canonical VERIFY", async () => {
+  const router = await freshRouter("quota-independent");
+  const env = envWithShards([200,200,200,200], {db:quotaExhaustedDb()});
+
+  const response = await router.fetch(verifyRequest("quota-independent"), env);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("x-lacurent-teo"), "private-teo-sharded");
+  assert.equal(response.headers.get("x-lacurent-teo-shard"), "teo_a");
+  const body = await response.json();
+  assert.equal(body.candidate.candidate_id, "a");
+  assert.equal(body.workerFlow.storage, "router-stateless");
+  assert.equal(body.workerFlow.ready, true);
+});
+
+test("TEO router fails over a heavy VERIFY without D1 state", async () => {
+  const router = await freshRouter("failover");
   const env = envWithShards([503,200,200,200]);
-  await start(env, "failover");
-  const response = await verify(env, "failover");
+
+  const response = await router.fetch(verifyRequest("failover"), env);
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("x-lacurent-teo-shard"), "teo_b");
   const body = await response.json();
-  assert.equal(body.workerFlow.verifiedCount, 1);
-  assert.equal(body.workerFlow.status, "complete");
+  assert.equal(body.candidate.candidate_id, "b");
+  assert.equal(body.workerFlow.storage, "router-stateless");
 });
 
-test("TEO router releases the lease when all heavy shards fail", async () => {
+test("TEO router reports shard outage, not router-control outage, when all shards fail", async () => {
+  const router = await freshRouter("all-down");
   const env = envWithShards([503,503,503,503]);
-  await start(env, "all-down");
-  const response = await verify(env, "all-down");
+
+  const response = await router.fetch(verifyRequest("all-down"), env);
   assert.equal(response.status, 503);
   assert.ok(Number(response.headers.get("retry-after")) >= 2);
+  const body = await response.json();
+  assert.equal(body.stage, "private-teo-router");
+  assert.equal(body.attempts.length, 4);
+  assert.notEqual(body.stage, "private-teo-router-control");
+});
 
-  const status = await router.fetch(
-    new Request("https://lacurent.com/api/optimization/home-lab/v4/flow/all-down"),
-    env,
-  );
-  const state = await status.json();
-  assert.equal(state.status, "cooldown");
-  assert.equal(state.ready, false);
-  assert.equal(state.verifiedCount, 0);
+test("invalid long run IDs are rejected before shard work", async () => {
+  const router = await freshRouter("invalid-run");
+  const env = envWithShards([200,200,200,200]);
+
+  const response = await router.fetch(verifyRequest("x".repeat(161)), env);
+  assert.equal(response.status, 422);
+  const body = await response.json();
+  assert.equal(body.stage, "verify-router");
 });
