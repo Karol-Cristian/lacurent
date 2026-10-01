@@ -143,6 +143,10 @@ def build_sql(payload: dict[str, Any], normalized: dict[str, Any]) -> str:
     observed_on = str(payload.get("observed_on") or "")
     catalog_version = str(payload.get("schema_version") or "energy-product-source-pack-v1")
     lines = ["BEGIN TRANSACTION;", ""]
+    document_count = 0
+    property_count = 0
+    image_count = 0
+    offer_count = 0
 
     for item in normalized["products"]:
         product = item["product"]
@@ -198,6 +202,7 @@ def build_sql(payload: dict[str, Any], normalized: dict[str, Any]) -> str:
                 "parse_status,rights_note,updated_at"
                 ") VALUES (" + ",".join(q(v) for v in docrow) + ",CURRENT_TIMESTAMP);"
             )
+            document_count += 1
 
         adapted = item["adapted_properties"]
         category = CATEGORY_DEFINITIONS[category_id]
@@ -232,6 +237,31 @@ def build_sql(payload: dict[str, Any], normalized: dict[str, Any]) -> str:
                 "confidence,is_teo_input,updated_at"
                 ") VALUES (" + ",".join(q(v) for v in prow) + ",CURRENT_TIMESTAMP);"
             )
+            property_count += 1
+
+        image = product.get("image") or {}
+        image_url = image.get("image_url")
+        if image_url:
+            image_id = f"{product_id}:image:primary"
+            irow = [
+                image_id,
+                product_id,
+                image_url,
+                image.get("source_page") or image.get("source_url"),
+                image.get("alt_text") or product.get("label") or "",
+                image.get("image_kind") or "product",
+                image.get("rights_basis") or "link_only",
+                1,
+                observed_on,
+                1,
+            ]
+            lines.append(
+                "INSERT OR REPLACE INTO energy_product_images ("
+                "image_id,product_id,image_url,source_url,alt_text,image_kind,"
+                "rights_basis,is_primary,observed_on,active,updated_at"
+                ") VALUES (" + ",".join(q(v) for v in irow) + ",CURRENT_TIMESTAMP);"
+            )
+            image_count += 1
 
         for offer_index, offer in enumerate(product.get("offers") or []):
             offer_id = f"{product_id}:offer:{offer_index:02d}"
@@ -256,6 +286,7 @@ def build_sql(payload: dict[str, Any], normalized: dict[str, Any]) -> str:
                 "quantity_unit,vat_included,stock_status,source_url,observed_on,active,updated_at"
                 ") VALUES (" + ",".join(q(v) for v in orow) + ",CURRENT_TIMESTAMP);"
             )
+            offer_count += 1
 
         metric = item["metric"]
         if metric is not None:
@@ -288,7 +319,46 @@ def build_sql(payload: dict[str, Any], normalized: dict[str, Any]) -> str:
                 ") VALUES (" + ",".join(q(v) for v in mrow) + ",CURRENT_TIMESTAMP);"
             )
 
-    lines.extend(["", "COMMIT;", ""])
+    batch = payload.get("batch") or {}
+    batch_id = str(
+        batch.get("batch_id")
+        or f"{catalog_version}:{observed_on}:energy-products"
+    )
+    lines.extend(
+        [
+            "",
+            (
+                "INSERT OR REPLACE INTO energy_product_import_batches ("
+                "batch_id,source_name,source_url,category_id,imported_at,"
+                "product_count,document_count,property_count,image_count,"
+                "offer_count,status,note"
+                ") VALUES ("
+                + ",".join(
+                    [
+                        q(batch_id),
+                        q(batch.get("source_name") or "repo_source_pack"),
+                        q(batch.get("source_url")),
+                        q(batch.get("category_id")),
+                        "CURRENT_TIMESTAMP",
+                        q(len(normalized["products"])),
+                        q(document_count),
+                        q(property_count),
+                        q(image_count),
+                        q(offer_count),
+                        q("imported"),
+                        q(
+                            batch.get("note")
+                            or "Evidence-backed energy product source-pack import."
+                        ),
+                    ]
+                )
+                + ");"
+            ),
+            "",
+            "COMMIT;",
+            "",
+        ]
+    )
     return "\n".join(lines)
 
 
