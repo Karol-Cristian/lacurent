@@ -77,9 +77,11 @@ from .energy_product_teo_adapter import (
     HrvFinalistCommercializationRequestV1,
     RadiatorFinalistCommercializationRequestV1,
     UnderfloorPipeFinalistBomRequestV1,
+    UnderfloorSystemFinalistBomRequestV1,
     commercialize_hrv_finalist,
     commercialize_radiator_bom_from_finalist,
     commercialize_underfloor_pipe_bom_from_finalist,
+    commercialize_underfloor_system_bom_from_finalist,
 )
 from .heating_optimization import (
     HeatingBranchSummaryV1,
@@ -2478,6 +2480,207 @@ async def underfloor_pipe_finalist_commercialization_api(
                 "blockedProducts": list(window.get("blocked_products") or []),
             },
             "stage": "underfloor_pipe_finalist_bom_recheck",
+        }
+    )
+
+
+@app.post("/api/optimization/commercialize/underfloor-system-finalist")
+async def underfloor_system_finalist_commercialization_api(
+    payload: UnderfloorSystemFinalistBomRequestV1,
+    request: Request,
+) -> JSONResponse:
+    """Build a bounded UFH pipe/manifold/control BOM from one TEO finalist."""
+
+    env = request.scope.get("env")
+    db = getattr(env, "DB", None) if env is not None else None
+    if db is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Energy product catalog D1 is unavailable.",
+        )
+
+    try:
+        pipe_window = await read_energy_product_candidate_window_d1(
+            db,
+            "underfloor_pipe",
+            limit=payload.category_limit,
+        )
+        manifold_window = await read_energy_product_candidate_window_d1(
+            db,
+            "underfloor_manifold",
+            limit=payload.category_limit,
+        )
+        control_window = None
+        if payload.control_zone_count is not None:
+            control_window = await read_energy_product_candidate_window_d1(
+                db,
+                "heating_control",
+                limit=payload.category_limit,
+            )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Energy product catalog D1 read failed.",
+        ) from exc
+
+    pipe_candidates = list(pipe_window.get("candidates") or [])
+    manifold_candidates = list(manifold_window.get("candidates") or [])
+    control_candidates = (
+        None
+        if control_window is None
+        else list(control_window.get("candidates") or [])
+    )
+
+    missing_categories: list[dict[str, Any]] = []
+    if not pipe_candidates:
+        missing_categories.append(
+            {
+                "category": "underfloor_pipe",
+                "blockedProducts": list(
+                    pipe_window.get("blocked_products") or []
+                ),
+            }
+        )
+    if not manifold_candidates:
+        missing_categories.append(
+            {
+                "category": "underfloor_manifold",
+                "blockedProducts": list(
+                    manifold_window.get("blocked_products") or []
+                ),
+            }
+        )
+    if (
+        payload.control_zone_count is not None
+        and not control_candidates
+    ):
+        missing_categories.append(
+            {
+                "category": "heating_control",
+                "blockedProducts": list(
+                    (control_window or {}).get("blocked_products") or []
+                ),
+            }
+        )
+    if missing_categories:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": (
+                    "Underfloor system BOM cannot be completed from the "
+                    "source-backed catalog."
+                ),
+                "missingCategories": missing_categories,
+            },
+        )
+
+    try:
+        commercial, pipe_match, manifold_match, control_match, design = (
+            commercialize_underfloor_system_bom_from_finalist(
+                payload.raw_candidate,
+                pipe_candidates,
+                manifold_candidates,
+                active_area_m2=payload.active_area_m2,
+                spacing_mm=payload.spacing_mm,
+                max_loop_length_m=payload.max_loop_length_m,
+                connection_allowance_m=payload.connection_allowance_m,
+                verified_available_heat_output_w_m2=(
+                    payload.verified_available_heat_output_w_m2
+                ),
+                control_products=control_candidates,
+                control_zone_count=payload.control_zone_count,
+                pipe_installation_allowance_lei=(
+                    payload.pipe_installation_allowance_lei
+                ),
+                manifold_installation_allowance_lei=(
+                    payload.manifold_installation_allowance_lei
+                ),
+                control_installation_allowance_lei=(
+                    payload.control_installation_allowance_lei
+                ),
+            )
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    return JSONResponse(
+        {
+            "candidate": model_to_dict(commercial),
+            "pipe": {
+                "productId": pipe_match.product_id,
+                "coilCount": pipe_match.coil_count,
+                "requiredLengthM": pipe_match.required_length_m,
+                "purchasedLengthM": pipe_match.purchased_length_m,
+                "surplusLengthM": pipe_match.surplus_length_m,
+                "materialSubtotalLei": pipe_match.material_subtotal_lei,
+            },
+            "manifold": {
+                "productId": manifold_match.product_id,
+                "quantity": manifold_match.quantity,
+                "unitCircuitCount": manifold_match.unit_circuit_count,
+                "requiredCircuitCount": manifold_match.required_circuit_count,
+                "availableCircuitCount": manifold_match.available_circuit_count,
+                "equipmentSubtotalLei": (
+                    manifold_match.equipment_subtotal_lei
+                ),
+            },
+            "control": (
+                None
+                if control_match is None
+                else {
+                    "productId": control_match.product_id,
+                    "quantity": control_match.quantity,
+                    "unitZoneCount": control_match.unit_zone_count,
+                    "requiredZoneCount": control_match.required_zone_count,
+                    "availableZoneCount": control_match.available_zone_count,
+                    "equipmentSubtotalLei": (
+                        control_match.equipment_subtotal_lei
+                    ),
+                }
+            ),
+            "designRequirement": {
+                "activeAreaM2": design.active_area_m2,
+                "spacingMm": design.spacing_mm,
+                "requiredPipeLengthM": design.required_pipe_length_m,
+                "maxLoopLengthM": design.max_loop_length_m,
+                "requiredLoopCount": design.required_loop_count,
+                "requiredHeatOutputW": design.required_heat_output_w,
+                "requiredHeatFluxWm2": design.required_heat_flux_w_m2,
+                "verifiedAvailableHeatOutputWm2": (
+                    design.verified_available_heat_output_w_m2
+                ),
+            },
+            "catalogWindows": {
+                "pipe": {
+                    "loadedProducts": int(
+                        pipe_window.get("loaded_products") or 0
+                    ),
+                    "teoReadyProducts": int(
+                        pipe_window.get("teo_ready_products") or 0
+                    ),
+                },
+                "manifold": {
+                    "loadedProducts": int(
+                        manifold_window.get("loaded_products") or 0
+                    ),
+                    "teoReadyProducts": int(
+                        manifold_window.get("teo_ready_products") or 0
+                    ),
+                },
+                "control": (
+                    None
+                    if control_window is None
+                    else {
+                        "loadedProducts": int(
+                            control_window.get("loaded_products") or 0
+                        ),
+                        "teoReadyProducts": int(
+                            control_window.get("teo_ready_products") or 0
+                        ),
+                    }
+                ),
+            },
+            "stage": "underfloor_system_finalist_bom_recheck",
         }
     )
 
