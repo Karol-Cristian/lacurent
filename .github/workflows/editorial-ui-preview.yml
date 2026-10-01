@@ -54,7 +54,7 @@ jobs:
 
       - name: Install Wrangler
         working-directory: .wrangler/commercial-v2-worker
-        run: npm install --save-dev wrangler@latest
+        run: npm install --save-dev wrangler@4.145.0
 
       - name: Sync Python Worker dependencies
         working-directory: .wrangler/commercial-v2-worker
