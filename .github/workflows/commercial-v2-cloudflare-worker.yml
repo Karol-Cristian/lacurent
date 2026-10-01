@@ -256,6 +256,10 @@ jobs:
           python scripts/build-heating-catalog-d1-import.py \
             commercial/data/heating-technology-planning.seed.json \
             /tmp/heating-catalog-import.sql
+          python scripts/build-energy-product-catalog-d1-import.py \
+            commercial/data/energy_product_catalog_source_pack_v2.json \
+            /tmp/016_energy_product_catalog_generated.sql \
+            --summary /tmp/energy-product-catalog-summary.json
           python -m pytest commercial/tests -q
 
       - name: Install uv
@@ -270,6 +274,149 @@ jobs:
         run: |
           npm install --save-dev wrangler@4.145.0
           npx wrangler --version
+
+      - name: Verify exact production D1 target
+        working-directory: .wrangler/commercial-v2-worker
+        run: |
+          set -euo pipefail
+          npx wrangler d1 list --json > /tmp/production-d1-list.json
+          python - <<'PY'
+          import json
+          import tomllib
+          from pathlib import Path
+
+          target_name = "lacurent-db"
+          config = tomllib.loads(Path("wrangler.toml").read_text(encoding="utf-8"))
+          bindings = [
+              item for item in config.get("d1_databases", [])
+              if str(item.get("binding") or "") == "DB"
+          ]
+          if len(bindings) != 1:
+              raise SystemExit(f"Expected exactly one production DB binding, got {bindings!r}")
+          configured = bindings[0]
+          configured_name = str(configured.get("database_name") or "")
+          configured_id = str(configured.get("database_id") or "")
+          if configured_name != target_name or not configured_id:
+              raise SystemExit(
+                  f"Unexpected production D1 binding: name={configured_name!r} id={configured_id!r}"
+              )
+
+          raw = json.loads(Path("/tmp/production-d1-list.json").read_text())
+          rows = raw if isinstance(raw, list) else (
+              raw.get("result") or raw.get("databases") or raw.get("items") or []
+          )
+          match = next(
+              (
+                  row for row in rows
+                  if isinstance(row, dict)
+                  and str(row.get("name") or "") == target_name
+              ),
+              None,
+          )
+          if match is None:
+              raise SystemExit(f"Production D1 {target_name!r} is not visible to deploy credentials.")
+          actual_id = str(match.get("uuid") or match.get("id") or "")
+          if actual_id != configured_id:
+              raise SystemExit(
+                  f"Safety gate: production D1 UUID mismatch: config={configured_id}, actual={actual_id}"
+              )
+          print(f"Production D1 target verified: {target_name} ({actual_id})")
+          PY
+
+      - name: Materialize release catalog and account schema in production D1
+        working-directory: .wrangler/commercial-v2-worker
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/lacurent-production-d1-migration-chunks
+          mkdir -p /tmp/lacurent-production-d1-migration-chunks
+
+          for migration in \
+            ../../migrations/015_energy_product_catalog.sql \
+            /tmp/016_energy_product_catalog_generated.sql \
+            ../../migrations/017_unify_energy_product_catalog.sql \
+            ../../migrations/019_home_lab_account_persistence.sql
+          do
+            migration_name="$(basename "$migration" .sql)"
+            out_dir="/tmp/lacurent-production-d1-migration-chunks/$migration_name"
+            echo "Preparing production D1-safe command batches for $migration"
+            python ../../scripts/split_d1_sql.py "$migration" "$out_dir" --max-chars 60000
+
+            for chunk in "$out_dir"/*.sql
+            do
+              echo "Applying $migration via $(basename "$chunk")"
+              SQL="$(cat "$chunk")"
+              test -n "$SQL"
+              npx wrangler d1 execute lacurent-db \
+                --remote \
+                --command="$SQL" \
+                --yes
+            done
+          done
+
+      - name: Verify production D1 release materialization
+        working-directory: .wrangler/commercial-v2-worker
+        run: |
+          set -euo pipefail
+          QUERY="
+          SELECT
+            (SELECT COUNT(*) FROM energy_products) AS products,
+            (SELECT COUNT(*) FROM energy_product_heating_compat) AS heating_compat,
+            (SELECT COUNT(*) FROM energy_heating_products_compat_v1) AS heating_view,
+            (SELECT COUNT(*) FROM energy_product_performance_points) AS performance_points,
+            (SELECT COUNT(*) FROM energy_heat_pump_performance_points_compat_v1) AS performance_view,
+            (SELECT COUNT(*) FROM energy_product_seasonal_performance) AS seasonal_points,
+            (SELECT COUNT(*) FROM energy_product_value_metrics) AS value_metrics,
+            (
+              SELECT COUNT(*)
+              FROM sqlite_master
+              WHERE type = 'table'
+                AND name IN (
+                  'users',
+                  'user_sessions',
+                  'building_platform_projects',
+                  'building_platform_project_drafts'
+                )
+            ) AS account_tables;
+          "
+          npx wrangler d1 execute lacurent-db \
+            --remote \
+            --command="$QUERY" \
+            --json > /tmp/production-d1-release-check.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          raw = json.loads(Path("/tmp/production-d1-release-check.json").read_text())
+          blocks = raw if isinstance(raw, list) else [raw]
+          rows = []
+          for block in blocks:
+              if not isinstance(block, dict):
+                  continue
+              result = block.get("results") or block.get("result") or []
+              if isinstance(result, list):
+                  rows.extend(row for row in result if isinstance(row, dict))
+          if not rows:
+              raise SystemExit(f"Production D1 verification returned no rows: {raw!r}")
+          row = rows[-1]
+          minimums = {
+              "products": 49,
+              "heating_compat": 40,
+              "heating_view": 40,
+              "performance_points": 50,
+              "performance_view": 50,
+              "seasonal_points": 2,
+              "value_metrics": 17,
+              "account_tables": 4,
+          }
+          failures = {
+              key: (int(row.get(key) or 0), minimum)
+              for key, minimum in minimums.items()
+              if int(row.get(key) or 0) < minimum
+          }
+          if failures:
+              raise SystemExit(f"Production D1 release materialization incomplete: {failures}")
+          print("Production D1 release materialization PASS", row)
+          PY
 
       - name: Sync Python Worker dependencies
         working-directory: .wrangler/commercial-v2-worker
