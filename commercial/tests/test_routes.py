@@ -924,15 +924,18 @@ def test_private_teo_topology_is_sharded_and_route_isolated() -> None:
 
     assert 'pattern = "lacurent.com/api/optimization/home-lab/v3/*"' in router_wrangler
     assert 'pattern = "lacurent.com/api/optimization/home-lab/v4/*"' in router_wrangler
-    assert 'binding = "DB"' in router_wrangler
-    assert 'database_name = "lacurent-db"' in router_wrangler
+    assert 'binding = "DB"' not in router_wrangler
+    assert 'database_name = "lacurent-db"' not in router_wrangler
     assert '"x-lacurent-teo", "private-teo-sharded"' in router
     assert "disabledUntil" in router
     assert "response.status >= 500" in router
     assert "requestBodyBytes" in router
     assert "handleFlowEndpoint" in router
-    assert "acquireFlow" in router
-    assert "completeFlow" in router
+    assert 'FLOW_STORAGE = "router-stateless"' in router
+    assert "ensureFlowSchema" not in router
+    assert "acquireFlow" not in router
+    assert "completeFlow" not in router
+    assert "env.DB" not in router
     assert '"x-lacurent-flow-gated":"1"' in router
     main = Path("commercial/app/main.py").read_text(encoding="utf-8")
     assert 'request.headers.get("x-lacurent-flow-gated"' in main
