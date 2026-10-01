@@ -200,6 +200,17 @@ jobs:
             (SELECT COUNT(*) FROM energy_product_value_metrics) AS value_metrics,
             (
               SELECT COUNT(*)
+              FROM energy_heat_pump_performance_points_compat_v1 AS pp
+              INNER JOIN energy_heating_products_compat_v1 AS p
+                ON p.id = pp.product_id
+              WHERE p.active = 1
+                AND NOT (
+                  p.technology_id = 'heat-pump-air-air'
+                  AND COALESCE(p.source_kind, '') LIKE 'derived_bundle_%'
+                )
+            ) AS public_performance_points,
+            (
+              SELECT COUNT(*)
               FROM energy_heating_products_compat_v1
               WHERE active = 1
                 AND NOT (
@@ -253,6 +264,7 @@ jobs:
               "seasonal_points": 2,
               "seasonal_view": 2,
               "value_metrics": 17,
+              "public_performance_points": 30,
               "public_heating_products": 36,
               "derived_air_air_bundles": 4,
           }
@@ -419,8 +431,20 @@ jobs:
 
           points = catalog.get("heat_pump_performance_points") or []
           seasonal = catalog.get("heat_pump_seasonal_performance") or []
-          if len(points) < 50:
-              raise AssertionError(f"Expected at least 50 heat-pump performance points, got {len(points)}")
+          if len(points) < 30:
+              raise AssertionError(
+                  f"Expected at least 30 public standalone heat-pump performance points, got {len(points)}"
+              )
+          product_ids = {str(item.get("id") or "") for item in products}
+          leaked_points = sorted({
+              str(point.get("product_id") or "")
+              for point in points
+              if str(point.get("product_id") or "") not in product_ids
+          })
+          if leaked_points:
+              raise AssertionError(
+                  f"Performance rows for non-public/derived products leaked into API: {leaked_points}"
+              )
           if len(seasonal) < 2:
               raise AssertionError(f"Expected at least 2 seasonal performance rows, got {len(seasonal)}")
           if not all(float(point.get("cop") or 0) > 1 for point in points):
@@ -457,7 +481,8 @@ jobs:
             echo "- heating compatibility baseline >= 40: PASS"
             echo "- standalone public heating SKUs >= 36: PASS"
             echo "- four derived air-air TEO bundles remain non-public: PASS"
-            echo "- heat-pump operating points >= 50: PASS"
+            echo "- canonical D1 heat-pump operating points >= 50: PASS"
+            echo "- public standalone heat-pump operating points >= 30: PASS"
             echo "- seasonal performance rows >= 2: PASS"
             echo "- cross-category source pack materialized in remote D1: PASS"
             echo "- deployed Python Worker DB binding: PASS"
@@ -470,9 +495,46 @@ jobs:
       - name: Delete isolated staging Worker
         if: always()
         run: |
-          if [ -n "${WORKER_NAME:-}" ] && [ -d .wrangler/commercial-v2-worker ]; then
-            (
-              cd .wrangler/commercial-v2-worker
-              printf 'y\n' | npx wrangler delete --name "$WORKER_NAME"
-            ) || true
+          set -euo pipefail
+          if [ -z "${WORKER_NAME:-}" ]; then
+            echo "No staging Worker was created."
+            exit 0
           fi
+          python - <<'PY'
+          import json
+          import os
+          import urllib.error
+          import urllib.request
+
+          account_id = os.environ["CLOUDFLARE_ACCOUNT_ID"]
+          worker_name = os.environ["WORKER_NAME"]
+          token = os.environ["CLOUDFLARE_API_TOKEN"]
+          url = (
+              "https://api.cloudflare.com/client/v4/accounts/"
+              + account_id
+              + "/workers/scripts/"
+              + worker_name
+          )
+          request = urllib.request.Request(
+              url,
+              method="DELETE",
+              headers={
+                  "Authorization": f"Bearer {token}",
+                  "Content-Type": "application/json",
+              },
+          )
+          try:
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  payload = json.loads(response.read().decode("utf-8") or "{}")
+          except urllib.error.HTTPError as exc:
+              body = exc.read().decode("utf-8", "replace")
+              if exc.code == 404:
+                  print(f"Staging Worker already absent: {worker_name}")
+                  raise SystemExit(0)
+              raise SystemExit(
+                  f"Cloudflare Worker cleanup failed HTTP {exc.code}: {body[:1000]}"
+              )
+          if payload.get("success") is not True:
+              raise SystemExit(f"Cloudflare Worker cleanup failed: {payload!r}")
+          print(f"Deleted isolated staging Worker: {worker_name}")
+          PY
