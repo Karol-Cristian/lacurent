@@ -22,6 +22,7 @@ on:
       - "scripts/prepare-teo-cloudflare-worker.mjs"
       - "scripts/prepare-commercial-cloudflare-worker.mjs"
       - "scripts/configure-full-stack-staging.mjs"
+      - "scripts/soak-teo-production.mjs"
 
 concurrency:
   group: lacurent-shared-uat-deploy
