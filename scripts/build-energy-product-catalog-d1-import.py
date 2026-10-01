@@ -206,7 +206,11 @@ def build_sql(payload: dict[str, Any], normalized: dict[str, Any]) -> str:
             value = prop["value"]
             numeric_value = float(value) if isinstance(value, (int, float)) else None
             text_value = None if numeric_value is not None else str(value)
-            is_teo = int(prop["property_key"] in required)
+            source_normalized = normalize_teo_properties(
+                category_id,
+                {prop["property_key"]: value},
+            )
+            is_teo = int(any(key in source_normalized for key in required))
             prow = [
                 product_id,
                 prop["property_key"],
