@@ -95,7 +95,7 @@ def test_editorial_positions_home_lab_as_decision_support_not_official_document(
 
     assert "Construiește planul energetic al casei tale." in template
     assert "Comparăm ce merită" in template
-    assert "Home Lab este reperul tehnico-economic al casei tale." in template
+    assert "Home Lab este etalonul tehnico-economic al casei tale." in template
     assert "nu înlocuiește documentele oficiale" in template
 
     # The report is intentionally visual; legal/professional guidance stays
