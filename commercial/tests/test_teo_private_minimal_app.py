@@ -1,11 +1,24 @@
 from __future__ import annotations
 
+import asyncio
+import json
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
+from fastapi import Request
 from fastapi.testclient import TestClient
 
+from commercial.app.engine import demo_building
+from commercial.app.models import model_to_dict
+from commercial.app.optimization import (
+    CandidateEvaluationV1,
+    OptimizationMode,
+    OptimizationRequestV1,
+    ParametricMeasuresV1,
+)
+import commercial.app.teo_app as teo_app
 from commercial.app.teo_app import app
 
 
@@ -185,6 +198,138 @@ def _run_private_teo_flow(run_id: str) -> dict:
     assert final["optimization"]["fullEngineVerifications"] == 1
     assert final["optimization"]["finalizeRecalculations"] == 0
     return final
+
+
+def _synthetic_candidate() -> CandidateEvaluationV1:
+    baseline = demo_building()
+    return CandidateEvaluationV1(
+        candidate_id="synthetic-rpc",
+        parameters=ParametricMeasuresV1(),
+        capex_lei=0.0,
+        baseline_annual_bill_lei=12000.0,
+        annual_bill_lei=12000.0,
+        annual_saving_lei=0.0,
+        final_energy_kwh=10000.0,
+        primary_specific_kwh_m2=100.0,
+        co2_total_kg=1000.0,
+        co2_specific_kg_m2=5.0,
+        energy_class="B",
+        resulting_configuration=baseline,
+    )
+
+
+def test_teo_cloudflare_verify_delegates_to_reference_rbpe(monkeypatch) -> None:
+    candidate = _synthetic_candidate()
+    optimization_request = OptimizationRequestV1(
+        baseline=demo_building(),
+        mode=OptimizationMode.auto_economic,
+    )
+    calls: list[tuple] = []
+
+    class FakeRbpe:
+        async def verify_teo_candidate_json(self, *args):
+            calls.append(args)
+            return json.dumps(
+                {
+                    "candidate": model_to_dict(candidate),
+                    "branch_id": "keep-current-heating",
+                    "annual_bill_delta_lei": 0.0,
+                    "design_load_delta_kw": 0.0,
+                    "warnings": [],
+                }
+            )
+
+    def forbidden_local_verify(*args, **kwargs):
+        raise AssertionError("Cloudflare VERIFY must not execute local RBPE.")
+
+    monkeypatch.setattr(teo_app, "verify_one_candidate_v3", forbidden_local_verify)
+    request = Request(
+        {
+            "type": "http",
+            "headers": [],
+            "env": SimpleNamespace(REFERENCE_RBPE=FakeRbpe()),
+        }
+    )
+
+    payload, execution = asyncio.run(
+        teo_app._verify_candidate_via_rbpe(
+            request,
+            optimization_request=optimization_request,
+            fast_candidate=candidate,
+            branch_id="keep-current-heating",
+            cost_catalog={"source": "test", "costs": {}},
+            heating_catalog={"options": []},
+            baseline_annual_bill_lei=12000.0,
+        )
+    )
+    assert execution == "private-rbpe-sharded"
+    assert payload["candidate"]["candidate_id"] == candidate.candidate_id
+    assert len(calls) == 1
+
+
+def test_teo_cloudflare_product_delegates_to_reference_rbpe(monkeypatch) -> None:
+    candidate = _synthetic_candidate()
+    calls: list[tuple] = []
+
+    class FakeRbpe:
+        async def commercialize_teo_candidate_json(self, *args):
+            calls.append(args)
+            return json.dumps(
+                {
+                    "candidate": model_to_dict(candidate),
+                    "matchedProduct": None,
+                    "matchedProductQuantity": 1,
+                    "scenario": None,
+                    "heatPumpPerformanceProfile": None,
+                    "warnings": [],
+                }
+            )
+
+    def forbidden_local_product(*args, **kwargs):
+        raise AssertionError("Cloudflare PRODUCT must not execute local RBPE.")
+
+    monkeypatch.setattr(teo_app, "commercialize_heating_finalist", forbidden_local_product)
+    request = Request(
+        {
+            "type": "http",
+            "headers": [],
+            "env": SimpleNamespace(REFERENCE_RBPE=FakeRbpe()),
+        }
+    )
+    payload, execution = asyncio.run(
+        teo_app._commercialize_candidate_via_rbpe(
+            request,
+            candidate=candidate,
+            original_building=demo_building(),
+            heating_catalog={"options": []},
+            branch_id="keep-current-heating",
+        )
+    )
+    assert execution == "private-rbpe-sharded"
+    assert payload["candidate"]["candidate_id"] == candidate.candidate_id
+    assert len(calls) == 1
+
+
+def test_teo_rbpe_rpc_contract_is_wired_end_to_end() -> None:
+    reference_worker = (
+        ROOT / "commercial" / "reference-worker" / "worker.py"
+    ).read_text(encoding="utf-8")
+    rbpe_router = (
+        ROOT / "commercial" / "rbpe-router" / "worker.mjs"
+    ).read_text(encoding="utf-8")
+    teo_wrangler = (
+        ROOT / "commercial" / "teo-worker" / "wrangler.toml"
+    ).read_text(encoding="utf-8")
+
+    for method in (
+        "verify_teo_candidate_json",
+        "commercialize_teo_candidate_json",
+    ):
+        assert method in reference_worker
+        assert method in rbpe_router
+
+    assert 'binding = "REFERENCE_RBPE"' in teo_wrangler
+    assert 'service = "lacurent-rbpe-router"' in teo_wrangler
 
 
 def test_teo_private_plan_verify_finalize_regression() -> None:
