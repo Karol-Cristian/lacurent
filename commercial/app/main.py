@@ -75,14 +75,17 @@ from .energy_product_catalog_store import (
 )
 from .energy_product_teo_adapter import (
     HrvFinalistCommercializationRequestV1,
+    PvCatalogFinalistCommercializationRequestV1,
     RadiatorFinalistCommercializationRequestV1,
     UnderfloorPipeFinalistBomRequestV1,
     UnderfloorSystemFinalistBomRequestV1,
     WallCatalogFinalistCommercializationRequestV1,
     commercialize_hrv_finalist,
+    commercialize_pv_finalist_from_catalog,
     commercialize_radiator_bom_from_finalist,
     commercialize_underfloor_pipe_bom_from_finalist,
     commercialize_underfloor_system_bom_from_finalist,
+    pv_products_from_catalog_window,
     wall_products_from_catalog_window,
 )
 from .heating_optimization import (
@@ -2315,6 +2318,95 @@ async def wall_finalist_catalog_commercialization_api(
                 "blockedProducts": list(window.get("blocked_products") or []),
             },
             "stage": "wall_finalist_catalog_discretization",
+        }
+    )
+
+
+@app.post("/api/optimization/commercialize/pv-finalist-catalog")
+async def pv_finalist_catalog_commercialization_api(
+    payload: PvCatalogFinalistCommercializationRequestV1,
+    request: Request,
+) -> JSONResponse:
+    """Round one TEO PV finalist to whole source-backed D1 modules and recalculate."""
+
+    env = request.scope.get("env")
+    db = getattr(env, "DB", None) if env is not None else None
+    if db is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Energy product catalog D1 is unavailable.",
+        )
+
+    try:
+        window = await read_energy_product_candidate_window_d1(
+            db,
+            "pv_module",
+            limit=payload.category_limit,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Energy product catalog D1 read failed.",
+        ) from exc
+
+    products = pv_products_from_catalog_window(window)
+    if not products:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": (
+                    "No PV module has complete source-backed power "
+                    "and unit-price data."
+                ),
+                "loadedProducts": int(window.get("loaded_products") or 0),
+                "blockedProducts": list(window.get("blocked_products") or []),
+            },
+        )
+
+    try:
+        commercial = commercialize_pv_finalist_from_catalog(
+            payload.raw_candidate,
+            products,
+            activation_cost_lei=payload.activation_cost_lei,
+            nonmodule_installed_cost_per_kwp_lei=(
+                payload.nonmodule_installed_cost_per_kwp_lei
+            ),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    pv_line = next(
+        (
+            line
+            for line in commercial.cost_breakdown
+            if line.family == "pv"
+        ),
+        None,
+    )
+    return JSONResponse(
+        {
+            "candidate": model_to_dict(commercial),
+            "matchedProduct": (
+                None
+                if pv_line is None
+                else {
+                    "productId": pv_line.product_id,
+                    "sku": pv_line.sku,
+                    "moduleCount": pv_line.quantity,
+                    "realizedAddedKwp": pv_line.parameter_value,
+                    "materialSubtotalLei": pv_line.material_subtotal_lei,
+                    "nonmaterialSubtotalLei": (
+                        pv_line.nonmaterial_subtotal_lei
+                    ),
+                }
+            ),
+            "catalogWindow": {
+                "mode": window.get("catalog_mode"),
+                "loadedProducts": int(window.get("loaded_products") or 0),
+                "commercialProducts": len(products),
+                "blockedProducts": list(window.get("blocked_products") or []),
+            },
+            "stage": "pv_finalist_catalog_discretization",
         }
     )
 
