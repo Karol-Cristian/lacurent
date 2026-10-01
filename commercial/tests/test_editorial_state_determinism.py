@@ -45,8 +45,8 @@ def test_editorial_exposes_exact_rbpe_input_identity_and_clean_reset():
 
     # Cache busting is deliberate: browsers must not keep running the old
     # persistence code after the deploy.
-    assert "/static/home-lab-editorial.js?v=72" in template
-    assert "/static/home-lab-editorial.css?v=38" in template
+    assert "/static/home-lab-editorial.js?v=73" in template
+    assert "/static/home-lab-editorial.css?v=39" in template
 
 
 def test_privacy_opt_out_clears_editorial_v2_storage():
@@ -95,7 +95,8 @@ def test_editorial_positions_home_lab_as_decision_support_not_official_document(
 
     assert "Construiește planul energetic al casei tale." in template
     assert "Comparăm ce merită" in template
-    assert "Home Lab este instrumentul tău de decizie energetică." in template
+    assert "Home Lab este instrumentul tău de decizie energetică." not in template
+    assert "RBPE și TEO rulează în spate pentru calcul, trasabilitate și optimizare." in template
     assert "nu înlocuiește documentele oficiale" in template
 
     # The report is intentionally visual; legal/professional guidance stays
