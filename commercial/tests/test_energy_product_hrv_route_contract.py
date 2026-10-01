@@ -153,3 +153,24 @@ def test_radiator_and_underfloor_adapters_derive_requirements_from_finalist():
     assert "design_heat_load_breakdown(" in underfloor
     assert "required_heat_output_w=float(required_kw) * 1000.0" in underfloor
     assert "verified_available_heat_output_w_m2=(" in underfloor
+
+
+
+def test_underfloor_system_route_loads_only_required_bounded_categories():
+    source = MAIN.read_text(encoding="utf-8")
+    section = source.split(
+        '@app.post("/api/optimization/commercialize/underfloor-system-finalist")',
+        1,
+    )[1].split(
+        '@app.post("/api/optimization/candidate")',
+        1,
+    )[0]
+
+    assert '"underfloor_pipe"' in section
+    assert '"underfloor_manifold"' in section
+    assert '"heating_control"' in section
+    assert "if payload.control_zone_count is not None:" in section
+    assert "commercialize_underfloor_system_bom_from_finalist(" in section
+    assert '"stage": "underfloor_system_finalist_bom_recheck"' in section
+    assert "run_parametric_optimization(" not in section
+    assert "run_physics_informed_optimization(" not in section
