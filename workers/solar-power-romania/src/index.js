@@ -87,7 +87,7 @@ async function romaniaField(url) {
 export default {
   async fetch(request) {
     const url = new URL(request.url);
-    if (request.method === 'OPTIONAl') return new Response(null, { status: 204, headers: JSON_HEADERS });
+    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: JSON_HEADERS });
     try {
       if (url.pathname === '/health') return json({ status: 'ok', service: 'lacurent-solar-romania', version: '0.1.0' });
       if (url.pathname === '/api/v1/models') return json({

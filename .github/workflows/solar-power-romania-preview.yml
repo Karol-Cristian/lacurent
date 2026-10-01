@@ -1,0 +1,73 @@
+name: Solar Power Romania Preview
+
+on:
+  push:
+    branches:
+      - codex/solar-power-romania-poc
+    paths:
+      - "workers/solar-power-romania/**"
+      - ".github/workflows/solar-power-romania-preview.yml"
+
+concurrency:
+  group: solar-power-romania-preview
+  cancel-in-progress: true
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PREVIEW_URL: https://lacurent-solar-romania.lemnarukarol.workers.dev
+
+    steps:
+      - name: Check out isolated Solar Power branch
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Validate preview credentials
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Unit tests
+        run: node --test workers/solar-power-romania/tests/*.test.mjs
+
+      - name: Wrangler dry run
+        run: npx --yes wrangler@4.145.0 deploy --config workers/solar-power-romania/wrangler.toml --dry-run
+
+      - name: Deploy isolated Worker
+        run: npx --yes wrangler@4.145.0 deploy --config workers/solar-power-romania/wrangler.toml
+
+      - name: Smoke test preview
+        run: |
+          retry() {
+            url="$1"
+            marker="$2"
+            for attempt in $(seq 1 15); do
+              body="$(curl -fsSL "$url" || true)"
+              if printf '%s' "$body" | grep -q "$marker"; then
+                return 0
+              fi
+              sleep 4
+            done
+            echo "::error::Marker '$marker' not available at $url"
+            return 1
+          }
+          retry "$PREVIEW_URL/health" '"status":"ok"'
+          retry "$PREVIEW_URL/" 'SOLAR POWER / ROMANIA'
+          retry "$PREVIEW_URL/api/v1/models" 'ECMWF IFS'
+          retry "$PREVIEW_URL/api/v1/pv/forecast?lat=44.4268&lon=26.1025&capacity_mwp=10&tilt=30&azimuth=0" '"forecast"'
+
+      - name: Publish preview URL
+        run: |
+          echo "## Solar Power Romania" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "$PREVIEW_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Isolated Worker: no production routes, D1 bindings or service bindings." >> "$GITHUB_STEP_SUMMARY"
