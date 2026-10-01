@@ -70,6 +70,13 @@ from .full_commercialization import (
     FullProductBackedOptimizationRequestV1,
     run_full_product_backed_optimization,
 )
+from .energy_product_catalog_store import (
+    read_energy_product_candidate_window_d1,
+)
+from .energy_product_teo_adapter import (
+    HrvFinalistCommercializationRequestV1,
+    commercialize_hrv_finalist,
+)
 from .heating_optimization import (
     HeatingBranchSummaryV1,
     apply_supplemental_heating_technology,
@@ -2232,6 +2239,83 @@ async def full_product_backed_optimization_api(
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return JSONResponse(model_to_dict(result))
+
+
+@app.post("/api/optimization/commercialize/hrv-finalist")
+async def hrv_finalist_commercialization_api(
+    payload: HrvFinalistCommercializationRequestV1,
+    request: Request,
+) -> JSONResponse:
+    """Bounded D1 HRV match followed by one canonical finalist recalculation."""
+
+    env = request.scope.get("env")
+    db = getattr(env, "DB", None) if env is not None else None
+    if db is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Energy product catalog D1 is unavailable.",
+        )
+
+    try:
+        window = await read_energy_product_candidate_window_d1(
+            db,
+            "hrv_unit",
+            limit=payload.category_limit,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Energy product catalog D1 read failed.",
+        ) from exc
+
+    candidates = list(window.get("candidates") or [])
+    if not candidates:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": "No source-backed HRV product is TEO-ready.",
+                "loadedProducts": int(window.get("loaded_products") or 0),
+                "blockedProducts": list(window.get("blocked_products") or []),
+            },
+        )
+
+    try:
+        commercial, match = commercialize_hrv_finalist(
+            payload.raw_candidate,
+            candidates,
+            fan_operation_hours_per_year=(
+                payload.fan_operation_hours_per_year
+            ),
+            installation_allowance_lei=payload.installation_allowance_lei,
+            max_specific_power_input_w_m3h=(
+                payload.max_specific_power_input_w_m3h
+            ),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    return JSONResponse(
+        {
+            "candidate": model_to_dict(commercial),
+            "matchedProduct": {
+                "productId": match.product_id,
+                "maxAirflowM3h": match.max_airflow_m3h,
+                "heatRecoveryEfficiency": match.heat_recovery_efficiency,
+                "specificPowerInputWPerM3h": (
+                    match.specific_power_input_w_m3h
+                ),
+                "unitPriceLei": match.unit_price_lei,
+                "selectionBasis": match.selection_basis,
+            },
+            "catalogWindow": {
+                "mode": window.get("catalog_mode"),
+                "loadedProducts": int(window.get("loaded_products") or 0),
+                "teoReadyProducts": int(window.get("teo_ready_products") or 0),
+                "blockedProducts": list(window.get("blocked_products") or []),
+            },
+            "stage": "hrv_finalist_product_recheck",
+        }
+    )
 
 
 @app.post("/api/optimization/candidate")
