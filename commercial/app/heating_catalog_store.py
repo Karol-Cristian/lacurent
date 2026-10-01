@@ -51,57 +51,6 @@ def clear_heating_optimizer_runtime_caches() -> None:
     heating_planning_catalog.cache_clear()
 
 
-HEATING_PRODUCTS_CREATE_SQL = """
-CREATE TABLE IF NOT EXISTS heating_products (
-    id TEXT PRIMARY KEY,
-    external_id TEXT,
-    technology_id TEXT NOT NULL,
-    technology_label TEXT NOT NULL,
-    label TEXT NOT NULL,
-    system_type TEXT NOT NULL,
-    generator_type TEXT NOT NULL,
-    carrier TEXT NOT NULL,
-    cost_profile TEXT NOT NULL,
-    rated_power_kw REAL NOT NULL CHECK(rated_power_kw > 0),
-    efficiency REAL,
-    scop REAL,
-    equipment_price_lei REAL NOT NULL CHECK(equipment_price_lei >= 0),
-    installation_allowance_lei REAL NOT NULL CHECK(installation_allowance_lei >= 0),
-    source_kind TEXT NOT NULL,
-    source_url TEXT,
-    confidence TEXT NOT NULL,
-    requires_hydronic INTEGER NOT NULL DEFAULT 1,
-    requires_existing_gas INTEGER NOT NULL DEFAULT 0,
-    requires_existing_high_power_electric INTEGER NOT NULL DEFAULT 0,
-    requires_existing_biomass_infrastructure INTEGER NOT NULL DEFAULT 0,
-    capacity_basis TEXT NOT NULL,
-    note TEXT NOT NULL DEFAULT '',
-    catalog_version TEXT NOT NULL,
-    observed_on TEXT NOT NULL,
-    active INTEGER NOT NULL DEFAULT 1,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-)
-"""
-
-HEAT_PUMP_POINTS_CREATE_SQL = """
-CREATE TABLE IF NOT EXISTS heat_pump_performance_points (
-    product_id TEXT NOT NULL,
-    outdoor_temperature_c REAL NOT NULL,
-    flow_temperature_c REAL NOT NULL,
-    return_temperature_c REAL,
-    delta_t_k REAL,
-    heating_capacity_kw REAL,
-    cop REAL NOT NULL CHECK(cop > 1),
-    test_standard TEXT,
-    source_kind TEXT NOT NULL,
-    source_url TEXT,
-    note TEXT NOT NULL DEFAULT '',
-    catalog_version TEXT NOT NULL,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY(product_id, outdoor_temperature_c, flow_temperature_c)
-)
-"""
-
 HEATING_PARAMETRIC_NODES_CREATE_SQL = """
 CREATE TABLE IF NOT EXISTS heating_parametric_nodes (
     id TEXT PRIMARY KEY,
@@ -118,92 +67,6 @@ CREATE TABLE IF NOT EXISTS heating_parametric_nodes (
 )
 """
 
-HEAT_PUMP_SEASONAL_CREATE_SQL = """
-CREATE TABLE IF NOT EXISTS heat_pump_seasonal_performance (
-    product_id TEXT NOT NULL,
-    climate TEXT NOT NULL,
-    application_temperature_c REAL NOT NULL,
-    scop REAL NOT NULL CHECK(scop > 1),
-    design_load_kw REAL,
-    source_kind TEXT NOT NULL,
-    source_url TEXT,
-    test_standard TEXT,
-    catalog_version TEXT NOT NULL,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY(product_id, climate, application_temperature_c)
-)
-"""
-
-
-HEATING_PRODUCT_CERTIFICATION_CREATE_SQL = """
-CREATE TABLE IF NOT EXISTS heating_product_certification (
-    product_id TEXT PRIMARY KEY,
-    manufacturer TEXT,
-    model TEXT,
-    certification_body TEXT,
-    certificate_registration_number TEXT,
-    heat_pump_type TEXT,
-    refrigerant TEXT,
-    quality_tier TEXT NOT NULL DEFAULT 'C',
-    source_url TEXT,
-    observed_on TEXT,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-)
-"""
-
-HEATING_PRODUCT_OFFERS_CREATE_SQL = """
-CREATE TABLE IF NOT EXISTS heating_product_offers (
-    offer_id TEXT PRIMARY KEY,
-    product_id TEXT NOT NULL,
-    supplier TEXT NOT NULL,
-    sku TEXT,
-    price_lei REAL NOT NULL CHECK(price_lei >= 0),
-    vat_included INTEGER NOT NULL DEFAULT 1,
-    stock_status TEXT,
-    source_url TEXT,
-    observed_on TEXT NOT NULL,
-    active INTEGER NOT NULL DEFAULT 1,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-)
-"""
-
-HEATING_CATALOG_IMPORT_BATCHES_CREATE_SQL = """
-CREATE TABLE IF NOT EXISTS heating_catalog_import_batches (
-    batch_id TEXT PRIMARY KEY,
-    source_name TEXT NOT NULL,
-    source_url TEXT,
-    imported_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    product_count INTEGER NOT NULL DEFAULT 0,
-    performance_point_count INTEGER NOT NULL DEFAULT 0,
-    seasonal_point_count INTEGER NOT NULL DEFAULT 0,
-    status TEXT NOT NULL,
-    note TEXT NOT NULL DEFAULT ''
-)
-"""
-
-HEATING_PRODUCT_UPSERT_SQL = """
-INSERT OR REPLACE INTO heating_products (
-    id, external_id, technology_id, technology_label, label,
-    system_type, generator_type, carrier, cost_profile,
-    rated_power_kw, efficiency, scop, equipment_price_lei,
-    installation_allowance_lei, source_kind, source_url, confidence,
-    requires_hydronic, requires_existing_gas,
-    requires_existing_high_power_electric,
-    requires_existing_biomass_infrastructure, capacity_basis, note,
-    catalog_version, observed_on, active, updated_at
-)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
-"""
-
-HEAT_PUMP_POINT_UPSERT_SQL = """
-INSERT OR REPLACE INTO heat_pump_performance_points (
-    product_id, outdoor_temperature_c, flow_temperature_c,
-    return_temperature_c, delta_t_k, heating_capacity_kw, cop,
-    test_standard, source_kind, source_url, note, catalog_version, updated_at
-)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-"""
-
 HEATING_PARAMETRIC_NODE_UPSERT_SQL = """
 INSERT OR REPLACE INTO heating_parametric_nodes (
     id, technology_id, technology_label, required_power_kw,
@@ -212,15 +75,6 @@ INSERT OR REPLACE INTO heating_parametric_nodes (
 )
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 """
-
-HEAT_PUMP_SEASONAL_UPSERT_SQL = """
-INSERT OR REPLACE INTO heat_pump_seasonal_performance (
-    product_id, climate, application_temperature_c, scop, design_load_kw,
-    source_kind, source_url, test_standard, catalog_version, updated_at
-)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-"""
-
 
 def _d1_rows(result: Any) -> list[dict[str, Any]]:
     raw_rows = getattr(result, "results", None)
@@ -409,44 +263,6 @@ async def _ensure_parametric_heating_nodes_d1(db: Any) -> None:
         for item in nodes
     ]
     await _run_d1_batches(db, statements)
-
-
-async def _create_heating_catalog_tables(db: Any) -> None:
-    await db.prepare(HEATING_PRODUCTS_CREATE_SQL).run()
-    await db.prepare(HEAT_PUMP_POINTS_CREATE_SQL).run()
-    await db.prepare(HEATING_PARAMETRIC_NODES_CREATE_SQL).run()
-    await db.prepare(HEAT_PUMP_SEASONAL_CREATE_SQL).run()
-    await db.prepare(HEATING_PRODUCT_CERTIFICATION_CREATE_SQL).run()
-    await db.prepare(HEATING_PRODUCT_OFFERS_CREATE_SQL).run()
-    await db.prepare(HEATING_CATALOG_IMPORT_BATCHES_CREATE_SQL).run()
-    await db.prepare(
-        "CREATE INDEX IF NOT EXISTS heating_products_active_technology_power_idx "
-        "ON heating_products(active, technology_id, rated_power_kw)"
-    ).run()
-    await db.prepare(
-        "CREATE INDEX IF NOT EXISTS heating_products_external_id_idx "
-        "ON heating_products(external_id)"
-    ).run()
-    await db.prepare(
-        "CREATE INDEX IF NOT EXISTS heat_pump_performance_product_idx "
-        "ON heat_pump_performance_points(product_id, outdoor_temperature_c, flow_temperature_c)"
-    ).run()
-    await db.prepare(
-        "CREATE INDEX IF NOT EXISTS heating_parametric_nodes_technology_power_idx "
-        "ON heating_parametric_nodes(technology_id, required_power_kw)"
-    ).run()
-    await db.prepare(
-        "CREATE INDEX IF NOT EXISTS heat_pump_seasonal_product_idx "
-        "ON heat_pump_seasonal_performance(product_id, climate, application_temperature_c)"
-    ).run()
-    await db.prepare(
-        "CREATE INDEX IF NOT EXISTS heating_product_offers_product_active_idx "
-        "ON heating_product_offers(product_id, active, observed_on)"
-    ).run()
-    await db.prepare(
-        "CREATE INDEX IF NOT EXISTS heating_product_certification_quality_idx "
-        "ON heating_product_certification(quality_tier, certification_body)"
-    ).run()
 
 
 async def _ensure_heating_catalog_d1(db: Any) -> None:
