@@ -1,0 +1,84 @@
+name: TEO D1 Runtime Inspector
+
+on:
+  push:
+    branches:
+      - codex/diagnose-teo-verify-live-20261001
+    paths:
+      - .github/workflows/teo-d1-runtime-inspector.yml
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      WORKERS_DEV_SUBDOMAIN: lemnarukarol
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Create inspector
+        run: |
+          set -euo pipefail
+          NAME="lacurent-teo-d1-inspect-$GITHUB_RUN_ID"
+          echo "INSPECTOR_NAME=$NAME" >> "$GITHUB_ENV"
+          mkdir -p /tmp/teo-d1-inspector
+          cat > /tmp/teo-d1-inspector/wrangler.toml <<EOF
+          name = "$NAME"
+          main = "worker.mjs"
+          compatibility_date = "2026-09-28"
+          workers_dev = true
+
+          [[d1_databases]]
+          binding = "DB"
+          database_name = "lacurent-db"
+          database_id = "91b70c8a-3c11-4fe0-81ed-e3b64a075118"
+          EOF
+          cat > /tmp/teo-d1-inspector/worker.mjs <<'EOF'
+          function err(e) { return {name:e?.name || 'Error', message:String(e?.message || e)}; }
+          export default {
+            async fetch(request, env) {
+              const out = {};
+              const id = 'diag-runtime-' + Date.now();
+              try {
+                out.schema = (await env.DB.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='teo_verification_runs' LIMIT 1").all()).results || [];
+                out.indexes = (await env.DB.prepare("SELECT name, sql FROM sqlite_master WHERE type='index' AND tbl_name='teo_verification_runs'").all()).results || [];
+                await env.DB.prepare(`INSERT INTO teo_verification_runs(run_id,status,planned_verifications,verified_count,next_allowed_at_ms,in_flight,lease_token,lease_expires_at_ms,updated_at) VALUES (?, 'ready', 3, 0, 0, 0, NULL, 0, CURRENT_TIMESTAMP)`).bind(id).run();
+                out.insert = 'ok';
+                try {
+                  await env.DB.prepare(`UPDATE teo_verification_runs SET status='running', in_flight=1, lease_token=?, lease_expires_at_ms=?, updated_at=CURRENT_TIMESTAMP WHERE run_id=? AND verified_count < planned_verifications AND next_allowed_at_ms <= ? AND (in_flight=0 OR lease_expires_at_ms <= ?)`).bind(id+':lease', Date.now()+30000, id, Date.now(), Date.now()).run();
+                  out.acquireUpdate = 'ok';
+                } catch (e) { out.acquireUpdate = err(e); }
+                out.afterAcquire = (await env.DB.prepare("SELECT * FROM teo_verification_runs WHERE run_id=?").bind(id).all()).results || [];
+                try {
+                  await env.DB.prepare(`UPDATE teo_verification_runs SET verified_count=verified_count+1, status=CASE WHEN verified_count+1 >= planned_verifications THEN 'complete' ELSE 'cooldown' END, next_allowed_at_ms=?, in_flight=0, lease_token=NULL, lease_expires_at_ms=0, updated_at=CURRENT_TIMESTAMP WHERE run_id=?`).bind(Date.now()+1800, id).run();
+                  out.completeUpdate = 'ok';
+                } catch (e) { out.completeUpdate = err(e); }
+                out.afterComplete = (await env.DB.prepare("SELECT * FROM teo_verification_runs WHERE run_id=?").bind(id).all()).results || [];
+                try {
+                  await env.DB.prepare(`UPDATE teo_verification_runs SET status='complete', in_flight=0, lease_token=NULL, lease_expires_at_ms=0, updated_at=CURRENT_TIMESTAMP WHERE run_id=?`).bind(id).run();
+                  out.finishUpdate = 'ok';
+                } catch (e) { out.finishUpdate = err(e); }
+              } catch (e) { out.top = err(e); }
+              try { await env.DB.prepare("DELETE FROM teo_verification_runs WHERE run_id=?").bind(id).run(); out.cleanup='ok'; } catch(e) { out.cleanup=err(e); }
+              return Response.json(out, {headers:{'cache-control':'no-store'}});
+            }
+          };
+          EOF
+      - name: Deploy and query inspector
+        working-directory: /tmp/teo-d1-inspector
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.145.0 deploy
+          curl --fail-with-body -sS "https://$INSPECTOR_NAME.$WORKERS_DEV_SUBDOMAIN.workers.dev/" | tee /tmp/inspector.json
+          echo
+          python -m json.tool /tmp/inspector.json
+      - name: Delete inspector
+        if: always()
+        working-directory: /tmp/teo-d1-inspector
+        run: npx --yes wrangler@4.145.0 delete --force || true
