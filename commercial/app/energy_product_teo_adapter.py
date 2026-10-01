@@ -37,6 +37,20 @@ class UnderfloorPipeFinalistBomRequestV1(BaseModel):
     category_limit: int = Field(default=24, ge=1, le=100)
 
 
+class UnderfloorSystemFinalistBomRequestV1(BaseModel):
+    raw_candidate: CandidateEvaluationV1
+    active_area_m2: float = Field(gt=0)
+    spacing_mm: float = Field(gt=0)
+    max_loop_length_m: float = Field(gt=0)
+    connection_allowance_m: float = Field(default=0, ge=0)
+    verified_available_heat_output_w_m2: float = Field(gt=0)
+    control_zone_count: int | None = Field(default=None, ge=1, le=100)
+    pipe_installation_allowance_lei: float = Field(default=0, ge=0)
+    manifold_installation_allowance_lei: float = Field(default=0, ge=0)
+    control_installation_allowance_lei: float = Field(default=0, ge=0)
+    category_limit: int = Field(default=24, ge=1, le=100)
+
+
 @dataclass(frozen=True)
 class ProductCandidate:
     product_id: str
@@ -74,6 +88,28 @@ class UnderfloorPipeMatch:
     required_length_m: float
     surplus_length_m: float
     material_subtotal_lei: float | None
+    selection_basis: str
+
+
+@dataclass(frozen=True)
+class UnderfloorManifoldMatch:
+    product_id: str
+    unit_circuit_count: int
+    quantity: int
+    available_circuit_count: int
+    required_circuit_count: int
+    equipment_subtotal_lei: float | None
+    selection_basis: str
+
+
+@dataclass(frozen=True)
+class HeatingControlMatch:
+    product_id: str
+    unit_zone_count: int
+    quantity: int
+    available_zone_count: int
+    required_zone_count: int
+    equipment_subtotal_lei: float | None
     selection_basis: str
 
 
@@ -285,6 +321,116 @@ def match_underfloor_pipe(
         key=lambda row: (
             float(row.material_subtotal_lei) if row.material_subtotal_lei is not None else float("inf"),
             row.surplus_length_m,
+            row.product_id,
+        ),
+    )
+
+
+def match_underfloor_manifolds(
+    candidates: Iterable[ProductCandidate],
+    *,
+    required_circuit_count: int,
+) -> UnderfloorManifoldMatch:
+    required = int(required_circuit_count)
+    if required <= 0:
+        raise ValueError("required_circuit_count must be positive.")
+
+    rows: list[UnderfloorManifoldMatch] = []
+    for candidate in candidates:
+        if candidate.category_id != "underfloor_manifold":
+            continue
+        circuits_raw = candidate.properties.get("circuit_count")
+        if circuits_raw in (None, ""):
+            continue
+        circuits = int(round(float(circuits_raw)))
+        if circuits <= 0:
+            continue
+        quantity = max(1, int(math.ceil(required / circuits)))
+        available = quantity * circuits
+        subtotal = (
+            None
+            if candidate.unit_price_lei is None
+            else round(float(candidate.unit_price_lei) * quantity, 2)
+        )
+        rows.append(
+            UnderfloorManifoldMatch(
+                product_id=candidate.product_id,
+                unit_circuit_count=circuits,
+                quantity=quantity,
+                available_circuit_count=available,
+                required_circuit_count=required,
+                equipment_subtotal_lei=subtotal,
+                selection_basis=(
+                    "Whole-manifold quantity rounded up to cover the explicit required loop count."
+                ),
+            )
+        )
+    if not rows:
+        raise ValueError("No underfloor manifold has a source-backed circuit count.")
+    priced = [row for row in rows if row.equipment_subtotal_lei is not None]
+    return min(
+        priced or rows,
+        key=lambda row: (
+            float(row.equipment_subtotal_lei)
+            if row.equipment_subtotal_lei is not None
+            else float("inf"),
+            row.available_circuit_count - required,
+            row.quantity,
+            row.product_id,
+        ),
+    )
+
+
+def match_heating_controls(
+    candidates: Iterable[ProductCandidate],
+    *,
+    required_zone_count: int,
+) -> HeatingControlMatch:
+    required = int(required_zone_count)
+    if required <= 0:
+        raise ValueError("required_zone_count must be positive.")
+
+    rows: list[HeatingControlMatch] = []
+    for candidate in candidates:
+        if candidate.category_id != "heating_control":
+            continue
+        zones_raw = candidate.properties.get("controlled_zone_count")
+        if zones_raw in (None, ""):
+            continue
+        zones = int(round(float(zones_raw)))
+        if zones <= 0:
+            continue
+        quantity = max(1, int(math.ceil(required / zones)))
+        available = quantity * zones
+        subtotal = (
+            None
+            if candidate.unit_price_lei is None
+            else round(float(candidate.unit_price_lei) * quantity, 2)
+        )
+        rows.append(
+            HeatingControlMatch(
+                product_id=candidate.product_id,
+                unit_zone_count=zones,
+                quantity=quantity,
+                available_zone_count=available,
+                required_zone_count=required,
+                equipment_subtotal_lei=subtotal,
+                selection_basis=(
+                    "Whole control-centre quantity rounded up to cover the explicit control-zone count."
+                ),
+            )
+        )
+    if not rows:
+        raise ValueError("No heating control has a source-backed controlled-zone count.")
+    priced = [row for row in rows if row.equipment_subtotal_lei is not None]
+    return min(
+        priced or rows,
+        key=lambda row: (
+            float(row.equipment_subtotal_lei)
+            if row.equipment_subtotal_lei is not None
+            else float("inf"),
+            row.available_zone_count - required,
+            row.quantity,
             row.product_id,
         ),
     )
@@ -827,3 +973,174 @@ def commercialize_underfloor_pipe_bom_from_finalist(
         "Underfloor BOM heat-flux feasibility is checked against an explicit verified available W/m2 value at the chosen design condition; no floor-output curve is invented."
     )
     return commercial, match, design
+
+
+def commercialize_underfloor_system_bom_from_finalist(
+    candidate: CandidateEvaluationV1,
+    pipe_products: Iterable[ProductCandidate],
+    manifold_products: Iterable[ProductCandidate],
+    *,
+    active_area_m2: float,
+    spacing_mm: float,
+    max_loop_length_m: float,
+    connection_allowance_m: float,
+    verified_available_heat_output_w_m2: float,
+    control_products: Iterable[ProductCandidate] | None = None,
+    control_zone_count: int | None = None,
+    pipe_installation_allowance_lei: float = 0.0,
+    manifold_installation_allowance_lei: float = 0.0,
+    control_installation_allowance_lei: float = 0.0,
+) -> tuple[
+    CandidateEvaluationV1,
+    UnderfloorPipeMatch,
+    UnderfloorManifoldMatch,
+    HeatingControlMatch | None,
+    UnderfloorDesignRequirement,
+]:
+    """Build a source-backed UFH distribution BOM without entering SKU search.
+
+    Pipe length and loop count come from the explicit engineering design. The
+    manifold is sized from loop count. Controls are included only when an
+    explicit zone count is supplied; zoning is never inferred from loops.
+    """
+
+    commercial, pipe_match, design = (
+        commercialize_underfloor_pipe_bom_from_finalist(
+            candidate,
+            pipe_products,
+            active_area_m2=active_area_m2,
+            spacing_mm=spacing_mm,
+            max_loop_length_m=max_loop_length_m,
+            connection_allowance_m=connection_allowance_m,
+            verified_available_heat_output_w_m2=(
+                verified_available_heat_output_w_m2
+            ),
+            installation_allowance_lei=pipe_installation_allowance_lei,
+        )
+    )
+
+    manifold_match = match_underfloor_manifolds(
+        manifold_products,
+        required_circuit_count=design.required_loop_count,
+    )
+    if manifold_match.equipment_subtotal_lei is None:
+        raise ValueError(
+            "Underfloor manifold BOM requires an explicit current product price."
+        )
+    manifold_install = float(manifold_installation_allowance_lei)
+    if not math.isfinite(manifold_install) or manifold_install < 0:
+        raise ValueError(
+            "manifold_installation_allowance_lei must be finite and non-negative."
+        )
+
+    lines = [
+        line
+        for line in commercial.cost_breakdown
+        if line.family != "underfloor_manifold"
+    ]
+    lines.append(
+        CostLineV1(
+            family="underfloor_manifold",
+            capex_lei=round(
+                float(manifold_match.equipment_subtotal_lei)
+                + manifold_install,
+                2,
+            ),
+            parameter_value=float(design.required_loop_count),
+            parameter_unit="required_heating_loops",
+            source_kind="commercial_product_dimensioned_bom",
+            confidence="source_backed_product_circuit_count",
+            catalog_unit="whole_manifold_units",
+            note=manifold_match.selection_basis,
+            product_id=manifold_match.product_id,
+            quantity=float(manifold_match.quantity),
+            quantity_unit="manifolds",
+            material_subtotal_lei=round(
+                float(manifold_match.equipment_subtotal_lei),
+                2,
+            ),
+            nonmaterial_subtotal_lei=round(manifold_install, 2),
+        )
+    )
+
+    control_match: HeatingControlMatch | None = None
+    if control_zone_count is not None:
+        if control_products is None:
+            raise ValueError(
+                "control_products are required when control_zone_count is supplied."
+            )
+        control_match = match_heating_controls(
+            control_products,
+            required_zone_count=int(control_zone_count),
+        )
+        if control_match.equipment_subtotal_lei is None:
+            raise ValueError(
+                "Heating-control BOM requires an explicit current product price."
+            )
+        control_install = float(control_installation_allowance_lei)
+        if not math.isfinite(control_install) or control_install < 0:
+            raise ValueError(
+                "control_installation_allowance_lei must be finite and non-negative."
+            )
+        lines = [
+            line
+            for line in lines
+            if line.family != "heating_control"
+        ]
+        lines.append(
+            CostLineV1(
+                family="heating_control",
+                capex_lei=round(
+                    float(control_match.equipment_subtotal_lei)
+                    + control_install,
+                    2,
+                ),
+                parameter_value=float(control_match.required_zone_count),
+                parameter_unit="required_control_zones",
+                source_kind="commercial_product_dimensioned_bom",
+                confidence="source_backed_product_zone_count",
+                catalog_unit="whole_control_centres",
+                note=control_match.selection_basis,
+                product_id=control_match.product_id,
+                quantity=float(control_match.quantity),
+                quantity_unit="control_centres",
+                material_subtotal_lei=round(
+                    float(control_match.equipment_subtotal_lei),
+                    2,
+                ),
+                nonmaterial_subtotal_lei=round(control_install, 2),
+            )
+        )
+
+    capex = sum(float(line.capex_lei) for line in lines)
+    saving = float(commercial.annual_saving_lei)
+    payback = capex / saving if capex > 0 and saving > 0 else None
+    roi = 100.0 * saving / capex if capex > 0 else None
+
+    data = model_to_dict(commercial)
+    data.update(
+        {
+            "capex_lei": round(capex, 2),
+            "payback_years": None if payback is None else round(payback, 4),
+            "roi_percent_per_year": None if roi is None else round(roi, 4),
+            "cost_breakdown": [model_to_dict(line) for line in lines],
+            "cost_source": "underfloor_system_bom_from_explicit_design",
+            "commercialization_status": "partially_discretized",
+            "assumptions": [
+                *commercial.assumptions,
+                "Manifold capacity is derived from explicit loop count.",
+                (
+                    "Control capacity is derived from explicit zone count; zones are not inferred from loop count."
+                    if control_zone_count is not None
+                    else "No control product is added because no explicit control-zone count was supplied."
+                ),
+            ],
+        }
+    )
+    return (
+        CandidateEvaluationV1(**data),
+        pipe_match,
+        manifold_match,
+        control_match,
+        design,
+    )
