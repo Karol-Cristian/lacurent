@@ -20,6 +20,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       WORKERS_DEV_SUBDOMAIN: lemnarukarol
       DB_NAME: lacurent-dev-db
+      D1_STAGING_CONFIG: /tmp/lacurent-d1-staging.toml
 
     steps:
       - name: Check out release staging
@@ -105,13 +106,26 @@ jobs:
           print(f"Development D1 isolation PASS: {target} ({database_id})")
           PY
 
+          cat > "$D1_STAGING_CONFIG" <<EOF
+          name = "lacurent-d1-staging-control"
+          compatibility_date = "2026-08-29"
+
+          [[d1_databases]]
+          binding = "DB"
+          database_name = "$DB_NAME"
+          database_id = "$DB_ID"
+          EOF
+
+          echo "Dedicated D1 staging Wrangler config:"
+          sed 's/database_id = .*/database_id = "<verified-development-uuid>"/' "$D1_STAGING_CONFIG"
+
       - name: Apply catalog migrations 015-017 to development D1
         run: |
           set -euo pipefail
           for migration in             migrations/015_energy_product_catalog.sql             migrations/016_energy_product_catalog_smoke_pack.sql             migrations/017_unify_energy_product_catalog.sql
           do
             echo "Applying $migration to $DB_NAME"
-            npx wrangler d1 execute "$DB_NAME" --remote --file "$migration" --yes
+            npx wrangler d1 execute "$DB_NAME" --config "$D1_STAGING_CONFIG" --remote --file "$migration" --yes
           done
 
       - name: Verify D1 materialization and compatibility views
@@ -143,7 +157,7 @@ jobs:
                 AND COALESCE(source_kind, '') LIKE 'derived_bundle_%'
             ) AS derived_air_air_bundles;
           "
-          npx wrangler d1 execute "$DB_NAME" --remote --command "$QUERY" --json > /tmp/d1-smoke.json
+          npx wrangler d1 execute "$DB_NAME" --config "$D1_STAGING_CONFIG" --remote --command "$QUERY" --json > /tmp/d1-smoke.json
 
           python - <<'PY'
           import json
@@ -215,7 +229,7 @@ jobs:
           )
           ORDER BY id;
           "
-          npx wrangler d1 execute "$DB_NAME" --remote --command "$QUERY" --json > /tmp/d1-cross-category.json
+          npx wrangler d1 execute "$DB_NAME" --config "$D1_STAGING_CONFIG" --remote --command "$QUERY" --json > /tmp/d1-cross-category.json
           python - <<'PY'
           import json
           from pathlib import Path
