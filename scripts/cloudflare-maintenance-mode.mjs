@@ -1,3 +1,6 @@
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+
 const API_ROOT = "https://api.cloudflare.com/client/v4";
 export const ZONE_NAME = "lacurent.com";
 export const MAINTENANCE_SCRIPT = "lacurent-maintenance";
@@ -220,7 +223,7 @@ async function main() {
 }
 
 const invokedDirectly = process.argv[1]
-  && new URL(import.meta.url).pathname === new URL("file://" + process.argv[1]).pathname;
+  && import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
 
 if (invokedDirectly) {
   main().catch(error => {
