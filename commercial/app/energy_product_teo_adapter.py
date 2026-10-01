@@ -4,10 +4,20 @@ import math
 from dataclasses import dataclass
 from typing import Any, Iterable
 
+from pydantic import BaseModel, Field
+
 from .engine import calculate, design_heat_load_breakdown
 from .models import BuildingInput, model_to_dict
 from .optimization import CandidateEvaluationV1, CostLineV1
 from .pricing import estimate_energy_cost
+
+
+class HrvFinalistCommercializationRequestV1(BaseModel):
+    raw_candidate: CandidateEvaluationV1
+    fan_operation_hours_per_year: float = Field(gt=0, le=8784)
+    installation_allowance_lei: float = Field(default=0, ge=0)
+    max_specific_power_input_w_m3h: float | None = Field(default=None, gt=0)
+    category_limit: int = Field(default=24, ge=1, le=100)
 
 
 @dataclass(frozen=True)
