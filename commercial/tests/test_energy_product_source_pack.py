@@ -11,6 +11,8 @@ SOURCE_PACK = ROOT / "commercial" / "data" / "energy_product_catalog_source_pack
 IMPORTER = ROOT / "scripts" / "build-energy-product-catalog-d1-import.py"
 MIGRATION = ROOT / "migrations" / "015_energy_product_catalog.sql"
 SMOKE_MIGRATION = ROOT / "migrations" / "016_energy_product_catalog_smoke_pack.sql"
+UNIFIED_MIGRATION = ROOT / "migrations" / "017_unify_energy_product_catalog.sql"
+HEATING_STORE = ROOT / "commercial" / "app" / "heating_catalog_store.py"
 
 
 def _load_importer():
@@ -27,15 +29,12 @@ def test_real_cross_category_source_pack_validates_and_reports_teo_readiness():
     normalized = importer.validate(payload)
     result = importer.summary(normalized)
 
-    assert result["products"] == 9
-    assert result["value_metric_ready"] == 8
-    assert result["teo_property_complete"] == 8
-    assert result["blocked"] == [
-        {
-            "id": "zehnder-comfoair-q350-hrv",
-            "missing_teo_properties": ["heat_recovery_efficiency"],
-        }
-    ]
+    assert result["products"] == 49
+    assert result["value_metric_ready"] == 17
+    assert result["teo_property_complete"] == 17
+    assert len(result["blocked"]) == 32
+    blocked = {row["id"]: row["missing_teo_properties"] for row in result["blocked"]}
+    assert blocked["zehnder-comfoair-q350-hrv"] == ["heat_recovery_efficiency"]
 
 
 def test_source_pack_derives_real_category_local_metrics():
@@ -72,9 +71,11 @@ def test_importer_emits_generic_catalog_tables_and_keeps_blocked_hrv_out_of_valu
     assert "INSERT OR REPLACE INTO energy_product_offers" in sql
     assert "INSERT OR REPLACE INTO energy_product_value_metrics" in sql
 
-    # Eight products have complete category-local metric inputs; the HRV is
-    # intentionally blocked until official heat-recovery efficiency is parsed.
-    assert sql.count("INSERT OR REPLACE INTO energy_product_value_metrics") == 8
+    # The cross-category ready rows plus source-backed heat-pump rows have
+    # complete category-local metric inputs. Other heating generators stay
+    # catalog-visible but blocked from metric ranking until seasonal efficiency
+    # evidence is normalized.
+    assert sql.count("INSERT OR REPLACE INTO energy_product_value_metrics") == 17
 
 
 def test_migration_supports_documents_images_offers_and_category_local_value_metrics():
@@ -184,3 +185,27 @@ def test_expanded_source_pack_covers_multiple_teo_roles_and_categories():
         if row["product"].get("teo")
     }
     assert {"planning_curve", "finalist_match", "bill_of_materials"} <= roles
+
+
+def test_unified_migration_materializes_one_product_namespace_and_heating_extensions():
+    sql = UNIFIED_MIGRATION.read_text(encoding="utf-8")
+
+    assert sql.count("INSERT OR REPLACE INTO energy_products") == 49
+    assert sql.count("INSERT OR REPLACE INTO energy_product_heating_compat") == 40
+    assert sql.count("INSERT OR REPLACE INTO energy_product_performance_points") == 50
+    assert sql.count("INSERT OR REPLACE INTO energy_product_seasonal_performance") == 2
+    assert "CREATE VIEW energy_heating_products_compat_v1 AS" in sql
+    assert "CREATE VIEW energy_heat_pump_performance_points_compat_v1 AS" in sql
+    assert "CREATE VIEW energy_heat_pump_seasonal_performance_compat_v1 AS" in sql
+
+
+def test_heating_runtime_reads_unified_catalog_after_shadow_bootstrap_boundary():
+    source = HEATING_STORE.read_text(encoding="utf-8")
+    boundary = source.index("async def _read_heating_branch_catalog_d1(")
+    runtime = source[boundary:]
+
+    assert "FROM energy_heating_products_compat_v1" in runtime
+    assert "FROM energy_heat_pump_performance_points_compat_v1" in runtime
+    assert "FROM energy_heat_pump_seasonal_performance_compat_v1" in runtime
+    assert "FROM heating_products" not in runtime
+    assert "INNER JOIN heating_products AS p" not in runtime
