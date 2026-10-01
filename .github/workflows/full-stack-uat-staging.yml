@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - codex/release-product-staging-integration
+      - lemnaru-karol/teo-verify-isolation-dev
     paths:
       - ".github/workflows/full-stack-uat-staging.yml"
       - "commercial/app/**"
@@ -21,6 +22,7 @@ on:
       - "scripts/prepare-teo-cloudflare-worker.mjs"
       - "scripts/prepare-commercial-cloudflare-worker.mjs"
       - "scripts/configure-full-stack-staging.mjs"
+      - "scripts/soak-teo-production.mjs"
 
 concurrency:
   group: full-stack-uat-staging
@@ -383,6 +385,18 @@ jobs:
           print("Persistent full-stack UAT PASS", base)
           PY
 
+      - name: Install Chromium for full TEO UAT
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Run 5-pass full browser TEO UAT including VERIFY and report
+        env:
+          HOME_LAB_BASE_URL: https://lacurent-uat.lemnarukarol.workers.dev
+          TEO_SOAK_RUNS: "5"
+          TEO_REQUIRE_SHARDED_ROUTES: "1"
+        run: node scripts/soak-teo-production.mjs
+
       - name: Publish UAT URL
         run: |
           {
@@ -393,6 +407,7 @@ jobs:
             echo "- D1: lacurent-dev-db"
             echo "- RBPE: four isolated staging shards + router + calc gateway"
             echo "- TEO: four isolated staging shards + router"
+            echo "- TEO browser soak: 5 complete PLAN → browser search → VERIFY → report runs"
             echo "- public staging app: private service"
             echo "- UAT edge: workers.dev only; no lacurent.com routes"
             echo "- topology smoke: PASS"
