@@ -386,6 +386,7 @@ async function routeVerify(request, env) {
           error:"TEO router flow acquire indisponibil.",
           stage:"verify-router-acquire-flow",
           errorType:error?.name || "Error",
+          diagnosticMessage:String(error?.message || error || "").slice(0, 240),
         },
         {
           status:503,
