@@ -58,6 +58,68 @@ CREATE TABLE IF NOT EXISTS energy_product_seasonal_performance (
 );
 CREATE INDEX IF NOT EXISTS energy_product_seasonal_product_idx ON energy_product_seasonal_performance(product_id, climate, application_temperature_c);
 
+
+DROP VIEW IF EXISTS energy_heating_products_compat_v1;
+CREATE VIEW energy_heating_products_compat_v1 AS
+SELECT
+    p.id AS id,
+    p.external_id AS external_id,
+    h.technology_id AS technology_id,
+    h.technology_label AS technology_label,
+    p.label AS label,
+    h.system_type AS system_type,
+    h.generator_type AS generator_type,
+    h.carrier AS carrier,
+    h.cost_profile AS cost_profile,
+    rp.numeric_value AS rated_power_kw,
+    h.efficiency AS efficiency,
+    h.scop AS scop,
+    COALESCE((
+        SELECT o.price_lei
+        FROM energy_product_offers AS o
+        WHERE o.product_id = p.id AND o.active = 1
+        ORDER BY o.price_lei ASC, o.observed_on DESC, o.offer_id
+        LIMIT 1
+    ), 0) AS equipment_price_lei,
+    h.installation_allowance_lei AS installation_allowance_lei,
+    h.source_kind AS source_kind,
+    COALESCE(p.source_url, (
+        SELECT o.source_url
+        FROM energy_product_offers AS o
+        WHERE o.product_id = p.id AND o.active = 1
+        ORDER BY o.price_lei ASC, o.observed_on DESC, o.offer_id
+        LIMIT 1
+    )) AS source_url,
+    h.confidence AS confidence,
+    h.requires_hydronic AS requires_hydronic,
+    h.requires_existing_gas AS requires_existing_gas,
+    h.requires_existing_high_power_electric AS requires_existing_high_power_electric,
+    h.requires_existing_biomass_infrastructure AS requires_existing_biomass_infrastructure,
+    h.capacity_basis AS capacity_basis,
+    p.description AS note,
+    p.catalog_version AS catalog_version,
+    p.observed_on AS observed_on,
+    p.active AS active
+FROM energy_products AS p
+INNER JOIN energy_product_heating_compat AS h ON h.product_id = p.id
+INNER JOIN energy_product_properties AS rp
+    ON rp.product_id = p.id
+   AND rp.property_key = 'rated_power_kw'
+   AND rp.context_key = 'nominal';
+
+DROP VIEW IF EXISTS energy_heat_pump_performance_points_compat_v1;
+CREATE VIEW energy_heat_pump_performance_points_compat_v1 AS
+SELECT product_id, outdoor_temperature_c, flow_temperature_c,
+       return_temperature_c, delta_t_k, heating_capacity_kw, cop,
+       test_standard, source_kind, source_url, note, catalog_version, updated_at
+FROM energy_product_performance_points;
+
+DROP VIEW IF EXISTS energy_heat_pump_seasonal_performance_compat_v1;
+CREATE VIEW energy_heat_pump_seasonal_performance_compat_v1 AS
+SELECT product_id, climate, application_temperature_c, scop, design_load_kw,
+       source_kind, source_url, test_standard, catalog_version, updated_at
+FROM energy_product_seasonal_performance;
+
 INSERT OR REPLACE INTO energy_products (id,external_id,category_id,manufacturer,model,label,manufacturer_sku,gtin,intended_use,description,source_kind,source_url,evidence_status,catalog_version,observed_on,active,updated_at) VALUES ('austrotherm-eps-a100-af-plus-160',NULL,'wall_insulation','Austrotherm','EPS A100 AF PLUS 160 mm','Austrotherm EPS A100 AF PLUS 160 mm','5945786200983',NULL,NULL,'','manufacturer_and_offer_sources','https://www.austrotherm.ro/produse/austrotherm-eps/austrotherm-eps-a100-af-plus-grafitat','document_backed','energy-product-source-pack-v1','2026-10-01',1,CURRENT_TIMESTAMP);
 INSERT OR REPLACE INTO energy_product_documents (document_id,product_id,document_type,title,issuer,declaration_number,standard_reference,revision,language,source_url,observed_on,sha256,parse_status,rights_note,updated_at) VALUES ('austrotherm-eps-a100-af-plus-160:source:00','austrotherm-eps-a100-af-plus-160','manufacturer_product_page','manufacturer_product_page','Austrotherm',NULL,NULL,NULL,NULL,'https://www.austrotherm.ro/produse/austrotherm-eps/austrotherm-eps-a100-af-plus-grafitat','2026-10-01',NULL,'partial','Link/reference only; source content is not redistributed.',CURRENT_TIMESTAMP);
 INSERT OR REPLACE INTO energy_product_properties (product_id,property_key,context_key,numeric_value,text_value,unit,normalized_numeric_value,normalized_unit,source_document_id,source_locator,confidence,is_teo_input,updated_at) VALUES ('austrotherm-eps-a100-af-plus-160','thickness_mm','nominal',160,NULL,NULL,160,NULL,'austrotherm-eps-a100-af-plus-160:source:00','https://www.austrotherm.ro/produse/austrotherm-eps/austrotherm-eps-a100-af-plus-grafitat','source_backed',1,CURRENT_TIMESTAMP);
