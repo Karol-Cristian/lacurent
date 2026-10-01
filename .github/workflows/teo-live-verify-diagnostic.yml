@@ -24,7 +24,7 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
-      - name: Run one full production TEO flow
+      - name: Run one full production TEO flow with 5xx body capture
         env:
           HOME_LAB_BASE_URL: https://lacurent.com
           TEO_SOAK_RUNS: "1"
