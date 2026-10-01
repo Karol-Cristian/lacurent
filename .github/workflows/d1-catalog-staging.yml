@@ -126,10 +126,30 @@ jobs:
       - name: Apply catalog migrations 015-017 to development D1
         run: |
           set -euo pipefail
-          for migration in             migrations/015_energy_product_catalog.sql             migrations/016_energy_product_catalog_smoke_pack.sql             migrations/017_unify_energy_product_catalog.sql
+          rm -rf /tmp/lacurent-d1-migration-chunks
+          mkdir -p /tmp/lacurent-d1-migration-chunks
+
+          for migration in \
+            migrations/015_energy_product_catalog.sql \
+            migrations/016_energy_product_catalog_smoke_pack.sql \
+            migrations/017_unify_energy_product_catalog.sql
           do
-            echo "Applying $migration to $DB_NAME"
-            npx wrangler d1 execute "$DB_NAME" --config "$D1_STAGING_CONFIG" --remote --file "$migration" --yes
+            migration_name="$(basename "$migration" .sql)"
+            out_dir="/tmp/lacurent-d1-migration-chunks/$migration_name"
+            echo "Preparing D1-safe command batches for $migration"
+            python scripts/split_d1_sql.py "$migration" "$out_dir" --max-chars 60000
+
+            for chunk in "$out_dir"/*.sql
+            do
+              echo "Applying $migration via $(basename "$chunk")"
+              SQL="$(cat "$chunk")"
+              test -n "$SQL"
+              npx wrangler d1 execute "$DB_NAME" \
+                --config "$D1_STAGING_CONFIG" \
+                --remote \
+                --command "$SQL" \
+                --yes
+            done
           done
 
       - name: Verify D1 materialization and compatibility views
