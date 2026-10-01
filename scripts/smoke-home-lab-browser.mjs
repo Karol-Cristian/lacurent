@@ -63,6 +63,56 @@ async function expectVisible(selector) {
   await page.locator(selector).waitFor({state:"visible", timeout:15000});
 }
 
+async function fillFreshHouseInputs(targetPage) {
+  await targetPage.locator("#heatedArea").fill("120");
+  await targetPage.locator("#heatedLevels").selectOption("2");
+  await targetPage.locator("#averageHeight").fill("2.7");
+  await targetPage.locator('[name="indoor_design_temperature_c"]').selectOption("21");
+  await targetPage.locator('[name="construction_year"]').fill("2005");
+  await targetPage.locator('[name="dhw_occupants"]').selectOption("4");
+}
+
+async function fillFreshEnvelopeInputs(targetPage) {
+  await targetPage.locator("#wallStructure").selectOption("efficient_brick");
+  await targetPage.locator("#wallStructureThickness").fill("30");
+  await targetPage.locator("#wallInsulationMaterial").selectOption("eps");
+  await targetPage.locator("#wallIns").fill("10");
+  await targetPage.locator("#topBoundary").selectOption("cold_attic");
+  await targetPage.locator("#roofInsulationMaterial").selectOption("mineral_wool");
+  await targetPage.locator("#roofIns").fill("20");
+  await targetPage.locator("#floorBoundary").selectOption("ground");
+  await targetPage.locator("#floorInsulationMaterial").selectOption("xps");
+  await targetPage.locator("#floorIns").fill("10");
+  await targetPage.locator("#windowArea").fill("18");
+  await targetPage.locator("#glazing").selectOption("triple_low_e_faces_2_and_5");
+  await targetPage.locator("#orientation").selectOption("south");
+}
+
+async function fillFreshSystemsInputs(targetPage, {waitForBaseline = false} = {}) {
+  await targetPage.locator("#heatingChoice").selectOption("condensing_gas_boiler");
+  await targetPage.locator("#heatingEmitter").selectOption("radiators_low_temp");
+  await targetPage.locator("#heatingDistribution").selectOption("hydronic_insulated");
+  await targetPage.locator("#heatingStorage").selectOption("none");
+  await targetPage.locator("#heatingControl").selectOption("thermostatic_valves");
+  await targetPage.locator("#dhwSystem").selectOption("same_as_heating");
+  await targetPage.locator("#ventilation").selectOption("natural");
+  if (!waitForBaseline) {
+    await targetPage.locator("#cooling").selectOption("none");
+    return null;
+  }
+  const responsePromise = targetPage.waitForResponse(
+    response => {
+      try {
+        return new URL(response.url()).pathname === "/api/home-lab-next/calculate"
+          && response.request().method() === "POST";
+      } catch { return false; }
+    },
+    {timeout:45000},
+  );
+  await targetPage.locator("#cooling").selectOption("none");
+  return responsePromise;
+}
+
 try {
   // Cross-device determinism regression: a legacy Editorial draft may contain
   // hidden manual geometry/advanced overrides that are not obvious in the
@@ -235,11 +285,26 @@ try {
     throw new Error("Editorial map selection did not produce a canonical locality token");
   }
 
-  await page.locator("#edHouseValuesConfirmed").check();
+  // A fresh Home Lab must not fabricate user data on pages 1–3.
+  const freshRequiredValues = await page.evaluate(() =>
+    [...document.querySelectorAll('[data-page="house"] [data-baseline-required]')]
+      .filter(field => !field.closest("[hidden]"))
+      .map(field => String(field.value || ""))
+  );
+  if (freshRequiredValues.some(value => value !== "")) {
+    throw new Error("Fresh house page contains silent defaults: " + JSON.stringify(freshRequiredValues));
+  }
+
+  await fillFreshHouseInputs(page);
   await page.locator('[data-page="house"] [data-next]').click();
   await expectVisible('[data-page="envelope"].is-active');
+  await fillFreshEnvelopeInputs(page);
   await page.locator('[data-page="envelope"] [data-next]').click();
   await expectVisible('[data-page="systems"].is-active');
+  const baselineResponse = await fillFreshSystemsInputs(page, {waitForBaseline:true});
+  if (!baselineResponse || baselineResponse.status() !== 200) {
+    throw new Error("Fresh explicit-input baseline RBPE did not return HTTP 200");
+  }
   await page.locator('[data-page="systems"] [data-next]').click();
   await expectVisible('[data-page="renewables"].is-active');
 
@@ -385,6 +450,7 @@ try {
     await page.setViewportSize(editorialDesktopViewport);
   }
 
+  await page.locator("#edHouseValuesConfirmed").check();
   await page.locator('[data-page="renewables"] [data-next]').click();
   await expectVisible('[data-page="goal"].is-active');
 
