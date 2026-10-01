@@ -305,7 +305,7 @@
 
           <label class="ed-confirm-card" for="edHouseValuesConfirmed">
             <input type="checkbox" id="edHouseValuesConfirmed" required>
-            <span><b>Am verificat datele principale ale casei.</b><small>Confirm că suprafața, nivelurile, înălțimea, temperatura interioară, anul și numărul de persoane descriu locuința mea. Modificarea lor cere reconfirmare.</small></span>
+            <span><b>Datele de bază sunt corecte pentru acest calcul.</b><small>Aceasta nu salvează casa. Confirmă doar inputurile principale pe care RBPE și TEO le vor folosi; dacă le modifici, cerem reconfirmarea.</small></span>
           </label>
 
           <div class="ed-actions"><button type="button" class="ed-back" data-back>Înapoi</button><button type="button" class="ed-primary" data-next>Continuă <span>→</span></button></div>
@@ -759,8 +759,8 @@
                     <div><svg><use href="#ed-i-clock"></use></svg><span>Recuperare</span><strong id="edTeoPayback">—</strong></div>
                   </div>
                 </div>
-                <button type="button" class="ed-teo-report-button" id="openReportFromGoal">Vezi raportul și pașii următori <svg><use href="#ed-i-arrow"></use></svg></button>
-                <button type="button" class="ed-teo-report-button ed-teo-bom-button" id="openBomFromGoal">Generează lista de materiale <svg><use href="#ed-i-arrow"></use></svg></button>
+                <button type="button" class="ed-teo-report-button" id="openReportFromGoal">Vezi raportul vizual <svg><use href="#ed-i-arrow"></use></svg></button>
+                <button type="button" class="ed-teo-report-button ed-teo-bom-button" id="openBomFromGoal">Vezi lista reală de materiale <svg><use href="#ed-i-arrow"></use></svg></button>
               </div>
             </section>
           </div>
@@ -798,24 +798,14 @@
     <section class="ed-page ed-report-page" data-page="report" data-label="Planul meu">
       <article class="ed-report" id="report">
         <header>
-          <p class="ed-eyebrow">PLANUL MEU · LACURENT</p>
-          <h1>Planul energetic al casei tale</h1>
-          <p id="reportIntro">Rezultatele apar aici după calcul.</p>
+          <p class="ed-eyebrow">RAPORT VIZUAL · LACURENT</p>
+          <h1>Casa înainte și după TEO</h1>
+          <p id="reportIntro">Graficele și lista comercială apar aici după calcul.</p>
         </header>
         <div id="reportBody"></div>
-        <section class="ed-report-next" aria-labelledby="edReportNextTitle">
-          <p class="ed-eyebrow">CE URMEAZĂ</p>
-          <h2 id="edReportNextTitle">Alege următorul pas.</h2>
-          <div class="ed-report-next-grid">
-            <button type="button" id="edReportEditHouse"><b>Revizuiește casa</b><span>Revino la datele de intrare fără să pierzi configurația curentă.</span></button>
-            <button type="button" id="edReportSaveProject"><b>Salvează casa în cont</b><span>Păstrează configurația și redeschide-o ulterior, inclusiv de pe alt dispozitiv.</span></button>
-            <button type="button" id="edReportBom"><b>Vezi lista tehnică</b><span>Mergi la BOM-ul preliminar generat după optimizarea TEO.</span></button>
-          </div>
-          <p class="ed-report-next-note">Pentru certificat energetic, audit oficial sau proiect de execuție este necesar separat specialistul competent; Home Lab nu emite aceste documente.</p>
-        </section>
         <footer class="ed-report-footer">
           <button type="button" class="ed-back" id="reportBack">← Înapoi la rezumat</button>
-          <p>Metodologia, ipotezele și sursele rămân vizibile în plan pentru ca rezultatul să poată fi verificat.</p>
+          <p>Raportul vizual rezumă numai diferențele și materialele; recomandările rămân pe pagina TEO.</p>
         </footer>
       </article>
     </section>
