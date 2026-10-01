@@ -3,6 +3,25 @@
   if (!root) return;
 
   const $ = selector => document.querySelector(selector);
+
+  const symbols = [...document.querySelectorAll("[data-scroll-symbol]")];
+  if (symbols.length) {
+    if ("IntersectionObserver" in window) {
+      const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) entry.target.classList.add("is-visible");
+        });
+      }, {threshold:0.08, rootMargin:"0px 0px -6% 0px"});
+      symbols.forEach(symbol => observer.observe(symbol));
+    } else {
+      symbols.forEach(symbol => symbol.classList.add("is-visible"));
+    }
+
+    window.requestAnimationFrame(() => {
+      if (symbols[0]) symbols[0].classList.add("is-visible");
+    });
+  }
+
   const homes = $("#lcImpactHomes");
   const energy = $("#lcImpactEnergy");
   const money = $("#lcImpactMoney");
