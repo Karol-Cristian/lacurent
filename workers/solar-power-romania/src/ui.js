@@ -12,7 +12,7 @@ export function renderUi() {
 </head>
 <body>
 <div class="shell">
-  <header class="top"><div class="brand"><span class="sun"></span><span>SOLAR POWER / ROMANIA</span></div><div class="tag">v0.2 · multi-model forecast</div></header>
+  <header class="top"><div class="brand"><span class="sun"></span><span>SOLAR POWER / ROMANIA</span></div><div class="tag">v0.3 · 15 MIN · archived</div></header>
   <section class="hero">
     <div class="card" id="heroCard">
       <div class="mono">solar resource · planul panoului</div>
@@ -40,7 +40,7 @@ export function renderUi() {
   <section class="grid-wrap">
     <div class="card map" id="map"></div>
     <div class="card">
-      <div class="mono">următoarele 24 h · putere normalizată</div>
+      <div class="mono">următoarele 24 h · 15 minute</div>
       <div class="forecast" id="forecast"></div>
       <div class="api-line"><span>GHI</span><code id="ghi">— W/m²</code></div>
       <div class="api-line"><span>DNI</span><code id="dni">— W/m²</code></div>
@@ -55,13 +55,13 @@ export function renderUi() {
     <div id="models" style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);margin-top:12px"></div>
   </section>
   <section class="card" style="margin-top:14px">
-    <div style="display:flex;justify-content:space-between;gap:12px"><div class="mono">continuous benchmark · satellite GTI truth</div><div class="tag" id="benchmarkRun">collecting</div></div>
+    <div style="display:flex;justify-content:space-between;gap:12px"><div class="mono">continuous benchmark · 15 min · satellite GTI truth</div><div class="tag" id="benchmarkRun">collecting</div></div>
     <div style="overflow:auto;margin-top:10px"><table style="width:100%;border-collapse:collapse;font:10px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;min-width:650px">
       <thead><tr><th style="text-align:left;padding:8px;border-bottom:1px solid var(--line)">horizon</th><th>ECMWF IFS</th><th>ECMWF AIFS</th><th>DWD ICON EU</th><th>NOAA GFS</th></tr></thead>
       <tbody id="benchmarkBody"></tbody>
     </table></div>
-    <div class="api-line"><span>metric</span><code>MAE W/m² · daylight only · lower is better</code></div>
-    <div class="api-line"><span>production truth</span><code>Transelectrica PV adapter = next validation layer; no synthetic substitute</code></div>
+    <div class="api-line"><span>metric</span><code>MAE W/m² · daylight only · lower is better · forecasts immutable</code></div>
+    <div class="api-line"><span>production truth</span><code>Transelectrica PV adapter = next production-validation layer; no synthetic substitute</code></div>
   </section>
   <section class="card" style="margin-top:14px">
     <div class="mono">api / v1</div>
@@ -70,7 +70,7 @@ export function renderUi() {
     <div class="api-line"><span>model registry</span><code>GET /api/v1/models</code></div>
     <div class="api-line"><span>benchmark</span><code>GET /api/v1/benchmark</code></div>
   </section>
-  <footer class="footer"><span>Forecast research product. Not dispatch-grade until production-output validation is complete.</span><span>Solar Power / LACURENT · Romania pilot</span></footer>
+  <footer class="footer"><span>Forecast research product · 15-minute immutable archive. Not dispatch-grade until production-output validation is complete.</span><span>Solar Power / LACURENT · Romania pilot</span></footer>
 </div>
 <script>
 const state={lat:44.4268,lon:26.1025,name:'București'};
@@ -83,10 +83,10 @@ async function loadAsset(){
   try{
     const r=await fetch('/api/v1/pv/forecast?lat='+state.lat+'&lon='+state.lon+'&capacity_mwp='+cap+'&tilt='+tilt+'&azimuth='+az);const j=await r.json();if(!r.ok)throw new Error(j.error||'api');
     $('gti').textContent=Math.round(j.summary.current.gti_wm2);$('powerNow').textContent=fmt(j.summary.current.power_mw);$('power1h').textContent=fmt(j.summary.nextHour.power_mw);$('energyToday').textContent=fmt(j.summary.todayEnergyMwh,1);$('ramp').textContent=(j.summary.rampMw>=0?'+':'')+fmt(j.summary.rampMw);$('spread').textContent=fmt(j.summary.model_spread_pct,1);$('ghi').textContent=Math.round(j.summary.current.ghi_wm2)+' W/m²';$('dni').textContent=Math.round(j.summary.current.dni_wm2)+' W/m²';$('cloud').textContent=Math.round(j.summary.current.cloud_pct)+' %';$('variability').textContent=Math.round(j.summary.variability)+' / 100';$('provider').textContent=j.meta.engine;$('updated').textContent='run '+j.meta.generated_at.slice(11,16)+'Z';$('locationLabel').textContent=state.name+' · '+state.lat.toFixed(2)+', '+state.lon.toFixed(2);$('tiltLabel').textContent=tilt+'°';$('fusion').textContent='weights: '+j.meta.weight_source.replaceAll('_',' ');$('models').innerHTML=Object.values(j.summary.models||{}).map(m=>'<div style="background:var(--panel);padding:13px"><div class="mono">'+m.label+'</div><b style="display:block;font:18px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;margin:7px 0">'+fmt(m.power_mw)+' MW</b><small style="color:var(--muted)">weight '+fmt((m.weight||0)*100,1)+'%</small></div>').join('');
-    const next=j.forecast.slice(j.current_index,j.current_index+24);const max=Math.max(...next.map(p=>p.power_mw),.001);$('forecast').innerHTML=next.map(p=>'<div class="bar" style="height:'+Math.max(2,(p.power_mw/max)*100)+'%"><i>'+p.time.slice(11,16)+' · '+fmt(p.power_mw)+' MW</i></div>').join('');
+    const next=j.forecast.slice(j.current_index,j.current_index+96);const max=Math.max(...next.map(p=>p.power_mw),.001);$('forecast').innerHTML=next.map((p,i)=>'<div class="bar" style="height:'+Math.max(2,(p.power_mw/max)*100)+'%;'+(i%4?'opacity:.48':'')+'"><i>'+p.time.slice(11,16)+'Z · '+fmt(p.power_mw)+' MW · +'+p.horizon_minutes+'m</i></div>').join('');
   }catch(e){$('provider').textContent='data unavailable';console.error(e)}finally{card.classList.remove('loading')}
 }
-async function loadBenchmark(){try{const r=await fetch('/api/v1/benchmark');const j=await r.json();if(!r.ok)return;const names=['ecmwf_ifs','ecmwf_aifs','icon_eu','gfs'],hs=[1,3,6,24];$('benchmarkBody').innerHTML=hs.map(h=>'<tr><td style="padding:8px;border-bottom:1px solid var(--line)">+'+h+' h</td>'+names.map(n=>{const x=j.metrics?.horizons?.[String(h)]?.[n];return x&&x.count?'<td style="text-align:center;padding:8px;border-bottom:1px solid var(--line)">'+fmt(x.mae_wm2,1)+' <span style="color:var(--muted)">n='+x.count+'</span></td>':'<td style="text-align:center;padding:8px;border-bottom:1px solid var(--line);color:var(--muted)">collecting</td>'}).join('')+'</tr>').join('');const last=j.metrics?.last_truth_run||j.metrics?.last_prediction_run;if(last)$('benchmarkRun').textContent='last '+last.slice(0,16).replace('T',' ')+'Z';if(j.metrics?.truth_source)$('benchmarkState').textContent=j.metrics.truth_source}catch(e){console.error(e)}}
+async function loadBenchmark(){try{const r=await fetch('/api/v1/benchmark');const j=await r.json();if(!r.ok)return;const names=['ecmwf_ifs','ecmwf_aifs','icon_eu','gfs'],hs=[15,30,60,180,360,1380,1440,2880];$('benchmarkBody').innerHTML=hs.map(h=>'<tr><td style="padding:8px;border-bottom:1px solid var(--line)">+'+(h<60?h+' min':(h/60)+' h')+'</td>'+names.map(n=>{const x=j.metrics?.horizons?.[String(h)]?.[n];return x&&x.count?'<td style="text-align:center;padding:8px;border-bottom:1px solid var(--line)">'+fmt(x.mae_wm2,1)+' <span style="color:var(--muted)">n='+x.count+'</span></td>':'<td style="text-align:center;padding:8px;border-bottom:1px solid var(--line);color:var(--muted)">collecting</td>'}).join('')+'</tr>').join('');const last=j.metrics?.last_truth_run||j.metrics?.last_prediction_run;if(last)$('benchmarkRun').textContent='last '+last.slice(0,16).replace('T',' ')+'Z';if(j.metrics?.truth_source)$('benchmarkState').textContent=j.metrics.truth_source}catch(e){console.error(e)}}
 async function loadMap(){try{const r=await fetch('/api/v1/romania');const j=await r.json();const map=$('map');map.querySelectorAll('.cell,.cell-label').forEach(n=>n.remove());j.cells.forEach(c=>{const p=xy(c.lat,c.lon),n=document.createElement('button'),l=document.createElement('span');n.className='cell';n.style.left=p.x+'%';n.style.top=p.y+'%';const a=Math.max(.08,Math.min(1,c.gti_wm2/850));n.style.background='rgba(255,212,90,'+a+')';n.setAttribute('aria-label',c.name+' '+Math.round(c.gti_wm2)+' W/m²');n.onclick=()=>{state.lat=c.lat;state.lon=c.lon;state.name=c.name;loadAsset()};l.className='cell-label';l.style.left='calc('+p.x+'% + 12px)';l.style.top='calc('+p.y+'% - 12px)';l.textContent=c.name+' · '+Math.round(c.gti_wm2)+' W/m²';map.append(n,l)})}catch(e){console.error(e)}}
 ['capacity','tilt','azimuth'].forEach(id=>$(id).addEventListener('change',loadAsset));$('locate').onclick=()=>navigator.geolocation&&navigator.geolocation.getCurrentPosition(p=>{state.lat=p.coords.latitude;state.lon=p.coords.longitude;state.name='Locația ta';loadAsset()},{enableHighAccuracy:false,timeout:5000});loadAsset();loadMap();loadBenchmark();setInterval(()=>{loadAsset();loadMap();loadBenchmark()},300000);
 </script>
