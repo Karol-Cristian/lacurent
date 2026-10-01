@@ -26,6 +26,8 @@ export class ForecastArchive {
       const stamp = String(payload.timestamp || new Date().toISOString());
       const partition = String(payload.partition || 'default');
       const key = `curve:${kind}:${stamp}:${partition}`;
+      const existing = await this.ctx.storage.get(key);
+      if (existing !== undefined) return json({ stored: false, key, write_once: true, reason: 'already_exists' });
       await this.ctx.storage.put(key, payload.data || {});
       await this.ctx.storage.put(`status:last_curve_${kind}`, {
         timestamp: stamp,
