@@ -2865,7 +2865,14 @@ async def home_lab_catalog_bom_api(request: Request) -> JSONResponse:
     """
 
     env = request.scope.get("env")
-    db = getattr(env, "DB", None) if env is not None else None
+    if env is None:
+        return JSONResponse({
+            "source": "local-unbound",
+            "available": False,
+            "stage": "post_teo_bom",
+            "items": [],
+        })
+    db = getattr(env, "DB", None)
     if db is None:
         raise HTTPException(status_code=503, detail="Energy product catalog D1 is unavailable.")
 
