@@ -43,3 +43,28 @@ def test_release_reliability_gate_tracks_release_pipeline_changes() -> None:
     assert "release-browser-matrix.mjs" in source
     assert "test_energy_product_catalog_scale.py" in source
     assert '".github/workflows/commercial-v2-cloudflare-worker.yml"' in source
+
+
+def test_production_deploy_materializes_and_verifies_release_d1_before_worker_deploy() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "commercial-v2-cloudflare-worker.yml").read_text(
+        encoding="utf-8"
+    )
+
+    verify_target = workflow.index("- name: Verify exact production D1 target")
+    materialize = workflow.index("- name: Materialize release catalog and account schema in production D1")
+    verify_materialization = workflow.index("- name: Verify production D1 release materialization")
+    deploy_public = workflow.index("- name: Deploy Commercial v2 Worker")
+
+    assert verify_target < materialize < verify_materialization < deploy_public
+    assert "database_name = \"lacurent-db\"" not in workflow  # target comes from checked Worker config
+    assert 'target_name = "lacurent-db"' in workflow
+    assert "Safety gate: production D1 UUID mismatch" in workflow
+    assert "../../migrations/015_energy_product_catalog.sql" in workflow
+    assert "/tmp/016_energy_product_catalog_generated.sql" in workflow
+    assert "../../migrations/017_unify_energy_product_catalog.sql" in workflow
+    assert "../../migrations/019_home_lab_account_persistence.sql" in workflow
+    assert "npx wrangler d1 execute lacurent-db" in workflow
+    assert '"products": 49' in workflow
+    assert '"heating_compat": 40' in workflow
+    assert '"performance_points": 50' in workflow
+    assert '"account_tables": 4' in workflow
