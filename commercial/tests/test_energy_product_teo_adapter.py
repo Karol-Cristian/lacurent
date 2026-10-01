@@ -10,6 +10,8 @@ from commercial.app.energy_product_teo_adapter import (
     add_radiator_bom_to_finalist,
     add_underfloor_pipe_bom_to_finalist,
     commercialize_hrv_finalist,
+    commercialize_radiator_bom_from_finalist,
+    commercialize_underfloor_pipe_bom_from_finalist,
     design_underfloor_pipe_requirement,
     candidate_from_source_pack_row,
     match_hrv_units,
@@ -341,3 +343,103 @@ def test_underfloor_bom_rounds_explicit_design_to_whole_product_coils():
     assert pipe_line.product_id == "ufh-pipe-640"
     assert pipe_line.capex_lei == pytest.approx(4200)
     assert commercial.final_energy_kwh == pytest.approx(raw.final_energy_kwh)
+
+
+def test_radiator_finalist_derives_load_and_temperatures_from_canonical_result():
+    baseline = _hrv_test_building()
+    raw = evaluate_parametric_candidate(
+        baseline,
+        ParametricMeasuresV1(),
+        {"costs": {}},
+    )
+    rows = _load_source_rows()
+    purmo = next(
+        row
+        for row in rows
+        if row["product"]["id"] == "purmo-compact-c22-600x1000"
+    )
+    product = candidate_from_source_pack_row(purmo)
+
+    commercial, match = commercialize_radiator_bom_from_finalist(
+        raw,
+        [product],
+        installation_allowance_lei_per_unit=120,
+    )
+
+    assert match.quantity >= 1
+    assert match.available_output_w > 0
+    assert commercial.final_energy_kwh == pytest.approx(raw.final_energy_kwh)
+    line = next(
+        item
+        for item in commercial.cost_breakdown
+        if item.family == "heating_emitter"
+    )
+    assert line.product_id == "purmo-compact-c22-600x1000"
+    assert line.design_available_capacity_kw is not None
+    assert any(
+        "aggregate whole-building emitter capacity" in assumption
+        for assumption in commercial.assumptions
+    )
+
+
+def _underfloor_test_building() -> BuildingInput:
+    building = _hrv_test_building()
+    data = building.model_dump(mode="json") if hasattr(building, "model_dump") else building.dict()
+    data["heating"] = {
+        "system_type": "heat_pump",
+        "carrier": "electricity",
+        "scop": 3.5,
+        "cost_profile": "electricity",
+    }
+    return BuildingInput(**data)
+
+
+def test_underfloor_finalist_requires_verified_output_to_cover_design_flux():
+    baseline = _underfloor_test_building()
+    raw = evaluate_parametric_candidate(
+        baseline,
+        ParametricMeasuresV1(),
+        {"costs": {}},
+    )
+    rows = _load_source_rows()
+    uponor = next(
+        row
+        for row in rows
+        if row["product"]["id"] == "uponor-comfort-pipe-plus-16x2-640"
+    )
+    product = candidate_from_source_pack_row(uponor)
+
+    with pytest.raises(ValueError, match="cannot cover the finalist design load"):
+        commercialize_underfloor_pipe_bom_from_finalist(
+            raw,
+            [product],
+            active_area_m2=92,
+            spacing_mm=150,
+            max_loop_length_m=100,
+            connection_allowance_m=20,
+            verified_available_heat_output_w_m2=1,
+            installation_allowance_lei=1000,
+        )
+
+    commercial, match, design = (
+        commercialize_underfloor_pipe_bom_from_finalist(
+            raw,
+            [product],
+            active_area_m2=92,
+            spacing_mm=150,
+            max_loop_length_m=100,
+            connection_allowance_m=20,
+            verified_available_heat_output_w_m2=250,
+            installation_allowance_lei=1000,
+        )
+    )
+    assert design.required_heat_output_w is not None
+    assert design.required_heat_flux_w_m2 is not None
+    assert design.required_heat_flux_w_m2 <= 250
+    assert match.purchased_length_m >= design.required_pipe_length_m
+    line = next(
+        item
+        for item in commercial.cost_breakdown
+        if item.family == "underfloor_pipe"
+    )
+    assert line.product_id == "uponor-comfort-pipe-plus-16x2-640"
