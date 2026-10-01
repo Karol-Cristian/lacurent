@@ -977,7 +977,7 @@
       }
       const index = wizardOrder.indexOf(target);
       if (index < 0 || index > furthestWizardIndex) return;
-      syncTechnicalForm();
+      if (requiredCoreInputsComplete()) syncTechnicalForm();
       scheduleEditorialDraftSave(0);
       showPage(target);
     });
