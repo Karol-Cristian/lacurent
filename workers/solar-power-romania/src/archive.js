@@ -1,16 +1,16 @@
-const HORIZONS = [1, 3, 6, 24];
-const MODEL_KEYS = ['ecmwf_ifs', 'ecmwf_aifs', 'icon_eu', 'gfs'];
+export const HORIZONS_MIN = Object.freeze([15, 30, 45, 60, 120, 180, 360, 720, 1380, 1440, 2160, 2880]);
+export const MODEL_KEYS = Object.freeze(['ecmwf_ifs', 'ecmwf_aifs', 'icon_eu', 'gfs']);
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json; charset=utf-8' } });
 }
 
-function metricKey(model, horizon) {
-  return `metric:${model}:${horizon}`;
+function metricKey(model, horizonMinutes) {
+  return `metric:${model}:${horizonMinutes}`;
 }
 
-function predKey(validAt, cellId, model, horizon) {
-  return `pred:${validAt}:${cellId}:${model}:${horizon}`;
+function predKey(validAt, cellId, model, horizonMinutes) {
+  return `pred:${validAt}:${cellId}:${model}:${horizonMinutes}`;
 }
 
 export class ForecastArchive {
@@ -25,7 +25,7 @@ export class ForecastArchive {
       const writes = [];
       for (const row of payload.rows || []) {
         writes.push(this.ctx.storage.put(
-          predKey(row.valid_at, row.cell_id, row.model, row.horizon_h),
+          predKey(row.valid_at, row.cell_id, row.model, row.horizon_min),
           row,
         ));
       }
@@ -37,20 +37,22 @@ export class ForecastArchive {
     if (request.method === 'POST' && url.pathname === '/observations') {
       const payload = await request.json();
       let scored = 0;
+      let skippedNight = 0;
       for (const obs of payload.rows || []) {
         if (!Number.isFinite(Number(obs.gti_wm2))) continue;
         for (const model of MODEL_KEYS) {
-          for (const horizon of HORIZONS) {
-            const key = predKey(obs.valid_at, obs.cell_id, model, horizon);
+          for (const horizonMinutes of HORIZONS_MIN) {
+            const key = predKey(obs.valid_at, obs.cell_id, model, horizonMinutes);
             const pred = await this.ctx.storage.get(key);
             if (!pred) continue;
             const actual = Number(obs.gti_wm2);
             const forecast = Number(pred.gti_wm2);
             if (actual < 20 && forecast < 20) {
               await this.ctx.storage.delete(key);
+              skippedNight += 1;
               continue;
             }
-            const mKey = metricKey(model, horizon);
+            const mKey = metricKey(model, horizonMinutes);
             const metric = (await this.ctx.storage.get(mKey)) || {
               count: 0, sum_abs: 0, sum_sq: 0, sum_bias: 0, sum_actual: 0, sum_forecast: 0,
             };
@@ -70,20 +72,21 @@ export class ForecastArchive {
       }
       await this.ctx.storage.put('status:last_truth_run', payload.observed_at || new Date().toISOString());
       if (payload.source) await this.ctx.storage.put('status:truth_source', payload.source);
-      return json({ scored });
+      if (payload.resolution_minutes) await this.ctx.storage.put('status:truth_resolution_minutes', payload.resolution_minutes);
+      return json({ scored, skipped_night: skippedNight });
     }
 
     if (url.pathname === '/metrics') {
       const horizons = {};
-      for (const horizon of HORIZONS) {
-        horizons[String(horizon)] = {};
+      for (const horizonMinutes of HORIZONS_MIN) {
+        horizons[String(horizonMinutes)] = {};
         for (const model of MODEL_KEYS) {
-          const m = (await this.ctx.storage.get(metricKey(model, horizon))) || null;
+          const m = (await this.ctx.storage.get(metricKey(model, horizonMinutes))) || null;
           if (!m || !m.count) {
-            horizons[String(horizon)][model] = { count: 0 };
+            horizons[String(horizonMinutes)][model] = { count: 0 };
             continue;
           }
-          horizons[String(horizon)][model] = {
+          horizons[String(horizonMinutes)][model] = {
             count: m.count,
             mae_wm2: m.sum_abs / m.count,
             rmse_wm2: Math.sqrt(m.sum_sq / m.count),
@@ -94,10 +97,12 @@ export class ForecastArchive {
         }
       }
       return json({
+        resolution_minutes: 15,
         horizons,
         last_prediction_run: await this.ctx.storage.get('status:last_prediction_run') || null,
         last_truth_run: await this.ctx.storage.get('status:last_truth_run') || null,
         truth_source: await this.ctx.storage.get('status:truth_source') || null,
+        truth_resolution_minutes: await this.ctx.storage.get('status:truth_resolution_minutes') || null,
       });
     }
 
@@ -114,5 +119,3 @@ export class ForecastArchive {
     return json({ error: 'not_found' }, 404);
   }
 }
-
-export { HORIZONS, MODEL_KEYS };
