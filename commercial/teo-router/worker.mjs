@@ -21,6 +21,57 @@ let cursor = 0;
 const disabledUntil = new Map();
 const consecutiveFailures = new Map();
 let flowSchemaPromise = null;
+let flowD1DisabledUntil = 0;
+
+function fallbackFlowState(runId = "", plannedRaw = FLOW_MAX_VERIFICATIONS, status = "ready") {
+  const planned = Math.max(
+    1,
+    Math.min(Number(plannedRaw || FLOW_MAX_VERIFICATIONS), FLOW_MAX_VERIFICATIONS),
+  );
+  return {
+    runId:String(runId || ""),
+    status,
+    ready:status === "ready",
+    verifiedCount:0,
+    plannedVerifications:planned,
+    retryAfterMs:0,
+    storage:"router-fallback",
+  };
+}
+
+function flowD1Available() {
+  return Date.now() >= flowD1DisabledUntil;
+}
+
+function markFlowD1Failure(error) {
+  const message = String(error?.message || error || "");
+  const quotaExceeded = /exceeded D1's free tier daily row (?:write|read) limit/i.test(message);
+  if (quotaExceeded) {
+    const now = new Date();
+    flowD1DisabledUntil = Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() + 1,
+      0,
+      0,
+      5,
+    );
+  } else {
+    flowD1DisabledUntil = Date.now() + 30000;
+  }
+  console.error(
+    "TEO flow D1 degraded; continuing with router fallback.",
+    error?.name || "Error",
+    message.slice(0, 240),
+  );
+}
+
+function flowResponse(state, route = "router-flow-d1") {
+  return Response.json(
+    state,
+    {headers:{"cache-control":"no-store","x-lacurent-teo":route}},
+  );
+}
 
 function shardCooldownMs(key) {
   const failures = Math.max(1, Number(consecutiveFailures.get(key) || 1));
@@ -282,26 +333,60 @@ async function handleFlowEndpoint(request, env, url) {
     const raw = await request.json();
     const runId = String(raw?.runId || "").trim();
     if (!runId || runId.length > 160) return Response.json({error:"Run ID TEO invalid.",stage:"teo-flow-start"},{status:422});
-    return Response.json(
-      await startFlow(env, runId, raw?.plannedVerifications),
-      {headers:{"cache-control":"no-store","x-lacurent-teo":"router-flow-d1"}},
-    );
+    const planned = raw?.plannedVerifications;
+    if (!flowD1Available()) {
+      return flowResponse(
+        fallbackFlowState(runId, planned),
+        "router-flow-fallback",
+      );
+    }
+    try {
+      return flowResponse(await startFlow(env, runId, planned));
+    } catch (error) {
+      markFlowD1Failure(error);
+      return flowResponse(
+        fallbackFlowState(runId, planned),
+        "router-flow-fallback",
+      );
+    }
   }
 
   const runId = flowRunIdFromPath(url.pathname);
   if (!runId || runId.length > 160) return null;
 
   if (request.method === "GET" && !url.pathname.endsWith("/finish")) {
-    return Response.json(
-      publicFlowState(await flowRow(env, runId)),
-      {headers:{"cache-control":"no-store","x-lacurent-teo":"router-flow-d1"}},
-    );
+    if (!flowD1Available()) {
+      return flowResponse(
+        fallbackFlowState(runId),
+        "router-flow-fallback",
+      );
+    }
+    try {
+      return flowResponse(publicFlowState(await flowRow(env, runId)));
+    } catch (error) {
+      markFlowD1Failure(error);
+      return flowResponse(
+        fallbackFlowState(runId),
+        "router-flow-fallback",
+      );
+    }
   }
   if (request.method === "POST" && url.pathname.endsWith("/finish")) {
-    return Response.json(
-      await finishFlow(env, runId),
-      {headers:{"cache-control":"no-store","x-lacurent-teo":"router-flow-d1"}},
-    );
+    if (!flowD1Available()) {
+      return flowResponse(
+        fallbackFlowState(runId, FLOW_MAX_VERIFICATIONS, "complete"),
+        "router-flow-fallback",
+      );
+    }
+    try {
+      return flowResponse(await finishFlow(env, runId));
+    } catch (error) {
+      markFlowD1Failure(error);
+      return flowResponse(
+        fallbackFlowState(runId, FLOW_MAX_VERIFICATIONS, "complete"),
+        "router-flow-fallback",
+      );
+    }
   }
   return null;
 }
@@ -363,29 +448,36 @@ async function routeVerify(request, env) {
   }
   const runId = String(payload?.runId || payload?.form?._optimizer_run_id || "").trim();
   let leaseToken = null;
+  let usingFlowFallback = Boolean(runId && !flowD1Available());
 
-  if (runId) {
-    const gate = await acquireFlow(env, runId);
-    if (!gate.acquired) {
-      const retryAfterMs = Number(gate.state?.retryAfterMs || FLOW_COOLDOWN_MS);
-      return Response.json(
-        {
-          error:"TEO Worker Flow nu este încă pregătit pentru următorul VERIFY.",
-          optimizerVersion:"v4-adaptive",
-          stage:"verify-gate",
-          workerFlow:gate.state,
-        },
-        {
-          status:409,
-          headers:{
-            "cache-control":"no-store",
-            "retry-after":String(Math.max(1, Math.ceil(retryAfterMs / 1000))),
-            "x-lacurent-teo":"router-flow-d1",
+  if (runId && !usingFlowFallback) {
+    try {
+      const gate = await acquireFlow(env, runId);
+      if (!gate.acquired) {
+        const retryAfterMs = Number(gate.state?.retryAfterMs || FLOW_COOLDOWN_MS);
+        return Response.json(
+          {
+            error:"TEO Worker Flow nu este încă pregătit pentru următorul VERIFY.",
+            optimizerVersion:"v4-adaptive",
+            stage:"verify-gate",
+            workerFlow:gate.state,
           },
-        },
-      );
+          {
+            status:409,
+            headers:{
+              "cache-control":"no-store",
+              "retry-after":String(Math.max(1, Math.ceil(retryAfterMs / 1000))),
+              "x-lacurent-teo":"router-flow-d1",
+            },
+          },
+        );
+      }
+      leaseToken = gate.leaseToken;
+    } catch (error) {
+      markFlowD1Failure(error);
+      usingFlowFallback = true;
+      leaseToken = null;
     }
-    leaseToken = gate.leaseToken;
   }
 
   const routed = await routeAcrossShards(
@@ -396,7 +488,13 @@ async function routeVerify(request, env) {
   );
 
   if (!routed.response) {
-    if (runId && leaseToken) await releaseFlow(env, runId, leaseToken);
+    if (runId && leaseToken) {
+      try {
+        await releaseFlow(env, runId, leaseToken);
+      } catch (error) {
+        markFlowD1Failure(error);
+      }
+    }
     return Response.json(
       {
         error:"TEO este temporar indisponibil.",
@@ -415,8 +513,17 @@ async function routeVerify(request, env) {
     );
   }
 
-  if (routed.response.status === 200 && runId && leaseToken) {
-    const state = await completeFlow(env, runId, leaseToken);
+  if (routed.response.status === 200 && runId) {
+    let state = fallbackFlowState(runId);
+    if (leaseToken && !usingFlowFallback) {
+      try {
+        state = await completeFlow(env, runId, leaseToken);
+      } catch (error) {
+        markFlowD1Failure(error);
+        usingFlowFallback = true;
+        state = fallbackFlowState(runId);
+      }
+    }
     return await jsonResponseWithRouteHeaders(
       routed.response,
       routed.shard,
@@ -424,7 +531,13 @@ async function routeVerify(request, env) {
     );
   }
 
-  if (runId && leaseToken) await releaseFlow(env, runId, leaseToken);
+  if (runId && leaseToken) {
+    try {
+      await releaseFlow(env, runId, leaseToken);
+    } catch (error) {
+      markFlowD1Failure(error);
+    }
+  }
   return responseWithRouteHeaders(routed.response, routed.shard);
 }
 
@@ -465,6 +578,7 @@ export default {
         service:"lacurent-teo-router",
         shards:SHARDS.length,
         flow:"router-d1",
+        flowFallback:"router-fallback",
       });
     }
     if (!isTeoPath(url.pathname)) {
