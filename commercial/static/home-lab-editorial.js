@@ -4786,7 +4786,7 @@
           </div>
           <span>D1 · post-TEO</span>
         </div>
-        <div id="edCatalogBom" class="ed-catalog-bom">
+        <div id="edCatalogBom" class="ed-catalog-bom" data-state="loading">
           <p class="ed-hint">Potrivesc specificația TEO cu produsele source-backed din baza de date…</p>
         </div>
       </section>
@@ -4803,6 +4803,7 @@
   function renderCatalogBomItems(items) {
     const node = $("#edCatalogBom");
     if (!node) return;
+    node.dataset.state = "ready";
     const rows = Array.isArray(items) ? items : [];
     if (!rows.length) {
       node.innerHTML = '<p class="ed-hint">TEO nu a selectat materiale sau echipamente noi pentru această configurație.</p>';
@@ -4851,6 +4852,8 @@
   }
 
   async function loadCatalogBom(engineering, opt) {
+    const node = $("#edCatalogBom");
+    if (node) node.dataset.state = "loading";
     const requirements = catalogBomRequirements(engineering, opt);
     if (!requirements.length) {
       renderCatalogBomItems([]);
@@ -4867,7 +4870,10 @@
       renderCatalogBomItems(payload.items || []);
     } catch (error) {
       const node = $("#edCatalogBom");
-      if (node) node.innerHTML = '<p class="ed-hint">' + escapeHtml(error?.message || "Lista de materiale nu poate fi încărcată.") + '</p>';
+      if (node) {
+        node.dataset.state = "error";
+        node.innerHTML = '<p class="ed-hint">' + escapeHtml(error?.message || "Lista de materiale nu poate fi încărcată.") + '</p>';
+      }
     }
   }
 
