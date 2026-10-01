@@ -138,6 +138,12 @@ async function calculate(body, contentType) {
 
 async function stressPv(page) {
   for (const pageName of ["house","envelope","systems"]) {
+    if (pageName === "house") {
+      const confirmation = page.locator("#edHouseValuesConfirmed");
+      if (await confirmation.count()) {
+        await confirmation.check();
+      }
+    }
     await page.locator('[data-page="' + pageName + '"] [data-next]').click();
   }
   await page.locator('[data-page="renewables"].is-active').waitFor({state:"visible",timeout:15000});
