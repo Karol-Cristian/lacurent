@@ -11,6 +11,8 @@ from .models import BuildingInput, HeatingEmitterType, model_to_dict
 from .optimization import CandidateEvaluationV1, CostLineV1
 from .pricing import estimate_energy_cost
 from .product_matching import WallInsulationProductV1
+from .market_products import PvModuleProductV1
+from .extended_costs import discretize_pv
 
 
 class HrvFinalistCommercializationRequestV1(BaseModel):
@@ -25,6 +27,13 @@ class WallCatalogFinalistCommercializationRequestV1(BaseModel):
     baseline: BuildingInput
     raw_candidate: CandidateEvaluationV1
     nonmaterial_installed_cost_per_m2_lei: float = Field(ge=0)
+    category_limit: int = Field(default=48, ge=1, le=100)
+
+
+class PvCatalogFinalistCommercializationRequestV1(BaseModel):
+    raw_candidate: CandidateEvaluationV1
+    activation_cost_lei: float = Field(default=0, ge=0)
+    nonmodule_installed_cost_per_kwp_lei: float = Field(ge=0)
     category_limit: int = Field(default=48, ge=1, le=100)
 
 
@@ -499,6 +508,69 @@ def wall_products_from_catalog_window(
                 stock_status="unknown",
                 product_url=(
                     None if product_url is None else str(product_url)
+                ),
+                catalog_version=(
+                    None
+                    if row.get("catalog_version") is None
+                    else str(row["catalog_version"])
+                ),
+            )
+        )
+    return products
+
+
+def pv_products_from_catalog_window(
+    window: dict[str, Any],
+) -> list[PvModuleProductV1]:
+    """Convert generic D1 PV rows to whole-module commercialization products."""
+
+    products: list[PvModuleProductV1] = []
+    for row in window.get("products") or []:
+        properties = dict(row.get("properties") or {})
+        module_power = properties.get("module_power_wp")
+        if module_power in (None, ""):
+            continue
+
+        best_offer = None
+        for offer in row.get("offers") or []:
+            if (
+                str(offer.get("price_basis") or "") == "lei_unit"
+                and offer.get("price_lei") not in (None, "")
+            ):
+                price = float(offer["price_lei"])
+                if price < 0:
+                    continue
+                if best_offer is None or price < float(best_offer["price_lei"]):
+                    best_offer = offer
+        if best_offer is None:
+            continue
+
+        products.append(
+            PvModuleProductV1(
+                partner_id="energy_catalog_d1",
+                product_id=str(row["id"]),
+                sku=(
+                    None
+                    if row.get("manufacturer_sku") is None
+                    else str(row["manufacturer_sku"])
+                ),
+                name=str(row.get("label") or row["id"]),
+                manufacturer=(
+                    None
+                    if row.get("manufacturer") is None
+                    else str(row["manufacturer"])
+                ),
+                module_power_wp=float(module_power),
+                module_price_lei=float(best_offer["price_lei"]),
+                performance_ratio=(
+                    None
+                    if properties.get("performance_ratio") in (None, "")
+                    else float(properties["performance_ratio"])
+                ),
+                stock_status="unknown",
+                product_url=(
+                    best_offer.get("source_url")
+                    or row.get("source_url")
                 ),
                 catalog_version=(
                     None
@@ -1218,3 +1290,162 @@ def commercialize_underfloor_system_bom_from_finalist(
         control_match,
         design,
     )
+
+
+def commercialize_pv_finalist_from_catalog(
+    candidate: CandidateEvaluationV1,
+    products: list[PvModuleProductV1],
+    *,
+    activation_cost_lei: float,
+    nonmodule_installed_cost_per_kwp_lei: float,
+) -> CandidateEvaluationV1:
+    """Round a TEO PV target to whole D1 modules and recalculate the finalist."""
+
+    if candidate.resulting_configuration is None:
+        raise ValueError("PV commercialization requires a finalist building configuration.")
+    target_added = float(candidate.parameters.pv_added_kwp)
+    if target_added <= 0:
+        raise ValueError("Finalist has no positive PV addition to commercialize.")
+
+    discretization = discretize_pv(
+        target_added_kwp=target_added,
+        products=products,
+        activation_cost_lei=activation_cost_lei,
+        nonmodule_installed_cost_per_kwp_lei=(
+            nonmodule_installed_cost_per_kwp_lei
+        ),
+    )
+
+    building_data = model_to_dict(candidate.resulting_configuration)
+    renewables = dict(building_data.get("renewables") or {})
+    pv = dict(renewables.get("pv") or {})
+    current_total_kwp = (
+        float(pv.get("installed_power_kwp") or 0.0)
+        if bool(pv.get("enabled"))
+        else 0.0
+    )
+    baseline_existing_kwp = max(current_total_kwp - target_added, 0.0)
+    pv["enabled"] = True
+    pv["installed_power_kwp"] = (
+        baseline_existing_kwp + float(discretization.realized_added_kwp)
+    )
+    if discretization.product.performance_ratio is not None:
+        pv["performance_ratio"] = float(
+            discretization.product.performance_ratio
+        )
+    renewables["pv"] = pv
+    building_data["renewables"] = renewables
+    realized_building = BuildingInput(**building_data)
+
+    result = calculate(realized_building, include_reference=False)
+    priced = estimate_energy_cost(result)
+    if not priced.get("complete"):
+        raise ValueError("PV finalist recalculation has incomplete annual energy cost.")
+
+    lines = [
+        line
+        for line in candidate.cost_breakdown
+        if line.family != "pv"
+    ]
+    lines.append(
+        CostLineV1(
+            family="pv",
+            capex_lei=round(float(discretization.installed_capex_lei), 2),
+            parameter_value=round(
+                float(discretization.realized_added_kwp),
+                6,
+            ),
+            parameter_unit="kWp_added",
+            source_kind="commercial_product_installed_total",
+            confidence="product_exact_plus_explicit_bos",
+            catalog_unit="whole_pv_modules_plus_bos",
+            note=(
+                "PV target rounded upward to whole source-backed modules; "
+                "canonical RBPE recalculated at realized installed power."
+            ),
+            product_id=discretization.product.product_id,
+            sku=discretization.product.sku,
+            quantity=float(discretization.module_count),
+            quantity_unit="modules",
+            material_subtotal_lei=float(
+                discretization.material_subtotal_lei
+            ),
+            nonmaterial_subtotal_lei=round(
+                float(discretization.nonmodule_subtotal_lei)
+                + float(discretization.activation_cost_lei),
+                2,
+            ),
+        )
+    )
+
+    capex = sum(float(line.capex_lei) for line in lines)
+    annual_bill = float(priced["priced_total_lei"])
+    saving = float(candidate.baseline_annual_bill_lei) - annual_bill
+    payback = capex / saving if capex > 0 and saving > 0 else None
+    roi = 100.0 * saving / capex if capex > 0 else None
+
+    design = design_heat_load_breakdown(
+        realized_building,
+        result.transmission_components,
+        result.h_ve_w_k,
+        result.climate,
+    )
+
+    data = model_to_dict(candidate)
+    data.update(
+        {
+            "candidate_id": (
+                candidate.candidate_id
+                + "-PV-"
+                + discretization.product.product_id
+            ),
+            "capex_lei": round(capex, 2),
+            "annual_bill_lei": round(annual_bill, 2),
+            "annual_saving_lei": round(saving, 2),
+            "payback_years": (
+                None if payback is None else round(payback, 4)
+            ),
+            "roi_percent_per_year": (
+                None if roi is None else round(roi, 4)
+            ),
+            "final_energy_kwh": round(
+                float(result.total_final_energy_kwh),
+                3,
+            ),
+            "design_heat_load_kw": (
+                None
+                if design.get("total_kw") is None
+                else round(float(design["total_kw"]), 4)
+            ),
+            "primary_specific_kwh_m2": round(
+                float(result.primary_energy.specific_kwh_m2),
+                3,
+            ),
+            "co2_total_kg": round(float(result.co2.total_kg), 3),
+            "co2_specific_kg_m2": round(
+                float(result.co2.specific_kg_m2),
+                3,
+            ),
+            "rer_percent": round(
+                float(result.renewable_share.rer_percent),
+                3,
+            ),
+            "onsite_renewable_percent": round(
+                float(result.renewable_share.onsite_percent),
+                3,
+            ),
+            "rer_status": result.renewable_share.status,
+            "energy_class": result.energy_class,
+            "resulting_configuration": model_to_dict(realized_building),
+            "cost_breakdown": [model_to_dict(line) for line in lines],
+            "cost_source": "pv_catalog_discretized_recalculated",
+            "commercialization_status": "partially_discretized",
+            "assumptions": [
+                *candidate.assumptions,
+                "PV SKU selection is downstream of TEO search.",
+                "PV output and economics are recalculated after rounding to whole commercial modules.",
+                "BOS/non-module installed cost and activation cost remain explicit assumptions separate from module price.",
+            ],
+        }
+    )
+    return CandidateEvaluationV1(**data)
