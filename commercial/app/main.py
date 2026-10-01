@@ -3000,6 +3000,48 @@ async def home_lab_catalog_bom_api(request: Request) -> JSONResponse:
                 subtotal = area * float(offer.get("price_lei") or 0)
             basis = f"grosime ≥ {target_mm:.0f} mm; necesar {area:.1f} m²"
 
+        elif category_id == "window_system":
+            area = max(float(requirement.get("requiredAreaM2") or 0), 0.0)
+            target_uw = max(float(requirement.get("targetUw") or 0), 0.0)
+            eligible = [
+                p for p in products
+                if target_uw <= 0
+                or (numeric(p.get("properties") or {}, "uw_w_m2k") or 1e9) <= target_uw + 1e-9
+            ] or products
+            selected = min(
+                eligible,
+                key=lambda p: (
+                    numeric(p.get("properties") or {}, "uw_w_m2k") or 1e9,
+                    float((cheapest_offer(p) or {}).get("price_lei") or 1e18),
+                ),
+            )
+            offer = cheapest_offer(selected)
+            quantity = area
+            quantity_unit = "m²"
+            if offer and str(offer.get("price_basis") or "") == "lei_per_m2":
+                subtotal = area * float(offer.get("price_lei") or 0)
+            basis = f"Uw ≤ {target_uw:.2f} W/m²K; necesar {area:.1f} m²"
+
+        elif category_id == "solar_thermal_collector":
+            required_area = max(float(requirement.get("requiredAreaM2") or 0), 0.0)
+            eligible = [
+                p for p in products
+                if (numeric(p.get("properties") or {}, "aperture_area_m2") or 0) > 0
+            ]
+            if eligible:
+                selected = min(
+                    eligible,
+                    key=lambda p: float((cheapest_offer(p) or {}).get("price_lei") or 1e18)
+                    / max(numeric(p.get("properties") or {}, "aperture_area_m2") or 1, 1e-6),
+                )
+                unit_area = numeric(selected.get("properties") or {}, "aperture_area_m2") or 1
+                quantity = max(1, math.ceil(required_area / unit_area))
+                quantity_unit = "colectoare"
+                offer = cheapest_offer(selected)
+                if offer:
+                    subtotal = quantity * float(offer.get("price_lei") or 0)
+                basis = f"{required_area:.1f} m² necesari; {unit_area:.2f} m²/colector"
+
         elif category_id == "pv_module":
             required_wp = max(float(requirement.get("requiredPowerKwp") or 0), 0.0) * 1000.0
             eligible = [p for p in products if (numeric(p.get("properties") or {}, "module_power_wp") or 0) > 0]
