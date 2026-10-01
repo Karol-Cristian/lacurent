@@ -311,6 +311,7 @@ async function routeAcrossShards(request, env, bodyBytes, extraHeaders = {}) {
   const start = cursor++ % SHARDS.length;
   const attempts = [];
   let lastError = null;
+  let lastUpstream = null;
 
   const ordered = Array.from(
     {length:SHARDS.length},
@@ -333,6 +334,17 @@ async function routeAcrossShards(request, env, bodyBytes, extraHeaders = {}) {
       const response = await callShard(env, key, request, bodyBytes, extraHeaders);
       attempts.push(key + ":" + response.status);
       if (response.status >= 500) {
+        let upstreamBody = {};
+        try {
+          upstreamBody = await response.clone().json();
+        } catch (_) {}
+        lastUpstream = {
+          shard:key,
+          status:response.status,
+          stage:String(upstreamBody?.stage || ""),
+          errorType:String(upstreamBody?.errorType || ""),
+          error:String(upstreamBody?.error || "").slice(0, 240),
+        };
         markShardFailure(key);
         lastError = new Error("upstream_http_" + response.status);
         continue;
@@ -350,7 +362,7 @@ async function routeAcrossShards(request, env, bodyBytes, extraHeaders = {}) {
     (a,b) => (disabledUntil.get(a) || 0) - (disabledUntil.get(b) || 0)
   )[0];
   const retryAfterMs = Math.max(500, (disabledUntil.get(earliest) || 0) - Date.now());
-  return {response:null, shard:null, attempts, lastError, retryAfterMs};
+  return {response:null, shard:null, attempts, lastError, lastUpstream, retryAfterMs};
 }
 
 async function routeVerify(request, env) {
@@ -403,6 +415,7 @@ async function routeVerify(request, env) {
         stage:"private-teo-router",
         attempts:routed.attempts,
         errorType:routed.lastError?.name || "Error",
+        upstream:routed.lastUpstream || null,
       },
       {
         status:503,
