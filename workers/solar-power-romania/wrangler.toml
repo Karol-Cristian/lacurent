@@ -16,5 +16,9 @@ bindings = [
 tag = "v1"
 new_sqlite_classes = ["ForecastArchive"]
 
+[[r2_buckets]]
+binding = "ARCHIVE_R2"
+bucket_name = "lacurent-solar-romania-archive"
+
 [triggers]
-crons = ["7 * * * *"]
+crons = ["2,17,32,47 * * * *"]
