@@ -7,17 +7,20 @@ EDITORIAL = ROOT / "commercial" / "templates" / "home_lab_editorial.html"
 DOCTRINE = ROOT / "docs" / "LACURENT_PRODUCT_DOCTRINE.md"
 
 
-def test_landing_leads_with_homeowner_decision_not_engine_jargon():
+def test_landing_leads_with_authoritative_technical_identity_without_personalized_marketing():
     landing = LANDING.read_text(encoding="utf-8")
 
-    assert "Decizii energetice pentru locuințe" in landing
-    assert "Spune-ne cum este casa ta." in landing
-    assert "Analizează casa" in landing
+    assert "Nu promitem." in landing
+    assert "Calculăm." in landing
+    assert "MODELARE ENERGETICĂ · OPTIMIZARE TEHNICO-ECONOMICĂ" in landing
+    assert "Fizică a clădirii, cost, investiție și produse comerciale" in landing
     assert 'href="/home-lab-editorial"' in landing
-    assert "De la casă la plan" in landing
-    assert "Nu optimizăm doar consumul. Optimizăm decizia." in landing
+    assert 'href="/home-lab-editorial?account=1"' in landing
     assert "O recomandare trebuie să poată fi explicată." in landing
 
+    assert "Spune-ne cum este casa ta." not in landing
+    assert "pentru tine" not in landing.lower()
+    assert "casa ta" not in landing.lower()
     assert "Building Optimization" not in landing
     assert "Building optimization engine" not in landing
     assert "Pornește optimizarea" not in landing
