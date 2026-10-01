@@ -2081,6 +2081,43 @@
     return out;
   }
 
+  function serviceNoticeMessage(error, stageName = "") {
+    const status = Number(error?.status || 0);
+    const payload = error?.payload || {};
+    const explicit = String(
+      payload.maintenance_message
+      || payload.detail
+      || payload.error
+      || ""
+    ).trim();
+    if (explicit && explicit.length <= 180) return explicit;
+    if (status === 0) {
+      return "Conexiunea cu serviciul de calcul a fost întreruptă. Datele introduse rămân în pagină și reîncercăm automat.";
+    }
+    if ([500, 502, 503, 504].includes(status)) {
+      return stageName
+        ? `${stageName} este temporar indisponibil. Datele introduse rămân în pagină și reîncercăm automat.`
+        : "Calculul este temporar indisponibil. Datele introduse rămân în pagină și reîncercăm automat.";
+    }
+    return "";
+  }
+
+  function showServiceNotice(error, stageName = "") {
+    if (error?.name === "AbortError") return;
+    const status = Number(error?.status || 0);
+    if (status !== 0 && ![500, 502, 503, 504].includes(status)) return;
+    const notice = $("#edServiceNotice");
+    const text = $("#edServiceNoticeText");
+    if (!notice || !text) return;
+    text.textContent = serviceNoticeMessage(error, stageName);
+    notice.hidden = false;
+  }
+
+  function clearServiceNotice() {
+    const notice = $("#edServiceNotice");
+    if (notice) notice.hidden = true;
+  }
+
   async function readJson(response) {
     const data = await response.json().catch(() => ({}));
     if (!response.ok || data.error) {
@@ -2091,8 +2128,10 @@
       error.retryAfterMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
         ? retryAfterSeconds * 1000
         : 0;
+      showServiceNotice(error);
       throw error;
     }
+    clearServiceNotice();
     return data;
   }
 
@@ -2115,6 +2154,7 @@
         await sleep(delay);
       }
     }
+    showServiceNotice(lastError || new Error("Request failed."), stageName);
     throw lastError || new Error("Request failed.");
   }
 
@@ -2879,8 +2919,9 @@
       paintBaselineSummary(data, `Estimare curentă · Input ${shortInputFingerprint(inputFingerprint)}`);
     } catch (error) {
       if (error?.name === "AbortError" || revision !== baselineSummaryRevision) return;
+      showServiceNotice(error, "Serviciul RBPE");
       baselineBar.classList.remove("is-updating");
-      baselineStatus.textContent = "Estimarea se actualizează după completarea datelor.";
+      baselineStatus.textContent = "Estimarea se actualizează după revenirea serviciului.";
     }
   }
 
