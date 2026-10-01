@@ -127,7 +127,7 @@ def test_service_costs_reconcile_with_annual_priced_total() -> None:
     result = calculate(building)
     estimate = estimate_energy_cost(result)
 
-    assert [row["service"] for row in estimate["service_rows"]] == ["heating", "cooling", "dhw"]
+    assert [row["service"] for row in estimate["service_rows"]] == ["heating", "cooling", "dhw", "ventilation"]
     service_total = sum(float(row["annual_cost_lei"] or 0) for row in estimate["service_rows"])
     assert service_total == pytest.approx(estimate["priced_total_lei"], abs=0.01)
     assert estimate["average_monthly_priced_lei"] == pytest.approx(estimate["priced_total_lei"] / 12, abs=0.01)
