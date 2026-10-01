@@ -136,6 +136,7 @@ from .impact import (
     read_public_impact_summary,
     save_impact_snapshot,
 )
+from . import account
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = BASE_DIR / "data"
@@ -3136,6 +3137,111 @@ async def energy_calculator_legacy(request: Request) -> HTMLResponse:
 def _request_db(request: Request) -> Any:
     env = request.scope.get("env")
     return getattr(env, "DB", None) if env is not None else None
+
+
+def _account_db(request: Request) -> Any:
+    db = _request_db(request)
+    if db is None:
+        raise HTTPException(status_code=503, detail="Stocarea contului Home Lab nu este disponibilă.")
+    return db
+
+
+async def _account_json_body(request: Request) -> dict[str, Any]:
+    try:
+        payload = await request.json()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Cererea trebuie să conțină JSON valid.") from exc
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Cererea trebuie să fie un obiect JSON.")
+    return payload
+
+
+def _account_error_response(exc: account.AccountError) -> JSONResponse:
+    return JSONResponse(
+        {"success": False, "error": str(exc)},
+        status_code=exc.status_code,
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+async def _require_account_user(request: Request) -> tuple[Any, dict[str, Any], str]:
+    db = _account_db(request)
+    token = account.bearer_token(request)
+    user = await account.current_user(db, token)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Autentificare necesară.")
+    return db, user, token
+
+
+@app.post("/api/register")
+async def account_register(request: Request) -> JSONResponse:
+    try:
+        result = await account.register(_account_db(request), await _account_json_body(request))
+    except account.AccountError as exc:
+        return _account_error_response(exc)
+    return JSONResponse(result, headers={"Cache-Control": "no-store"})
+
+
+@app.post("/api/login")
+async def account_login(request: Request) -> JSONResponse:
+    try:
+        result = await account.login(_account_db(request), await _account_json_body(request))
+    except account.AccountError as exc:
+        return _account_error_response(exc)
+    return JSONResponse(result, headers={"Cache-Control": "no-store"})
+
+
+@app.post("/api/logout")
+async def account_logout(request: Request) -> JSONResponse:
+    db = _account_db(request)
+    result = await account.logout(db, account.bearer_token(request))
+    return JSONResponse(result, headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/me")
+async def account_me(request: Request) -> JSONResponse:
+    db, user, _ = await _require_account_user(request)
+    del db
+    return JSONResponse(
+        {"success": True, "user": user},
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.post("/api/projects/save")
+async def account_project_save(request: Request) -> JSONResponse:
+    db, user, _ = await _require_account_user(request)
+    try:
+        result = await account.save_project(
+            db,
+            int(user["id"]),
+            await _account_json_body(request),
+        )
+    except account.AccountError as exc:
+        return _account_error_response(exc)
+    return JSONResponse(result, headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/projects/list")
+async def account_project_list(request: Request) -> JSONResponse:
+    db, user, _ = await _require_account_user(request)
+    result = await account.list_projects(db, int(user["id"]))
+    return JSONResponse(result, headers={"Cache-Control": "no-store"})
+
+
+@app.post("/api/projects/load")
+async def account_project_load(request: Request) -> JSONResponse:
+    db, user, _ = await _require_account_user(request)
+    payload = await _account_json_body(request)
+    try:
+        result = await account.load_project(
+            db,
+            int(user["id"]),
+            payload.get("projectId"),
+        )
+    except account.AccountError as exc:
+        return _account_error_response(exc)
+    return JSONResponse(result, headers={"Cache-Control": "no-store"})
 
 
 @app.get("/facts")
