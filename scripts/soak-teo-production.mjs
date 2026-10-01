@@ -92,6 +92,8 @@ async function runOnce(browser, ordinal) {
     await page.locator('[name="indoor_design_temperature_c"]').selectOption("21");
     await page.locator('[name="construction_year"]').fill("2005");
     await page.locator('[name="dhw_occupants"]').selectOption("4");
+    const houseConfirmation = page.locator('[data-page="house"] #edHouseValuesConfirmed');
+    if (await houseConfirmation.count()) await houseConfirmation.check();
     await page.locator('[data-page="house"] [data-next]').click();
     await page.locator('[data-page="envelope"].is-active').waitFor({state:"visible",timeout:15000});
 
@@ -133,7 +135,8 @@ async function runOnce(browser, ordinal) {
 
     await page.locator('[data-page="systems"] [data-next]').click();
     await page.locator('[data-page="renewables"].is-active').waitFor({state:"visible",timeout:15000});
-    await page.locator("#edHouseValuesConfirmed").check();
+    const renewablesConfirmation = page.locator('[data-page="renewables"] #edHouseValuesConfirmed');
+    if (await renewablesConfirmation.count()) await renewablesConfirmation.check();
     await page.locator('[data-page="renewables"] [data-next]').click();
     await page.locator('[data-page="goal"].is-active').waitFor({state:"visible",timeout:15000});
 
