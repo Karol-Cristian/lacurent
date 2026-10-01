@@ -166,7 +166,7 @@ jobs:
           for migration in \
             migrations/015_energy_product_catalog.sql \
             /tmp/016_energy_product_catalog_generated.sql \
-            migrations/017_unify_energy_product_catalog.sql
+            migrations/017_unify_energy_product_catalog.sql \
             migrations/019_home_lab_account_persistence.sql
           do
             migration_name="$(basename "$migration" .sql)"
@@ -362,6 +362,8 @@ jobs:
           WORKER_NAME="lacurent-d1-catalog-${GITHUB_RUN_ID}"
           echo "WORKER_NAME=$WORKER_NAME" >> "$GITHUB_ENV"
           echo "STAGING_URL=https://$WORKER_NAME.$WORKERS_DEV_SUBDOMAIN.workers.dev" >> "$GITHUB_ENV"
+          echo "ACCOUNT_SMOKE_EMAIL=lacurent-staging-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT@example.invalid" >> "$GITHUB_ENV"
+          echo "ACCOUNT_SMOKE_PROJECT=lacurent-staging-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
 
           node scripts/prepare-commercial-cloudflare-worker.mjs --name "$WORKER_NAME"
 
@@ -483,6 +485,155 @@ jobs:
           })
           PY
 
+
+      - name: Smoke-test account save and reopen on development D1
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import urllib.error
+          import urllib.request
+
+          base = os.environ["STAGING_URL"]
+          email = os.environ["ACCOUNT_SMOKE_EMAIL"]
+          project_id = os.environ["ACCOUNT_SMOKE_PROJECT"]
+          password = "Staging-account-2026!"
+
+          def request(path, *, method="GET", body=None, token=None, expected=200):
+              headers = {
+                  "Accept": "application/json",
+                  "User-Agent": "LaCurent-Account-Staging-Smoke/1.0",
+              }
+              if token:
+                  headers["Authorization"] = "Bearer " + token
+              data = None
+              if body is not None:
+                  headers["Content-Type"] = "application/json"
+                  data = json.dumps(body).encode("utf-8")
+              req = urllib.request.Request(
+                  base + path,
+                  method=method,
+                  headers=headers,
+                  data=data,
+              )
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as response:
+                      status = response.status
+                      raw = response.read().decode("utf-8")
+              except urllib.error.HTTPError as exc:
+                  status = exc.code
+                  raw = exc.read().decode("utf-8", "replace")
+              if status != expected:
+                  raise AssertionError(
+                      f"{method} {path}: expected HTTP {expected}, got {status}: {raw[:1000]}"
+                  )
+              return json.loads(raw or "{}")
+
+          registered = request(
+              "/api/register",
+              method="POST",
+              body={
+                  "email": email,
+                  "name": "Staging UAT",
+                  "password": password,
+              },
+          )
+          token = str(registered.get("token") or "")
+          user = registered.get("user") or {}
+          if not token or user.get("email") != email:
+              raise AssertionError(f"Registration contract failed: {registered!r}")
+
+          me = request("/api/me", token=token)
+          if (me.get("user") or {}).get("email") != email:
+              raise AssertionError(f"/api/me contract failed: {me!r}")
+
+          workspace = {
+              "schemaVersion": "home_lab_editorial_workspace_v1",
+              "draft": {
+                  "version": 2,
+                  "calculationModelVersion": "rbpe-editorial-2026-09-29.1",
+                  "fields": {
+                      "id:heatedArea": {"value": "137,5"},
+                      "id:heatedLevels": {"value": "2"},
+                      "id:averageHeight": {"value": "2,7"},
+                      "id:localityId": {"value": "smoke-locality"},
+                      "name:_optimization_mode": {"value": "auto_economic"},
+                  },
+              },
+              "page": "house",
+          }
+          saved = request(
+              "/api/projects/save",
+              method="POST",
+              token=token,
+              body={
+                  "projectId": project_id,
+                  "name": "Casa staging E2E",
+                  "workspace": workspace,
+              },
+          )
+          if saved.get("projectId") != project_id:
+              raise AssertionError(f"Project save contract failed: {saved!r}")
+
+          listed = request("/api/projects/list", token=token)
+          ids = {
+              str(row.get("project_id") or row.get("projectId") or "")
+              for row in listed.get("projects") or []
+          }
+          if project_id not in ids:
+              raise AssertionError(f"Saved project missing from list: {listed!r}")
+
+          loaded = request(
+              "/api/projects/load",
+              method="POST",
+              token=token,
+              body={"projectId": project_id},
+          )
+          project = loaded.get("project") or {}
+          if project.get("projectId") != project_id:
+              raise AssertionError(f"Project reopen id mismatch: {loaded!r}")
+          if project.get("workspace") != workspace:
+              raise AssertionError("Project reopen workspace differs from saved workspace.")
+
+          request("/api/logout", method="POST", token=token)
+          request("/api/me", token=token, expected=401)
+
+          logged = request(
+              "/api/login",
+              method="POST",
+              body={"email": email, "password": password},
+          )
+          if not logged.get("token"):
+              raise AssertionError(f"Login after reopen flow failed: {logged!r}")
+
+          print(
+              "Account persistence E2E PASS",
+              {"email": email, "projectId": project_id},
+          )
+          PY
+
+      - name: Clean account smoke records from development D1
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ -z "${ACCOUNT_SMOKE_EMAIL:-}" ]; then
+            exit 0
+          fi
+          for sql in \
+            "DELETE FROM building_platform_project_drafts WHERE owner_user_id IN (SELECT id FROM users WHERE email = '${ACCOUNT_SMOKE_EMAIL}')" \
+            "DELETE FROM building_platform_projects WHERE owner_user_id IN (SELECT id FROM users WHERE email = '${ACCOUNT_SMOKE_EMAIL}')" \
+            "DELETE FROM user_sessions WHERE user_id IN (SELECT id FROM users WHERE email = '${ACCOUNT_SMOKE_EMAIL}')" \
+            "DELETE FROM users WHERE email = '${ACCOUNT_SMOKE_EMAIL}'"
+          do
+            npx wrangler d1 execute "$DB_NAME" \
+              --config "$D1_STAGING_CONFIG" \
+              --remote \
+              --command="$sql" \
+              --yes
+          done
+          echo "Account staging smoke data cleanup PASS."
+
       - name: Publish D1 staging verification summary
         if: success()
         run: |
@@ -500,6 +651,7 @@ jobs:
             echo "- seasonal performance rows >= 2: PASS"
             echo "- cross-category source pack materialized in remote D1: PASS"
             echo "- account/project persistence tables present in remote D1: PASS"
+            echo "- register/login/save/list/load/logout account E2E on D1: PASS"
             echo "- deployed Python Worker DB binding: PASS"
             echo "- /api/heating-products source=d1: PASS"
             echo "- /produse D1-backed runtime smoke: PASS"
