@@ -84,3 +84,72 @@ def test_emitter_and_underfloor_routes_use_bounded_category_windows():
     assert 'commercialize_underfloor_pipe_bom_from_finalist(' in underfloor
     assert "verified_available_heat_output_w_m2" in underfloor
     assert "run_parametric_optimization(" not in underfloor
+
+
+
+def test_radiator_finalist_route_derives_bom_from_canonical_finalist():
+    source = MAIN.read_text(encoding="utf-8")
+    section = source.split(
+        '@app.post("/api/optimization/commercialize/radiator-finalist")',
+        1,
+    )[1].split(
+        '@app.post("/api/optimization/commercialize/underfloor-pipe-finalist")',
+        1,
+    )[0]
+
+    assert 'read_energy_product_candidate_window_d1(' in section
+    assert '"radiator"' in section
+    assert 'limit=payload.category_limit' in section
+    assert 'commercialize_radiator_bom_from_finalist(' in section
+    assert '"stage": "radiator_finalist_bom_recheck"' in section
+    assert "run_parametric_optimization(" not in section
+    assert "run_physics_informed_optimization(" not in section
+
+
+def test_underfloor_finalist_route_requires_explicit_design_feasibility():
+    source = MAIN.read_text(encoding="utf-8")
+    section = source.split(
+        '@app.post("/api/optimization/commercialize/underfloor-pipe-finalist")',
+        1,
+    )[1].split(
+        '@app.post("/api/optimization/candidate")',
+        1,
+    )[0]
+
+    assert 'read_energy_product_candidate_window_d1(' in section
+    assert '"underfloor_pipe"' in section
+    assert 'limit=payload.category_limit' in section
+    assert 'commercialize_underfloor_pipe_bom_from_finalist(' in section
+    assert 'active_area_m2=payload.active_area_m2' in section
+    assert 'spacing_mm=payload.spacing_mm' in section
+    assert 'max_loop_length_m=payload.max_loop_length_m' in section
+    assert 'verified_available_heat_output_w_m2=(' in section
+    assert '"stage": "underfloor_pipe_finalist_bom_recheck"' in section
+    assert "run_parametric_optimization(" not in section
+    assert "run_physics_informed_optimization(" not in section
+
+
+def test_radiator_and_underfloor_adapters_derive_requirements_from_finalist():
+    source = ADAPTER.read_text(encoding="utf-8")
+
+    radiator = source.split(
+        "def commercialize_radiator_bom_from_finalist(",
+        1,
+    )[1].split(
+        "def commercialize_underfloor_pipe_bom_from_finalist(",
+        1,
+    )[0]
+    assert "result = calculate(" in radiator
+    assert "design_heat_load_breakdown(" in radiator
+    assert "result.heating_system.design_flow_temperature_c" in radiator
+    assert "result.heating_system.design_return_temperature_c" in radiator
+    assert "float(required_kw) * 1000.0" in radiator
+
+    underfloor = source.split(
+        "def commercialize_underfloor_pipe_bom_from_finalist(",
+        1,
+    )[1]
+    assert "result = calculate(" in underfloor
+    assert "design_heat_load_breakdown(" in underfloor
+    assert "required_heat_output_w=float(required_kw) * 1000.0" in underfloor
+    assert "verified_available_heat_output_w_m2=(" in underfloor
