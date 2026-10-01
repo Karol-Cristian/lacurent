@@ -142,7 +142,9 @@ def validate(payload: dict[str, Any]) -> dict[str, Any]:
 def build_sql(payload: dict[str, Any], normalized: dict[str, Any]) -> str:
     observed_on = str(payload.get("observed_on") or "")
     catalog_version = str(payload.get("schema_version") or "energy-product-source-pack-v1")
-    lines = ["BEGIN TRANSACTION;", ""]
+    # Cloudflare D1 remote import rejects explicit BEGIN/COMMIT statements.
+    # Wrangler executes the uploaded SQL batch safely; keep generated SQL transaction-free.
+    lines = []
     document_count = 0
     property_count = 0
     image_count = 0
@@ -354,8 +356,6 @@ def build_sql(payload: dict[str, Any], normalized: dict[str, Any]) -> str:
                 )
                 + ");"
             ),
-            "",
-            "COMMIT;",
             "",
         ]
     )
