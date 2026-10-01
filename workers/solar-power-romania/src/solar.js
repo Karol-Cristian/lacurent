@@ -57,27 +57,33 @@ export function buildForecastSeries(hourly, capacityMwp, assumptions = DEFAULT_A
 
 export function summarizeForecast(series, now = new Date()) {
   if (!series?.length) {
-    return { current: null, nextHour: null, todayEnergyMwh: 0, peak: null, rampMw: 0, variability: 0 };
+    return { current: null, nextHour: null, todayEnergyMwh: 0, peak: null, rampMw: 0, variability: 0, intervalMinutes: null };
   }
+
+  const parseUtc = (time) => {
+    const value = String(time);
+    return Date.parse(value.endsWith('Z') ? value : `${value}Z`);
+  };
+  const nearest = (targetMs) => {
+    let best = series[0];
+    let bestDistance = Number.POSITIVE_INFINITY;
+    for (const point of series) {
+      const d = Math.abs(parseUtc(point.time) - targetMs);
+      if (d < bestDistance) { best = point; bestDistance = d; }
+    }
+    return best;
+  };
 
   const nowMs = now.getTime();
-  let currentIndex = 0;
-  let bestDistance = Number.POSITIVE_INFINITY;
-  for (let i = 0; i < series.length; i += 1) {
-    const t = String(series[i].time);
-    const ms = Date.parse(t.endsWith('Z') ? t : `${t}Z`);
-    const d = Math.abs(ms - nowMs);
-    if (d < bestDistance) {
-      bestDistance = d;
-      currentIndex = i;
-    }
-  }
-
-  const current = series[currentIndex];
-  const nextHour = series[Math.min(currentIndex + 1, series.length - 1)];
+  const current = nearest(nowMs);
+  const nextHour = nearest(nowMs + 60 * 60000);
+  const intervalMinutes = series.length > 1
+    ? Math.max(1, Math.round((parseUtc(series[1].time) - parseUtc(series[0].time)) / 60000))
+    : 60;
+  const intervalHours = intervalMinutes / 60;
   const utcDay = new Date(nowMs).toISOString().slice(0, 10);
   const today = series.filter((point) => String(point.time).slice(0, 10) === utcDay);
-  const todayEnergyMwh = today.reduce((sum, point) => sum + point.power_mw, 0);
+  const todayEnergyMwh = today.reduce((sum, point) => sum + point.power_mw * intervalHours, 0);
   const peak = today.reduce((best, point) => (!best || point.power_mw > best.power_mw ? point : best), null);
   const rampMw = nextHour ? nextHour.power_mw - current.power_mw : 0;
 
@@ -88,7 +94,7 @@ export function summarizeForecast(series, now = new Date()) {
     variability = clamp((totalDelta / (peakMw * Math.max(today.length - 1, 1))) * 100, 0, 100);
   }
 
-  return { current, nextHour, todayEnergyMwh, peak, rampMw, variability };
+  return { current, nextHour, todayEnergyMwh, peak, rampMw, variability, intervalMinutes };
 }
 
 export function uncertaintyBand(powerMw, cloudPct, horizonHours) {
