@@ -12,10 +12,13 @@ from commercial.app.energy_product_teo_adapter import (
     commercialize_hrv_finalist,
     commercialize_radiator_bom_from_finalist,
     commercialize_underfloor_pipe_bom_from_finalist,
+    commercialize_underfloor_system_bom_from_finalist,
     design_underfloor_pipe_requirement,
     candidate_from_source_pack_row,
+    match_heating_controls,
     match_hrv_units,
     match_radiators,
+    match_underfloor_manifolds,
     match_underfloor_pipe,
     radiator_output_at_design_condition_w,
 )
@@ -443,3 +446,139 @@ def test_underfloor_finalist_requires_verified_output_to_cover_design_flux():
         if item.family == "underfloor_pipe"
     )
     assert line.product_id == "uponor-comfort-pipe-plus-16x2-640"
+
+
+
+def test_manifold_and_control_match_whole_commercial_units():
+    manifold = ProductCandidate(
+        product_id="manifold-6",
+        category_id="underfloor_manifold",
+        properties={"circuit_count": 6},
+        unit_price_lei=1800,
+    )
+    manifold_match = match_underfloor_manifolds(
+        [manifold],
+        required_circuit_count=7,
+    )
+    assert manifold_match.quantity == 2
+    assert manifold_match.available_circuit_count == 12
+    assert manifold_match.equipment_subtotal_lei == pytest.approx(3600)
+
+    control = ProductCandidate(
+        product_id="control-8",
+        category_id="heating_control",
+        properties={"controlled_zone_count": 8},
+        unit_price_lei=450,
+    )
+    control_match = match_heating_controls(
+        [control],
+        required_zone_count=9,
+    )
+    assert control_match.quantity == 2
+    assert control_match.available_zone_count == 16
+    assert control_match.equipment_subtotal_lei == pytest.approx(900)
+
+
+def test_complete_underfloor_bom_adds_pipe_manifold_and_explicit_control():
+    baseline = _underfloor_test_building()
+    raw = evaluate_parametric_candidate(
+        baseline,
+        ParametricMeasuresV1(),
+        {"costs": {}},
+    )
+    rows = _load_source_rows()
+    pipe = candidate_from_source_pack_row(
+        next(
+            row
+            for row in rows
+            if row["product"]["id"] == "uponor-comfort-pipe-plus-16x2-640"
+        )
+    )
+    manifold = candidate_from_source_pack_row(
+        next(
+            row
+            for row in rows
+            if row["product"]["id"] == "uponor-vario-m-fm-6-1085948"
+        )
+    )
+    control = candidate_from_source_pack_row(
+        next(
+            row
+            for row in rows
+            if row["product"]["id"] == "salus-kl08nsb-8-zone"
+        )
+    )
+
+    commercial, pipe_match, manifold_match, control_match, design = (
+        commercialize_underfloor_system_bom_from_finalist(
+            raw,
+            [pipe],
+            [manifold],
+            active_area_m2=92,
+            spacing_mm=150,
+            max_loop_length_m=100,
+            connection_allowance_m=20,
+            verified_available_heat_output_w_m2=250,
+            control_products=[control],
+            control_zone_count=6,
+            pipe_installation_allowance_lei=1000,
+            manifold_installation_allowance_lei=300,
+            control_installation_allowance_lei=150,
+        )
+    )
+
+    assert pipe_match.purchased_length_m >= design.required_pipe_length_m
+    assert manifold_match.available_circuit_count >= design.required_loop_count
+    assert control_match is not None
+    assert control_match.available_zone_count >= 6
+
+    lines = {line.family: line for line in commercial.cost_breakdown}
+    assert "underfloor_pipe" in lines
+    assert "underfloor_manifold" in lines
+    assert "heating_control" in lines
+    assert lines["underfloor_manifold"].product_id == "uponor-vario-m-fm-6-1085948"
+    assert lines["heating_control"].product_id == "salus-kl08nsb-8-zone"
+    assert commercial.final_energy_kwh == pytest.approx(raw.final_energy_kwh)
+
+
+def test_complete_underfloor_bom_does_not_infer_control_zones():
+    baseline = _underfloor_test_building()
+    raw = evaluate_parametric_candidate(
+        baseline,
+        ParametricMeasuresV1(),
+        {"costs": {}},
+    )
+    rows = _load_source_rows()
+    pipe = candidate_from_source_pack_row(
+        next(
+            row
+            for row in rows
+            if row["product"]["id"] == "uponor-comfort-pipe-plus-16x2-640"
+        )
+    )
+    manifold = candidate_from_source_pack_row(
+        next(
+            row
+            for row in rows
+            if row["product"]["id"] == "uponor-vario-m-fm-6-1085948"
+        )
+    )
+
+    commercial, _, _, control_match, _ = (
+        commercialize_underfloor_system_bom_from_finalist(
+            raw,
+            [pipe],
+            [manifold],
+            active_area_m2=92,
+            spacing_mm=150,
+            max_loop_length_m=100,
+            connection_allowance_m=20,
+            verified_available_heat_output_w_m2=250,
+        )
+    )
+
+    assert control_match is None
+    assert all(
+        line.family != "heating_control"
+        for line in commercial.cost_breakdown
+    )
