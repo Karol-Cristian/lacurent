@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import importlib.util
+import json
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -13,6 +15,7 @@ MIGRATION = ROOT / "migrations" / "015_energy_product_catalog.sql"
 SMOKE_MIGRATION = ROOT / "migrations" / "016_energy_product_catalog_smoke_pack.sql"
 UNIFIED_MIGRATION = ROOT / "migrations" / "017_unify_energy_product_catalog.sql"
 HEATING_STORE = ROOT / "commercial" / "app" / "heating_catalog_store.py"
+HEATING_SEED = ROOT / "commercial" / "data" / "heating-technology-planning.seed.json"
 
 
 def _load_importer():
@@ -209,3 +212,99 @@ def test_heating_runtime_reads_unified_catalog_after_shadow_bootstrap_boundary()
     assert "FROM energy_heat_pump_seasonal_performance_compat_v1" in runtime
     assert "FROM heating_products" not in runtime
     assert "INNER JOIN heating_products AS p" not in runtime
+
+
+def test_unified_d1_shadow_parity_against_legacy_heating_seed():
+    db = sqlite3.connect(":memory:")
+    db.row_factory = sqlite3.Row
+    for migration in (MIGRATION, SMOKE_MIGRATION, UNIFIED_MIGRATION):
+        db.executescript(migration.read_text(encoding="utf-8"))
+
+    seed = json.loads(HEATING_SEED.read_text(encoding="utf-8"))
+    legacy = {row["id"]: row for row in seed["options"]}
+    universal = {
+        row["id"]: dict(row)
+        for row in db.execute(
+            """
+            SELECT id, external_id, technology_id, technology_label, label,
+                   system_type, generator_type, carrier, cost_profile,
+                   rated_power_kw, efficiency, scop, equipment_price_lei,
+                   installation_allowance_lei, source_kind, source_url, confidence,
+                   requires_hydronic, requires_existing_gas,
+                   requires_existing_high_power_electric,
+                   requires_existing_biomass_infrastructure, capacity_basis, note
+            FROM energy_heating_products_compat_v1
+            ORDER BY id
+            """
+        )
+    }
+
+    assert len(legacy) == 40
+    assert set(universal) == set(legacy)
+
+    for product_id, expected in legacy.items():
+        actual = universal[product_id]
+        for key in (
+            "external_id",
+            "technology_id",
+            "technology_label",
+            "label",
+            "system_type",
+            "generator_type",
+            "carrier",
+            "cost_profile",
+            "source_kind",
+            "confidence",
+            "capacity_basis",
+            "note",
+        ):
+            assert actual[key] == expected.get(key)
+        assert actual["rated_power_kw"] == pytest.approx(expected["rated_power_kw"])
+        assert actual["equipment_price_lei"] == pytest.approx(
+            expected["equipment_price_lei"]
+        )
+        assert actual["installation_allowance_lei"] == pytest.approx(
+            expected["installation_allowance_lei"]
+        )
+        if expected.get("efficiency") is None:
+            assert actual["efficiency"] is None
+        else:
+            assert actual["efficiency"] == pytest.approx(expected["efficiency"])
+        if expected.get("scop") is None:
+            assert actual["scop"] is None
+        else:
+            assert actual["scop"] == pytest.approx(expected["scop"])
+        for key in (
+            "requires_hydronic",
+            "requires_existing_gas",
+            "requires_existing_high_power_electric",
+            "requires_existing_biomass_infrastructure",
+        ):
+            assert bool(actual[key]) == bool(expected.get(key, False))
+
+    assert db.execute("SELECT COUNT(*) FROM energy_products").fetchone()[0] == 49
+    assert db.execute(
+        "SELECT COUNT(*) FROM energy_product_heating_compat"
+    ).fetchone()[0] == 40
+    assert db.execute(
+        "SELECT COUNT(*) FROM energy_product_performance_points"
+    ).fetchone()[0] == 50
+    assert db.execute(
+        "SELECT COUNT(*) FROM energy_product_seasonal_performance"
+    ).fetchone()[0] == 2
+
+    # Four air-air rows are derived multi-unit bundles retained only for TEO
+    # parity. They are not standalone purchasable SKUs and must stay out of the
+    # public product listing.
+    public_heating_count = db.execute(
+        """
+        SELECT COUNT(*)
+        FROM energy_heating_products_compat_v1
+        WHERE active = 1
+          AND NOT (
+              technology_id = 'heat-pump-air-air'
+              AND COALESCE(source_kind, '') LIKE 'derived_bundle_%'
+          )
+        """
+    ).fetchone()[0]
+    assert public_heating_count == 36
