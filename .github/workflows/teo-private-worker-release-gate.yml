@@ -6,6 +6,7 @@ on:
       - lemnaru-karol/teo-verify-isolation-dev
     paths:
       - commercial/app/**
+      - commercial/tests/**
       - commercial/data/**
       - commercial/teo-worker/**
       - scripts/prepare-teo-cloudflare-worker.mjs
@@ -15,6 +16,7 @@ on:
   pull_request:
     paths:
       - commercial/app/**
+      - commercial/tests/**
       - commercial/data/**
       - commercial/teo-worker/**
       - scripts/prepare-teo-cloudflare-worker.mjs
