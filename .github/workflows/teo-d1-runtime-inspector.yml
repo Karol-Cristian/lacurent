@@ -75,7 +75,7 @@ jobs:
         run: |
           set -euo pipefail
           npx --yes wrangler@4.145.0 deploy
-          curl --fail-with-body -sS "https://$INSPECTOR_NAME.$WORKERS_DEV_SUBDOMAIN.workers.dev/" | tee /tmp/inspector.json
+          sleep 3\n          curl --retry 8 --retry-delay 1 --retry-all-errors --fail-with-body -sS "https://$INSPECTOR_NAME.$WORKERS_DEV_SUBDOMAIN.workers.dev/" | tee /tmp/inspector.json
           echo
           python -m json.tool /tmp/inspector.json
       - name: Delete inspector
