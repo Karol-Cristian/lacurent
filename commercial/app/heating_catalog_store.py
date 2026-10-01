@@ -1665,6 +1665,10 @@ async def read_heating_public_products_from_d1(
                    catalog_version, observed_on
             FROM energy_heating_products_compat_v1
             WHERE active = 1
+              AND NOT (
+                  technology_id = 'heat-pump-air-air'
+                  AND COALESCE(source_kind, '') LIKE 'derived_bundle_%'
+              )
             ORDER BY technology_id, rated_power_kw, equipment_price_lei, id
             """
         ).run()
@@ -1708,6 +1712,10 @@ async def read_heating_public_catalog_from_d1(
                    catalog_version, observed_on
             FROM energy_heating_products_compat_v1
             WHERE active = 1
+              AND NOT (
+                  technology_id = 'heat-pump-air-air'
+                  AND COALESCE(source_kind, '') LIKE 'derived_bundle_%'
+              )
             ORDER BY technology_id, rated_power_kw, equipment_price_lei, id
             """
         ).run()
@@ -1724,6 +1732,10 @@ async def read_heating_public_catalog_from_d1(
             FROM energy_heat_pump_performance_points_compat_v1 AS pp
             INNER JOIN energy_heating_products_compat_v1 AS p ON p.id = pp.product_id
             WHERE p.active = 1
+              AND NOT (
+                  p.technology_id = 'heat-pump-air-air'
+                  AND COALESCE(p.source_kind, '') LIKE 'derived_bundle_%'
+              )
             ORDER BY pp.product_id, pp.outdoor_temperature_c,
                      pp.flow_temperature_c
             """
@@ -1736,6 +1748,10 @@ async def read_heating_public_catalog_from_d1(
             FROM energy_heat_pump_seasonal_performance_compat_v1 AS sp
             INNER JOIN energy_heating_products_compat_v1 AS p ON p.id = sp.product_id
             WHERE p.active = 1
+              AND NOT (
+                  p.technology_id = 'heat-pump-air-air'
+                  AND COALESCE(p.source_kind, '') LIKE 'derived_bundle_%'
+              )
             ORDER BY sp.product_id, sp.climate, sp.application_temperature_c
             """
         ).run()
