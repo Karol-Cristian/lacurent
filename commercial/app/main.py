@@ -78,10 +78,12 @@ from .energy_product_teo_adapter import (
     RadiatorFinalistCommercializationRequestV1,
     UnderfloorPipeFinalistBomRequestV1,
     UnderfloorSystemFinalistBomRequestV1,
+    WallCatalogFinalistCommercializationRequestV1,
     commercialize_hrv_finalist,
     commercialize_radiator_bom_from_finalist,
     commercialize_underfloor_pipe_bom_from_finalist,
     commercialize_underfloor_system_bom_from_finalist,
+    wall_products_from_catalog_window,
 )
 from .heating_optimization import (
     HeatingBranchSummaryV1,
@@ -2245,6 +2247,76 @@ async def full_product_backed_optimization_api(
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return JSONResponse(model_to_dict(result))
+
+
+@app.post("/api/optimization/commercialize/wall-finalist-catalog")
+async def wall_finalist_catalog_commercialization_api(
+    payload: WallCatalogFinalistCommercializationRequestV1,
+    request: Request,
+) -> JSONResponse:
+    """Discretize one TEO wall-R finalist against bounded source-backed D1 SKUs."""
+
+    env = request.scope.get("env")
+    db = getattr(env, "DB", None) if env is not None else None
+    if db is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Energy product catalog D1 is unavailable.",
+        )
+
+    try:
+        window = await read_energy_product_candidate_window_d1(
+            db,
+            "wall_insulation",
+            limit=payload.category_limit,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Energy product catalog D1 read failed.",
+        ) from exc
+
+    products = wall_products_from_catalog_window(window)
+    if not products:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": (
+                    "No wall-insulation product has complete source-backed "
+                    "thermal and package-price data."
+                ),
+                "loadedProducts": int(window.get("loaded_products") or 0),
+                "blockedProducts": list(window.get("blocked_products") or []),
+            },
+        )
+
+    try:
+        result = commercialize_wall_candidate(
+            WallCommercializationRequestV1(
+                baseline=payload.baseline,
+                raw_candidate=payload.raw_candidate,
+                products=products,
+                nonmaterial_installed_cost_per_m2_lei=(
+                    payload.nonmaterial_installed_cost_per_m2_lei
+                ),
+            ),
+            await _optimizer_cost_catalog(request),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    return JSONResponse(
+        {
+            "commercialization": model_to_dict(result),
+            "catalogWindow": {
+                "mode": window.get("catalog_mode"),
+                "loadedProducts": int(window.get("loaded_products") or 0),
+                "commercialProducts": len(products),
+                "blockedProducts": list(window.get("blocked_products") or []),
+            },
+            "stage": "wall_finalist_catalog_discretization",
+        }
+    )
 
 
 @app.post("/api/optimization/commercialize/hrv-finalist")
