@@ -7,7 +7,10 @@ import pytest
 
 from commercial.app.energy_product_teo_adapter import (
     ProductCandidate,
+    add_radiator_bom_to_finalist,
+    add_underfloor_pipe_bom_to_finalist,
     commercialize_hrv_finalist,
+    design_underfloor_pipe_requirement,
     candidate_from_source_pack_row,
     match_hrv_units,
     match_radiators,
@@ -243,3 +246,98 @@ def test_hrv_finalist_does_not_accept_incomplete_marketing_product():
             [incomplete],
             fan_operation_hours_per_year=8760,
         )
+
+
+def test_radiator_bom_reprices_finalist_without_changing_physics():
+    baseline = _hrv_test_building()
+    raw = evaluate_parametric_candidate(
+        baseline,
+        ParametricMeasuresV1(),
+        {"costs": {}},
+    )
+    product = ProductCandidate(
+        product_id="radiator-dt50",
+        category_id="radiator",
+        properties={
+            "heat_output_w_dt50": 1709,
+            "radiator_exponent_n": 1.3358,
+        },
+        unit_price_lei=509,
+    )
+    commercial, match = add_radiator_bom_to_finalist(
+        raw,
+        [product],
+        required_output_w=2500,
+        flow_temperature_c=55,
+        return_temperature_c=45,
+        room_temperature_c=20,
+        installation_allowance_lei_per_unit=120,
+    )
+
+    assert match.available_output_w >= 2500
+    assert commercial.final_energy_kwh == pytest.approx(raw.final_energy_kwh)
+    assert commercial.annual_bill_lei == pytest.approx(raw.annual_bill_lei)
+    emitter_line = next(
+        line for line in commercial.cost_breakdown
+        if line.family == "heating_emitter"
+    )
+    assert emitter_line.quantity == pytest.approx(match.quantity)
+    assert emitter_line.design_available_capacity_kw >= 2.5
+
+
+def test_underfloor_design_requires_explicit_spacing_and_loop_limit():
+    design = design_underfloor_pipe_requirement(
+        active_area_m2=92,
+        spacing_mm=150,
+        max_loop_length_m=100,
+        connection_allowance_m=20,
+    )
+    assert design.required_pipe_length_m == pytest.approx(
+        92 / 0.15 + 20,
+        abs=0.01,
+    )
+    assert design.required_loop_count == 7
+
+    with pytest.raises(ValueError):
+        design_underfloor_pipe_requirement(
+            active_area_m2=92,
+            spacing_mm=0,
+            max_loop_length_m=100,
+        )
+
+
+def test_underfloor_bom_rounds_explicit_design_to_whole_product_coils():
+    baseline = _hrv_test_building()
+    raw = evaluate_parametric_candidate(
+        baseline,
+        ParametricMeasuresV1(),
+        {"costs": {}},
+    )
+    product = ProductCandidate(
+        product_id="ufh-pipe-640",
+        category_id="underfloor_pipe",
+        properties={"package_length_m": 640},
+        package_price_lei=3200,
+    )
+    design = design_underfloor_pipe_requirement(
+        active_area_m2=92,
+        spacing_mm=150,
+        max_loop_length_m=100,
+        connection_allowance_m=20,
+    )
+    commercial, match = add_underfloor_pipe_bom_to_finalist(
+        raw,
+        [product],
+        design=design,
+        installation_allowance_lei=1000,
+    )
+
+    assert match.coil_count == 1
+    assert match.purchased_length_m == pytest.approx(640)
+    pipe_line = next(
+        line for line in commercial.cost_breakdown
+        if line.family == "underfloor_pipe"
+    )
+    assert pipe_line.product_id == "ufh-pipe-640"
+    assert pipe_line.capex_lei == pytest.approx(4200)
+    assert commercial.final_energy_kwh == pytest.approx(raw.final_energy_kwh)
