@@ -377,7 +377,26 @@ async function routeVerify(request, env) {
   let leaseToken = null;
 
   if (runId) {
-    const gate = await acquireFlow(env, runId);
+    let gate;
+    try {
+      gate = await acquireFlow(env, runId);
+    } catch (error) {
+      return Response.json(
+        {
+          error:"TEO router flow acquire indisponibil.",
+          stage:"verify-router-acquire-flow",
+          errorType:error?.name || "Error",
+        },
+        {
+          status:503,
+          headers:{
+            "cache-control":"no-store",
+            "retry-after":"2",
+            "x-lacurent-teo":"private-teo-sharded",
+          },
+        },
+      );
+    }
     if (!gate.acquired) {
       const retryAfterMs = Number(gate.state?.retryAfterMs || FLOW_COOLDOWN_MS);
       return Response.json(
@@ -429,7 +448,28 @@ async function routeVerify(request, env) {
   }
 
   if (routed.response.status === 200 && runId && leaseToken) {
-    const state = await completeFlow(env, runId, leaseToken);
+    let state;
+    try {
+      state = await completeFlow(env, runId, leaseToken);
+    } catch (error) {
+      return Response.json(
+        {
+          error:"TEO router flow complete indisponibil.",
+          stage:"verify-router-complete-flow",
+          errorType:error?.name || "Error",
+          shard:routed.shard?.toLowerCase() || "",
+        },
+        {
+          status:503,
+          headers:{
+            "cache-control":"no-store",
+            "retry-after":"2",
+            "x-lacurent-teo":"private-teo-sharded",
+            "x-lacurent-teo-shard":routed.shard?.toLowerCase() || "",
+          },
+        },
+      );
+    }
     return await jsonResponseWithRouteHeaders(
       routed.response,
       routed.shard,
