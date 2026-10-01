@@ -1,6 +1,6 @@
 from workers import Response, WorkerEntrypoint, asgi
 
-from app.main import app
+from app.teo_app import app
 
 
 def _friendly_worker_error_html() -> str:
