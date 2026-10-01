@@ -157,7 +157,7 @@ async function benchmarkResponse(env) {
       resolution_minutes: 15,
       truth: metrics.truth_source || 'satellite adapter pending first successful cycle',
       scoring: 'daylight GTI only; MAE/RMSE/bias by model and requested forecast horizon',
-      audit: 'full 48-hour model curves are stored immutably in R2 on every 15-minute run',
+      audit: 'full 48-hour model curves are stored in the isolated ForecastArchive on every 15-minute run; R2 mirroring can be enabled later without changing the API',
       models: MODEL_REGISTRY,
     },
     metrics,
@@ -176,7 +176,7 @@ export default {
         version: '0.3.0',
         engine: '15-minute multi-model fusion',
         models: MODEL_REGISTRY,
-        architecture: ['15-minute forecast grid', 'multi-model provider adapters', 'irradiance normalization', 'PV conversion', 'horizon-aware fusion weights', 'asset forecast', 'Romania spatial field', 'immutable R2 forecast curves', 'Durable Object benchmark metrics', 'native satellite truth'],
+        architecture: ['15-minute forecast grid', 'multi-model provider adapters', 'irradiance normalization', 'PV conversion', 'horizon-aware fusion weights', 'asset forecast', 'Romania spatial field', 'immutable forecast curves in ForecastArchive', 'Durable Object benchmark metrics', 'native satellite truth'],
         benchmark_status: 'continuous 15-minute benchmark enabled; weights remain equal until sufficient scored samples exist',
       });
       if (url.pathname === '/api/v1/pv/forecast') return await assetForecast(url, env);
