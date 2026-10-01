@@ -762,12 +762,14 @@
     restoreCurrentProjectId();
     syncAccountChrome();
 
-    accountOpen?.addEventListener("click", async () => {
+    const openAccountDialog = async () => {
       if (typeof accountDialog?.showModal === "function") accountDialog.showModal();
       else accountDialog?.setAttribute("open", "");
       const signedIn = await refreshAccountSession();
       if (signedIn) await refreshAccountProjects();
-    });
+    };
+
+    accountOpen?.addEventListener("click", openAccountDialog);
     $("#edAccountClose")?.addEventListener("click", () => accountDialog?.close());
     accountDialog?.addEventListener("click", event => {
       if (event.target === accountDialog) accountDialog.close();
@@ -789,6 +791,17 @@
     refreshAccountSession().then(signedIn => {
       if (signedIn && accountDialog?.open) refreshAccountProjects();
     });
+
+    const accountIntent = new URLSearchParams(window.location.search).get("account");
+    if (accountIntent) {
+      window.setTimeout(() => {
+        openAccountDialog();
+        if (accountIntent === "register") {
+          const register = document.querySelector(".ed-account-register");
+          if (register) register.open = true;
+        }
+      }, 0);
+    }
   }
 
   function syncChoiceGroupSelections() {
