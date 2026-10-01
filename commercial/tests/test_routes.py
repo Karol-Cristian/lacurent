@@ -2409,7 +2409,7 @@ def test_editorial_teo_run_has_no_product_discretization_stage() -> None:
     assert "Raportul nu repetă recomandările de pe pagina TEO." in source
     assert "Produse și cantități din catalogul LaCurent" in source
     assert '"POST"' in source
-    assert '"/api/home-lab/bom"' if False else True
+    assert 'fetch("/api/home-lab/bom"' in source
     assert "reference_lambda_w_mk" not in source or "engineeringSpecLocal" in source
     assert "design_required_power_kw" in source
     assert "installed_power_target_kw" in source
