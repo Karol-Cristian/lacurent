@@ -120,6 +120,7 @@ async function runEngine(name, engine, viewport) {
     },null,{timeout:30000});
 
     // Internal back/forward navigation must not lose the calculated house.
+    await page.locator("#edHouseValuesConfirmed").check();
     await page.locator('[data-page="house"] [data-next]').click();
     await page.locator('[data-page="envelope"].is-active').waitFor({state:"visible",timeout:10000});
     await page.locator('[data-page="envelope"] [data-back]').click();
