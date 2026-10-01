@@ -89,6 +89,18 @@ async def read_energy_product_candidate_window_d1(
     ).bind(*product_ids).run()
     offer_rows = _d1_rows(offer_result)
 
+    image_result = await db.prepare(
+        f"""
+        SELECT image_id, product_id, image_url, source_url, alt_text,
+               image_kind, rights_basis, is_primary
+        FROM energy_product_images
+        WHERE active = 1
+          AND product_id IN ({placeholders})
+        ORDER BY product_id, is_primary DESC, image_id
+        """
+    ).bind(*product_ids).run()
+    image_rows = _d1_rows(image_result)
+
     properties_by_product: dict[str, dict[str, Any]] = {pid: {} for pid in product_ids}
     property_trace_by_product: dict[str, list[dict[str, Any]]] = {
         pid: [] for pid in product_ids
@@ -115,6 +127,14 @@ async def read_energy_product_candidate_window_d1(
         product_id = str(row.get("product_id") or "")
         if product_id in offers_by_product:
             offers_by_product[product_id].append(dict(row))
+
+    images_by_product: dict[str, list[dict[str, Any]]] = {
+        pid: [] for pid in product_ids
+    }
+    for row in image_rows:
+        product_id = str(row.get("product_id") or "")
+        if product_id in images_by_product:
+            images_by_product[product_id].append(dict(row))
 
     candidates: list[ProductCandidate] = []
     product_payloads: list[dict[str, Any]] = []
@@ -158,6 +178,7 @@ async def read_energy_product_candidate_window_d1(
             "properties": normalized,
             "property_trace": property_trace_by_product.get(product_id) or [],
             "offers": offers,
+            "images": images_by_product.get(product_id) or [],
             "missing_teo_properties": missing,
         }
         product_payloads.append(payload)
