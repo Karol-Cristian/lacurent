@@ -4084,7 +4084,7 @@
     const warnings = [
       "TEO produce exclusiv optimul parametric tehnico-economic; produsele comerciale nu participă la alegerea soluției.",
       "Discretizarea în SKU-uri reale este o etapă separată, ulterioară rezultatului TEO.",
-      "TEO Worker Flow serializează verificările canonice și aplică 1–3 VERIFY adaptiv, cu cooldown persistent în D1 între calculele RBPE grele.",
+      "TEO Worker Flow execută 1–3 VERIFY adaptiv în ordine serială în browser, cu cooldown explicit între calculele RBPE grele; calea critică de verificare nu depinde de write-uri D1.",
       "Căutarea TEO combină explorarea globală Halton cu două runde de rafinare locală în jurul zonelor economice/Pareto promițătoare.",
       "λ-urile afișate pentru anvelopă sunt valorile de calcul/reference folosite la transformarea R↔grosime; în această versiune TEO optimizează R și U rezultat, nu λ ca material comercial independent.",
       "Valorile ψ provin din modelul clădirii și sunt raportate inginerește; optimizarea explicită a punților termice va necesita o variabilă TEO separată.",
@@ -4398,12 +4398,9 @@
             `ADAPTIVE VERIFY · ${adaptiveVerification.reason} · exact ${verifiedRows.length}/${verifyLimit}.`
           );
           if (!adaptiveVerification.continueVerification) break;
-          if (
-            verified?.workerFlow?.storage === "none"
-            && i + 1 < verifyTargets.length
-          ) {
+          if (i + 1 < verifyTargets.length) {
             log(
-              `WORKER FLOW · fără D1 persistent; aplic cooldown local de ${(TEO_SERVER_PROFILE.cooldownMs / 1000).toFixed(1)} s înainte de următorul VERIFY.`
+              `WORKER FLOW · cooldown serial local de ${(TEO_SERVER_PROFILE.cooldownMs / 1000).toFixed(1)} s înainte de următorul VERIFY.`
             );
             await sleep(TEO_SERVER_PROFILE.cooldownMs);
           }
