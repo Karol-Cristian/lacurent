@@ -2404,7 +2404,7 @@ def test_editorial_teo_run_has_no_product_discretization_stage() -> None:
     assert "PRODUCT SAFE MODE" not in run_section
     assert "PRODUCT FALLBACK" not in run_section
 
-    assert "Optim TEO · specificație inginerească" in source
+    assert "loadCatalogBom(engineering, opt)" in source
     assert "Rezumat economic al optimului TEO" in source
     assert "CAPEX parametric estimat" in source
     assert "Intervențiile selectate" not in source
