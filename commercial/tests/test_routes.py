@@ -600,7 +600,8 @@ def test_public_product_routes_do_not_load_optimizer_planning_catalog() -> None:
         "async def read_heating_public_catalog_from_d1(",
         1,
     )[0]
-    assert "FROM heating_products" in products_only_section
+    assert "FROM energy_heating_products_compat_v1" in products_only_section
+    assert "FROM heating_products" not in products_only_section
     assert "heat_pump_performance_points" not in products_only_section
     assert "heat_pump_seasonal_performance" not in products_only_section
 
