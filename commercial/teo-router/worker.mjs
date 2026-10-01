@@ -2,25 +2,8 @@ const SHARDS = ["TEO_A", "TEO_B", "TEO_C", "TEO_D"];
 const SHARD_COOLDOWN_BASE_MS = 1500;
 const SHARD_COOLDOWN_MAX_MS = 15000;
 const FLOW_COOLDOWN_MS = 1800;
-const FLOW_LEASE_MS = 30000;
 const FLOW_MAX_VERIFICATIONS = 3;
-const FLOW_CREATE_SQL = `
-CREATE TABLE IF NOT EXISTS teo_verification_runs (
-  run_id TEXT PRIMARY KEY,
-  status TEXT NOT NULL DEFAULT 'ready',
-  planned_verifications INTEGER NOT NULL DEFAULT 1,
-  verified_count INTEGER NOT NULL DEFAULT 0,
-  next_allowed_at_ms INTEGER NOT NULL DEFAULT 0,
-  in_flight INTEGER NOT NULL DEFAULT 0,
-  lease_token TEXT,
-  lease_expires_at_ms INTEGER NOT NULL DEFAULT 0,
-  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-)`;
-
-let cursor = 0;
-const disabledUntil = new Map();
-const consecutiveFailures = new Map();
-let flowSchemaPromise = null;
+const FLOW_STORAGE = "router-stateless";
 
 function shardCooldownMs(key) {
   const failures = Math.max(1, Number(consecutiveFailures.get(key) || 1));
@@ -107,184 +90,43 @@ async function callShard(env, key, request, bodyBytes, extraHeaders = {}) {
   return await binding.fetch(requestForShard(request, bodyBytes, extraHeaders));
 }
 
-async function ensureFlowSchema(env) {
-  if (!env.DB) throw new Error("missing_DB");
-  if (!flowSchemaPromise) {
-    flowSchemaPromise = (async () => {
-      await env.DB.prepare(FLOW_CREATE_SQL).run();
-      await env.DB.prepare(
-        "CREATE INDEX IF NOT EXISTS teo_verification_runs_status_idx " +
-        "ON teo_verification_runs(status, next_allowed_at_ms)"
-      ).run();
-    })().catch(error => {
-      flowSchemaPromise = null;
-      throw error;
-    });
-  }
-  await flowSchemaPromise;
-}
-
-async function flowRow(env, runId) {
-  await ensureFlowSchema(env);
-  const result = await env.DB.prepare(
-    "SELECT run_id, status, planned_verifications, verified_count, " +
-    "next_allowed_at_ms, in_flight, lease_token, lease_expires_at_ms, updated_at " +
-    "FROM teo_verification_runs WHERE run_id = ? LIMIT 1"
-  ).bind(runId).all();
-  return result.results?.[0] || null;
-}
-
-function publicFlowState(row, storage = "router-d1") {
-  const now = Date.now();
-  if (!row) {
-    return {
-      status:"ready",
-      ready:true,
-      verifiedCount:0,
-      plannedVerifications:FLOW_MAX_VERIFICATIONS,
-      retryAfterMs:0,
-      storage,
-    };
-  }
-  const verifiedCount = Number(row.verified_count || 0);
-  const planned = Math.max(1, Number(row.planned_verifications || 1));
-  const nextAllowed = Number(row.next_allowed_at_ms || 0);
-  const inFlight = Boolean(Number(row.in_flight || 0));
-  const leaseExpires = Number(row.lease_expires_at_ms || 0);
-  let status = "ready";
-  let ready = true;
-  let retryAfterMs = 0;
-  if (verifiedCount >= planned || String(row.status || "") === "complete") {
-    status = "complete";
-    ready = false;
-  } else if (inFlight && leaseExpires > now) {
-    status = "running";
-    ready = false;
-    retryAfterMs = Math.max(100, leaseExpires - now);
-  } else if (nextAllowed > now) {
-    status = "cooldown";
-    ready = false;
-    retryAfterMs = nextAllowed - now;
-  }
+function publicFlowState(runId, {
+  status="ready",
+  plannedVerifications=FLOW_MAX_VERIFICATIONS,
+} = {}) {
+  const planned = Math.max(
+    1,
+    Math.min(Number(plannedVerifications || FLOW_MAX_VERIFICATIONS), FLOW_MAX_VERIFICATIONS),
+  );
   return {
-    runId:String(row.run_id || ""),
+    runId:String(runId || ""),
     status,
-    ready,
-    verifiedCount,
+    ready:status === "ready",
+    verifiedCount:null,
     plannedVerifications:planned,
-    retryAfterMs:Math.round(retryAfterMs),
-    storage,
+    retryAfterMs:status === "ready" ? 0 : FLOW_COOLDOWN_MS,
+    storage:FLOW_STORAGE,
   };
 }
 
-async function startFlow(env, runId, plannedRaw) {
-  await ensureFlowSchema(env);
-  const planned = Math.max(1, Math.min(Number(plannedRaw || FLOW_MAX_VERIFICATIONS), FLOW_MAX_VERIFICATIONS));
-  await env.DB.prepare(
-    "DELETE FROM teo_verification_runs WHERE updated_at < datetime('now', '-1 day')"
-  ).run();
-  await env.DB.prepare(`
-    INSERT INTO teo_verification_runs(
-      run_id, status, planned_verifications, verified_count,
-      next_allowed_at_ms, in_flight, lease_token,
-      lease_expires_at_ms, updated_at
-    )
-    VALUES (?, 'ready', ?, 0, 0, 0, NULL, 0, CURRENT_TIMESTAMP)
-    ON CONFLICT(run_id) DO UPDATE SET
-      status = 'ready',
-      planned_verifications = excluded.planned_verifications,
-      verified_count = 0,
-      next_allowed_at_ms = 0,
-      in_flight = 0,
-      lease_token = NULL,
-      lease_expires_at_ms = 0,
-      updated_at = CURRENT_TIMESTAMP
-  `).bind(runId, planned).run();
-  return publicFlowState(await flowRow(env, runId));
+async function startFlow(_env, runId, plannedRaw) {
+  return publicFlowState(runId, {plannedVerifications:plannedRaw});
 }
 
-async function acquireFlow(env, runId) {
-  let row = await flowRow(env, runId);
-  if (!row) {
-    await startFlow(env, runId, FLOW_MAX_VERIFICATIONS);
-    row = await flowRow(env, runId);
-  }
-  const state = publicFlowState(row);
-  if (!state.ready) return {acquired:false, leaseToken:null, state};
-
-  const now = Date.now();
-  const leaseToken = `${runId}:${crypto.randomUUID()}`;
-  await env.DB.prepare(`
-    UPDATE teo_verification_runs
-    SET status='running', in_flight=1, lease_token=?,
-        lease_expires_at_ms=?, updated_at=CURRENT_TIMESTAMP
-    WHERE run_id=?
-      AND verified_count < planned_verifications
-      AND next_allowed_at_ms <= ?
-      AND (in_flight=0 OR lease_expires_at_ms <= ?)
-  `).bind(leaseToken, now + FLOW_LEASE_MS, runId, now, now).run();
-  const acquiredRow = await flowRow(env, runId);
-  const acquired = String(acquiredRow?.lease_token || "") === leaseToken;
-  return {
-    acquired,
-    leaseToken:acquired ? leaseToken : null,
-    state:publicFlowState(acquiredRow),
-  };
-}
-
-async function completeFlow(env, runId, leaseToken) {
-  const now = Date.now();
-  await env.DB.prepare(`
-    UPDATE teo_verification_runs
-    SET verified_count=verified_count+1,
-        status=CASE WHEN verified_count+1 >= planned_verifications
-                    THEN 'complete' ELSE 'cooldown' END,
-        next_allowed_at_ms=?,
-        in_flight=0,
-        lease_token=NULL,
-        lease_expires_at_ms=0,
-        updated_at=CURRENT_TIMESTAMP
-    WHERE run_id=? AND lease_token=?
-  `).bind(now + FLOW_COOLDOWN_MS, runId, leaseToken).run();
-  return publicFlowState(await flowRow(env, runId));
-}
-
-async function releaseFlow(env, runId, leaseToken) {
-  if (!leaseToken) return;
-  await env.DB.prepare(`
-    UPDATE teo_verification_runs
-    SET status='cooldown',
-        next_allowed_at_ms=?,
-        in_flight=0,
-        lease_token=NULL,
-        lease_expires_at_ms=0,
-        updated_at=CURRENT_TIMESTAMP
-    WHERE run_id=? AND lease_token=?
-  `).bind(Date.now() + FLOW_COOLDOWN_MS, runId, leaseToken).run();
-}
-
-async function finishFlow(env, runId) {
-  await ensureFlowSchema(env);
-  await env.DB.prepare(`
-    UPDATE teo_verification_runs
-    SET status='complete',
-        in_flight=0,
-        lease_token=NULL,
-        lease_expires_at_ms=0,
-        updated_at=CURRENT_TIMESTAMP
-    WHERE run_id=?
-  `).bind(runId).run();
-  return publicFlowState(await flowRow(env, runId));
+async function finishFlow(_env, runId) {
+  return publicFlowState(runId, {status:"complete"});
 }
 
 async function handleFlowEndpoint(request, env, url) {
   if (request.method === "POST" && url.pathname === "/api/optimization/home-lab/v4/flow/start") {
     const raw = await request.json();
     const runId = String(raw?.runId || "").trim();
-    if (!runId || runId.length > 160) return Response.json({error:"Run ID TEO invalid.",stage:"teo-flow-start"},{status:422});
+    if (!runId || runId.length > 160) {
+      return Response.json({error:"Run ID TEO invalid.",stage:"teo-flow-start"},{status:422});
+    }
     return Response.json(
       await startFlow(env, runId, raw?.plannedVerifications),
-      {headers:{"cache-control":"no-store","x-lacurent-teo":"router-flow-d1"}},
+      {headers:{"cache-control":"no-store","x-lacurent-teo":"router-flow-stateless"}},
     );
   }
 
@@ -293,14 +135,14 @@ async function handleFlowEndpoint(request, env, url) {
 
   if (request.method === "GET" && !url.pathname.endsWith("/finish")) {
     return Response.json(
-      publicFlowState(await flowRow(env, runId)),
-      {headers:{"cache-control":"no-store","x-lacurent-teo":"router-flow-d1"}},
+      publicFlowState(runId),
+      {headers:{"cache-control":"no-store","x-lacurent-teo":"router-flow-stateless"}},
     );
   }
   if (request.method === "POST" && url.pathname.endsWith("/finish")) {
     return Response.json(
       await finishFlow(env, runId),
-      {headers:{"cache-control":"no-store","x-lacurent-teo":"router-flow-d1"}},
+      {headers:{"cache-control":"no-store","x-lacurent-teo":"router-flow-stateless"}},
     );
   }
   return null;
@@ -362,30 +204,8 @@ async function routeVerify(request, env) {
     return Response.json({error:"Payload VERIFY invalid.",stage:"verify-router"},{status:422});
   }
   const runId = String(payload?.runId || payload?.form?._optimizer_run_id || "").trim();
-  let leaseToken = null;
-
-  if (runId) {
-    const gate = await acquireFlow(env, runId);
-    if (!gate.acquired) {
-      const retryAfterMs = Number(gate.state?.retryAfterMs || FLOW_COOLDOWN_MS);
-      return Response.json(
-        {
-          error:"TEO Worker Flow nu este încă pregătit pentru următorul VERIFY.",
-          optimizerVersion:"v4-adaptive",
-          stage:"verify-gate",
-          workerFlow:gate.state,
-        },
-        {
-          status:409,
-          headers:{
-            "cache-control":"no-store",
-            "retry-after":String(Math.max(1, Math.ceil(retryAfterMs / 1000))),
-            "x-lacurent-teo":"router-flow-d1",
-          },
-        },
-      );
-    }
-    leaseToken = gate.leaseToken;
+  if (runId.length > 160) {
+    return Response.json({error:"Run ID TEO invalid.",stage:"verify-router"},{status:422});
   }
 
   const routed = await routeAcrossShards(
@@ -396,7 +216,6 @@ async function routeVerify(request, env) {
   );
 
   if (!routed.response) {
-    if (runId && leaseToken) await releaseFlow(env, runId, leaseToken);
     return Response.json(
       {
         error:"TEO este temporar indisponibil.",
@@ -415,16 +234,13 @@ async function routeVerify(request, env) {
     );
   }
 
-  if (routed.response.status === 200 && runId && leaseToken) {
-    const state = await completeFlow(env, runId, leaseToken);
+  if (routed.response.status === 200) {
     return await jsonResponseWithRouteHeaders(
       routed.response,
       routed.shard,
-      {workerFlow:state},
+      {workerFlow:publicFlowState(runId)},
     );
   }
-
-  if (runId && leaseToken) await releaseFlow(env, runId, leaseToken);
   return responseWithRouteHeaders(routed.response, routed.shard);
 }
 
@@ -464,7 +280,7 @@ export default {
         status:"ok",
         service:"lacurent-teo-router",
         shards:SHARDS.length,
-        flow:"router-d1",
+        flow:FLOW_STORAGE,
       });
     }
     if (!isTeoPath(url.pathname)) {
@@ -473,6 +289,15 @@ export default {
     try {
       return await routeTeo(request, env);
     } catch (error) {
+      console.error(
+        "[LaCurent TEO Router] control exception",
+        JSON.stringify({
+          method:request.method,
+          path:url.pathname,
+          name:error?.name || "Error",
+          message:String(error?.message || error).slice(0,240),
+        }),
+      );
       return Response.json(
         {
           error:"TEO router indisponibil.",
