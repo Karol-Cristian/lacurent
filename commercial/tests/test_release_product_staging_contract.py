@@ -43,3 +43,16 @@ def test_teo_result_opens_real_post_teo_catalog_bom() -> None:
     assert 'href="/magazin?source=home-lab-bom"' not in source
     assert '@app.post("/api/home-lab/bom")' in main
     assert '"stage": "post_teo_bom"' in main
+
+
+def test_local_bom_route_is_explicitly_unbound_without_cloudflare_env() -> None:
+    from fastapi.testclient import TestClient
+    from commercial.app.main import app
+
+    response = TestClient(app).post("/api/home-lab/bom", json={"requirements":[]})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["source"] == "local-unbound"
+    assert payload["available"] is False
+    assert payload["stage"] == "post_teo_bom"
+    assert payload["items"] == []
