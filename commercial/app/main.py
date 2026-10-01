@@ -3075,8 +3075,18 @@ async def home_lab_catalog_bom_api(request: Request) -> JSONResponse:
 
         elif category_id in {"heat_pump", "gas_boiler", "electric_boiler", "pellet_boiler"}:
             required_kw = max(float(requirement.get("requiredPowerKw") or 0), 0.0)
+            technology_branch = str(requirement.get("technologyBranch") or "").strip()
+            technology_filtered = products
+            if category_id == "heat_pump" and technology_branch:
+                exact = [
+                    p for p in products
+                    if str((p.get("properties") or {}).get("technology_id") or "").strip()
+                    == technology_branch
+                ]
+                if exact:
+                    technology_filtered = exact
             eligible = [
-                p for p in products
+                p for p in technology_filtered
                 if (numeric(p.get("properties") or {}, "rated_power_kw") or 0) + 1e-9 >= required_kw
             ]
             if eligible:
