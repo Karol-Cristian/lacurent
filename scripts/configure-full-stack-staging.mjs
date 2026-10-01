@@ -165,7 +165,13 @@ const committedConfigs = [
 ];
 for (const rel of committedConfigs) {
   const text = fs.readFileSync(path.join(root, rel), "utf8");
-  if (text.includes("lacurent.com") || text.includes('database_name = "lacurent-db"')) {
+  const hasProductionDatabase = text.includes('database_name = "lacurent-db"');
+  const hasPublicRouteConfig = (
+    text.includes("[[routes]]")
+    || text.includes("custom_domain")
+    || text.includes("zone_name")
+  );
+  if (hasProductionDatabase || hasPublicRouteConfig) {
     throw new Error(`Staging config leaked production routing/database in ${rel}`);
   }
 }
