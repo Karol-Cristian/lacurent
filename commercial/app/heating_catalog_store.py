@@ -363,7 +363,7 @@ async def _ensure_parametric_heating_nodes_d1(db: Any) -> None:
         """
         SELECT id, technology_id, technology_label, rated_power_kw,
                equipment_price_lei, installation_allowance_lei
-        FROM heating_products
+        FROM energy_heating_products_compat_v1
         WHERE active = 1
         ORDER BY technology_id, rated_power_kw, equipment_price_lei, id
         """
@@ -450,106 +450,21 @@ async def _create_heating_catalog_tables(db: Any) -> None:
 
 
 async def _ensure_heating_catalog_d1(db: Any) -> None:
-    """Ensure persistent D1 catalog schema and its derived parametric grid.
+    """Ensure only the derived planning cache for the unified D1 catalog.
 
-    Runtime requests never rewrite an existing active commercial catalog.
-    Repo seed data is used only to bootstrap a genuinely empty D1. The dense
-    parametric grid is derived from whichever active products D1 currently
-    contains and is rebuilt only when those source anchors change.
+    Commercial product identity, offers and heat-pump performance live only in
+    the universal energy_* tables/views. The old heating_* product tables are
+    intentionally not created, seeded or read by runtime requests anymore.
+
+    heating_parametric_nodes is not a second catalog: it is a deterministic
+    derived kW->CAPEX cache rebuilt from energy_heating_products_compat_v1.
     """
 
-    await _create_heating_catalog_tables(db)
-
-    count_result = await db.prepare(
-        "SELECT COUNT(*) AS products_count FROM heating_products WHERE active = 1"
+    await db.prepare(HEATING_PARAMETRIC_NODES_CREATE_SQL).run()
+    await db.prepare(
+        "CREATE INDEX IF NOT EXISTS heating_parametric_nodes_technology_power_idx "
+        "ON heating_parametric_nodes(technology_id, required_power_kw)"
     ).run()
-    count_rows = _d1_rows(count_result)
-    active_count = int((count_rows[0] if count_rows else {}).get("products_count") or 0)
-
-    if active_count <= 0:
-        seed = heating_planning_catalog()
-        products = list(seed.get("options") or [])
-        points = list(seed.get("heat_pump_performance_points") or [])
-        seasonal = list(seed.get("heat_pump_seasonal_performance") or [])
-        expected_version = str(seed.get("catalog_version") or "")
-        observed_on = str(seed.get("observed_on") or "")
-
-        product_stmt = db.prepare(HEATING_PRODUCT_UPSERT_SQL)
-        await _run_d1_batches(
-            db,
-            [
-                product_stmt.bind(
-                    item["id"],
-                    item.get("external_id") or item["id"],
-                    item["technology_id"],
-                    item["technology_label"],
-                    item["label"],
-                    item["system_type"],
-                    item["generator_type"],
-                    item["carrier"],
-                    item["cost_profile"],
-                    float(item["rated_power_kw"]),
-                    None if item.get("efficiency") is None else float(item["efficiency"]),
-                    None if item.get("scop") is None else float(item["scop"]),
-                    float(item["equipment_price_lei"]),
-                    float(item["installation_allowance_lei"]),
-                    item["source_kind"],
-                    item.get("source_url"),
-                    item.get("confidence") or "low",
-                    int(bool(item.get("requires_hydronic", True))),
-                    int(bool(item.get("requires_existing_gas", False))),
-                    int(bool(item.get("requires_existing_high_power_electric", False))),
-                    int(bool(item.get("requires_existing_biomass_infrastructure", False))),
-                    item.get("capacity_basis") or "catalog_nominal_output",
-                    item.get("note") or "",
-                    expected_version,
-                    observed_on,
-                )
-                for item in products
-            ],
-        )
-
-        point_stmt = db.prepare(HEAT_PUMP_POINT_UPSERT_SQL)
-        await _run_d1_batches(
-            db,
-            [
-                point_stmt.bind(
-                    point["product_id"],
-                    float(point["outdoor_temperature_c"]),
-                    float(point["flow_temperature_c"]),
-                    None if point.get("return_temperature_c") is None else float(point["return_temperature_c"]),
-                    None if point.get("delta_t_k") is None else float(point["delta_t_k"]),
-                    None if point.get("heating_capacity_kw") is None else float(point["heating_capacity_kw"]),
-                    float(point["cop"]),
-                    point.get("test_standard"),
-                    point["source_kind"],
-                    point.get("source_url"),
-                    point.get("note") or "",
-                    expected_version,
-                )
-                for point in points
-            ],
-        )
-
-        seasonal_stmt = db.prepare(HEAT_PUMP_SEASONAL_UPSERT_SQL)
-        await _run_d1_batches(
-            db,
-            [
-                seasonal_stmt.bind(
-                    item["product_id"],
-                    item["climate"],
-                    float(item["application_temperature_c"]),
-                    float(item["scop"]),
-                    None if item.get("design_load_kw") is None else float(item["design_load_kw"]),
-                    item["source_kind"],
-                    item.get("source_url"),
-                    item.get("test_standard"),
-                    expected_version,
-                )
-                for item in seasonal
-            ],
-        )
-
     await _ensure_parametric_heating_nodes_d1(db)
 
 def _catalog_payload_from_rows(
