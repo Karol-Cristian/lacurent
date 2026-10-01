@@ -9,6 +9,27 @@ const configRoot = path.join(commercialRoot, "teo-worker");
 const outputDir = path.join(repoRoot, ".wrangler", "teo-worker");
 const srcDir = path.join(outputDir, "src");
 
+const TEO_APP_FILES = [
+  "__init__.py",
+  "teo_app.py",
+  "engine.py",
+  "methodology.py",
+  "models.py",
+  "optimization.py",
+  "optimization_v2.py",
+  "optimization_v3.py",
+  "heating_optimization.py",
+  "heating_catalog_store.py",
+  "home_lab_payload.py",
+  "teo_v4.py",
+  "pricing.py",
+  "cost_curves.py",
+  "extended_costs.py",
+  "market_products.py",
+  "product_matching.py",
+  "renovation.py",
+];
+
 function copyDirectory(source, target) {
   fs.mkdirSync(target, { recursive: true });
   for (const entry of fs.readdirSync(source, { withFileTypes: true })) {
@@ -21,18 +42,21 @@ function copyDirectory(source, target) {
 }
 
 fs.rmSync(outputDir, { recursive:true, force:true });
-fs.mkdirSync(srcDir, { recursive:true });
+fs.mkdirSync(path.join(srcDir, "app"), { recursive:true });
 
-copyDirectory(path.join(commercialRoot, "app"), path.join(srcDir, "app"));
+for (const filename of TEO_APP_FILES) {
+  fs.copyFileSync(
+    path.join(commercialRoot, "app", filename),
+    path.join(srcDir, "app", filename),
+  );
+}
 copyDirectory(path.join(commercialRoot, "data"), path.join(srcDir, "data"));
-copyDirectory(path.join(commercialRoot, "static"), path.join(srcDir, "static"));
-copyDirectory(path.join(commercialRoot, "templates"), path.join(srcDir, "templates"));
 fs.copyFileSync(
-  path.join(commercialRoot, "cloudflare-worker", "worker.py"),
+  path.join(configRoot, "worker.py"),
   path.join(srcDir, "worker.py"),
 );
 fs.copyFileSync(
-  path.join(commercialRoot, "cloudflare-worker", "pyproject.toml"),
+  path.join(configRoot, "pyproject.toml"),
   path.join(outputDir, "pyproject.toml"),
 );
 fs.copyFileSync(
@@ -44,5 +68,6 @@ console.log(JSON.stringify({
   status:"prepared",
   output:".wrangler/teo-worker",
   workerName:"lacurent-teo-private",
-  executionMode:"private_sharded_python_worker",
+  executionMode:"private_sharded_python_worker_minimal",
+  appFiles:TEO_APP_FILES,
 }, null, 2));
