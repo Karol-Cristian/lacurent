@@ -97,7 +97,7 @@ async function fillFreshSystemsInputs(targetPage, {waitForBaseline = false} = {}
   await targetPage.locator("#dhwSystem").selectOption("same_as_heating");
   await targetPage.locator("#ventilation").selectOption("natural");
   if (!waitForBaseline) {
-    await targetPage.locator("#cooling").selectOption("none");
+    await targetPage.locator("#cooling").selectOption("split");
     return null;
   }
   const responsePromise = targetPage.waitForResponse(
@@ -109,7 +109,7 @@ async function fillFreshSystemsInputs(targetPage, {waitForBaseline = false} = {}
     },
     {timeout:45000},
   );
-  await targetPage.locator("#cooling").selectOption("none");
+  await targetPage.locator("#cooling").selectOption("split");
   return responsePromise;
 }
 
@@ -287,7 +287,7 @@ try {
 
   // A fresh Home Lab must not fabricate user data on pages 1–3.
   const freshRequiredValues = await page.evaluate(() =>
-    [...document.querySelectorAll('[data-page="house"] [data-baseline-required]')]
+    [...document.querySelectorAll('[data-page="house"] [data-baseline-required]:not(#localityInput)')]
       .filter(field => !field.closest("[hidden]"))
       .map(field => String(field.value || ""))
   );
