@@ -89,6 +89,7 @@ v3 = require_ok(
 )
 search_points = list(v3.get("searchPoints") or [])
 branch_ids = list(v3.get("runBranchIds") or [])
+branch_batch_size = max(1, int(v3.get("branchBatchSize") or 1))
 assert search_points and branch_ids
 
 candidate_rows: list[dict] = []
@@ -102,7 +103,7 @@ for branch_id in branch_ids:
                 "form": form,
                 "branchId": branch_id,
                 "runId": form["_optimizer_run_id"],
-                "batch": search_points[: min(4, len(search_points))],
+                "batch": search_points[: min(branch_batch_size, len(search_points))],
             },
         ),
         f"v3-branch-{branch_id}",
