@@ -639,31 +639,29 @@ try {
       editorialHudStatus
     );
   }
-  if (!editorialReportText.includes("infiltrații 0,15 1/h")) {
+  const infiltrationValue = Number(
+    await page.locator("#techInfiltrationAch").inputValue()
+  );
+  if (Math.abs(infiltrationValue - 0.15) > 1e-9) {
     throw new Error(
-      "Editorial medium default infiltration did not reach the final engineering report: " +
-      editorialReportText.slice(0, 5000)
+      "Editorial medium default infiltration did not remain in the canonical TEO input: " +
+      infiltrationValue
     );
   }
-  if (/Pereți\s+U final\s+—/i.test(editorialReportText)) {
+  if (!editorialReportText.includes("Înainte vs. după investiție") ||
+      !editorialReportText.includes("Impactul soluției TEO") ||
+      !editorialReportText.includes("LISTĂ DE MATERIALE") ||
+      !editorialReportText.includes("Produse și cantități din catalogul LaCurent")) {
     throw new Error(
-      "Editorial wall U-value is still missing from the final engineering report."
-    );
-  }
-  if (editorialReportText.includes("SCOP țintă")) {
-    throw new Error(
-      "Editorial report still presents a representative-SKU SCOP as a parametric target."
-    );
-  }
-  if (!editorialReportText.includes("Optim TEO · specificație inginerească") ||
-      !editorialReportText.includes("nZEB · verificare tehnică modelată") ||
-      !editorialReportText.includes("RER tehnic") ||
-      !editorialReportText.includes("garanții de origine") ||
-      !editorialReportText.includes("Discretizare comercială") ||
-      !editorialReportText.includes("CAPEX parametric estimat")) {
-    throw new Error(
-      "Editorial TEO report is missing engineering-first sections: " +
+      "Editorial visual report is missing comparison/BOM sections: " +
       editorialReportText.slice(0, 4000)
+    );
+  }
+  if (editorialReportText.includes("Optim TEO · specificație inginerească") ||
+      editorialReportText.includes("nZEB · verificare tehnică modelată") ||
+      editorialReportText.includes("Rezumat economic al optimului TEO")) {
+    throw new Error(
+      "Editorial visual report still duplicates TEO engineering/recommendation sections."
     );
   }
 
