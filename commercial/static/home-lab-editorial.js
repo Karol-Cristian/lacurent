@@ -986,13 +986,13 @@
   function validatePage(name) {
     const page = pages.find(p => p.dataset.page === name);
     if (!page) return true;
-    if (name === "house") {
+    if (name === "renewables") {
       const confirmation = $("#edHouseValuesConfirmed");
       if (confirmation) {
         confirmation.setCustomValidity(
           confirmation.checked
             ? ""
-            : "Confirmă că ai verificat valorile principale ale casei înainte de a continua."
+            : "Confirmă datele introduse înainte de a continua la obiectivul TEO."
         );
       }
     }
@@ -1110,13 +1110,8 @@
   }
 
   function applyHeatingDefaults() {
-    const type = $("#heatingChoice").value;
-    const d = heatingChainDefaults(type);
-    if (type === "heat_pump") $("#heatPumpSource").value = d.source;
-    $("#heatingEmitter").value = d.emitter;
-    $("#heatingDistribution").value = d.distribution;
-    $("#heatingStorage").value = d.storage;
-    $("#heatingControl").value = d.control;
+    // The generator is an explicit user choice. Do not silently pre-fill the
+    // rest of page 3; only normalize combinations that are physically fixed.
     normalizeHeatingUi();
   }
 
@@ -1128,6 +1123,17 @@
 
     const chainFields = [...document.querySelectorAll("[data-heating-chain-field]")];
     chainFields.forEach(el => { el.hidden = localFixed; });
+
+    const emitterField = $("#heatingEmitter").closest(".ed-field");
+    const distributionField = $("#heatingDistribution").closest(".ed-field");
+    const storageField = $("#heatingStorage").closest(".ed-field");
+
+    if (!type) {
+      emitterField.hidden = false;
+      distributionField.hidden = false;
+      storageField.hidden = false;
+      return;
+    }
 
     if (localFixed) {
       const d = heatingChainDefaults(type);
@@ -1144,20 +1150,14 @@
       $("#heatingDistribution").value = "air";
       $("#heatingStorage").value = "none";
     } else {
-      const validEmitters = new Set(["radiators_high_temp","radiators_low_temp","underfloor","fan_coils"]);
-      if (!validEmitters.has($("#heatingEmitter").value)) {
-        $("#heatingEmitter").value = heatingChainDefaults(type).emitter;
-      }
-      if ($("#heatingEmitter").value === "underfloor") {
+      const emitter = $("#heatingEmitter").value;
+      if (emitter === "underfloor") {
         $("#heatingDistribution").value = "underfloor";
-      } else if (!["hydronic_insulated","hydronic_uninsulated"].includes($("#heatingDistribution").value)) {
-        $("#heatingDistribution").value = "hydronic_insulated";
+      } else if (emitter && $("#heatingDistribution").value === "underfloor") {
+        $("#heatingDistribution").value = "";
       }
     }
 
-    const emitterField = $("#heatingEmitter").closest(".ed-field");
-    const distributionField = $("#heatingDistribution").closest(".ed-field");
-    const storageField = $("#heatingStorage").closest(".ed-field");
     emitterField.hidden = airToAir;
     distributionField.hidden = airToAir;
     storageField.hidden = airToAir;
@@ -1165,7 +1165,7 @@
 
   function heatingGeneratorType() {
     const type = $("#heatingChoice").value;
-    if (type === "heat_pump") return $("#heatPumpSource").value || "heat_pump_air_water";
+    if (type === "heat_pump") return $("#heatPumpSource").value || "";
     return {
       condensing_gas_boiler:"condensing_gas_boiler",
       gas_boiler:"gas_boiler",
@@ -1184,14 +1184,30 @@
   }
 
   function syncDerivedAdvancedFields() {
-    const topBoundary = $("#topBoundary").value;
+    const wallReady = [
+      $("#wallStructure").value,
+      $("#wallStructureThickness").value,
+      $("#wallInsulationMaterial").value,
+      $("#wallIns").value,
+    ].every(value => String(value ?? "").trim() !== "");
+    const roofReady = [
+      $("#topBoundary").value,
+      $("#roofInsulationMaterial").value,
+      $("#roofIns").value,
+    ].every(value => String(value ?? "").trim() !== "");
+    const floorReady = [
+      $("#floorBoundary").value,
+      $("#floorInsulationMaterial").value,
+      $("#floorIns").value,
+    ].every(value => String(value ?? "").trim() !== "");
+    const glazing = $("#glazing").value;
+
     const glazingU = {
       single_clear_glazing:5.0,
       double_clear_glazing:2.8,
       double_low_e_face_3:1.6,
       triple_low_e_faces_2_and_5:0.9,
     };
-    // MC001-2022 Table 2.13 exact entries used by the project dataset.
     const glazingG = {
       single_clear_glazing:0.85,
       double_clear_glazing:0.75,
@@ -1199,128 +1215,79 @@
       triple_low_e_faces_2_and_5:0.50,
     };
 
-    setAdvancedDerivedValue("advWallU", insulationU(
-      wallBaseU(),
-      $("#wallIns").value,
-      insulationLambda($("#wallInsulationMaterial").value)
-    ), 3);
-    setAdvancedDerivedValue("advRoofU", insulationU(
-      Number(TOP_BOUNDARY_BASE_U[topBoundary]) || TOP_BOUNDARY_BASE_U.unknown,
-      $("#roofIns").value,
-      insulationLambda($("#roofInsulationMaterial").value)
-    ), 3);
-    setAdvancedDerivedValue("advFloorU", insulationU(
-      0.90,
-      $("#floorIns").value,
-      insulationLambda($("#floorInsulationMaterial").value)
-    ), 3);
-    setAdvancedDerivedValue("advWindowU", glazingU[$("#glazing").value] || 1.6, 2);
-    setAdvancedDerivedValue("advBridgePsi", 0.08, 2);
-    setAdvancedDerivedValue("advGroundConductivity", $("#floorBoundary").value === "ground" ? 2.0 : NaN, 1);
-    setAdvancedDerivedValue("advSolarGn", glazingG[$("#glazing").value], 2);
+    setAdvancedDerivedValue(
+      "advWallU",
+      wallReady
+        ? insulationU(wallBaseU(), $("#wallIns").value, insulationLambda($("#wallInsulationMaterial").value))
+        : NaN,
+      3
+    );
+    setAdvancedDerivedValue(
+      "advRoofU",
+      roofReady
+        ? insulationU(
+            Number(TOP_BOUNDARY_BASE_U[$("#topBoundary").value]) || TOP_BOUNDARY_BASE_U.unknown,
+            $("#roofIns").value,
+            insulationLambda($("#roofInsulationMaterial").value)
+          )
+        : NaN,
+      3
+    );
+    setAdvancedDerivedValue(
+      "advFloorU",
+      floorReady
+        ? insulationU(0.90, $("#floorIns").value, insulationLambda($("#floorInsulationMaterial").value))
+        : NaN,
+      3
+    );
+    setAdvancedDerivedValue("advWindowU", glazing ? glazingU[glazing] : NaN, 2);
+    setAdvancedDerivedValue("advBridgePsi", wallReady ? 0.08 : NaN, 2);
+    setAdvancedDerivedValue(
+      "advGroundConductivity",
+      floorReady && $("#floorBoundary").value === "ground" ? 2.0 : NaN,
+      1
+    );
+    setAdvancedDerivedValue("advSolarGn", glazing ? glazingG[glazing] : NaN, 2);
 
     const ventilation = $("#ventilation").value;
-    const ach = ventilation === "mechanical" ? 0.65 : 0.5;
-    const recovery = ventilation === "hrv" ? 75 : 0;
-    setAdvancedDerivedValue("advAch", ach, 2);
-    setAdvancedDerivedValue("advInfiltrationAch", 0, 2);
-    setAdvancedDerivedValue("advHeatRecovery", recovery, 0);
-
-    const emitter = $("#heatingEmitter").value;
-    const emitterTemperatures = {
-      radiators_high_temp:[60,45],
-      radiators_low_temp:[45,35],
-      underfloor:[35,30],
-      fan_coils:[45,40],
-    };
-    const temps = emitterTemperatures[emitter] || null;
-    setAdvancedDerivedValue("advHeatingFlow", temps ? temps[0] : NaN, 0);
-    setAdvancedDerivedValue("advHeatingReturn", temps ? temps[1] : NaN, 0);
-
-    const choice = $("#heatingChoice").value;
-    const generator = heatingGeneratorType();
-    const auxByGenerator = {
-      gas_boiler:120,
-      condensing_gas_boiler:120,
-      electric_direct:0,
-      electric_boiler:120,
-      heat_pump_air_water:220,
-      heat_pump_ground_water:220,
-      heat_pump_air_air:30,
-      district_heat:120,
-      wood_stove:0,
-      wood_boiler:120,
-      pellet_boiler:180,
-    };
-    setAdvancedDerivedValue("advHeatingAux", auxByGenerator[generator] ?? 0, 0);
-
-    if (choice === "heat_pump") {
-      const scopByEmitter = {
-        local:3.0,
-        radiators_high_temp:2.3,
-        radiators_low_temp:2.8,
-        underfloor:3.2,
-        fan_coils:2.8,
-        air:3.0,
-      };
-      const sourceFactor = {
-        heat_pump_air_water:1.0,
-        heat_pump_ground_water:1.2,
-        heat_pump_air_air:1.0,
-      };
-      setAdvancedDerivedValue(
-        "advHeatingScop",
-        (scopByEmitter[emitter] || 3.0) * (sourceFactor[generator] || 1.0),
-        2
-      );
-      setAdvancedDerivedValue("advHeatingEfficiency", NaN, 0);
-    } else {
-      const efficiencyPct = {
-        condensing_gas_boiler:94,
-        gas_boiler:85,
-        electric_resistance:100,
-        electric_boiler:98,
-        district_heat:95,
-        wood_stove:75,
-        wood_boiler:80,
-        pellet_boiler:88,
-      };
-      setAdvancedDerivedValue("advHeatingEfficiency", efficiencyPct[choice], 0);
-      setAdvancedDerivedValue("advHeatingScop", NaN, 2);
-    }
-
+    const heating = $("#heatingChoice").value;
     const cooling = $("#cooling").value;
-    setAdvancedDerivedValue("advCoolingSeer", cooling === "none" ? NaN : (cooling === "split" ? 4.2 : 4.0), 1);
-    setAdvancedDerivedValue("advCoolingSetpoint", cooling === "none" ? NaN : 26, 0);
-
     const dhw = $("#dhwSystem").value;
-    let dhwEfficiency = NaN;
-    let dhwCop = NaN;
-    if (dhw === "electric_boiler") dhwEfficiency = 98;
-    else if (dhw === "gas_boiler") dhwEfficiency = 88;
-    else if (dhw === "heat_pump_water_heater") dhwCop = 2.4;
-    else if (dhw === "district_heat") dhwEfficiency = 95;
-    else if (dhw === "same_as_heating") {
-      if (choice === "heat_pump") dhwCop = 2.4;
-      else {
-        dhwEfficiency = {
-          condensing_gas_boiler:88,
-          gas_boiler:88,
-          electric_resistance:98,
-          electric_boiler:98,
-          district_heat:95,
-          wood_stove:75,
-          wood_boiler:80,
-          pellet_boiler:88,
-        }[choice];
-      }
-    }
-    setAdvancedDerivedValue("advDhwEfficiency", dhwEfficiency, 0);
-    setAdvancedDerivedValue("advDhwCop", dhwCop, 1);
-    setAdvancedDerivedValue("advDhwLitres", 50, 0);
 
-    setAdvancedDerivedValue("advPvPerformanceRatio", 82, 0);
-    setAdvancedDerivedValue("advSolarThermalEfficiency", 45, 0);
+    setAdvancedDerivedValue("advAch", ventilation ? (ventilation === "natural" ? 0.50 : ventilation === "mechanical" ? 0.45 : 0.35) : NaN, 2);
+    setAdvancedDerivedValue("advInfiltrationAch", ventilation ? 0.15 : NaN, 2);
+    setAdvancedDerivedValue("advHeatRecovery", ventilation ? (ventilation === "hrv" ? 80 : 0) : NaN, 0);
+
+    const heatProfile = heating ? heatingExpertProfile() : null;
+    setAdvancedDerivedValue(
+      "advHeatingEfficiency",
+      heatProfile && heating !== "heat_pump" ? Number(heatProfile.efficiency) * 100 : NaN,
+      0
+    );
+    setAdvancedDerivedValue(
+      "advHeatingScop",
+      heatProfile && heating === "heat_pump" ? Number(heatProfile.scop) : NaN,
+      2
+    );
+    setAdvancedDerivedValue("advHeatingAux", heating ? Number(heatProfile?.auxiliaryElectricityKwhYear) : NaN, 0);
+    setAdvancedDerivedValue("advHeatingFlow", heating ? Number(heatProfile?.flowTemperatureC) : NaN, 0);
+    setAdvancedDerivedValue("advHeatingReturn", heating ? Number(heatProfile?.returnTemperatureC) : NaN, 0);
+
+    setAdvancedDerivedValue(
+      "advCoolingSeer",
+      cooling ? (cooling === "none" ? NaN : cooling === "split" ? 4.2 : 4.0) : NaN,
+      1
+    );
+    setAdvancedDerivedValue("advCoolingSetpoint", cooling ? 26 : NaN, 0);
+
+    const dhwProfile = dhw ? dhwExpertProfile() : null;
+    setAdvancedDerivedValue(
+      "advDhwEfficiency",
+      dhwProfile?.efficiency != null ? Number(dhwProfile.efficiency) * 100 : NaN,
+      0
+    );
+    setAdvancedDerivedValue("advDhwCop", dhwProfile?.cop != null ? Number(dhwProfile.cop) : NaN, 2);
+    setAdvancedDerivedValue("advDhwLitres", dhw ? 50 : NaN, 0);
   }
 
   function heatingExpertProfile() {
@@ -3280,7 +3247,7 @@
   function baselineSummaryReady() {
     const locality = ($("#localityInput")?.value || "").trim();
     const localityToken = ($("#localityId")?.value || "").trim();
-    if (!localityToken) {
+    const clearBaseline = message => {
       baselineClass.textContent = "—";
       delete baselineClass.dataset.energyClass;
       baselineCost.textContent = "—";
@@ -3288,9 +3255,20 @@
       baselineCoolingDemand.textContent = "—";
       baselineFinalEnergy.textContent = "—";
       baselinePrimaryEnergy.textContent = "—";
-      baselineStatus.textContent = locality ? "Alege localitatea din sugestii sau de pe hartă." : "Completează localitatea.";
+      baselineStatus.textContent = message;
       baselineBar.classList.remove("is-updating");
       return false;
+    };
+
+    if (!localityToken) {
+      return clearBaseline(locality ? "Alege localitatea din sugestii sau de pe hartă." : "Completează localitatea.");
+    }
+
+    const missing = [...form.querySelectorAll("[data-baseline-required]")]
+      .filter(field => !field.disabled && !field.closest("[hidden]"))
+      .filter(field => String(field.value ?? "").trim() === "");
+    if (missing.length) {
+      return clearBaseline("Completează datele obligatorii din pașii 1–3 pentru prima estimare.");
     }
     return true;
   }
@@ -4977,7 +4955,10 @@
 
   form.addEventListener("input", event => {
     if (event.target?.type === "hidden") return;
-    if (event.isTrusted && event.target?.matches?.("[data-house-critical]")) {
+    if (
+      event.isTrusted
+      && event.target?.closest?.('.ed-page[data-page="house"],.ed-page[data-page="envelope"],.ed-page[data-page="systems"]')
+    ) {
       const confirmation = $("#edHouseValuesConfirmed");
       if (confirmation) {
         confirmation.checked = false;
@@ -4995,7 +4976,10 @@
   });
   form.addEventListener("change", event => {
     if (event.target?.type === "hidden") return;
-    if (event.isTrusted && event.target?.matches?.("[data-house-critical]")) {
+    if (
+      event.isTrusted
+      && event.target?.closest?.('.ed-page[data-page="house"],.ed-page[data-page="envelope"],.ed-page[data-page="systems"]')
+    ) {
       const confirmation = $("#edHouseValuesConfirmed");
       if (confirmation) {
         confirmation.checked = false;
@@ -5035,7 +5019,6 @@
   syncNzebPolicy();
   resetTeoControlUi();
   updateGeometryDisplay(true);
-  applyHeatingDefaults();
 
   const restoredDraft = restoreEditorialDraft();
   if (restoredDraft) {
@@ -5046,6 +5029,7 @@
     syncChoiceGroupSelections();
     syncNzebPolicy();
   } else {
+    normalizeHeatingUi();
     syncRenewableVisibility();
   }
 
