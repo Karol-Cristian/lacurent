@@ -492,6 +492,7 @@ jobs:
           python - <<'PY'
           import json
           import os
+          import time
           import urllib.error
           import urllib.request
 
@@ -500,7 +501,7 @@ jobs:
           project_id = os.environ["ACCOUNT_SMOKE_PROJECT"]
           password = "Staging-account-2026!"
 
-          def request(path, *, method="GET", body=None, token=None, expected=200):
+          def request(path, *, method="GET", body=None, token=None, expected=200, attempts=8):
               headers = {
                   "Accept": "application/json",
                   "User-Agent": "LaCurent-Account-Staging-Smoke/1.0",
@@ -511,24 +512,74 @@ jobs:
               if body is not None:
                   headers["Content-Type"] = "application/json"
                   data = json.dumps(body).encode("utf-8")
-              req = urllib.request.Request(
-                  base + path,
-                  method=method,
-                  headers=headers,
-                  data=data,
-              )
-              try:
-                  with urllib.request.urlopen(req, timeout=30) as response:
-                      status = response.status
-                      raw = response.read().decode("utf-8")
-              except urllib.error.HTTPError as exc:
-                  status = exc.code
-                  raw = exc.read().decode("utf-8", "replace")
-              if status != expected:
+
+              last = None
+              for attempt in range(1, attempts + 1):
+                  req = urllib.request.Request(
+                      base + path,
+                      method=method,
+                      headers=headers,
+                      data=data,
+                  )
+                  try:
+                      with urllib.request.urlopen(req, timeout=30) as response:
+                          status = response.status
+                          raw = response.read().decode("utf-8")
+                  except urllib.error.HTTPError as exc:
+                      status = exc.code
+                      raw = exc.read().decode("utf-8", "replace")
+                  except Exception as exc:
+                      last = exc
+                      if attempt < attempts:
+                          time.sleep(min(attempt, 4))
+                          continue
+                      raise
+
+                  if status == expected:
+                      return json.loads(raw or "{}")
+
+                  transient_worker_propagation = (
+                      status in {502, 503, 504}
+                      or (
+                          status == 404
+                          and (
+                              '"error_code":1042' in raw.replace(" ", "")
+                              or "workers_dev_script_not_found" in raw
+                          )
+                      )
+                  )
+                  if transient_worker_propagation and attempt < attempts:
+                      last = AssertionError(
+                          f"{method} {path}: transient Worker propagation HTTP {status}"
+                      )
+                      time.sleep(min(attempt, 4))
+                      continue
+
                   raise AssertionError(
                       f"{method} {path}: expected HTTP {expected}, got {status}: {raw[:1000]}"
                   )
-              return json.loads(raw or "{}")
+
+              raise AssertionError(f"{method} {path} did not stabilize: {last!r}")
+
+          # A freshly deployed workers.dev hostname can briefly serve different
+          # edge propagation states. Require consecutive healthy reads before
+          # testing stateful account persistence so we do not confuse rollout
+          # propagation with an application/authentication regression.
+          consecutive = 0
+          for _ in range(12):
+              try:
+                  health = request("/health", attempts=1)
+                  if health.get("status") == "ok":
+                      consecutive += 1
+                      if consecutive >= 3:
+                          break
+                  else:
+                      consecutive = 0
+              except Exception:
+                  consecutive = 0
+              time.sleep(1)
+          if consecutive < 3:
+              raise AssertionError("workers.dev staging hostname did not stabilize before account E2E.")
 
           registered = request(
               "/api/register",
