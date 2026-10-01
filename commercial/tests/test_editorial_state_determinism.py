@@ -45,8 +45,8 @@ def test_editorial_exposes_exact_rbpe_input_identity_and_clean_reset():
 
     # Cache busting is deliberate: browsers must not keep running the old
     # persistence code after the deploy.
-    assert "/static/home-lab-editorial.js?v=68" in template
-    assert "/static/home-lab-editorial.css?v=37" in template
+    assert "/static/home-lab-editorial.js?v=69" in template
+    assert "/static/home-lab-editorial.css?v=38" in template
 
 
 def test_privacy_opt_out_clears_editorial_v2_storage():
@@ -98,11 +98,8 @@ def test_editorial_positions_home_lab_as_decision_support_not_official_document(
     assert "Home Lab este instrumentul tău de decizie energetică." in template
     assert "nu înlocuiește documentele oficiale" in template
 
-    assert "Calcul finalizat. Verificarea profesională este un pas separat." in source
-    assert "Verificare profesională neefectuată" in source
-    assert "Certificat de performanță energetică / raport de audit energetic" in source
-    assert "auditor energetic pentru clădiri gradul I" in source
-    assert "verificatori de proiecte atestați" in source
-    assert "Home Lab nu presupune automat" in source
-
-
+    # The report is intentionally visual; legal/professional guidance stays
+    # outside the chart surface instead of being duplicated after TEO.
+    assert "Raportul nu repetă recomandările de pe pagina TEO." in source
+    assert "LISTĂ DE MATERIALE" in source
+    assert "loadCatalogBom(engineering, opt)" in source
