@@ -2,19 +2,19 @@ name: Commercial v2 Cloudflare Worker
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - codex/commercial-v2-cloudflare-python
-    paths:
-      - ".github/workflows/commercial-v2-cloudflare-worker.yml"
-      - "commercial/**"
-      - "scripts/build-heating-catalog-d1-import.py"
-      - "scripts/build-location-payload.mjs"
-      - "scripts/prepare-commercial-cloudflare-worker.mjs"
-      - "scripts/prepare-reference-cloudflare-worker.mjs"
-      - "scripts/prepare-teo-cloudflare-worker.mjs"
-      - "scripts/smoke-home-lab-browser.mjs"
-      - "scripts/soak-teo-production.mjs"
+    inputs:
+      release_sha:
+        description: "Exact commit SHA to deploy. Promotion must equal production HEAD; rollback must be an ancestor of production HEAD."
+        required: true
+        type: string
+      promotion_mode:
+        description: "Production action"
+        required: true
+        default: "promote"
+        type: choice
+        options:
+          - promote
+          - rollback
 
 # Production deploys must finish in queue order. Without a shared concurrency
 # group, two close pushes can deploy in parallel and an older run can finish
@@ -36,25 +36,42 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
     steps:
-      - name: Check out repository
+      - name: Check out production workflow ref
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Require merged PR origin for production pushes
-        if: github.event_name == 'push'
+      - name: Validate explicit production promotion or rollback
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ inputs.release_sha }}
+          PROMOTION_MODE: ${{ inputs.promotion_mode }}
+          PRODUCTION_BRANCH: codex/commercial-v2-cloudflare-python
         run: |
+          set -euo pipefail
           python - <<'PY'
           import json
           import os
+          import re
+          import subprocess
           import urllib.request
 
           repo = os.environ["GITHUB_REPOSITORY"]
-          sha = os.environ["GITHUB_SHA"]
-          target = os.environ["GITHUB_REF_NAME"]
           token = os.environ["GH_TOKEN"]
+          release_sha = os.environ["RELEASE_SHA"].strip()
+          mode = os.environ["PROMOTION_MODE"].strip()
+          production_branch = os.environ["PRODUCTION_BRANCH"]
+
+          if os.environ.get("GITHUB_REF_NAME") != production_branch:
+              raise SystemExit(
+                  "Production workflow must be dispatched from "
+                  f"{production_branch!r}, got {os.environ.get('GITHUB_REF_NAME')!r}."
+              )
+          if not re.fullmatch(r"[0-9a-fA-F]{40}", release_sha):
+              raise SystemExit("release_sha must be a full 40-character Git SHA.")
+
           request = urllib.request.Request(
-              f"https://api.github.com/repos/{repo}/commits/{sha}/pulls",
+              f"https://api.github.com/repos/{repo}/branches/{production_branch}",
               headers={
                   "Authorization": f"Bearer {token}",
                   "Accept": "application/vnd.github+json",
@@ -62,24 +79,66 @@ jobs:
               },
           )
           with urllib.request.urlopen(request, timeout=30) as response:
-              pull_requests = json.loads(response.read().decode("utf-8"))
+              branch = json.loads(response.read().decode("utf-8"))
+          production_head = str(branch["commit"]["sha"])
 
-          valid = [
-              pr for pr in pull_requests
-              if pr.get("merged_at")
-              and pr.get("base", {}).get("ref") == target
-              and pr.get("merge_commit_sha") == sha
-          ]
-          if not valid:
-              raise SystemExit(
-                  "Production push is not the merge commit of a merged PR targeting "
-                  f"{target}. Direct-push deployments are blocked."
+          subprocess.run(["git", "fetch", "origin", production_branch], check=True)
+          subprocess.run(["git", "cat-file", "-e", release_sha + "^{commit}"], check=True)
+
+          if mode == "promote":
+              if release_sha != production_head:
+                  raise SystemExit(
+                      "Promotion SHA must equal current production branch HEAD. "
+                      f"requested={release_sha}, head={production_head}"
+                  )
+
+              pulls_request = urllib.request.Request(
+                  f"https://api.github.com/repos/{repo}/commits/{release_sha}/pulls",
+                  headers={
+                      "Authorization": f"Bearer {token}",
+                      "Accept": "application/vnd.github+json",
+                      "X-GitHub-Api-Version": "2022-11-28",
+                  },
               )
-
-          print("Production push originated from merged PR(s):", ", ".join(
-              f"#{pr['number']}" for pr in valid
-          ))
+              with urllib.request.urlopen(pulls_request, timeout=30) as response:
+                  pull_requests = json.loads(response.read().decode("utf-8"))
+              valid = [
+                  pr for pr in pull_requests
+                  if pr.get("merged_at")
+                  and pr.get("base", {}).get("ref") == production_branch
+                  and pr.get("merge_commit_sha") == release_sha
+              ]
+              if not valid:
+                  raise SystemExit(
+                      "Promotion SHA is not the merge commit of a merged PR "
+                      "targeting the production branch."
+                  )
+              print(
+                  "Promotion authorized for", release_sha,
+                  "from", ", ".join(f"PR #{pr['number']}" for pr in valid),
+              )
+          elif mode == "rollback":
+              ancestor = subprocess.run(
+                  ["git", "merge-base", "--is-ancestor", release_sha, production_head]
+              )
+              if ancestor.returncode != 0:
+                  raise SystemExit(
+                      "Rollback SHA must be an ancestor of current production HEAD."
+                  )
+              if release_sha == production_head:
+                  raise SystemExit(
+                      "Rollback SHA equals production HEAD; use promote mode instead."
+                  )
+              print("Rollback authorized:", production_head, "->", release_sha)
+          else:
+              raise SystemExit(f"Unknown promotion mode: {mode!r}")
           PY
+
+      - name: Check out exact release SHA
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_sha }}
+          fetch-depth: 0
 
       - name: Validate production deployment credentials
         run: |
