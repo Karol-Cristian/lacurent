@@ -13,7 +13,7 @@ def test_collective_impact_lives_on_landing_not_home_lab_intro():
     editorial = EDITORIAL.read_text(encoding="utf-8")
 
     assert 'id="impact"' in landing
-    assert "IMPACT CALCULAT" in landing
+    assert "IMPACT MODELAT" in landing
     assert 'id="lcImpactEnergy"' in landing
     assert 'id="lcImpactHomes"' in landing
     assert 'id="lcImpactMoney"' in landing
@@ -21,8 +21,8 @@ def test_collective_impact_lives_on_landing_not_home_lab_intro():
     assert 'id="lcImpactPayback"' in landing
     assert "potențial modelat" in landing.lower()
     assert "nu economii măsurate" in landing.lower()
-    assert "/static/lacurent-landing.css?v=6" in landing
-    assert "/static/lacurent-landing.js?v=1" in landing
+    assert "/static/lacurent-landing.css?v=7" in landing
+    assert "/static/lacurent-landing.js?v=2" in landing
 
     assert 'id="edImpactOverview"' not in editorial
 
@@ -39,10 +39,15 @@ def test_landing_impact_reads_live_aggregate_and_respects_cohort_suppression():
     assert "globalSimplePaybackYears" in source
 
 
-def test_landing_impact_is_presented_as_primary_visual_story():
+def test_landing_impact_is_below_hero_and_renewable_story_is_ambient():
+    landing = LANDING.read_text(encoding="utf-8")
     css = LANDING_CSS.read_text(encoding="utf-8")
+    source = LANDING_JS.read_text(encoding="utf-8")
 
-    assert ".lc-hero-impact{" in css
-    assert ".lc-hero-impact-main{" in css
-    assert ".lc-hero-impact-mini{" in css
-    assert "grid-template-columns:repeat(4,minmax(0,1fr))" in css
+    assert landing.index('class="lc-hero"') < landing.index('id="impact"')
+    assert ".lc-impact-strip{" in css
+    assert ".lc-renewable-sun{" in css
+    assert ".lc-renewable-wind{" in css
+    assert ".lc-renewable-grid{" in css
+    assert "IntersectionObserver" in source
+    assert "[data-scroll-symbol]" in source
