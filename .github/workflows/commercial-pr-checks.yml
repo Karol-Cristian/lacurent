@@ -57,6 +57,7 @@ jobs:
           node --test commercial/tests/request-timeout.test.cjs
           node --test commercial/tests/teo-router-flow.test.mjs
           node --test commercial/tests/teo-router-recovery.test.mjs
+          node --test commercial/tests/rbpe-gateway-recovery.test.mjs
           python -m compileall -q commercial
           python -m pytest commercial/tests -q
 
