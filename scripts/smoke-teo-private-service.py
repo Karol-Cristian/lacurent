@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -156,6 +158,35 @@ for target in targets[:2]:
     assert verified.get("candidate")
     verified_rows.append(verified)
 
+verify_soak_runs = max(1, int(os.getenv("TEO_PRIVATE_VERIFY_SOAK_RUNS", "10")))
+verify_digests: set[str] = set()
+soak_target = targets[0]
+for index in range(verify_soak_runs):
+    verified = require_ok(
+        client.post(
+            "/api/optimization/home-lab/v3/verify",
+            headers={"x-lacurent-flow-gated": "1"},
+            json={
+                "form": form,
+                "branchId": soak_target["branchId"],
+                "candidate": soak_target["candidate"],
+                "runId": f"{form['_optimizer_run_id']}-soak-{index}",
+            },
+        ),
+        f"verify-soak-{index + 1}",
+    )
+    candidate_json = json.dumps(
+        verified["candidate"],
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    verify_digests.add(hashlib.sha256(candidate_json).hexdigest())
+
+assert len(verify_digests) == 1, (
+    "Canonical VERIFY became non-deterministic across a reused private TEO service."
+)
+
 commercial_rows: list[dict] = []
 for verified in verified_rows[:1]:
     product = require_ok(
@@ -206,6 +237,8 @@ print(
             "status": "PASS",
             "v4SearchPointCount": int(v4["searchPointCount"]),
             "verifiedFinalists": len(verified_rows),
+            "verifySoakRuns": verify_soak_runs,
+            "verifySemanticDigests": len(verify_digests),
             "commercialRows": len(commercial_rows),
             "finalEnergyKwh": finalized["scenario"].get("final_energy_kwh"),
         },
