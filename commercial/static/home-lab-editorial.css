@@ -3472,3 +3472,42 @@ body{
   .ed-report-next-grid{grid-template-columns:1fr}
   .ed-report-next-grid button{min-height:0}
 }
+
+
+/* Visual report v2: comparison plots + direct D1 product BOM. */
+.ed-chart-note{margin:14px 0 0;color:var(--muted);font-size:11px;line-height:1.55}
+.ed-report-compare{display:grid;gap:18px}
+.ed-report-compare-row{display:grid;gap:8px}
+.ed-report-compare-row header{display:flex;justify-content:space-between;gap:18px;align-items:baseline}
+.ed-report-compare-row header span{font-size:12px;color:var(--muted)}
+.ed-report-compare-row header b{font-size:13px}
+.ed-report-compare-track{position:relative;height:28px;border-radius:999px;background:var(--soft);overflow:hidden}
+.ed-report-compare-track i{position:absolute;left:0;height:10px;border-radius:999px;top:4px;background:#8a96a3}
+.ed-report-compare-track i.is-after{top:15px;background:var(--accent)}
+.ed-performance-compare{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ed-performance-compare article{padding:18px;border:1px solid var(--line);border-radius:16px;background:#fff}
+.ed-performance-compare article>span{display:block;color:var(--muted);font-size:11px;margin-bottom:4px}
+.ed-performance-compare article>strong{font-size:24px;letter-spacing:-.03em}
+.ed-performance-compare article>div{height:9px;margin-top:14px;border-radius:999px;background:var(--soft);overflow:hidden}
+.ed-performance-compare article>div i{display:block;height:100%;border-radius:999px;background:#8a96a3}
+.ed-performance-compare article>div i.is-after{background:var(--accent)}
+.ed-catalog-bom{display:grid;gap:12px;margin-top:18px}
+.ed-bom-product{display:grid;grid-template-columns:110px minmax(0,1fr);gap:18px;align-items:center;padding:16px;border:1px solid var(--line);border-radius:18px;background:#fff}
+.ed-bom-product.is-unmatched{background:var(--soft)}
+.ed-bom-product-image{width:110px;height:92px;border-radius:14px;background:var(--soft);overflow:hidden;display:grid;place-items:center;border:1px solid var(--line)}
+.ed-bom-product-image img{width:100%;height:100%;object-fit:contain;background:#fff}
+.ed-bom-product-image span{font-weight:800;font-size:22px;letter-spacing:.04em;color:#9aa4af}
+.ed-bom-product-main small{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.08em}
+.ed-bom-product-main h3{margin:4px 0 6px;font-size:16px;line-height:1.25}
+.ed-bom-product-main p{margin:0;color:var(--muted);font-size:11px;line-height:1.5}
+.ed-bom-product-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.ed-bom-product-meta b,.ed-bom-product-meta span{padding:5px 8px;border-radius:999px;background:var(--soft);font-size:10px}
+.ed-bom-product-main>a{display:inline-block;margin-top:10px;font-size:11px;font-weight:700;color:var(--ink);text-decoration:none}
+.ed-bom-product-main>a:hover{text-decoration:underline}
+.ed-monthly-bill-column small{white-space:normal;line-height:1.25;min-height:24px}
+@media(max-width:720px){
+  .ed-performance-compare{grid-template-columns:1fr}
+  .ed-bom-product{grid-template-columns:76px minmax(0,1fr);gap:12px;padding:12px}
+  .ed-bom-product-image{width:76px;height:72px}
+  .ed-monthly-bill-column small{font-size:7px;transform:none;min-height:32px}
+}
