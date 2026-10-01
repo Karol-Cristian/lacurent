@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - codex/release-product-staging-integration
+      - lemnaru-karol/teo-private-minimal-dev
     paths:
       - ".github/workflows/full-stack-uat-staging.yml"
       - "commercial/app/**"
@@ -382,6 +383,20 @@ jobs:
 
           print("Persistent full-stack UAT PASS", base)
           PY
+
+      - name: Install Chromium for full TEO UAT soak
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Run 25-pass sharded TEO UAT soak through report
+        env:
+          HOME_LAB_BASE_URL: https://lacurent-uat.lemnarukarol.workers.dev
+          TEO_SOAK_RUNS: "25"
+          TEO_REQUIRE_SHARDED_ROUTES: "1"
+        run: |
+          set -o pipefail
+          node scripts/soak-teo-production.mjs | tee /tmp/teo-uat-soak.log
 
       - name: Publish UAT URL
         run: |
