@@ -24,6 +24,8 @@ def test_pages_one_to_three_start_without_silent_defaults_and_confirmation_is_pr
     assert "Confirmă datele introduse înainte de a continua la obiectivul TEO." in js
     assert "Completează datele obligatorii din pașii 1–3" in js
     assert '.ed-page[data-page="house"],.ed-page[data-page="envelope"],.ed-page[data-page="systems"]' in js
+    assert 'class="ed-brand" href="/"' in html
+    assert "Alege localitatea din sugestii sau direct de pe hartă." in js
 
 
 def test_winter_temperature_is_explicitly_indoor_setpoint() -> None:
