@@ -6,3 +6,15 @@ preview_urls = true
 
 [observability]
 enabled = true
+
+[durable_objects]
+bindings = [
+  { name = "ARCHIVE", class_name = "ForecastArchive" }
+]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ForecastArchive"]
+
+[triggers]
+crons = ["7 * * * *"]

@@ -64,7 +64,9 @@ export function summarizeForecast(series, now = new Date()) {
   let currentIndex = 0;
   let bestDistance = Number.POSITIVE_INFINITY;
   for (let i = 0; i < series.length; i += 1) {
-    const d = Math.abs(new Date(series[i].time).getTime() - nowMs);
+    const t = String(series[i].time);
+    const ms = Date.parse(t.endsWith('Z') ? t : `${t}Z`);
+    const d = Math.abs(ms - nowMs);
     if (d < bestDistance) {
       bestDistance = d;
       currentIndex = i;
@@ -73,8 +75,8 @@ export function summarizeForecast(series, now = new Date()) {
 
   const current = series[currentIndex];
   const nextHour = series[Math.min(currentIndex + 1, series.length - 1)];
-  const localDay = String(current.time).slice(0, 10);
-  const today = series.filter((point) => String(point.time).slice(0, 10) === localDay);
+  const utcDay = new Date(nowMs).toISOString().slice(0, 10);
+  const today = series.filter((point) => String(point.time).slice(0, 10) === utcDay);
   const todayEnergyMwh = today.reduce((sum, point) => sum + point.power_mw, 0);
   const peak = today.reduce((best, point) => (!best || point.power_mw > best.power_mw ? point : best), null);
   const rampMw = nextHour ? nextHour.power_mw - current.power_mw : 0;
