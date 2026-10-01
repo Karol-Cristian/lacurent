@@ -3027,3 +3027,43 @@ body{
   .ed-impact-metrics{grid-template-columns:1fr}
   .ed-impact-metrics>div{min-height:0}
 }
+
+
+/* Release-product staging: client-only monthly bill profile + technical BOM. */
+.ed-report-section-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:12px}
+.ed-report-section-heading h2{margin-top:8px}
+.ed-report-section-heading>span{flex:0 0 auto;padding:7px 10px;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:11px;font-weight:720}
+.ed-monthly-bill-legend{display:flex;flex-wrap:wrap;gap:18px;margin:20px 0 16px;color:var(--muted);font-size:12px}
+.ed-monthly-bill-legend span{display:inline-flex;align-items:center;gap:7px}
+.ed-monthly-bill-legend i{width:11px;height:11px;border-radius:3px;display:inline-block;background:var(--ink)}
+.ed-monthly-bill-legend i.is-teo-average{background:var(--accent)}
+.ed-monthly-bill-chart{height:230px;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:8px;align-items:end;padding:22px 10px 0;border:1px solid var(--line);border-radius:18px;background:var(--soft);overflow:hidden}
+.ed-monthly-bill-column{height:100%;min-width:0;display:grid;grid-template-rows:1fr auto auto;gap:5px;text-align:center}
+.ed-monthly-bill-bars{display:flex;align-items:flex-end;justify-content:center;gap:3px;min-height:140px;border-bottom:1px solid var(--line)}
+.ed-monthly-bill-bars i{display:block;width:min(12px,42%);min-height:3px;border-radius:6px 6px 2px 2px;background:var(--ink)}
+.ed-monthly-bill-bars i.is-teo-average{background:var(--accent);opacity:.72}
+.ed-monthly-bill-column b{font-size:11px}
+.ed-monthly-bill-column small{font-size:9px;color:var(--muted);white-space:nowrap}
+.ed-bom-table{border:1px solid var(--line);border-radius:18px;overflow:hidden;margin:22px 0}
+.ed-bom-table article{display:grid;grid-template-columns:minmax(150px,1fr) minmax(120px,.45fr) minmax(220px,1.4fr);gap:18px;align-items:center;padding:16px 18px;border-bottom:1px solid var(--line)}
+.ed-bom-table article:last-child{border-bottom:0}
+.ed-bom-table article div{display:flex;flex-direction:column;gap:4px}
+.ed-bom-table article small{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.08em}
+.ed-bom-table article strong{font-size:14px}
+.ed-bom-table article>b{font-size:14px}
+.ed-bom-table article>span{font-size:12px;line-height:1.5;color:var(--muted)}
+.ed-bom-table>.ed-hint{padding:18px;margin:0}
+.ed-bom-actions{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.ed-bom-actions .ed-primary{text-decoration:none}
+.ed-bom-actions p{flex:1 1 280px;margin:0;font-size:12px}
+.ed-teo-bom-button{margin-top:8px;background:#fff}
+@media (max-width:720px){
+  .ed-report-section-heading{display:block}
+  .ed-report-section-heading>span{display:inline-block;margin-top:4px}
+  .ed-monthly-bill-chart{height:205px;gap:4px;padding-left:6px;padding-right:6px}
+  .ed-monthly-bill-bars{min-height:118px}
+  .ed-monthly-bill-column small{font-size:8px;transform:rotate(-38deg);transform-origin:center;min-height:24px}
+  .ed-bom-table article{grid-template-columns:1fr;gap:7px;padding:14px}
+  .ed-bom-actions{align-items:stretch}
+  .ed-bom-actions .ed-primary{width:100%}
+}
