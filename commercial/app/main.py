@@ -75,7 +75,11 @@ from .energy_product_catalog_store import (
 )
 from .energy_product_teo_adapter import (
     HrvFinalistCommercializationRequestV1,
+    RadiatorFinalistCommercializationRequestV1,
+    UnderfloorPipeFinalistBomRequestV1,
     commercialize_hrv_finalist,
+    commercialize_radiator_bom_from_finalist,
+    commercialize_underfloor_pipe_bom_from_finalist,
 )
 from .heating_optimization import (
     HeatingBranchSummaryV1,
@@ -2314,6 +2318,166 @@ async def hrv_finalist_commercialization_api(
                 "blockedProducts": list(window.get("blocked_products") or []),
             },
             "stage": "hrv_finalist_product_recheck",
+        }
+    )
+
+
+@app.post("/api/optimization/commercialize/radiator-finalist")
+async def radiator_finalist_commercialization_api(
+    payload: RadiatorFinalistCommercializationRequestV1,
+    request: Request,
+) -> JSONResponse:
+    """Bounded radiator D1 match derived from the canonical finalist design load."""
+
+    env = request.scope.get("env")
+    db = getattr(env, "DB", None) if env is not None else None
+    if db is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Energy product catalog D1 is unavailable.",
+        )
+    try:
+        window = await read_energy_product_candidate_window_d1(
+            db,
+            "radiator",
+            limit=payload.category_limit,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Energy product catalog D1 read failed.",
+        ) from exc
+
+    candidates = list(window.get("candidates") or [])
+    if not candidates:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": "No source-backed radiator product is TEO-ready.",
+                "loadedProducts": int(window.get("loaded_products") or 0),
+                "blockedProducts": list(window.get("blocked_products") or []),
+            },
+        )
+    try:
+        commercial, match = commercialize_radiator_bom_from_finalist(
+            payload.raw_candidate,
+            candidates,
+            installation_allowance_lei_per_unit=(
+                payload.installation_allowance_lei_per_unit
+            ),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    return JSONResponse(
+        {
+            "candidate": model_to_dict(commercial),
+            "matchedProduct": {
+                "productId": match.product_id,
+                "quantity": match.quantity,
+                "outputPerUnitW": match.output_per_unit_w,
+                "availableOutputW": match.available_output_w,
+                "equipmentSubtotalLei": match.equipment_subtotal_lei,
+                "selectionBasis": match.selection_basis,
+            },
+            "catalogWindow": {
+                "mode": window.get("catalog_mode"),
+                "loadedProducts": int(window.get("loaded_products") or 0),
+                "teoReadyProducts": int(window.get("teo_ready_products") or 0),
+                "blockedProducts": list(window.get("blocked_products") or []),
+            },
+            "stage": "radiator_finalist_bom_recheck",
+        }
+    )
+
+
+@app.post("/api/optimization/commercialize/underfloor-pipe-finalist")
+async def underfloor_pipe_finalist_commercialization_api(
+    payload: UnderfloorPipeFinalistBomRequestV1,
+    request: Request,
+) -> JSONResponse:
+    """Bounded UFH pipe BOM after explicit floor-system design inputs exist."""
+
+    env = request.scope.get("env")
+    db = getattr(env, "DB", None) if env is not None else None
+    if db is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Energy product catalog D1 is unavailable.",
+        )
+    try:
+        window = await read_energy_product_candidate_window_d1(
+            db,
+            "underfloor_pipe",
+            limit=payload.category_limit,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Energy product catalog D1 read failed.",
+        ) from exc
+
+    candidates = list(window.get("candidates") or [])
+    if not candidates:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": "No source-backed underfloor pipe product is TEO-ready.",
+                "loadedProducts": int(window.get("loaded_products") or 0),
+                "blockedProducts": list(window.get("blocked_products") or []),
+            },
+        )
+    try:
+        commercial, match, design = (
+            commercialize_underfloor_pipe_bom_from_finalist(
+                payload.raw_candidate,
+                candidates,
+                active_area_m2=payload.active_area_m2,
+                spacing_mm=payload.spacing_mm,
+                max_loop_length_m=payload.max_loop_length_m,
+                connection_allowance_m=payload.connection_allowance_m,
+                verified_available_heat_output_w_m2=(
+                    payload.verified_available_heat_output_w_m2
+                ),
+                installation_allowance_lei=(
+                    payload.installation_allowance_lei
+                ),
+            )
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    return JSONResponse(
+        {
+            "candidate": model_to_dict(commercial),
+            "matchedProduct": {
+                "productId": match.product_id,
+                "coilCount": match.coil_count,
+                "purchasedLengthM": match.purchased_length_m,
+                "requiredLengthM": match.required_length_m,
+                "surplusLengthM": match.surplus_length_m,
+                "materialSubtotalLei": match.material_subtotal_lei,
+                "selectionBasis": match.selection_basis,
+            },
+            "designRequirement": {
+                "activeAreaM2": design.active_area_m2,
+                "spacingMm": design.spacing_mm,
+                "requiredPipeLengthM": design.required_pipe_length_m,
+                "maxLoopLengthM": design.max_loop_length_m,
+                "requiredLoopCount": design.required_loop_count,
+                "requiredHeatOutputW": design.required_heat_output_w,
+                "requiredHeatFluxWm2": design.required_heat_flux_w_m2,
+                "verifiedAvailableHeatOutputWm2": (
+                    design.verified_available_heat_output_w_m2
+                ),
+            },
+            "catalogWindow": {
+                "mode": window.get("catalog_mode"),
+                "loadedProducts": int(window.get("loaded_products") or 0),
+                "teoReadyProducts": int(window.get("teo_ready_products") or 0),
+                "blockedProducts": list(window.get("blocked_products") or []),
+            },
+            "stage": "underfloor_pipe_finalist_bom_recheck",
         }
     )
 
