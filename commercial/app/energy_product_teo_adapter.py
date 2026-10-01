@@ -4,6 +4,11 @@ import math
 from dataclasses import dataclass
 from typing import Any, Iterable
 
+from .engine import calculate, design_heat_load_breakdown
+from .models import BuildingInput, model_to_dict
+from .optimization import CandidateEvaluationV1, CostLineV1
+from .pricing import estimate_energy_cost
+
 
 @dataclass(frozen=True)
 class ProductCandidate:
@@ -285,3 +290,147 @@ def candidate_from_source_pack_row(row: dict[str, Any]) -> ProductCandidate:
         unit_price_lei=unit_price,
         package_price_lei=package_price,
     )
+
+
+def commercialize_hrv_finalist(
+    raw_candidate: CandidateEvaluationV1,
+    candidate_products: Iterable[ProductCandidate],
+    *,
+    fan_operation_hours_per_year: float,
+    installation_allowance_lei: float = 0.0,
+    max_specific_power_input_w_m3h: float | None = None,
+) -> tuple[CandidateEvaluationV1, HrvMatch]:
+    """Replace a finalist HRV target with one source-backed product and recalculate.
+
+    The function is deliberately downstream of TEO search. It never loops HRV
+    SKUs inside the mathematical search. Product heat-recovery efficiency and
+    fan SFP become explicit BuildingInput values, then canonical RBPE is run
+    again so fan electricity, primary energy, CO2 and annual cost are updated.
+    """
+
+    if raw_candidate.resulting_configuration is None:
+        raise ValueError("HRV commercialization requires a finalist building configuration.")
+
+    target = float(
+        raw_candidate.parameters.ventilation_heat_recovery_efficiency_target
+    )
+    if target <= 0:
+        raise ValueError("Finalist has no positive heat-recovery target.")
+
+    building = raw_candidate.resulting_configuration
+    required_airflow_m3h = (
+        float(building.ventilation.air_changes_per_hour)
+        * float(building.heated_volume_m3)
+    )
+    match = match_hrv_units(
+        candidate_products,
+        required_airflow_m3h=required_airflow_m3h,
+        target_heat_recovery_efficiency=target,
+        max_specific_power_input_w_m3h=max_specific_power_input_w_m3h,
+    )
+
+    hours = float(fan_operation_hours_per_year)
+    if not math.isfinite(hours) or hours <= 0 or hours > 8784:
+        raise ValueError("fan_operation_hours_per_year must be in (0, 8784].")
+
+    installation = float(installation_allowance_lei)
+    if not math.isfinite(installation) or installation < 0:
+        raise ValueError("installation_allowance_lei must be finite and non-negative.")
+
+    building_data = model_to_dict(building)
+    ventilation = dict(building_data.get("ventilation") or {})
+    ventilation.update(
+        {
+            "heat_recovery_efficiency": match.heat_recovery_efficiency,
+            "specific_fan_power_w_per_m3h": match.specific_power_input_w_m3h,
+            "fan_operation_hours_per_year": hours,
+        }
+    )
+    building_data["ventilation"] = ventilation
+    realized_building = BuildingInput(**building_data)
+
+    result = calculate(realized_building, include_reference=False)
+    priced = estimate_energy_cost(result)
+    if not priced.get("complete"):
+        raise ValueError("HRV finalist recalculation has incomplete annual energy cost.")
+
+    equipment = (
+        None if match.unit_price_lei is None else float(match.unit_price_lei)
+    )
+    if equipment is None:
+        raise ValueError("HRV finalist requires a current explicit equipment price.")
+    exact_capex = equipment + installation
+
+    lines = [
+        line
+        for line in raw_candidate.cost_breakdown
+        if line.family != "ventilation"
+    ]
+    lines.append(
+        CostLineV1(
+            family="ventilation",
+            capex_lei=round(exact_capex, 2),
+            parameter_value=round(match.heat_recovery_efficiency, 6),
+            parameter_unit="heat_recovery_efficiency",
+            source_kind="commercial_product_explicit_performance",
+            confidence="source_backed_product_plus_explicit_installation",
+            catalog_unit="equipment_plus_installation",
+            note=(
+                "HRV finalist matched by required airflow and recovery target; "
+                "canonical RBPE recalculated with explicit fan SFP and annual operating hours."
+            ),
+            product_id=match.product_id,
+            quantity=1,
+            quantity_unit="system",
+            material_subtotal_lei=round(equipment, 2),
+            nonmaterial_subtotal_lei=round(installation, 2),
+        )
+    )
+
+    capex = sum(float(line.capex_lei) for line in lines)
+    annual_bill = float(priced["priced_total_lei"])
+    saving = float(raw_candidate.baseline_annual_bill_lei) - annual_bill
+    payback = capex / saving if capex > 0 and saving > 0 else None
+    roi = 100.0 * saving / capex if capex > 0 else None
+
+    design = design_heat_load_breakdown(
+        realized_building,
+        result.transmission_components,
+        result.h_ve_w_k,
+        result.climate,
+    )
+
+    data = model_to_dict(raw_candidate)
+    data.update(
+        {
+            "candidate_id": raw_candidate.candidate_id + "-HRV-" + match.product_id,
+            "capex_lei": round(capex, 2),
+            "annual_bill_lei": round(annual_bill, 2),
+            "annual_saving_lei": round(saving, 2),
+            "payback_years": None if payback is None else round(payback, 4),
+            "roi_percent_per_year": None if roi is None else round(roi, 4),
+            "final_energy_kwh": round(float(result.total_final_energy_kwh), 3),
+            "design_heat_load_kw": (
+                None
+                if design.get("total_kw") is None
+                else round(float(design["total_kw"]), 4)
+            ),
+            "primary_specific_kwh_m2": round(
+                float(result.primary_energy.specific_kwh_m2),
+                3,
+            ),
+            "co2_total_kg": round(float(result.co2.total_kg), 3),
+            "co2_specific_kg_m2": round(float(result.co2.specific_kg_m2), 3),
+            "energy_class": result.energy_class,
+            "resulting_configuration": model_to_dict(realized_building),
+            "cost_breakdown": [model_to_dict(line) for line in lines],
+            "cost_source": "hrv_product_discretized_recalculated",
+            "commercialization_status": "partially_discretized",
+            "assumptions": [
+                *raw_candidate.assumptions,
+                "HRV SKU selection is finalist-only and does not increase TEO search cardinality.",
+                "Fan electricity is recalculated from source-backed product SFP and explicit annual operating hours.",
+            ],
+        }
+    )
+    return CandidateEvaluationV1(**data), match
