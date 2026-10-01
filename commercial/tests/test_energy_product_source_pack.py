@@ -27,9 +27,9 @@ def test_real_cross_category_source_pack_validates_and_reports_teo_readiness():
     normalized = importer.validate(payload)
     result = importer.summary(normalized)
 
-    assert result["products"] == 4
-    assert result["value_metric_ready"] == 3
-    assert result["teo_property_complete"] == 3
+    assert result["products"] == 9
+    assert result["value_metric_ready"] == 8
+    assert result["teo_property_complete"] == 8
     assert result["blocked"] == [
         {
             "id": "zehnder-comfoair-q350-hrv",
@@ -72,9 +72,9 @@ def test_importer_emits_generic_catalog_tables_and_keeps_blocked_hrv_out_of_valu
     assert "INSERT OR REPLACE INTO energy_product_offers" in sql
     assert "INSERT OR REPLACE INTO energy_product_value_metrics" in sql
 
-    # Three products have complete metric inputs; the HRV is intentionally blocked
-    # until official heat-recovery efficiency is parsed.
-    assert sql.count("INSERT OR REPLACE INTO energy_product_value_metrics") == 3
+    # Eight products have complete category-local metric inputs; the HRV is
+    # intentionally blocked until official heat-recovery efficiency is parsed.
+    assert sql.count("INSERT OR REPLACE INTO energy_product_value_metrics") == 8
 
 
 def test_migration_supports_documents_images_offers_and_category_local_value_metrics():
@@ -146,3 +146,41 @@ def test_current_source_pack_does_not_fake_direct_image_urls():
         not (product.get("image") or {}).get("image_url")
         for product in payload["products"]
     )
+
+
+
+def test_expanded_source_pack_covers_multiple_teo_roles_and_categories():
+    importer = _load_importer()
+    normalized = importer.validate(importer.load(SOURCE_PACK))
+    by_id = {row["product"]["id"]: row for row in normalized["products"]}
+
+    rockwool = by_id["rockwool-frontrock-casa-100"]["metric"]
+    assert rockwool is not None
+    assert rockwool["comparison_scope"] == "wall_insulation"
+    assert rockwool["denominator_price_lei"] == pytest.approx(223.06 / 2.88)
+    assert rockwool["numerator_value"] == pytest.approx(0.1 / 0.034)
+
+    jinko = by_id["jinko-tiger-neo-jkm440n-54hl4r-v"]["metric"]
+    assert jinko is not None
+    assert jinko["numerator_value"] == pytest.approx(440)
+    assert jinko["denominator_price_lei"] == pytest.approx(339)
+
+    grundfos = by_id["grundfos-alpha2-25-60-180-99411175"]["metric"]
+    assert grundfos is not None
+    assert grundfos["comparison_scope"] == "circulation_pump"
+    assert grundfos["numerator_value"] == pytest.approx(3.4 * 6)
+
+    uponor_manifold = by_id["uponor-vario-m-fm-6-1085948"]["metric"]
+    assert uponor_manifold is not None
+    assert uponor_manifold["numerator_value"] == pytest.approx(6)
+
+    salus = by_id["salus-kl08nsb-8-zone"]["metric"]
+    assert salus is not None
+    assert salus["numerator_value"] == pytest.approx(8)
+
+    roles = {
+        row["product"]["teo"]["role"]
+        for row in normalized["products"]
+        if row["product"].get("teo")
+    }
+    assert {"planning_curve", "finalist_match", "bill_of_materials"} <= roles
