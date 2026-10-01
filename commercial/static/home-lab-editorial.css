@@ -3067,3 +3067,71 @@ body{
   .ed-bom-actions{align-items:stretch}
   .ed-bom-actions .ed-primary{width:100%}
 }
+
+
+/* Release/maintenance service notice. Kept visually compact so the house state
+   remains usable while RBPE/TEO retries recover in the background. */
+.ed-service-notice {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  width: min(1120px, calc(100% - 24px));
+  margin: 10px auto 0;
+  padding: 11px 14px;
+  border: 1px solid rgba(136, 93, 20, .24);
+  border-radius: 12px;
+  background: rgba(255, 249, 232, .97);
+  box-shadow: 0 8px 24px rgba(35, 45, 58, .08);
+  color: #4a3a1b;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.ed-service-notice[hidden] {
+  display: none;
+}
+
+.ed-service-notice div {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ed-service-notice strong {
+  font-size: .9rem;
+  white-space: nowrap;
+}
+
+.ed-service-notice span,
+.ed-service-notice small {
+  font-size: .82rem;
+  line-height: 1.35;
+}
+
+.ed-service-notice small {
+  opacity: .72;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .ed-service-notice {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 7px;
+  }
+
+  .ed-service-notice div {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .ed-service-notice strong,
+  .ed-service-notice small {
+    white-space: normal;
+  }
+}
