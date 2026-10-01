@@ -4609,8 +4609,12 @@
 
   function reportHeatingPerformance(engineering) {
     const heat = engineering?.heating || {};
-    const currentScop = parseDecimal($("#techHeatingScop")?.value, NaN);
-    const currentEtaRaw = parseDecimal($("#techHeatingEfficiency")?.value, NaN);
+    const reportInputNumber = selector => {
+      const raw = String($(selector)?.value ?? "").trim();
+      return raw === "" ? NaN : parseDecimal(raw, NaN);
+    };
+    const currentScop = reportInputNumber("#techHeatingScop");
+    const currentEtaRaw = reportInputNumber("#techHeatingEfficiency");
     const currentEta = Number.isFinite(currentEtaRaw)
       ? (currentEtaRaw <= 1.5 ? currentEtaRaw * 100 : currentEtaRaw)
       : NaN;
