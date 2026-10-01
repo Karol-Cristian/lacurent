@@ -1201,7 +1201,6 @@
       $("#floorIns").value,
     ].every(value => String(value ?? "").trim() !== "");
     const glazing = $("#glazing").value;
-
     const glazingU = {
       single_clear_glazing:5.0,
       double_clear_glazing:2.8,
@@ -1250,44 +1249,117 @@
     setAdvancedDerivedValue("advSolarGn", glazing ? glazingG[glazing] : NaN, 2);
 
     const ventilation = $("#ventilation").value;
-    const heating = $("#heatingChoice").value;
-    const cooling = $("#cooling").value;
-    const dhw = $("#dhwSystem").value;
-
-    setAdvancedDerivedValue("advAch", ventilation ? (ventilation === "natural" ? 0.50 : ventilation === "mechanical" ? 0.45 : 0.35) : NaN, 2);
-    setAdvancedDerivedValue("advInfiltrationAch", ventilation ? 0.15 : NaN, 2);
-    setAdvancedDerivedValue("advHeatRecovery", ventilation ? (ventilation === "hrv" ? 80 : 0) : NaN, 0);
-
-    const heatProfile = heating ? heatingExpertProfile() : null;
     setAdvancedDerivedValue(
-      "advHeatingEfficiency",
-      heatProfile && heating !== "heat_pump" ? Number(heatProfile.efficiency) * 100 : NaN,
-      0
-    );
-    setAdvancedDerivedValue(
-      "advHeatingScop",
-      heatProfile && heating === "heat_pump" ? Number(heatProfile.scop) : NaN,
+      "advAch",
+      ventilation ? (ventilation === "mechanical" ? 0.65 : 0.5) : NaN,
       2
     );
-    setAdvancedDerivedValue("advHeatingAux", heating ? Number(heatProfile?.auxiliaryElectricityKwhYear) : NaN, 0);
-    setAdvancedDerivedValue("advHeatingFlow", heating ? Number(heatProfile?.flowTemperatureC) : NaN, 0);
-    setAdvancedDerivedValue("advHeatingReturn", heating ? Number(heatProfile?.returnTemperatureC) : NaN, 0);
+    setAdvancedDerivedValue("advInfiltrationAch", ventilation ? 0.15 : NaN, 2);
+    setAdvancedDerivedValue("advHeatRecovery", ventilation ? (ventilation === "hrv" ? 75 : 0) : NaN, 0);
 
+    const choice = $("#heatingChoice").value;
+    const emitter = $("#heatingEmitter").value;
+    const generator = choice ? heatingGeneratorType() : "";
+    const emitterTemperatures = {
+      radiators_high_temp:[60,45],
+      radiators_low_temp:[45,35],
+      underfloor:[35,30],
+      fan_coils:[45,40],
+    };
+    const temps = choice && emitter ? (emitterTemperatures[emitter] || null) : null;
+    setAdvancedDerivedValue("advHeatingFlow", temps ? temps[0] : NaN, 0);
+    setAdvancedDerivedValue("advHeatingReturn", temps ? temps[1] : NaN, 0);
+
+    const auxByGenerator = {
+      gas_boiler:120,
+      condensing_gas_boiler:120,
+      electric_direct:0,
+      electric_boiler:120,
+      heat_pump_air_water:220,
+      heat_pump_ground_water:220,
+      heat_pump_air_air:30,
+      district_heat:120,
+      wood_stove:0,
+      wood_boiler:120,
+      pellet_boiler:180,
+    };
+    setAdvancedDerivedValue("advHeatingAux", generator ? auxByGenerator[generator] : NaN, 0);
+
+    if (choice === "heat_pump" && generator) {
+      const scopByEmitter = {
+        local:3.0,
+        radiators_high_temp:2.3,
+        radiators_low_temp:2.8,
+        underfloor:3.2,
+        fan_coils:2.8,
+        air:3.0,
+      };
+      const sourceFactor = {
+        heat_pump_air_water:1.0,
+        heat_pump_ground_water:1.2,
+        heat_pump_air_air:1.0,
+      };
+      setAdvancedDerivedValue(
+        "advHeatingScop",
+        emitter ? (scopByEmitter[emitter] || 3.0) * (sourceFactor[generator] || 1.0) : NaN,
+        2
+      );
+      setAdvancedDerivedValue("advHeatingEfficiency", NaN, 0);
+    } else if (choice) {
+      const efficiencyPct = {
+        condensing_gas_boiler:94,
+        gas_boiler:85,
+        electric_resistance:100,
+        electric_boiler:98,
+        district_heat:95,
+        wood_stove:75,
+        wood_boiler:80,
+        pellet_boiler:88,
+      };
+      setAdvancedDerivedValue("advHeatingEfficiency", efficiencyPct[choice], 0);
+      setAdvancedDerivedValue("advHeatingScop", NaN, 2);
+    } else {
+      setAdvancedDerivedValue("advHeatingEfficiency", NaN, 0);
+      setAdvancedDerivedValue("advHeatingScop", NaN, 2);
+    }
+
+    const cooling = $("#cooling").value;
     setAdvancedDerivedValue(
       "advCoolingSeer",
-      cooling ? (cooling === "none" ? NaN : cooling === "split" ? 4.2 : 4.0) : NaN,
+      !cooling || cooling === "none" ? NaN : (cooling === "split" ? 4.2 : 4.0),
       1
     );
-    setAdvancedDerivedValue("advCoolingSetpoint", cooling ? 26 : NaN, 0);
+    setAdvancedDerivedValue("advCoolingSetpoint", !cooling || cooling === "none" ? NaN : 26, 0);
 
-    const dhwProfile = dhw ? dhwExpertProfile() : null;
-    setAdvancedDerivedValue(
-      "advDhwEfficiency",
-      dhwProfile?.efficiency != null ? Number(dhwProfile.efficiency) * 100 : NaN,
-      0
-    );
-    setAdvancedDerivedValue("advDhwCop", dhwProfile?.cop != null ? Number(dhwProfile.cop) : NaN, 2);
+    const dhw = $("#dhwSystem").value;
+    let dhwEfficiency = NaN;
+    let dhwCop = NaN;
+    if (dhw === "electric_boiler") dhwEfficiency = 98;
+    else if (dhw === "gas_boiler") dhwEfficiency = 88;
+    else if (dhw === "heat_pump_water_heater") dhwCop = 2.4;
+    else if (dhw === "district_heat") dhwEfficiency = 95;
+    else if (dhw === "same_as_heating" && choice) {
+      if (choice === "heat_pump") dhwCop = 2.4;
+      else {
+        dhwEfficiency = {
+          condensing_gas_boiler:88,
+          gas_boiler:88,
+          electric_resistance:98,
+          electric_boiler:98,
+          district_heat:95,
+          wood_stove:75,
+          wood_boiler:80,
+          pellet_boiler:88,
+        }[choice];
+      }
+    }
+    setAdvancedDerivedValue("advDhwEfficiency", dhwEfficiency, 0);
+    setAdvancedDerivedValue("advDhwCop", dhwCop, 1);
     setAdvancedDerivedValue("advDhwLitres", dhw ? 50 : NaN, 0);
+
+    // Page 4 remains intentionally selector-driven and keeps engine defaults.
+    setAdvancedDerivedValue("advPvPerformanceRatio", 82, 0);
+    setAdvancedDerivedValue("advSolarThermalEfficiency", 45, 0);
   }
 
   function heatingExpertProfile() {
