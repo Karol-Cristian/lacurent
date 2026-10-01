@@ -156,7 +156,7 @@ jobs:
               npx wrangler d1 execute "$DB_NAME" \
                 --config "$D1_STAGING_CONFIG" \
                 --remote \
-                --command "$SQL" \
+                --command="$SQL" \
                 --yes
             done
           done
