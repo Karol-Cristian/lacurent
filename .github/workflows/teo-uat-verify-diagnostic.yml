@@ -1,0 +1,108 @@
+name: TEO UAT Verify Diagnostic
+
+on:
+  push:
+    branches:
+      - lemnaru-karol/teo-private-minimal-dev
+    paths:
+      - ".github/workflows/teo-uat-verify-diagnostic.yml"
+      - "commercial/app/teo_app.py"
+      - "commercial/teo-worker/**"
+      - "commercial/teo-router/**"
+      - "scripts/prepare-teo-cloudflare-worker.mjs"
+      - "scripts/soak-teo-production.mjs"
+
+concurrency:
+  group: teo-uat-verify-diagnostic
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_STAGING_API_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DB_NAME: lacurent-dev-db
+      HOME_LAB_BASE_URL: https://lacurent-uat.lemnarukarol.workers.dev
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Install tools
+        run: |
+          python -m pip install --upgrade uv
+          npm install --no-save wrangler@latest playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Resolve development D1
+        run: |
+          npx wrangler d1 list --json > /tmp/d1-list.json
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          raw=json.loads(Path("/tmp/d1-list.json").read_text())
+          rows=raw if isinstance(raw,list) else (raw.get("result") or raw.get("databases") or raw.get("items") or [])
+          match=next((r for r in rows if isinstance(r,dict) and r.get("name")==os.environ["DB_NAME"]),None)
+          if not match:
+              raise SystemExit("lacurent-dev-db not found")
+          dbid=str(match.get("uuid") or match.get("id") or "")
+          if not dbid:
+              raise SystemExit("development D1 UUID missing")
+          with open(os.environ["GITHUB_ENV"],"a") as fh:
+              fh.write(f"DB_ID={dbid}\n")
+          PY
+
+      - name: Prepare and configure minimal TEO staging bundle
+        run: |
+          node scripts/prepare-teo-cloudflare-worker.mjs
+          node scripts/configure-full-stack-staging.mjs --db-id "$DB_ID"
+
+      - name: Sync TEO Python bundle
+        working-directory: .wrangler/teo-worker
+        run: |
+          npm install --save-dev wrangler@latest
+          mkdir -p .bin
+          printf '#!/usr/bin/env bash\nexec npx wrangler "$@"\n' > .bin/wrangler
+          chmod +x .bin/wrangler
+          export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
+          uvx --from workers-py pywrangler sync --force
+
+      - name: Deploy four TEO staging shards
+        working-directory: .wrangler/teo-worker
+        run: |
+          cp wrangler.toml /tmp/teo-template.toml
+          export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
+          for suffix in a b c d; do
+            python - "$suffix" <<'PY'
+          from pathlib import Path
+          import sys
+          suffix=sys.argv[1]
+          text=Path("/tmp/teo-template.toml").read_text()
+          text=text.replace('name = "lacurent-staging-teo-private"', f'name = "lacurent-staging-teo-shard-{suffix}"')
+          Path("wrangler.toml").write_text(text)
+          PY
+            uvx --from workers-py pywrangler deploy
+          done
+
+      - name: Deploy diagnostic TEO router
+        working-directory: .wrangler/teo-router
+        run: |
+          npm install --save-dev wrangler@latest
+          npx wrangler deploy
+
+      - name: Run one full UAT TEO flow with 5xx body capture
+        env:
+          TEO_SOAK_RUNS: "1"
+          TEO_REQUIRE_SHARDED_ROUTES: "1"
+        run: |
+          node scripts/soak-teo-production.mjs
