@@ -94,10 +94,10 @@ def test_teo_private_bundle_is_strict_and_ui_free() -> None:
     assert "from app.main import app" in public_worker
 
 
-def test_teo_private_plan_verify_finalize_regression() -> None:
+def _run_private_teo_flow(run_id: str) -> dict:
     plan_response = client.post(
         "/api/optimization/home-lab/v4/plan",
-        data=BASE_FORM,
+        data={**BASE_FORM, "_optimizer_run_id": run_id},
     )
     assert plan_response.status_code == 200, plan_response.text
     plan = plan_response.json()
@@ -112,9 +112,9 @@ def test_teo_private_plan_verify_finalize_regression() -> None:
     branch_response = client.post(
         "/api/optimization/home-lab/v3/branch",
         json={
-            "form": BASE_FORM,
+            "form": {**BASE_FORM, "_optimizer_run_id": run_id},
             "branchId": branch_id,
-            "runId": "minimal-regression",
+            "runId": run_id,
             "batch": [{}],
         },
     )
@@ -126,7 +126,7 @@ def test_teo_private_plan_verify_finalize_regression() -> None:
     verification_plan_response = client.post(
         "/api/optimization/home-lab/v3/verification-plan",
         json={
-            "form": BASE_FORM,
+            "form": {**BASE_FORM, "_optimizer_run_id": run_id},
             "candidateRows": [
                 {"branchId": branch_id, "candidate": candidate}
             ],
@@ -141,10 +141,10 @@ def test_teo_private_plan_verify_finalize_regression() -> None:
         "/api/optimization/home-lab/v3/verify",
         headers={"x-lacurent-flow-gated": "1"},
         json={
-            "form": BASE_FORM,
+            "form": {**BASE_FORM, "_optimizer_run_id": run_id},
             "branchId": target["branchId"],
             "candidate": target["candidate"],
-            "runId": "minimal-regression",
+            "runId": run_id,
         },
     )
     assert verify_response.status_code == 200, verify_response.text
@@ -156,8 +156,8 @@ def test_teo_private_plan_verify_finalize_regression() -> None:
     finalize_response = client.post(
         "/api/optimization/home-lab/v3/finalize",
         json={
-            "form": BASE_FORM,
-            "runId": "minimal-regression",
+            "form": {**BASE_FORM, "_optimizer_run_id": run_id},
+            "runId": run_id,
             "verifiedRows": [
                 {
                     "branchId": target["branchId"],
@@ -184,3 +184,21 @@ def test_teo_private_plan_verify_finalize_regression() -> None:
     assert final["optimization"]["optimizerVersion"] == "v3-sharded"
     assert final["optimization"]["fullEngineVerifications"] == 1
     assert final["optimization"]["finalizeRecalculations"] == 0
+    return final
+
+
+def test_teo_private_plan_verify_finalize_regression() -> None:
+    signatures = []
+    for ordinal in range(10):
+        final = _run_private_teo_flow(f"minimal-regression-{ordinal}")
+        signatures.append(
+            (
+                final["scenario"]["energy_class"],
+                round(float(final["scenario"]["annual_cost_lei"]), 6),
+                round(float(final["scenario"]["final_energy_kwh"]), 6),
+                round(float(final["scenario"]["primary_specific_kwh_m2"]), 6),
+                round(float(final["scenario"]["co2_specific_kg_m2"]), 6),
+                round(float(final["optimization"]["annualBillLei"]), 6),
+            )
+        )
+    assert len(set(signatures)) == 1
