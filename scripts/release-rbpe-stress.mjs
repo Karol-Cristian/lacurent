@@ -102,7 +102,7 @@ async function fillRequiredSystems(page) {
         && response.request().method() === "POST";
     } catch { return false; }
   }, {timeout:45000});
-  await page.locator("#cooling").selectOption("none");
+  await page.locator("#cooling").selectOption("split");
   return responsePromise;
 }
 
