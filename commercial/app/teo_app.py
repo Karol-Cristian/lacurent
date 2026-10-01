@@ -80,6 +80,127 @@ async def health() -> dict[str, str]:
     return {"status": "ok", "service": "teo-private-minimal"}
 
 
+async def _verify_candidate_via_rbpe(
+    request: Request,
+    *,
+    optimization_request: OptimizationRequestV1,
+    fast_candidate: CandidateEvaluationV1,
+    branch_id: str,
+    cost_catalog: dict[str, Any],
+    heating_catalog: dict[str, Any],
+    baseline_annual_bill_lei: float | None,
+) -> tuple[dict[str, Any], str]:
+    """Execute canonical finalist physics in the dedicated RBPE service."""
+
+    env = request.scope.get("env")
+    service = getattr(env, "REFERENCE_RBPE", None) if env is not None else None
+    if env is not None:
+        if service is None:
+            raise RuntimeError("Private RBPE service binding is unavailable for VERIFY.")
+        raw_json = await service.verify_teo_candidate_json(
+            json.dumps(model_to_dict(optimization_request), ensure_ascii=True, separators=(",", ":")),
+            json.dumps(model_to_dict(fast_candidate), ensure_ascii=True, separators=(",", ":")),
+            branch_id,
+            json.dumps(cost_catalog, ensure_ascii=True, separators=(",", ":")),
+            json.dumps(heating_catalog, ensure_ascii=True, separators=(",", ":")),
+            baseline_annual_bill_lei,
+        )
+        payload = json.loads(str(raw_json))
+        if not isinstance(payload, dict) or not isinstance(payload.get("candidate"), dict):
+            raise ValueError("Private RBPE VERIFY returned an invalid payload.")
+        return payload, "private-rbpe-sharded"
+
+    # Local/unit-test fallback only. Cloudflare TEO must never execute this path.
+    verified = verify_one_candidate_v3(
+        optimization_request,
+        fast_candidate=fast_candidate,
+        branch_id=branch_id,
+        catalog=cost_catalog,
+        heating_catalog=heating_catalog,
+        baseline_annual_bill_lei=baseline_annual_bill_lei,
+    )
+    return model_to_dict(verified), "local-test-fallback"
+
+
+async def _commercialize_candidate_via_rbpe(
+    request: Request,
+    *,
+    candidate: CandidateEvaluationV1,
+    original_building: BuildingInput,
+    heating_catalog: dict[str, Any],
+    branch_id: str,
+) -> tuple[dict[str, Any], str]:
+    """Execute PRODUCT's exact equipment-backed physics in RBPE shards."""
+
+    env = request.scope.get("env")
+    service = getattr(env, "REFERENCE_RBPE", None) if env is not None else None
+    if env is not None:
+        if service is None:
+            raise RuntimeError("Private RBPE service binding is unavailable for PRODUCT.")
+        raw_json = await service.commercialize_teo_candidate_json(
+            json.dumps(model_to_dict(candidate), ensure_ascii=True, separators=(",", ":")),
+            json.dumps(model_to_dict(original_building), ensure_ascii=True, separators=(",", ":")),
+            json.dumps(heating_catalog, ensure_ascii=True, separators=(",", ":")),
+            branch_id,
+        )
+        payload = json.loads(str(raw_json))
+        if not isinstance(payload, dict) or not isinstance(payload.get("candidate"), dict):
+            raise ValueError("Private RBPE PRODUCT returned an invalid payload.")
+        return payload, "private-rbpe-sharded"
+
+    # Local/unit-test fallback only.
+    (
+        commercial_candidate,
+        matched_product,
+        warnings,
+        commercial_engine_result,
+    ) = commercialize_heating_finalist(
+        candidate,
+        original_building=original_building,
+        heating_catalog=heating_catalog,
+        branch_id=branch_id,
+        return_result=True,
+    )
+    matched_quantity = next(
+        (
+            max(1, int(float(line.quantity or 1)))
+            for line in commercial_candidate.cost_breakdown
+            if (
+                line.family == "heating"
+                and line.product_id is not None
+                and matched_product is not None
+                and line.product_id == matched_product.id
+            )
+        ),
+        1,
+    )
+    scenario = (
+        embed_lab_result_payload(commercial_engine_result)
+        if commercial_engine_result is not None
+        else None
+    )
+    heat_pump_profile: dict[str, Any] | None = None
+    if (
+        commercial_engine_result is not None
+        and matched_product is not None
+        and commercial_candidate.resulting_configuration is not None
+    ):
+        heat_pump_profile = heat_pump_monthly_performance_profile(
+            commercial_candidate.resulting_configuration,
+            matched_product,
+            list(commercial_engine_result.monthly),
+            quantity=matched_quantity,
+        )
+    return {
+        "candidate": model_to_dict(commercial_candidate),
+        "matchedProduct": None if matched_product is None else model_to_dict(matched_product),
+        "matchedProductQuantity": matched_quantity,
+        "scenario": scenario,
+        "heatPumpPerformanceProfile": heat_pump_profile,
+        "warnings": warnings,
+    }, "local-test-fallback"
+
+
 
 TEO_FLOW_MAX_VERIFICATIONS = 3
 TEO_FLOW_COOLDOWN_MS = 1800
@@ -2271,6 +2392,7 @@ async def home_lab_optimization_v4_plan_api(request: Request) -> JSONResponse:
             "serverCandidateEvaluations": 0,
             "baselineCanonicalPasses": 1,
             "calculationTimeMs": elapsed_ms,
+            "rbpeExecution": rbpe_execution,
             "executionMode": "browser_web_worker_v4",
             "heatingCatalogSource": heating_summary.get("source"),
             "heatingCatalogStats": heating_summary.get("catalog_stats") or {},
@@ -2658,11 +2780,12 @@ async def home_lab_optimization_v3_verify_api(request: Request) -> JSONResponse:
         )
         fast_candidate = CandidateEvaluationV1(**candidate_raw)
         started = time.perf_counter()
-        verified = verify_one_candidate_v3(
-            optimization_request,
+        verified, rbpe_execution = await _verify_candidate_via_rbpe(
+            request,
+            optimization_request=optimization_request,
             fast_candidate=fast_candidate,
             branch_id=branch_id,
-            catalog=cost_catalog,
+            cost_catalog=cost_catalog,
             heating_catalog=heating_catalog,
             baseline_annual_bill_lei=baseline_annual_bill_lei,
         )
@@ -2679,13 +2802,14 @@ async def home_lab_optimization_v3_verify_api(request: Request) -> JSONResponse:
         payload = {
             "optimizerVersion": "v4-adaptive",
             "branchId": branch_id,
-            "candidate": model_to_dict(verified.candidate),
+            "candidate": dict(verified["candidate"]),
             "sourceCandidateId": fast_candidate.candidate_id,
-            "annualBillDeltaLei": verified.annual_bill_delta_lei,
-            "designLoadDeltaKw": verified.design_load_delta_kw,
-            "warnings": verified.warnings,
+            "annualBillDeltaLei": float(verified["annual_bill_delta_lei"]),
+            "designLoadDeltaKw": float(verified["design_load_delta_kw"]),
+            "warnings": list(verified.get("warnings") or []),
             "calculationTimeMs": elapsed_ms,
             "workerFlow": worker_flow,
+            "rbpeExecution": rbpe_execution,
         }
         response = JSONResponse(
             payload,
@@ -2747,67 +2871,29 @@ async def home_lab_optimization_v3_product_api(request: Request) -> JSONResponse
             branch_id,
             required_power_kw,
         )
-        commercialized = commercialize_heating_finalist(
-            candidate,
+        commercialized, rbpe_execution = await _commercialize_candidate_via_rbpe(
+            request,
+            candidate=candidate,
             original_building=optimization_request.baseline,
             heating_catalog=heating_catalog,
             branch_id=branch_id,
-            return_result=True,
         )
-        (
-            commercial_candidate,
-            matched_product,
-            warnings,
-            commercial_engine_result,
-        ) = commercialized
-
-        if commercial_engine_result is not None:
-            scenario = embed_lab_result_payload(commercial_engine_result)
-        else:
-            scenario = _optimizer_candidate_scenario_snapshot(
+        commercial_candidate = CandidateEvaluationV1(
+            **dict(commercialized["candidate"])
+        )
+        matched_product = commercialized.get("matchedProduct")
+        matched_quantity = int(commercialized.get("matchedProductQuantity") or 1)
+        scenario_raw = commercialized.get("scenario")
+        scenario = (
+            dict(scenario_raw)
+            if isinstance(scenario_raw, dict)
+            else _optimizer_candidate_scenario_snapshot(
                 commercial_candidate,
                 form,
             )
-
-        matched_quantity = next(
-            (
-                max(1, int(float(line.quantity or 1)))
-                for line in commercial_candidate.cost_breakdown
-                if (
-                    line.family == "heating"
-                    and line.product_id is not None
-                    and matched_product is not None
-                    and line.product_id == matched_product.id
-                )
-            ),
-            1,
         )
-
-        heat_pump_profile: dict[str, Any] | None = None
-        if (
-            commercial_engine_result is not None
-            and matched_product is not None
-            and commercial_candidate.resulting_configuration is not None
-        ):
-            heat_pump_profile = heat_pump_monthly_performance_profile(
-                commercial_candidate.resulting_configuration,
-                matched_product,
-                list(commercial_engine_result.monthly),
-                quantity=matched_quantity,
-            )
-            if heat_pump_profile is not None:
-                heat_pump_profile["engine_performance_kind"] = (
-                    commercial_engine_result.heating_system.generator_performance_kind
-                )
-                heat_pump_profile["engine_performance_value"] = float(
-                    commercial_engine_result.heating_system.generator_performance
-                )
-                heat_pump_profile["effective_system_performance"] = float(
-                    commercial_engine_result.heating_system.effective_system_performance
-                )
-                heat_pump_profile["performance_source"] = (
-                    commercial_engine_result.heating_system.performance_source
-                )
+        heat_pump_profile = commercialized.get("heatPumpPerformanceProfile")
+        warnings = list(commercialized.get("warnings") or [])
 
         elapsed_ms = round((time.perf_counter() - started) * 1000.0, 1)
         payload = {
@@ -2817,11 +2903,7 @@ async def home_lab_optimization_v3_product_api(request: Request) -> JSONResponse
             "sourceCandidateId": (
                 source_candidate_id or candidate.candidate_id
             ),
-            "matchedProduct": (
-                None
-                if matched_product is None
-                else model_to_dict(matched_product)
-            ),
+            "matchedProduct": matched_product,
             "matchedProductQuantity": matched_quantity,
             "scenario": scenario,
             "heatPumpPerformanceProfile": heat_pump_profile,
@@ -2830,12 +2912,12 @@ async def home_lab_optimization_v3_product_api(request: Request) -> JSONResponse
             "catalogStats": heating_catalog.get("catalog_stats") or {},
             "warnings": warnings,
             "calculationTimeMs": elapsed_ms,
+            "rbpeExecution": rbpe_execution,
         }
         response = JSONResponse(payload)
 
         # Do not let one commercial request pin its bounded SKU curves or final
         # engine graph in a long-lived Pyodide isolate.
-        del commercial_engine_result
         del heating_catalog
         del optimization_request
         del payload
