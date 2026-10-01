@@ -21,6 +21,7 @@ from commercial.app.energy_product_teo_adapter import (
     match_underfloor_manifolds,
     match_underfloor_pipe,
     radiator_output_at_design_condition_w,
+    wall_products_from_catalog_window,
 )
 from commercial.app.engine import calculate
 from commercial.app.models import BuildingInput
@@ -582,3 +583,109 @@ def test_complete_underfloor_bom_does_not_infer_control_zones():
         line.family != "heating_control"
         for line in commercial.cost_breakdown
     )
+
+
+
+def test_universal_catalog_wall_rows_convert_to_exact_commercial_products():
+    rows = _load_source_rows()
+    wall_rows = []
+    for row in rows:
+        if row["product"]["category_id"] != "wall_insulation":
+            continue
+        wall_rows.append(
+            {
+                **row["product"],
+                "id": row["product"]["id"],
+                "properties": row["adapted_properties"],
+                "offers": row["product"].get("offers") or [],
+            }
+        )
+
+    products = wall_products_from_catalog_window({"products": wall_rows})
+
+    assert {product.product_id for product in products} >= {
+        "austrotherm-eps-a100-af-plus-160",
+        "rockwool-frontrock-casa-100",
+    }
+    rockwool = next(
+        product
+        for product in products
+        if product.product_id == "rockwool-frontrock-casa-100"
+    )
+    assert rockwool.thickness_mm == pytest.approx(100)
+    assert rockwool.lambda_w_mk == pytest.approx(0.034)
+    assert rockwool.package_area_m2 == pytest.approx(2.88)
+    assert rockwool.price_per_package_lei == pytest.approx(223.06)
+
+
+def test_universal_wall_products_can_discretize_a_teo_finalist():
+    from commercial.app.commercialization import (
+        WallCommercializationRequestV1,
+        commercialize_wall_candidate,
+    )
+
+    baseline = _hrv_test_building()
+    raw = evaluate_parametric_candidate(
+        baseline,
+        ParametricMeasuresV1(wall_added_r_m2k_w=2.5),
+        {
+            "catalog_version": "test",
+            "source": "test",
+            "costs": {
+                "wall": {
+                    "cost_lei": 8.0,
+                    "unit": "lei_per_m2_per_cm",
+                    "source_kind": "test",
+                    "confidence": "test",
+                }
+            },
+        },
+    )
+
+    rows = _load_source_rows()
+    wall_rows = [
+        {
+            **row["product"],
+            "id": row["product"]["id"],
+            "properties": row["adapted_properties"],
+            "offers": row["product"].get("offers") or [],
+        }
+        for row in rows
+        if row["product"]["category_id"] == "wall_insulation"
+    ]
+    products = wall_products_from_catalog_window({"products": wall_rows})
+
+    result = commercialize_wall_candidate(
+        WallCommercializationRequestV1(
+            baseline=baseline,
+            raw_candidate=raw,
+            products=products,
+            nonmaterial_installed_cost_per_m2_lei=45,
+        ),
+        {
+            "catalog_version": "test",
+            "source": "test",
+            "costs": {
+                "wall": {
+                    "cost_lei": 8.0,
+                    "unit": "lei_per_m2_per_cm",
+                    "source_kind": "test",
+                    "confidence": "test",
+                }
+            },
+        },
+    )
+
+    assert result.discretization.realized_added_r_m2k_w >= 2.5
+    assert result.discretization.product.product_id in {
+        "austrotherm-eps-a100-af-plus-160",
+        "rockwool-frontrock-casa-100",
+    }
+    assert result.exact_wall_installed_capex_lei > 0
+    wall_line = next(
+        line
+        for line in result.commercial_candidate.cost_breakdown
+        if line.family == "wall"
+    )
+    assert wall_line.material_subtotal_lei is not None
+    assert wall_line.nonmaterial_subtotal_lei is not None
