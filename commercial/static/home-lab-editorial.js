@@ -986,13 +986,13 @@
   function validatePage(name) {
     const page = pages.find(p => p.dataset.page === name);
     if (!page) return true;
-    if (name === "house") {
+    if (name === "renewables") {
       const confirmation = $("#edHouseValuesConfirmed");
       if (confirmation) {
         confirmation.setCustomValidity(
           confirmation.checked
             ? ""
-            : "Confirmă că ai verificat valorile principale ale casei înainte de a continua."
+            : "Confirmă că ai verificat datele introduse în pașii 1–4 înainte de a continua."
         );
       }
     }
@@ -1057,10 +1057,14 @@
   }
 
   function geometryValues() {
-    const area = Math.max(parseDecimal($("#heatedArea").value, 0), 1);
-    const levels = Math.max(1, Number($("#heatedLevels").value) || 1);
-    const height = Math.max(parseDecimal($("#averageHeight").value, 0), 0.1);
-    const windows = Math.max(parseDecimal($("#windowArea").value, 0), 0);
+    const area = parseDecimal($("#heatedArea").value);
+    const levels = Number($("#heatedLevels").value);
+    const height = parseDecimal($("#averageHeight").value);
+    if (!Number.isFinite(area) || area <= 0 || !Number.isFinite(levels) || levels <= 0 || !Number.isFinite(height) || height <= 0) {
+      return null;
+    }
+    const rawWindows = parseDecimal($("#windowArea").value);
+    const windows = Number.isFinite(rawWindows) && rawWindows >= 0 ? rawWindows : null;
     const doors = 2.2;
     const footprint = area / levels;
     const aspect = 1.25;
@@ -1070,7 +1074,7 @@
     const grossWalls = perimeter * height * levels;
     return {
       area,levels,height,windows,doors,footprint,width,length,perimeter,grossWalls,
-      derivedWallArea:Math.max(1,grossWalls-windows-doors),
+      derivedWallArea:windows === null ? null : Math.max(1,grossWalls-windows-doors),
       derivedTopArea:footprint,
       derivedFloorArea:footprint,
       derivedVolume:area*height,
@@ -1079,6 +1083,16 @@
 
   function updateGeometryDisplay(force = false) {
     const g = geometryValues();
+    if (!g) {
+      $("#derivedFootprint").textContent = "—";
+      $("#derivedPerimeter").textContent = "—";
+      $("#derivedGrossWalls").textContent = "—";
+      $("#derivedOpenings").textContent = "—";
+      document.querySelectorAll("[data-geom-auto]").forEach(input => {
+        if (force || input.dataset.geomAuto !== "false") input.value = "";
+      });
+      return null;
+    }
     const mappings = [
       ["#wallArea", g.derivedWallArea, 1],
       ["#roofArea", g.derivedTopArea, 1],
@@ -1088,6 +1102,10 @@
     mappings.forEach(([selector, value, digits]) => {
       const input = $(selector);
       if (!input) return;
+      if (value === null || !Number.isFinite(Number(value))) {
+        if (force || input.dataset.geomAuto !== "false") input.value = "";
+        return;
+      }
       if (force || input.dataset.geomAuto !== "false") {
         input.dataset.geomAuto = "true";
         input.value = decimalForDisplay(value, digits);
@@ -1096,7 +1114,7 @@
     $("#derivedFootprint").textContent = fmt(g.footprint,1) + " m²";
     $("#derivedPerimeter").textContent = fmt(g.perimeter,1) + " m";
     $("#derivedGrossWalls").textContent = fmt(g.grossWalls,1) + " m²";
-    $("#derivedOpenings").textContent = fmt(g.windows + g.doors,1) + " m²";
+    $("#derivedOpenings").textContent = g.windows === null ? "—" : fmt(g.windows + g.doors,1) + " m²";
     return g;
   }
 
@@ -1110,24 +1128,20 @@
   }
 
   function applyHeatingDefaults() {
-    const type = $("#heatingChoice").value;
-    const d = heatingChainDefaults(type);
-    if (type === "heat_pump") $("#heatPumpSource").value = d.source;
-    $("#heatingEmitter").value = d.emitter;
-    $("#heatingDistribution").value = d.distribution;
-    $("#heatingStorage").value = d.storage;
-    $("#heatingControl").value = d.control;
     normalizeHeatingUi();
   }
 
   function normalizeHeatingUi() {
     const type = $("#heatingChoice").value;
     const source = $("#heatPumpSource").value;
+    const hasType = Boolean(type);
     const localFixed = type === "wood_stove" || type === "electric_resistance";
     $("#heatPumpSourceField").hidden = type !== "heat_pump";
 
     const chainFields = [...document.querySelectorAll("[data-heating-chain-field]")];
-    chainFields.forEach(el => { el.hidden = localFixed; });
+    chainFields.forEach(el => { el.hidden = !hasType || localFixed; });
+
+    if (!hasType) return;
 
     if (localFixed) {
       const d = heatingChainDefaults(type);
@@ -1139,25 +1153,18 @@
     }
 
     const airToAir = type === "heat_pump" && source === "heat_pump_air_air";
+    const emitterField = $("#heatingEmitter").closest(".ed-field");
+    const distributionField = $("#heatingDistribution").closest(".ed-field");
+    const storageField = $("#heatingStorage").closest(".ed-field");
+
     if (airToAir) {
       $("#heatingEmitter").value = "air";
       $("#heatingDistribution").value = "air";
       $("#heatingStorage").value = "none";
-    } else {
-      const validEmitters = new Set(["radiators_high_temp","radiators_low_temp","underfloor","fan_coils"]);
-      if (!validEmitters.has($("#heatingEmitter").value)) {
-        $("#heatingEmitter").value = heatingChainDefaults(type).emitter;
-      }
-      if ($("#heatingEmitter").value === "underfloor") {
-        $("#heatingDistribution").value = "underfloor";
-      } else if (!["hydronic_insulated","hydronic_uninsulated"].includes($("#heatingDistribution").value)) {
-        $("#heatingDistribution").value = "hydronic_insulated";
-      }
+    } else if ($("#heatingEmitter").value === "underfloor") {
+      $("#heatingDistribution").value = "underfloor";
     }
 
-    const emitterField = $("#heatingEmitter").closest(".ed-field");
-    const distributionField = $("#heatingDistribution").closest(".ed-field");
-    const storageField = $("#heatingStorage").closest(".ed-field");
     emitterField.hidden = airToAir;
     distributionField.hidden = airToAir;
     storageField.hidden = airToAir;
@@ -1165,7 +1172,7 @@
 
   function heatingGeneratorType() {
     const type = $("#heatingChoice").value;
-    if (type === "heat_pump") return $("#heatPumpSource").value || "heat_pump_air_water";
+    if (type === "heat_pump") return $("#heatPumpSource").value;
     return {
       condensing_gas_boiler:"condensing_gas_boiler",
       gas_boiler:"gas_boiler",
@@ -1457,8 +1464,8 @@
 
   document.querySelectorAll("[data-next]").forEach(button => {
     button.addEventListener("click", () => {
-      syncTechnicalForm();
       if (!validatePage(current)) return;
+      syncTechnicalForm();
       const i = wizardOrder.indexOf(current);
       if (i >= 0 && i < wizardOrder.length - 1) showPage(wizardOrder[i + 1]);
     });
@@ -2227,7 +2234,7 @@
     scheduleBaselineSummary(250);
   });
 
-  $("#heatingChoice").addEventListener("change", applyHeatingDefaults);
+  $("#heatingChoice").addEventListener("change", normalizeHeatingUi);
   $("#heatPumpSource").addEventListener("change", normalizeHeatingUi);
   $("#heatingEmitter").addEventListener("change", normalizeHeatingUi);
   $("#pvEnabled").addEventListener("change", syncRenewableVisibility);
@@ -3277,10 +3284,26 @@
     renderNzebStatus(result);
   }
 
+  function requiredCoreInputsComplete() {
+    for (const pageName of ["house","envelope","systems"]) {
+      const page = pages.find(item => item.dataset.page === pageName);
+      if (!page) continue;
+      const fields = [...page.querySelectorAll("[required]")].filter(
+        field => !field.disabled && !field.closest("[hidden]")
+      );
+      for (const field of fields) {
+        if (String(field.value ?? "").trim() === "") return false;
+        if (field.matches("[data-decimal-input]") && !Number.isFinite(parseDecimal(field.value))) return false;
+        if (!field.checkValidity()) return false;
+      }
+    }
+    return true;
+  }
+
   function baselineSummaryReady() {
     const locality = ($("#localityInput")?.value || "").trim();
     const localityToken = ($("#localityId")?.value || "").trim();
-    if (!localityToken) {
+    if (!localityToken || !requiredCoreInputsComplete()) {
       baselineClass.textContent = "—";
       delete baselineClass.dataset.energyClass;
       baselineCost.textContent = "—";
@@ -3288,7 +3311,9 @@
       baselineCoolingDemand.textContent = "—";
       baselineFinalEnergy.textContent = "—";
       baselinePrimaryEnergy.textContent = "—";
-      baselineStatus.textContent = locality ? "Alege localitatea din sugestii sau de pe hartă." : "Completează localitatea.";
+      baselineStatus.textContent = !localityToken
+        ? (locality ? "Alege localitatea din sugestii sau de pe hartă." : "Completează localitatea.")
+        : "Completează câmpurile obligatorii din pașii 1–3.";
       baselineBar.classList.remove("is-updating");
       return false;
     }
@@ -4975,15 +5000,20 @@
     if (event.target === classDialog) classDialog.close();
   });
 
+  function resetInputConfirmationForEdit(event) {
+    if (!event.isTrusted || event.target?.id === "edHouseValuesConfirmed") return;
+    const pageName = event.target?.closest?.(".ed-page")?.dataset?.page;
+    if (!["house","envelope","systems","renewables"].includes(pageName)) return;
+    const confirmation = $("#edHouseValuesConfirmed");
+    if (confirmation) {
+      confirmation.checked = false;
+      confirmation.setCustomValidity("");
+    }
+  }
+
   form.addEventListener("input", event => {
     if (event.target?.type === "hidden") return;
-    if (event.isTrusted && event.target?.matches?.("[data-house-critical]")) {
-      const confirmation = $("#edHouseValuesConfirmed");
-      if (confirmation) {
-        confirmation.checked = false;
-        confirmation.setCustomValidity("");
-      }
-    }
+    resetInputConfirmationForEdit(event);
     if (event.target?.matches?.("[data-optional-advanced]") && event.isTrusted) {
       markAdvancedManual(event.target);
     } else if (event.isTrusted) {
@@ -4995,13 +5025,7 @@
   });
   form.addEventListener("change", event => {
     if (event.target?.type === "hidden") return;
-    if (event.isTrusted && event.target?.matches?.("[data-house-critical]")) {
-      const confirmation = $("#edHouseValuesConfirmed");
-      if (confirmation) {
-        confirmation.checked = false;
-        confirmation.setCustomValidity("");
-      }
-    }
+    resetInputConfirmationForEdit(event);
     if (event.target?.matches?.("[data-optional-advanced]") && event.isTrusted) {
       markAdvancedManual(event.target);
     } else if (event.isTrusted) {
@@ -5035,7 +5059,7 @@
   syncNzebPolicy();
   resetTeoControlUi();
   updateGeometryDisplay(true);
-  applyHeatingDefaults();
+  normalizeHeatingUi();
 
   const restoredDraft = restoreEditorialDraft();
   if (restoredDraft) {
@@ -5051,7 +5075,7 @@
 
   syncDerivedAdvancedFields();
   form.querySelectorAll("[data-optional-advanced]").forEach(refreshAdvancedFieldState);
-  syncTechnicalForm();
+  if (requiredCoreInputsComplete()) syncTechnicalForm();
   showPage("intro");
   scheduleBaselineSummary(150);
 })();
