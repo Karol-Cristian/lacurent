@@ -159,3 +159,10 @@ jobs:
           if [ -f /tmp/release-reliability-uvicorn.pid ]; then
             kill "$(cat /tmp/release-reliability-uvicorn.pid)" || true
           fi
+
+
+  remote-d1:
+    name: Remote Cloudflare D1 catalog gate
+    needs: reliability
+    uses: ./.github/workflows/d1-catalog-staging.yml
+    secrets: inherit
