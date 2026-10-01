@@ -7,6 +7,9 @@ on:
     paths:
       - ".github/workflows/teo-private-worker-gate.yml"
       - "commercial/app/teo_app.py"
+      - "commercial/app/teo_rbpe_service.py"
+      - "commercial/reference-worker/**"
+      - "commercial/rbpe-router/**"
       - "commercial/app/engine.py"
       - "commercial/app/methodology.py"
       - "commercial/app/models.py"
