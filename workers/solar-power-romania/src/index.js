@@ -1,5 +1,5 @@
 import { isRomaniaCoordinate, summarizeForecast } from './solar.js';
-import { fetchAllModelForecasts, MODEL_REGISTRY, fetchMultiPointModelForecast } from './provider.js';
+import { fetchAllModelForecasts, MODEL_REGISTRY, fetchMultiPointModelForecast, forecastBlock } from './provider.js';
 import { fuseForecasts } from './fusion.js';
 import { ROMANIA_REFERENCE_CELLS } from './regions.js';
 import { getBenchmarkMetrics, getBenchmarkStatus, runBenchmarkCycle } from './benchmark.js';
@@ -24,7 +24,8 @@ function num(search, key, fallback) {
 
 function epoch(time) {
   if (!time) return NaN;
-  return Date.parse(String(time).endsWith('Z') ? time : `${time}Z`);
+  const value = String(time);
+  return Date.parse(value.endsWith('Z') ? value : `${value}Z`);
 }
 
 function nearestIndex(times, nowMs = Date.now()) {
@@ -53,35 +54,35 @@ async function assetForecast(url, env) {
   const azimuth = Math.max(-180, Math.min(180, num(url.searchParams, 'azimuth', 0)));
   if (!isRomaniaCoordinate(lat, lon)) return json({ error: 'Coordinates must be inside the Romania pilot bounding box.' }, 400);
 
+  const issuedAtMs = Date.now();
   const [models, benchmark] = await Promise.all([
-    fetchAllModelForecasts({ lat, lon, tilt, azimuth, days: 3 }),
+    fetchAllModelForecasts({ lat, lon, tilt, azimuth, forecastQuarterHours: 193 }),
     benchmarkOrEmpty(env),
   ]);
-  const fused = fuseForecasts(models, capacityMwp, benchmark);
-  const summary = summarizeForecast(fused.series, new Date());
-  const currentIndex = nearestIndex(fused.series.map((p) => p.time));
+  const fused = fuseForecasts(models, capacityMwp, benchmark, issuedAtMs);
+  const summary = summarizeForecast(fused.series, new Date(issuedAtMs));
+  const currentIndex = nearestIndex(fused.series.map((p) => p.time), issuedAtMs);
 
   const currentMembers = {};
-  for (const modelKey of fused.availableModels) {
-    const point = fused.seriesByModel[modelKey]?.[currentIndex];
-    if (!point) continue;
+  for (const [modelKey, member] of Object.entries(summary.current?.members || {})) {
     currentMembers[modelKey] = {
-      label: MODEL_REGISTRY[modelKey].label,
-      power_mw: point.power_mw,
-      gti_wm2: point.gti_wm2,
-      weight: fused.weights[modelKey],
+      label: MODEL_REGISTRY[modelKey]?.label || modelKey,
+      power_mw: member.power_mw,
+      gti_wm2: member.gti_wm2,
+      weight: member.weight,
     };
   }
 
   return json({
     meta: {
       product: 'Solar Power / Romania',
-      version: '0.2.0',
-      engine: 'SolarPower fusion',
-      generated_at: new Date().toISOString(),
+      version: '0.3.0',
+      engine: 'SolarPower 15-minute fusion',
+      generated_at: new Date(issuedAtMs).toISOString(),
       timezone: 'UTC',
+      grid_minutes: fused.gridMinutes,
       weight_source: fused.weightSource,
-      assumptions: 'MWp DC, 14% system loss, temperature correction, 0.95 AC/DC clipping. Model spread is not yet a calibrated probability interval.',
+      assumptions: '15-minute forecast grid. NWP sources may be interpolated from native hourly/coarser resolution; satellite truth remains native before benchmark resampling. MWp DC, 14% system loss, temperature correction, 0.95 AC/DC clipping.',
     },
     asset: { lat, lon, capacity_mwp: capacityMwp, tilt_deg: tilt, azimuth_deg: azimuth },
     summary: {
@@ -107,7 +108,7 @@ async function romaniaField(url) {
   const models = ['ecmwf_ifs', 'icon_eu'];
   const results = await Promise.all(models.map(async (modelKey) => {
     try {
-      return await fetchMultiPointModelForecast(modelKey, ROMANIA_REFERENCE_CELLS, { tilt, azimuth, days: 1 });
+      return await fetchMultiPointModelForecast(modelKey, ROMANIA_REFERENCE_CELLS, { tilt, azimuth, forecastQuarterHours: 8 });
     } catch {
       return null;
     }
@@ -119,13 +120,14 @@ async function romaniaField(url) {
   const cells = ROMANIA_REFERENCE_CELLS.map((cell, i) => {
     const points = available.map((result) => {
       const row = result.rows[i];
-      const times = row?.hourly?.time || [];
+      const block = forecastBlock(row);
+      const times = block?.time || [];
       const k = nearestIndex(times, nowMs);
       return {
-        gti: Number(row?.hourly?.global_tilted_irradiance?.[k] || 0),
-        ghi: Number(row?.hourly?.shortwave_radiation?.[k] || 0),
-        dni: Number(row?.hourly?.direct_normal_irradiance?.[k] || 0),
-        cloud: Number(row?.hourly?.cloud_cover?.[k] || 0),
+        gti: Number(block?.global_tilted_irradiance?.[k] || 0),
+        ghi: Number(block?.shortwave_radiation?.[k] || 0),
+        dni: Number(block?.direct_normal_irradiance?.[k] || 0),
+        cloud: Number(block?.cloud_cover?.[k] || 0),
         time: times[k] || null,
       };
     });
@@ -137,6 +139,7 @@ async function romaniaField(url) {
   return json({
     meta: {
       engine: 'SolarPower spatial fusion',
+      grid_minutes: 15,
       models: available.map((result) => result.model.label),
       generated_at: new Date().toISOString(),
       coverage: '20 reference cells for visualisation; any Romania coordinate supported by asset endpoint.',
@@ -151,8 +154,10 @@ async function benchmarkResponse(env) {
   return json({
     meta: {
       product: 'Solar Power Benchmark',
+      resolution_minutes: 15,
       truth: metrics.truth_source || 'satellite adapter pending first successful cycle',
-      scoring: 'daylight GTI only; MAE/RMSE/bias by model and forecast horizon',
+      scoring: 'daylight GTI only; MAE/RMSE/bias by model and requested forecast horizon',
+      audit: 'full 48-hour model curves are stored immutably in R2 on every 15-minute run',
       models: MODEL_REGISTRY,
     },
     metrics,
@@ -165,14 +170,14 @@ export default {
     const url = new URL(request.url);
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: JSON_HEADERS });
     try {
-      if (url.pathname === '/health') return json({ status: 'ok', service: 'lacurent-solar-romania', version: '0.2.0' });
+      if (url.pathname === '/health') return json({ status: 'ok', service: 'lacurent-solar-romania', version: '0.3.0', resolution_minutes: 15 });
       if (url.pathname === '/api/v1/models') return json({
         product: 'Solar Power / Romania',
-        version: '0.2.0',
-        engine: 'multi-model fusion',
+        version: '0.3.0',
+        engine: '15-minute multi-model fusion',
         models: MODEL_REGISTRY,
-        architecture: ['multi-model provider adapters', 'irradiance normalization', 'PV conversion', 'dynamic fusion weights', 'asset forecast', 'Romania spatial field', 'continuous forecast archive', 'satellite benchmark'],
-        benchmark_status: 'continuous benchmark enabled; weights remain equal until sufficient scored samples exist',
+        architecture: ['15-minute forecast grid', 'multi-model provider adapters', 'irradiance normalization', 'PV conversion', 'horizon-aware fusion weights', 'asset forecast', 'Romania spatial field', 'immutable R2 forecast curves', 'Durable Object benchmark metrics', 'native satellite truth'],
+        benchmark_status: 'continuous 15-minute benchmark enabled; weights remain equal until sufficient scored samples exist',
       });
       if (url.pathname === '/api/v1/pv/forecast') return await assetForecast(url, env);
       if (url.pathname === '/api/v1/romania') return await romaniaField(url);
