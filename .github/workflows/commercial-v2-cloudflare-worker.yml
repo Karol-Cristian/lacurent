@@ -264,10 +264,11 @@ jobs:
       - name: Prepare Cloudflare Worker bundle
         run: node scripts/prepare-commercial-cloudflare-worker.mjs
 
+      # Pin Wrangler: npm `latest` briefly resolved to an unpublished 4.146.0 tarball on 2026-10-01.
       - name: Install current Wrangler
         working-directory: .wrangler/commercial-v2-worker
         run: |
-          npm install --save-dev wrangler@latest
+          npm install --save-dev wrangler@4.145.0
           npx wrangler --version
 
       - name: Sync Python Worker dependencies
@@ -287,7 +288,7 @@ jobs:
       - name: Install Wrangler for private RBPE shards
         working-directory: .wrangler/reference-rbpe-worker
         run: |
-          npm install --save-dev wrangler@latest
+          npm install --save-dev wrangler@4.145.0
           npx wrangler --version
 
       - name: Sync private RBPE shard dependencies
@@ -382,7 +383,7 @@ jobs:
           cp commercial/rbpe-router/worker.mjs .wrangler/rbpe-router/worker.mjs
           cp commercial/rbpe-router/wrangler.toml .wrangler/rbpe-router/wrangler.toml
           cd .wrangler/rbpe-router
-          npm install --save-dev wrangler@latest
+          npm install --save-dev wrangler@4.145.0
           npx wrangler --version
 
       - name: Deploy private RBPE router
@@ -396,7 +397,7 @@ jobs:
           cp commercial/calc-gateway/worker.mjs .wrangler/calc-gateway/worker.mjs
           cp commercial/calc-gateway/wrangler.toml .wrangler/calc-gateway/wrangler.toml
           cd .wrangler/calc-gateway
-          npm install --save-dev wrangler@latest
+          npm install --save-dev wrangler@4.145.0
           npx wrangler --version
 
       - name: Deploy Home Lab calculation gateway
@@ -409,7 +410,7 @@ jobs:
       - name: Install Wrangler for private TEO shards
         working-directory: .wrangler/teo-worker
         run: |
-          npm install --save-dev wrangler@latest
+          npm install --save-dev wrangler@4.145.0
           npx wrangler --version
 
       - name: Sync private TEO shard dependencies
@@ -500,7 +501,7 @@ jobs:
           cp commercial/teo-router/worker.mjs .wrangler/teo-router/worker.mjs
           cp commercial/teo-router/wrangler.toml .wrangler/teo-router/wrangler.toml
           cd .wrangler/teo-router
-          npm install --save-dev wrangler@latest
+          npm install --save-dev wrangler@4.145.0
           npx wrangler --version
 
       - name: Verify private RBPE topology deployment
