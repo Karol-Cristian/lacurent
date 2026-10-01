@@ -212,7 +212,10 @@ def _service_carriers(result: Any) -> dict[str, tuple[str, str | None]]:
 def _service_cost_rows(result: Any, county: str | None) -> list[dict[str, Any]]:
     carriers = _service_carriers(result)
     rows: list[dict[str, Any]] = []
-    for service in ("heating", "cooling", "dhw", "ventilation"):
+    services = ["heating", "cooling", "dhw"]
+    if float(result.final_energy_by_service.get("ventilation", 0) or 0) > 1e-9:
+        services.append("ventilation")
+    for service in services:
         final_kwh = float(result.final_energy_by_service.get(service, 0) or 0)
         auxiliary_electricity_kwh = (
             float(result.heating_system.auxiliary_electricity_kwh)
@@ -336,7 +339,11 @@ def _monthly_cost_rows(
     heating_final_total = service_map["heating"]["final_kwh"]
     cooling_final_total = service_map["cooling"]["final_kwh"]
     dhw_final_total = service_map["dhw"]["final_kwh"]
-    ventilation_final_total = service_map["ventilation"]["final_kwh"]
+    ventilation_final_total = (
+        service_map["ventilation"]["final_kwh"]
+        if "ventilation" in service_map
+        else 0.0
+    )
     total_days = sum(MONTH_DAYS.values())
     rows: list[dict[str, Any]] = []
 
@@ -362,8 +369,9 @@ def _monthly_cost_rows(
             "heating": heating_final,
             "cooling": cooling_final,
             "dhw": dhw_final,
-            "ventilation": ventilation_final,
         }
+        if ventilation_final > 1e-9:
+            service_final["ventilation"] = ventilation_final
         service_costs: dict[str, float | None] = {}
         priced_total = 0.0
         complete = True
