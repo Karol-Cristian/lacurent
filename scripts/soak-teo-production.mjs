@@ -50,6 +50,17 @@ async function runOnce(browser, ordinal) {
       if (url.origin !== new URL(baseUrl).origin) return;
       if (response.status() >= 500) {
         serverErrors.push(response.request().method() + " " + url.pathname + " :: " + response.status());
+        response.text().then(body => {
+          console.error("TEO_DIAGNOSTIC_5XX", JSON.stringify({
+            method: response.request().method(),
+            path: url.pathname,
+            status: response.status(),
+            route: response.headers()["x-lacurent-teo"] || "",
+            shard: response.headers()["x-lacurent-teo-shard"] || "",
+            retryAfter: response.headers()["retry-after"] || "",
+            body: String(body || "").slice(0, 4000),
+          }));
+        }).catch(() => {});
       }
       if (
         url.pathname.startsWith("/api/optimization/home-lab/v3/")
