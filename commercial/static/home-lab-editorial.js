@@ -1057,10 +1057,20 @@
   }
 
   function geometryValues() {
-    const area = Math.max(parseDecimal($("#heatedArea").value, 0), 1);
-    const levels = Math.max(1, Number($("#heatedLevels").value) || 1);
-    const height = Math.max(parseDecimal($("#averageHeight").value, 0), 0.1);
-    const windows = Math.max(parseDecimal($("#windowArea").value, 0), 0);
+    const area = parseDecimal($("#heatedArea").value);
+    const levels = Number($("#heatedLevels").value);
+    const height = parseDecimal($("#averageHeight").value);
+    const windowsRaw = parseDecimal($("#windowArea").value);
+    const complete = Number.isFinite(area) && area > 0 && Number.isFinite(levels) && levels > 0 && Number.isFinite(height) && height > 0;
+    if (!complete) {
+      return {
+        complete:false,
+        area:NaN,levels:NaN,height:NaN,windows:Number.isFinite(windowsRaw) ? Math.max(windowsRaw,0) : 0,
+        doors:2.2,footprint:NaN,width:NaN,length:NaN,perimeter:NaN,grossWalls:NaN,
+        derivedWallArea:NaN,derivedTopArea:NaN,derivedFloorArea:NaN,derivedVolume:NaN,
+      };
+    }
+    const windows = Number.isFinite(windowsRaw) ? Math.max(windowsRaw, 0) : 0;
     const doors = 2.2;
     const footprint = area / levels;
     const aspect = 1.25;
@@ -1069,6 +1079,7 @@
     const perimeter = 2 * (length + width);
     const grossWalls = perimeter * height * levels;
     return {
+      complete:true,
       area,levels,height,windows,doors,footprint,width,length,perimeter,grossWalls,
       derivedWallArea:Math.max(1,grossWalls-windows-doors),
       derivedTopArea:footprint,
@@ -1090,13 +1101,13 @@
       if (!input) return;
       if (force || input.dataset.geomAuto !== "false") {
         input.dataset.geomAuto = "true";
-        input.value = decimalForDisplay(value, digits);
+        input.value = Number.isFinite(value) ? decimalForDisplay(value, digits) : "";
       }
     });
-    $("#derivedFootprint").textContent = fmt(g.footprint,1) + " m²";
-    $("#derivedPerimeter").textContent = fmt(g.perimeter,1) + " m";
-    $("#derivedGrossWalls").textContent = fmt(g.grossWalls,1) + " m²";
-    $("#derivedOpenings").textContent = fmt(g.windows + g.doors,1) + " m²";
+    $("#derivedFootprint").textContent = Number.isFinite(g.footprint) ? fmt(g.footprint,1) + " m²" : "—";
+    $("#derivedPerimeter").textContent = Number.isFinite(g.perimeter) ? fmt(g.perimeter,1) + " m" : "—";
+    $("#derivedGrossWalls").textContent = Number.isFinite(g.grossWalls) ? fmt(g.grossWalls,1) + " m²" : "—";
+    $("#derivedOpenings").textContent = g.complete ? fmt(g.windows + g.doors,1) + " m²" : "—";
     return g;
   }
 
@@ -1496,8 +1507,8 @@
 
   document.querySelectorAll("[data-next]").forEach(button => {
     button.addEventListener("click", () => {
-      syncTechnicalForm();
       if (!validatePage(current)) return;
+      syncTechnicalForm();
       const i = wizardOrder.indexOf(current);
       if (i >= 0 && i < wizardOrder.length - 1) showPage(wizardOrder[i + 1]);
     });
