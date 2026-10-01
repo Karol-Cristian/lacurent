@@ -2392,7 +2392,6 @@ async def home_lab_optimization_v4_plan_api(request: Request) -> JSONResponse:
             "serverCandidateEvaluations": 0,
             "baselineCanonicalPasses": 1,
             "calculationTimeMs": elapsed_ms,
-            "rbpeExecution": rbpe_execution,
             "executionMode": "browser_web_worker_v4",
             "heatingCatalogSource": heating_summary.get("source"),
             "heatingCatalogStats": heating_summary.get("catalog_stats") or {},
