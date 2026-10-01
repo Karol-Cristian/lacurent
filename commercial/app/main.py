@@ -131,6 +131,11 @@ from .simulation_facts import (
     get_published_simulation_fact,
     list_published_simulation_facts,
 )
+from .impact import (
+    authenticated_user_id,
+    read_public_impact_summary,
+    save_impact_snapshot,
+)
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = BASE_DIR / "data"
@@ -3230,6 +3235,59 @@ async def home_lab_editorial(request: Request) -> HTMLResponse:
             "energy_overview": home_lab_price_overview(),
         },
     )
+
+
+@app.get("/api/home-lab/impact/summary")
+async def home_lab_impact_summary(request: Request) -> JSONResponse:
+    env = request.scope.get("env")
+    db = getattr(env, "DB", None) if env is not None else None
+    if db is None:
+        return JSONResponse(
+            {
+                "available": False,
+                "scope": "user_saved_modelled",
+                "savedHouses": 0,
+                "reason": "d1_unavailable",
+            },
+            headers={"Cache-Control": "no-store"},
+        )
+    try:
+        payload = await read_public_impact_summary(db)
+    except Exception as exc:
+        print(
+            "[LaCurent] impact summary unavailable "
+            f"type={type(exc).__name__} detail={str(exc)[:240]}"
+        )
+        return JSONResponse(
+            {
+                "available": False,
+                "scope": "user_saved_modelled",
+                "savedHouses": 0,
+                "reason": "impact_store_unavailable",
+            },
+            headers={"Cache-Control": "no-store"},
+        )
+    return JSONResponse(payload, headers={"Cache-Control": "no-store"})
+
+
+@app.post("/api/home-lab/impact/save")
+async def home_lab_impact_save(request: Request) -> JSONResponse:
+    env = request.scope.get("env")
+    db = getattr(env, "DB", None) if env is not None else None
+    if db is None:
+        raise HTTPException(status_code=503, detail="Stocarea Home Lab Impact nu este disponibilă.")
+    owner_user_id = await authenticated_user_id(request, db)
+    if owner_user_id is None:
+        raise HTTPException(status_code=401, detail="Autentificare necesară pentru salvare.")
+    try:
+        raw = await request.json()
+        payload = raw if isinstance(raw, dict) else {}
+        result = await save_impact_snapshot(db, owner_user_id, payload)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return JSONResponse(result, headers={"Cache-Control": "no-store"})
 
 
 async def home_lab_next_calculation(request: Request) -> Response:

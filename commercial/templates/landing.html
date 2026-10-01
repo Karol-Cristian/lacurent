@@ -4,111 +4,126 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <script src="/static/no-zoom.js?v=2" defer></script>
-  <meta name="description" content="LaCurent — modelare rapidă a clădirii, optimizare tehnico-economică, selecție de produse reale și verificare inginerească pentru soluții energetice complete.">
+  <meta name="description" content="LaCurent te ajută să decizi ce investiții energetice merită pentru casa ta: cât costă, cât economisești și în cât timp se recuperează.">
   <meta name="robots" content="index,follow">
   <meta property="og:title" content="LaCurent — Nu promitem. Calculăm.">
-  <meta property="og:description" content="Descrii clădirea rapid. RBPE calculează fizica. TEO Engine caută configurația tehnico-economică optimă și o transpune în produse reale.">
+  <meta property="og:description" content="Descrii casa. LaCurent calculează situația actuală, compară investițiile și îți construiește un plan energetic explicabil.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://lacurent.com/">
   <title>LaCurent — Nu promitem. Calculăm.</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=6">
-  <link rel="stylesheet" href="/static/lacurent-landing.css?v=3">
+  <link rel="stylesheet" href="/static/lacurent-landing.css?v=5">
 </head>
 <body data-lacurent-landing>
   <header class="lc-topbar">
     <a class="lc-brand" href="/" aria-label="LaCurent">
       <span class="lc-brand-mark">LC</span>
-      <span class="lc-brand-copy"><strong>LaCurent</strong><small>Building Optimization</small></span>
+      <span class="lc-brand-copy"><strong>LaCurent</strong><small>Decizii energetice pentru locuințe</small></span>
     </a>
     <nav class="lc-nav" aria-label="Navigare principală">
       <a href="#model">Cum funcționează</a>
-      <a href="#metoda">RBPE & TEO</a>
+      <a href="#buget">Ce primești</a>
+      <a href="#metoda">Metodă</a>
       <a href="/produse">Produse <span class="lc-nav-count">{{ catalog_product_count }}</span></a>
-      <a href="#buget">Decizia</a>
     </nav>
-    <a class="lc-top-cta" href="/home-lab-next">Pornește optimizarea <span>→</span></a>
+    <a class="lc-top-cta" href="/home-lab-editorial">Analizează casa <span>→</span></a>
   </header>
 
   <main>
     <section class="lc-hero">
       <div class="lc-hero-copy">
-        <p class="lc-eyebrow"><span></span> Building optimization engine</p>
+        <p class="lc-eyebrow"><span></span> Decizii energetice pentru locuințe</p>
         <h1>Nu promitem.<br><em>Calculăm.</em></h1>
         <p class="lc-lead">
-          Descrii rapid o <strong>clădire nouă sau existentă</strong>. RBPE calculează fizica.
-          Apoi <strong>TEO Engine</strong> caută configurația tehnico-economică potrivită,
-          o verifică pe produse reale și o transformă într-o soluție completă, pregătită pentru ofertare și implementare.
+          Spune-ne cum este casa ta. Îți calculăm <strong>unde ești acum</strong>, ce merită să schimbi,
+          <strong>cât te costă, cât economisești</strong> și în cât timp îți recuperezi investiția.
+          Pentru locuințe existente sau construcții noi.
         </p>
         <div class="lc-hero-actions">
-          <a class="lc-button lc-button-primary" href="/home-lab-next">Optimizează casa <span>→</span></a>
-          <a class="lc-button lc-button-ghost" href="#metoda">Cum funcționează</a>
+          <a class="lc-button lc-button-primary" href="/home-lab-editorial">Analizează casa <span>→</span></a>
+          <a class="lc-button lc-button-ghost" href="#model">Vezi cum funcționează</a>
         </div>
         <div class="lc-proofline" aria-label="Principii de calcul">
-          <span>RBPE physics engine</span>
+          <span>Fizică verificabilă</span>
           <i></i>
-          <span>TEO optimizer</span>
+          <span>Optimizare tehnico-economică</span>
           <i></i>
-          <span>Produse reale</span>
+          <span>Surse și produse reale</span>
           <i></i>
-          <span>Verificare inginerească</span>
+          <span>Pas profesional când este necesar</span>
         </div>
+
+        <aside class="lc-hero-impact" id="impact" aria-label="Impact calculat din casele salvate">
+          <div class="lc-hero-impact-main">
+            <span>IMPACT CALCULAT</span>
+            <strong id="lcImpactEnergy">—</strong>
+            <b>MWh/an potențial</b>
+          </div>
+          <div class="lc-hero-impact-mini">
+            <span><b id="lcImpactHomes">—</b><small>case</small></span>
+            <span><b id="lcImpactMoney">—</b><small>lei/an</small></span>
+            <span><b id="lcImpactCapex">—</b><small>CAPEX lei</small></span>
+            <span><b id="lcImpactPayback">—</b><small>ani</small></span>
+          </div>
+          <p id="lcImpactStatus">Potențial modelat din analize salvate, nu economii măsurate.</p>
+        </aside>
       </div>
 
-      <aside class="lc-model-card" aria-label="Fluxul motorului de optimizare">
+      <aside class="lc-model-card" aria-label="Cum ajunge Home Lab de la casă la plan">
         <div class="lc-model-head">
           <div>
-            <small>OPTIMIZATION PIPELINE</small>
-            <strong>De la clădire la soluție</strong>
+            <small>HOME LAB</small>
+            <strong>De la casă la plan</strong>
           </div>
-          <span class="lc-live-dot">optimizare</span>
+          <span class="lc-live-dot">calcul explicabil</span>
         </div>
         <div class="lc-model-flow">
           <article>
             <b>01</b>
-            <div><strong>Input rapid</strong><small>clădire · locație · anvelopă · instalații</small></div>
+            <div><strong>Descrii casa</strong><small>locație · anvelopă · instalații · comportament</small></div>
             <span>↘</span>
           </article>
           <article>
             <b>02</b>
-            <div><strong>RBPE</strong><small>Rapid Building Physics Engine · fizica clădirii</small></div>
+            <div><strong>Vedem unde ești</strong><small>necesar · consum · cost · clasă energetică</small></div>
             <span>↘</span>
           </article>
           <article>
             <b>03</b>
-            <div><strong>TEO Engine</strong><small>configurații · cost · consum · investiție · constrângeri</small></div>
+            <div><strong>Comparăm ce merită</strong><small>investiție · economie · recuperare · constrângeri</small></div>
             <span>↘</span>
           </article>
           <article>
             <b>04</b>
-            <div><strong>Produse reale</strong><small>dimensionare · compatibilitate · cantități · coș</small></div>
+            <div><strong>Primești planul</strong><small>intervenții · ordine · efect energetic și financiar</small></div>
             <span>↘</span>
           </article>
           <article class="is-result">
             <b>05</b>
-            <div><strong>Verificare inginerească</strong><small>sanity check · compatibilitate · soluție finală</small></div>
+            <div><strong>Continui spre implementare</strong><small>produse și specialist, acolo unde sunt necesare</small></div>
             <span>✓</span>
           </article>
         </div>
         <div class="lc-model-equation">
-          <span>model rapid</span><b>→</b><span>optimizare</span><b>→</b><span>produse</span><b>→</b><span>soluție</span>
+          <span>casa ta</span><b>→</b><span>calcul</span><b>→</b><span>decizie</span><b>→</b><span>plan</span>
         </div>
       </aside>
     </section>
 
     <section class="lc-intro" id="model">
-      <div class="lc-section-kicker">01 / DE CE MODELĂM</div>
+      <div class="lc-section-kicker">01 / CUM FUNCȚIONEAZĂ</div>
       <div class="lc-intro-grid">
         <div>
-          <h2>Modelăm rapid ca să putem optimiza profund.</h2>
+          <h2>De la „ce fac cu casa mea?” la un plan calculat.</h2>
         </div>
         <div class="lc-intro-copy">
           <p>
-            Simularea nu este destinația. Este infrastructura optimizerului.
-            Am redus modelarea la datele care contează, astfel încât clădirea să poată fi recalculată rapid de multe ori.
+            Home Lab pornește de la casa ta, nu de la un produs pe care vrem să ți-l vindem.
+            Mai întâi construim situația actuală, apoi comparăm intervențiile posibile pe aceeași bază de calcul.
           </p>
           <p>
-            Fiecare variantă testată de TEO Engine trece din nou prin RBPE.
-            <strong>Asta ne permite să căutăm soluții complete, nu doar să comparăm câteva produse izolate.</strong>
+            Rezultatul trebuie să răspundă simplu la patru întrebări:
+            <strong>unde sunt acum, ce merită să schimb, cât mă costă și ce obțin în schimb.</strong>
           </p>
         </div>
       </div>
@@ -117,8 +132,8 @@
         <article>
           <span class="lc-card-index">A</span>
           <p class="lc-card-kicker">Construcție nouă</p>
-          <h3>Optimizează configurația înainte să o construiești.</h3>
-          <p>TEO Engine poate explora combinații de anvelopă, ferestre, instalații și regenerabile înainte ca alegerile tehnice să devină costuri construite.</p>
+          <h3>Alege înainte ca deciziile să devină costuri construite.</h3>
+          <p>Compari din timp anvelopa, ferestrele, instalațiile și regenerabilele și vezi efectul lor energetic și financiar înainte de execuție.</p>
           <ul>
             <li>necesar de putere la condiții de calcul</li>
             <li>consum și performanța sistemelor</li>
@@ -128,8 +143,8 @@
         <article>
           <span class="lc-card-index">B</span>
           <p class="lc-card-kicker">Clădire existentă</p>
-          <h3>Pornește de la casa reală. Optimizează ce urmează.</h3>
-          <p>RBPE construiește rapid baseline-ul clădirii actuale, iar TEO Engine caută ce merită schimbat, în ce ordine și cu ce efect asupra energiei și bugetului.</p>
+          <h3>Află ce merită schimbat și în ce ordine.</h3>
+          <p>Construim situația actuală a casei și comparăm intervențiile astfel încât să vezi efectul lor asupra consumului, facturii și investiției.</p>
           <ul>
             <li>anvelopă și pierderi reale modelate</li>
             <li>sisteme existente sau alternative</li>
@@ -139,12 +154,34 @@
       </div>
     </section>
 
+    <section class="lc-budget" id="buget">
+      <div class="lc-budget-copy">
+        <p class="lc-section-kicker">02 / CE PRIMEȘTI</p>
+        <h2>Nu optimizăm doar consumul. Optimizăm decizia.</h2>
+        <p>
+          Scopul este să reducem <strong>regretul investiției</strong>:
+          să nu cumperi o soluție doar pentru că este populară, fără să știi dacă este potrivită pentru casa și bugetul tău.
+        </p>
+        <p>
+          Planul pune în aceeași imagine situația actuală, investiția, costul anual după intervenții,
+          economia estimată și timpul de recuperare. O recuperare rapidă nu este automat cea mai bună decizie,
+          iar consumul minim nu justifică automat orice investiție.
+        </p>
+      </div>
+      <div class="lc-budget-metrics">
+        <article><span>ACUM</span><strong>lei/an</strong><small>situația actuală</small></article>
+        <article><span>INVESTIȚIE</span><strong>CAPEX</strong><small>ce presupune planul</small></article>
+        <article><span>DUPĂ</span><strong>lei/an</strong><small>costul estimat după intervenții</small></article>
+        <article><span>RECUPERARE</span><strong>ani</strong><small>când investiția se întoarce</small></article>
+      </div>
+    </section>
+
     <section class="lc-method" id="metoda">
       <div class="lc-method-title">
-        <p class="lc-section-kicker">02 / MOTOARELE</p>
-        <h2>RBPE calculează. TEO caută.</h2>
+        <p class="lc-section-kicker">03 / METODA</p>
+        <h2>O recomandare trebuie să poată fi explicată.</h2>
         <p>
-          Separăm explicit fizica de optimizare. Așa putem valida fiecare strat și putem explica de ce o soluție a fost aleasă.
+          Tehnologia rămâne în spate, dar rezultatul trebuie să fie trasabil. Separăm fizica, optimizarea și datele comerciale ca să putem verifica fiecare strat.
         </p>
       </div>
       <div class="lc-method-grid">
@@ -182,43 +219,18 @@
       </div>
     </section>
 
-    <section class="lc-budget" id="buget">
-      <div class="lc-budget-copy">
-        <p class="lc-section-kicker">03 / REGRETUL INVESTIȚIEI</p>
-        <h2>Energia ta și bugetul tău merită luate în serios.</h2>
-        <p>
-          Scopul TEO Engine este să reducă <strong>regretul investiției</strong>:
-          să nu cumperi astăzi o soluție pe care mâine o descoperi supradimensionată,
-          incompatibilă sau prea scumpă pentru economia pe care o produce.
-        </p>
-        <p>
-          De aceea analizăm împreună fizica și economia: puterea necesară, consumul,
-          CAPEX-ul, costul anual, economiile și valoarea scenariului în timp.
-          O recuperare rapidă nu este automat cea mai bună decizie, iar consumul minim
-          nu justifică automat orice investiție.
-        </p>
-      </div>
-      <div class="lc-budget-metrics">
-        <article><span>ENERGIE</span><strong>kWh/an</strong><small>cât consumă modelul</small></article>
-        <article><span>PUTERE</span><strong>kW</strong><small>de ce are nevoie clădirea</small></article>
-        <article><span>COST</span><strong>lei/an</strong><small>ce înseamnă în buget</small></article>
-        <article><span>INVESTIȚIE</span><strong>5–25 ani</strong><small>cum arată decizia în timp</small></article>
-      </div>
-    </section>
-
     <section class="lc-catalog-promo" id="catalog">
       <div class="lc-catalog-promo-copy">
-        <p class="lc-section-kicker">CATALOG COMERCIAL</p>
-        <h2><span>{{ catalog_product_count }}</span> produse reale.<br>Și catalogul continuă să crească.</h2>
+        <p class="lc-section-kicker">DIN PLAN SPRE IMPLEMENTARE</p>
+        <h2>Planul nu trebuie să se oprească la un calcul.</h2>
         <p>
-          TEO Engine nu trebuie să recomande doar o tehnologie. Îl legăm de produse comerciale
-          reale, cu putere, preț de referință și sursa datelor. Nodurile parametrice interne
-          nu sunt numărate ca produse.
+          Unde avem date comerciale suficiente, legăm soluția tehnică de produse reale:
+          puteri, dimensiuni, prețuri de referință și sursa datelor. Catalogul activ are în prezent
+          <strong>{{ catalog_product_count }} produse comerciale</strong>.
         </p>
         <p>
-          <strong>Ținta noastră este să extindem catalogul spre acoperirea cât mai completă
-          a produselor relevante disponibile pe piață</strong>, astfel încât soluția finală
-          să poată ajunge de la calcul la un coș concret.
+          Catalogul este un strat de implementare, nu motivul recomandării.
+          <strong>Mai întâi calculăm ce merită; apoi căutăm cu ce poate fi realizat.</strong>
         </p>
         <a class="lc-button lc-button-primary" href="/produse">Explorează produsele <span>→</span></a>
       </div>
@@ -233,12 +245,12 @@
 
     <section class="lc-close">
       <div>
-        <p class="lc-section-kicker">SOLUȚIA FINALĂ</p>
-        <h2>Nu vrem doar un rezultat.<br>Vrem o soluție executabilă.</h2>
+        <p class="lc-section-kicker">PLANUL TĂU</p>
+        <h2>Nu încă un calculator.<br>Un plan pentru casa ta.</h2>
       </div>
       <div class="lc-close-action">
-        <p>RBPE calculează fizica, TEO Engine caută configurația, produsele reale o fac executabilă, iar soluția finală poate fi verificată de un inginer înainte de ofertare și implementare.</p>
-        <a class="lc-button lc-button-primary" href="/home-lab-next">Deschide Home Lab <span>→</span></a>
+        <p>Home Lab îți dă baza tehnică și economică pentru decizie. Când planul intră în proiectare, documentație oficială sau execuție, continui cu specialistul potrivit.</p>
+        <a class="lc-button lc-button-primary" href="/home-lab-editorial">Construiește planul casei <span>→</span></a>
         <a class="lc-text-link" href="/home-lab/facts">Vezi rezultate publice din calcule →</a>
       </div>
     </section>
@@ -250,7 +262,7 @@
       <span class="lc-brand-copy"><strong>LaCurent</strong><small>Nu promitem. Calculăm.</small></span>
     </a>
     <div>
-      <a href="/home-lab-next">Home Lab</a>
+      <a href="/home-lab-editorial">Home Lab</a>
       <a href="/produse">Produse</a>
       <a href="/home-lab/facts">Facts</a>
       <a href="/privacy">Confidențialitate</a>
@@ -259,5 +271,6 @@
     </div>
     <small>© 2026 LaCurent</small>
   </footer>
+  <script src="/static/lacurent-landing.js?v=1"></script>
 </body>
 </html>

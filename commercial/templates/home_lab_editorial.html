@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <script src="/static/no-zoom.js?v=2" defer></script>
-  <title>Home Lab Editorial — experiment | LaCurent</title>
+  <title>Home Lab — plan energetic pentru casa ta | LaCurent</title>
   <meta name="robots" content="noindex,nofollow">
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=6">
-  <link rel="stylesheet" href="/static/home-lab-editorial.css?v=30">
+  <link rel="stylesheet" href="/static/home-lab-editorial.css?v=33">
   <link rel="stylesheet" href="/static/privacy-consent.css?v=privacy1">
 </head>
 <body>
@@ -58,16 +58,16 @@
   <header class="ed-header">
     <a class="ed-brand" href="/home-lab-editorial" aria-label="LaCurent Home Lab">
       <span class="ed-mark">LC</span>
-      <span>Home Lab <small>experiment</small></span>
+      <span>Home Lab <small>by LaCurent</small></span>
     </a>
     <nav class="ed-progress" aria-label="Progres configurare">
       <div class="ed-progress-history" id="edProgressHistory">
-        <button type="button" data-progress-step="house" disabled><b>1</b><span>Casa</span></button>
+        <button type="button" data-progress-step="house" disabled><b>1</b><span>Casa mea</span></button>
         <button type="button" data-progress-step="envelope" disabled><b>2</b><span>Anvelopa</span></button>
         <button type="button" data-progress-step="systems" disabled><b>3</b><span>Instalații</span></button>
         <button type="button" data-progress-step="renewables" disabled><b>4</b><span>Regenerabile</span></button>
-        <button type="button" data-progress-step="goal" disabled><b>5</b><span>Obiectiv</span></button>
-        <button type="button" data-progress-step="report" disabled><b>6</b><span>Rezultat</span></button>
+        <button type="button" data-progress-step="goal" disabled><b>5</b><span>Ce vreau</span></button>
+        <button type="button" data-progress-step="report" disabled><b>6</b><span>Planul meu</span></button>
       </div>
       <div class="ed-progress-current" aria-live="polite">
         <span id="edStepNumber">—</span><i></i><span id="edStepName">Start</span>
@@ -176,18 +176,31 @@
       <input type="hidden" name="solar_thermal_system_efficiency" id="techSolarThermalEfficiency" value="0.45">
 
       <section class="ed-page is-active" data-page="intro" data-label="Start">
-        <div class="ed-copy">
-          <p class="ed-eyebrow">Analiză energetică a locuinței</p>
-          <h1>Spune-ne cum este casa.<br>Calculul vine după.</h1>
-          <p class="ed-lead">Aceleași date tehnice ca în Home Lab, dar fără dashboard-uri și fără rezultate intermediare. Informațiile sunt folosite în calcul și explicate abia în raport.</p>
-          <button class="ed-primary" type="button" data-next>Începe analiza <span>→</span></button>
+        <div class="ed-copy ed-intro-copy">
+          <p class="ed-eyebrow">HOME LAB · PLAN ENERGETIC</p>
+          <h1>Construiește planul energetic al casei tale.</h1>
+          <p class="ed-lead">Descrii casa așa cum este acum. Home Lab calculează situația actuală, compară investițiile posibile și îți arată ce merită schimbat, cât costă și ce obții în schimb.</p>
+
+          <div class="ed-intro-journey" aria-label="Cum funcționează Home Lab">
+            <article><svg aria-hidden="true"><use href="#ed-i-house"></use></svg><div><b>Descrii casa</b><span>Locație, geometrie, anvelopă și instalații.</span></div></article>
+            <article><svg aria-hidden="true"><use href="#ed-i-bolt"></use></svg><div><b>Vedem unde ești</b><span>Consum, cost, necesar și performanță modelată.</span></div></article>
+            <article><svg aria-hidden="true"><use href="#ed-i-target"></use></svg><div><b>Comparăm ce merită</b><span>Investiție, economie, recuperare și constrângeri.</span></div></article>
+            <article><svg aria-hidden="true"><use href="#ed-i-check"></use></svg><div><b>Primești planul</b><span>Intervenții, ordine, efect și pașii următori.</span></div></article>
+          </div>
+
+          <div class="ed-intro-scope">
+            <svg aria-hidden="true"><use href="#ed-i-info"></use></svg>
+            <p><b>Home Lab este instrumentul tău de decizie energetică.</b> RBPE și TEO rulează în spate pentru trasabilitate și optimizare. Planul rezultat nu înlocuiește documentele oficiale sau proiectarea de specialitate atunci când acestea sunt cerute.</p>
+          </div>
+
+          <button class="ed-primary" type="button" data-next>Începe cu casa mea <span>→</span></button>
         </div>
       </section>
 
-      <section class="ed-page" data-page="house" data-label="Casa">
+      <section class="ed-page" data-page="house" data-label="Casa mea">
         <div class="ed-form-page">
-          <p class="ed-eyebrow">01 · Casa</p>
-          <h2 class="ed-page-title"><svg aria-hidden="true"><use href="#ed-i-house"></use></svg><span>Casa, așa cum este acum.</span></h2>
+          <p class="ed-eyebrow">01 · Casa mea</p>
+          <h2 class="ed-page-title"><svg aria-hidden="true"><use href="#ed-i-house"></use></svg><span>Casa mea, așa cum este acum.</span></h2>
           <p class="ed-hint">Locația stabilește clima. Geometria este dedusă din suprafață, niveluri și înălțime, exact ca în Home Lab-ul actual.</p>
 
           <div class="ed-location-picker">
@@ -476,7 +489,7 @@
       <section class="ed-page" data-page="renewables" data-label="Regenerabile">
         <div class="ed-form-page">
           <p class="ed-eyebrow">04 · Regenerabile</p>
-          <h2 class="ed-page-title"><svg aria-hidden="true"><use href="#ed-i-solar"></use></svg><span>Ce produce deja casa?</span></h2>
+          <h2 class="ed-page-title"><svg aria-hidden="true"><use href="#ed-i-solar"></use></svg><span>Produce deja energie?</span></h2>
           <p class="ed-hint">Dacă ai deja un sistem, activează-l din comutatorul din dreapta și completează datele. Dacă nu, îl lași oprit; TEO poate propune ulterior instalații noi.</p>
 
           <div class="ed-domain-card ed-tone-blue ed-renewable-card ed-renewable-pv">
@@ -539,31 +552,31 @@
         </div>
       </section>
 
-      <section class="ed-page ed-goal-page" data-page="goal" data-label="Obiectiv">
+      <section class="ed-page ed-goal-page" data-page="goal" data-label="Ce vreau">
         <div class="ed-form-page ed-goal-control-center">
           <section class="ed-goal-objectives-card" aria-labelledby="edGoalTitle">
             <header class="ed-goal-card-head">
-              <h2 id="edGoalTitle">Obiective optimizare</h2>
-              <p>Alege obiectivul TEO și, dacă este cazul, activează conformarea nZEB.</p>
+              <h2 id="edGoalTitle">Ce vrei să obții?</h2>
+              <p>Alege ce contează cel mai mult pentru tine. Home Lab va folosi acest obiectiv când compară variantele.</p>
             </header>
 
             <div class="ed-goal-choice-list" data-choice-group="_optimization_mode">
               <button type="button" class="is-selected" data-value="auto_economic">
                 <span class="ed-goal-radio" aria-hidden="true"><i></i></span>
                 <span class="ed-goal-choice-icon is-blue"><svg><use href="#ed-i-coins"></use></svg></span>
-                <span class="ed-goal-choice-copy"><b>Optim economic</b><small>Cea mai bună soluție economică (ROI global)</small></span>
+                <span class="ed-goal-choice-copy"><b>Cel mai bun rezultat economic</b><small>Echilibru între investiție, economie și valoarea în timp</small></span>
                 <span class="ed-goal-info" title="TEO compară beneficiul economic pe mai multe orizonturi."><svg><use href="#ed-i-info"></use></svg></span>
               </button>
               <button type="button" data-value="investment_budget">
                 <span class="ed-goal-radio" aria-hidden="true"><i></i></span>
                 <span class="ed-goal-choice-icon"><svg><use href="#ed-i-target"></use></svg></span>
-                <span class="ed-goal-choice-copy"><b>ROI pentru buget</b><small>Cea mai bună soluție în limita bugetului meu</small></span>
+                <span class="ed-goal-choice-copy"><b>Am un buget maxim</b><small>Cea mai bună variantă care rămâne în limita mea</small></span>
                 <span class="ed-goal-info" title="TEO maximizează economia anuală fără să depășească bugetul ales."><svg><use href="#ed-i-info"></use></svg></span>
               </button>
               <button type="button" data-value="max_payback_years">
                 <span class="ed-goal-radio" aria-hidden="true"><i></i></span>
                 <span class="ed-goal-choice-icon"><svg><use href="#ed-i-clock"></use></svg></span>
-                <span class="ed-goal-choice-copy"><b>ROI pentru timp</b><small>Cea mai bună soluție cu o perioadă de recuperare țintă</small></span>
+                <span class="ed-goal-choice-copy"><b>Vreau recuperare într-un anumit timp</b><small>Păstrează variantele care se încadrează în perioada aleasă</small></span>
                 <span class="ed-goal-info" title="TEO păstrează soluțiile care se recuperează în intervalul ales."><svg><use href="#ed-i-info"></use></svg></span>
               </button>
             </div>
@@ -671,7 +684,7 @@
                     <div><svg><use href="#ed-i-clock"></use></svg><span>Recuperare</span><strong id="edTeoPayback">—</strong></div>
                   </div>
                 </div>
-                <button type="button" class="ed-teo-report-button" id="openReportFromGoal">Vezi raportul complet <svg><use href="#ed-i-arrow"></use></svg></button>
+                <button type="button" class="ed-teo-report-button" id="openReportFromGoal">Vezi raportul și pașii următori <svg><use href="#ed-i-arrow"></use></svg></button>
               </div>
             </section>
           </div>
@@ -695,28 +708,28 @@
       </div>
     </section>
 
-    <section class="ed-page" data-page="done" data-label="Gata">
+    <section class="ed-page" data-page="done" data-label="Plan calculat">
       <div class="ed-copy ed-done">
         <div class="ed-done-mark">✓</div>
-        <p class="ed-eyebrow">Calcul finalizat</p>
-        <h1>Analiza este gata.</h1>
+        <p class="ed-eyebrow">Plan calculat</p>
+        <h1>Planul casei tale este gata.</h1>
         <p class="ed-lead" id="doneMeta">Configurațiile au fost evaluate și rezultatul a fost verificat.</p>
-        <button class="ed-primary" id="openReport" type="button">Vezi raportul <span>→</span></button>
+        <button class="ed-primary" id="openReport" type="button">Vezi planul complet <span>→</span></button>
         <button class="ed-link" id="showLog" type="button">Vezi jurnalul calculului</button>
       </div>
     </section>
 
-    <section class="ed-page ed-report-page" data-page="report" data-label="Raport">
+    <section class="ed-page ed-report-page" data-page="report" data-label="Planul meu">
       <article class="ed-report" id="report">
         <header>
-          <p class="ed-eyebrow">Raport LaCurent</p>
-          <h1>Analiza casei tale</h1>
+          <p class="ed-eyebrow">PLANUL MEU · LACURENT</p>
+          <h1>Planul energetic al casei tale</h1>
           <p id="reportIntro">Rezultatele apar aici după calcul.</p>
         </header>
         <div id="reportBody"></div>
         <footer class="ed-report-footer">
-          <button type="button" class="ed-back" id="reportBack">← Înapoi la rezultat</button>
-          <p>Metodologia, ipotezele și sursele sunt afișate în raport, nu în timpul configurării.</p>
+          <button type="button" class="ed-back" id="reportBack">← Înapoi la rezumat</button>
+          <p>Metodologia, ipotezele și sursele rămân vizibile în plan pentru ca rezultatul să poată fi verificat.</p>
         </footer>
       </article>
     </section>
@@ -793,6 +806,6 @@
   {% include "_legal_footer.html" %}
   {% include "_privacy_controls.html" %}
   <script src="/static/privacy-consent.js?v=privacy2"></script>
-  <script src="/static/home-lab-editorial.js?v=59"></script>
+  <script src="/static/home-lab-editorial.js?v=63"></script>
 </body>
 </html>
