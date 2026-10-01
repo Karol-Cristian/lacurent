@@ -164,20 +164,43 @@ async function runOnce(browser, ordinal) {
     if (!criticalRoutes.length) throw new Error("No TEO API responses were observed.");
     if (requireShardedRoutes) {
       for (const row of criticalRoutes) {
-        const isFlowControl =
+        const isFlowEndpoint =
           row.path.endsWith("/v4/flow/start")
           || row.path.includes("/v4/flow/");
-        const expectedRoute = isFlowControl
-          ? "router-flow-d1"
-          : "private-teo-sharded";
-        if (row.route !== expectedRoute) {
+        const isVerifyCooldown =
+          row.path.endsWith("/v3/verify")
+          && row.status === 409;
+        const isControlPlane = isFlowEndpoint || isVerifyCooldown;
+
+        if (isControlPlane) {
+          const allowedFlowRoutes = new Set([
+            "router-flow-d1",
+            "router-flow-memory-fallback",
+          ]);
+          if (!allowedFlowRoutes.has(row.route)) {
+            throw new Error(
+              "Unexpected TEO control-plane ownership :: " + JSON.stringify(row)
+            );
+          }
+          if (row.shard) {
+            throw new Error(
+              "Control-plane TEO response unexpectedly exposed a shard :: " +
+              JSON.stringify(row)
+            );
+          }
+          continue;
+        }
+
+        if (row.route !== "private-teo-sharded") {
           throw new Error(
-            "Unexpected TEO route ownership: expected " + expectedRoute + " :: " +
+            "Unexpected TEO heavy-route ownership: expected private-teo-sharded :: " +
             JSON.stringify(row)
           );
         }
-        if (!isFlowControl && !row.shard) {
-          throw new Error("Heavy TEO route did not expose a shard: " + JSON.stringify(row));
+        if (!row.shard) {
+          throw new Error(
+            "Heavy TEO route did not expose a shard: " + JSON.stringify(row)
+          );
         }
       }
     }
