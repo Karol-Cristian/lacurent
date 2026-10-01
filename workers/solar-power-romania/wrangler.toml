@@ -1,0 +1,8 @@
+name = "lacurent-solar-romania"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+workers_dev = true
+preview_urls = true
+
+[observability]
+enabled = true
