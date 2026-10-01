@@ -1,0 +1,18 @@
+[project]
+name = "lacurent-teo-private-worker"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+  "fastapi>=0.115,<0.116",
+  "pydantic>=1.10,<2",
+  "python-multipart>=0.0.20,<1",
+]
+
+[dependency-groups]
+dev = [
+  "workers-py",
+  "workers-runtime-sdk",
+]
+
+[tool.pywrangler]
+allow-build = false
