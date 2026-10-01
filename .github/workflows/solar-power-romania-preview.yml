@@ -20,7 +20,6 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       PREVIEW_URL: https://lacurent-solar-romania.lemnarukarol.workers.dev
-      R2_BUCKET: lacurent-solar-romania-archive
 
     steps:
       - name: Check out isolated Solar Power branch
@@ -38,12 +37,6 @@ jobs:
 
       - name: Unit tests
         run: node --test workers/solar-power-romania/tests/*.test.mjs
-
-      - name: Ensure immutable R2 archive
-        run: |
-          npx --yes wrangler@4.145.0 r2 bucket create "$R2_BUCKET" >/tmp/r2-create.log 2>&1 || true
-          cat /tmp/r2-create.log
-          npx --yes wrangler@4.145.0 r2 bucket list | grep -q "$R2_BUCKET"
 
       - name: Wrangler dry run
         run: npx --yes wrangler@4.145.0 deploy --config workers/solar-power-romania/wrangler.toml --dry-run
@@ -78,4 +71,4 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "$PREVIEW_URL" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "15-minute issuance + full 48h R2 curve archive + native satellite truth + horizon benchmark." >> "$GITHUB_STEP_SUMMARY"
+          echo "15-minute issuance + immutable Durable Object curve archive + native satellite truth + horizon benchmark." >> "$GITHUB_STEP_SUMMARY"
