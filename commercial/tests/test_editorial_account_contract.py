@@ -71,4 +71,4 @@ def test_editorial_account_backend_routes_and_schema_exist() -> None:
 def test_editorial_account_assets_are_cache_busted() -> None:
     html = HTML.read_text(encoding="utf-8")
     assert "home-lab-editorial.css?v=39" in html
-    assert "home-lab-editorial.js?v=73" in html
+    assert "home-lab-editorial.js?v=74" in html
