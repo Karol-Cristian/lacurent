@@ -758,7 +758,7 @@ async def _read_heating_branch_catalog_d1(
                requires_existing_high_power_electric,
                requires_existing_biomass_infrastructure, capacity_basis, note,
                catalog_version, observed_on
-        FROM heating_products
+        FROM energy_heating_products_compat_v1
         WHERE active = 1 AND technology_id = ?
         ORDER BY rated_power_kw,
                  (equipment_price_lei + installation_allowance_lei),
@@ -773,7 +773,7 @@ async def _read_heating_branch_catalog_d1(
                rated_power_kw AS required_power_kw,
                MIN(equipment_price_lei + installation_allowance_lei)
                    AS planning_capex_lei
-        FROM heating_products
+        FROM energy_heating_products_compat_v1
         WHERE active = 1 AND technology_id = ?
         GROUP BY technology_id, rated_power_kw
         ORDER BY rated_power_kw
@@ -786,7 +786,7 @@ async def _read_heating_branch_catalog_d1(
                MAX(rated_power_kw) AS max_power_kw,
                MIN(catalog_version) AS catalog_version,
                MIN(observed_on) AS observed_on
-        FROM heating_products
+        FROM energy_heating_products_compat_v1
         WHERE active = 1 AND technology_id = ?
         """
     ).bind(technology_id).run()
@@ -1053,7 +1053,7 @@ async def _read_heating_catalog_summary_d1(db: Any) -> dict[str, Any]:
           MAX(rated_power_kw) AS profile_max_power_kw,
           MIN(equipment_price_lei + installation_allowance_lei)
             AS profile_min_capex_lei
-        FROM heating_products
+        FROM energy_heating_products_compat_v1
         WHERE active = 1
         GROUP BY
           technology_id,
@@ -1068,33 +1068,33 @@ async def _read_heating_catalog_summary_d1(db: Any) -> dict[str, Any]:
     stats_result = await db.prepare(
         """
         SELECT
-          (SELECT COUNT(*) FROM heating_products WHERE active = 1) AS products,
+          (SELECT COUNT(*) FROM energy_heating_products_compat_v1 WHERE active = 1) AS products,
           (SELECT COUNT(*) FROM heating_parametric_nodes) AS parametric_nodes,
           (
             SELECT COUNT(*)
-            FROM heat_pump_performance_points AS pp
-            INNER JOIN heating_products AS p ON p.id = pp.product_id
+            FROM energy_heat_pump_performance_points_compat_v1 AS pp
+            INNER JOIN energy_heating_products_compat_v1 AS p ON p.id = pp.product_id
             WHERE p.active = 1
           ) AS performance_points,
           (
             SELECT COUNT(*)
-            FROM heat_pump_seasonal_performance AS sp
-            INNER JOIN heating_products AS p ON p.id = sp.product_id
+            FROM energy_heat_pump_seasonal_performance_compat_v1 AS sp
+            INNER JOIN energy_heating_products_compat_v1 AS p ON p.id = sp.product_id
             WHERE p.active = 1
           ) AS seasonal_points,
           (
             SELECT COUNT(DISTINCT catalog_version)
-            FROM heating_products
+            FROM energy_heating_products_compat_v1
             WHERE active = 1
           ) AS catalog_version_count,
           (
             SELECT MIN(catalog_version)
-            FROM heating_products
+            FROM energy_heating_products_compat_v1
             WHERE active = 1
           ) AS catalog_version,
           (
             SELECT MAX(observed_on)
-            FROM heating_products
+            FROM energy_heating_products_compat_v1
             WHERE active = 1
           ) AS observed_on
         """
@@ -1411,7 +1411,7 @@ async def read_heating_commercial_candidate_catalog_from_d1(
                    requires_existing_high_power_electric,
                    requires_existing_biomass_infrastructure, capacity_basis, note,
                    catalog_version, observed_on
-            FROM heating_products
+            FROM energy_heating_products_compat_v1
             WHERE active = 1
               AND technology_id = ?
               AND NOT (
@@ -1438,7 +1438,7 @@ async def read_heating_commercial_candidate_catalog_from_d1(
                    requires_existing_high_power_electric,
                    requires_existing_biomass_infrastructure, capacity_basis, note,
                    catalog_version, observed_on
-            FROM heating_products
+            FROM energy_heating_products_compat_v1
             WHERE active = 1
               AND technology_id = ?
               AND NOT (
@@ -1465,7 +1465,7 @@ async def read_heating_commercial_candidate_catalog_from_d1(
                    requires_existing_high_power_electric,
                    requires_existing_biomass_infrastructure, capacity_basis, note,
                    catalog_version, observed_on
-            FROM heating_products
+            FROM energy_heating_products_compat_v1
             WHERE active = 1
               AND technology_id = ?
               AND NOT (
@@ -1512,7 +1512,7 @@ async def read_heating_commercial_candidate_catalog_from_d1(
                    return_temperature_c, delta_t_k, heating_capacity_kw,
                    cop, test_standard, source_kind, source_url,
                    note, catalog_version
-            FROM heat_pump_performance_points
+            FROM energy_heat_pump_performance_points_compat_v1
             WHERE product_id IN ({placeholders})
             ORDER BY product_id, outdoor_temperature_c, flow_temperature_c
             """
@@ -1523,7 +1523,7 @@ async def read_heating_commercial_candidate_catalog_from_d1(
             SELECT product_id, climate, application_temperature_c,
                    scop, design_load_kw, source_kind, source_url,
                    test_standard, catalog_version
-            FROM heat_pump_seasonal_performance
+            FROM energy_heat_pump_seasonal_performance_compat_v1
             WHERE product_id IN ({placeholders})
             ORDER BY product_id, climate, application_temperature_c
             """
@@ -1570,7 +1570,7 @@ async def read_heating_commercial_branch_catalog_from_d1(
                    requires_existing_high_power_electric,
                    requires_existing_biomass_infrastructure, capacity_basis, note,
                    catalog_version, observed_on
-            FROM heating_products
+            FROM energy_heating_products_compat_v1
             WHERE active = 1 AND technology_id = ?
             ORDER BY rated_power_kw, equipment_price_lei, id
             """
@@ -1585,8 +1585,8 @@ async def read_heating_commercial_branch_catalog_from_d1(
                    pp.return_temperature_c, pp.delta_t_k, pp.heating_capacity_kw,
                    pp.cop, pp.test_standard, pp.source_kind, pp.source_url,
                    pp.note, pp.catalog_version
-            FROM heat_pump_performance_points AS pp
-            INNER JOIN heating_products AS p ON p.id = pp.product_id
+            FROM energy_heat_pump_performance_points_compat_v1 AS pp
+            INNER JOIN energy_heating_products_compat_v1 AS p ON p.id = pp.product_id
             WHERE p.active = 1 AND p.technology_id = ?
             ORDER BY pp.product_id, pp.outdoor_temperature_c,
                      pp.flow_temperature_c
@@ -1597,8 +1597,8 @@ async def read_heating_commercial_branch_catalog_from_d1(
             SELECT sp.product_id, sp.climate, sp.application_temperature_c,
                    sp.scop, sp.design_load_kw, sp.source_kind, sp.source_url,
                    sp.test_standard, sp.catalog_version
-            FROM heat_pump_seasonal_performance AS sp
-            INNER JOIN heating_products AS p ON p.id = sp.product_id
+            FROM energy_heat_pump_seasonal_performance_compat_v1 AS sp
+            INNER JOIN energy_heating_products_compat_v1 AS p ON p.id = sp.product_id
             WHERE p.active = 1 AND p.technology_id = ?
             ORDER BY sp.product_id, sp.climate, sp.application_temperature_c
             """
@@ -1663,7 +1663,7 @@ async def read_heating_public_products_from_d1(
                    requires_existing_high_power_electric,
                    requires_existing_biomass_infrastructure, capacity_basis, note,
                    catalog_version, observed_on
-            FROM heating_products
+            FROM energy_heating_products_compat_v1
             WHERE active = 1
             ORDER BY technology_id, rated_power_kw, equipment_price_lei, id
             """
@@ -1706,7 +1706,7 @@ async def read_heating_public_catalog_from_d1(
                    requires_existing_high_power_electric,
                    requires_existing_biomass_infrastructure, capacity_basis, note,
                    catalog_version, observed_on
-            FROM heating_products
+            FROM energy_heating_products_compat_v1
             WHERE active = 1
             ORDER BY technology_id, rated_power_kw, equipment_price_lei, id
             """
@@ -1721,8 +1721,8 @@ async def read_heating_public_catalog_from_d1(
                    pp.return_temperature_c, pp.delta_t_k, pp.heating_capacity_kw,
                    pp.cop, pp.test_standard, pp.source_kind, pp.source_url,
                    pp.note, pp.catalog_version
-            FROM heat_pump_performance_points AS pp
-            INNER JOIN heating_products AS p ON p.id = pp.product_id
+            FROM energy_heat_pump_performance_points_compat_v1 AS pp
+            INNER JOIN energy_heating_products_compat_v1 AS p ON p.id = pp.product_id
             WHERE p.active = 1
             ORDER BY pp.product_id, pp.outdoor_temperature_c,
                      pp.flow_temperature_c
@@ -1733,8 +1733,8 @@ async def read_heating_public_catalog_from_d1(
             SELECT sp.product_id, sp.climate, sp.application_temperature_c,
                    sp.scop, sp.design_load_kw, sp.source_kind, sp.source_url,
                    sp.test_standard, sp.catalog_version
-            FROM heat_pump_seasonal_performance AS sp
-            INNER JOIN heating_products AS p ON p.id = sp.product_id
+            FROM energy_heat_pump_seasonal_performance_compat_v1 AS sp
+            INNER JOIN energy_heating_products_compat_v1 AS p ON p.id = sp.product_id
             WHERE p.active = 1
             ORDER BY sp.product_id, sp.climate, sp.application_temperature_c
             """
@@ -1765,7 +1765,7 @@ async def _read_heating_catalog_d1(db: Any) -> dict[str, Any]:
                requires_existing_high_power_electric,
                requires_existing_biomass_infrastructure, capacity_basis, note,
                catalog_version, observed_on
-        FROM heating_products
+        FROM energy_heating_products_compat_v1
         WHERE active = 1
         ORDER BY technology_id, rated_power_kw, equipment_price_lei, id
         """
@@ -1776,8 +1776,8 @@ async def _read_heating_catalog_d1(db: Any) -> dict[str, Any]:
                pp.return_temperature_c, pp.delta_t_k, pp.heating_capacity_kw, pp.cop,
                pp.test_standard, pp.source_kind, pp.source_url, pp.note,
                pp.catalog_version
-        FROM heat_pump_performance_points AS pp
-        INNER JOIN heating_products AS p ON p.id = pp.product_id
+        FROM energy_heat_pump_performance_points_compat_v1 AS pp
+        INNER JOIN energy_heating_products_compat_v1 AS p ON p.id = pp.product_id
         WHERE p.active = 1
         ORDER BY pp.product_id, pp.outdoor_temperature_c, pp.flow_temperature_c
         """
@@ -1796,8 +1796,8 @@ async def _read_heating_catalog_d1(db: Any) -> dict[str, Any]:
         SELECT sp.product_id, sp.climate, sp.application_temperature_c, sp.scop,
                sp.design_load_kw, sp.source_kind, sp.source_url, sp.test_standard,
                sp.catalog_version
-        FROM heat_pump_seasonal_performance AS sp
-        INNER JOIN heating_products AS p ON p.id = sp.product_id
+        FROM energy_heat_pump_seasonal_performance_compat_v1 AS sp
+        INNER JOIN energy_heating_products_compat_v1 AS p ON p.id = sp.product_id
         WHERE p.active = 1
         ORDER BY sp.product_id, sp.climate, sp.application_temperature_c
         """
