@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SOURCE_PACK = ROOT / "commercial" / "data" / "energy_product_catalog_source_pack_v2.json"
 IMPORTER = ROOT / "scripts" / "build-energy-product-catalog-d1-import.py"
 MIGRATION = ROOT / "migrations" / "015_energy_product_catalog.sql"
+SMOKE_MIGRATION = ROOT / "migrations" / "016_energy_product_catalog_smoke_pack.sql"
 
 
 def _load_importer():
@@ -94,3 +95,23 @@ def test_migration_supports_documents_images_offers_and_category_local_value_met
     assert "'planning_curve'" in sql
     assert "'finalist_match'" in sql
     assert "'bill_of_materials'" in sql
+
+
+def test_smoke_pack_is_materialized_as_deterministic_d1_seed():
+    sql = SMOKE_MIGRATION.read_text(encoding="utf-8")
+
+    assert sql.count("INSERT OR REPLACE INTO energy_products") == 4
+    assert sql.count("INSERT OR REPLACE INTO energy_product_documents") == 5
+    assert sql.count("INSERT OR REPLACE INTO energy_product_properties") == 19
+    assert sql.count("INSERT OR REPLACE INTO energy_product_offers") == 4
+    assert sql.count("INSERT OR REPLACE INTO energy_product_value_metrics") == 3
+    assert "zehnder-comfoair-q350-hrv" in sql
+    # The incomplete HRV is stored for provenance/catalog display, but the only
+    # value metrics are the three technically complete products.
+    zehnder_metric_rows = [
+        line
+        for line in sql.splitlines()
+        if "energy_product_value_metrics" in line
+        and "zehnder-comfoair-q350-hrv" in line
+    ]
+    assert zehnder_metric_rows == []
