@@ -7,6 +7,8 @@ on:
       - codex/release-product-staging-integration
     paths:
       - ".github/workflows/release-reliability-staging.yml"
+      - ".github/workflows/commercial-v2-cloudflare-worker.yml"
+      - ".github/workflows/d1-catalog-staging.yml"
       - "commercial/app/**"
       - "commercial/static/home-lab-editorial.js"
       - "commercial/templates/home_lab_editorial.html"
