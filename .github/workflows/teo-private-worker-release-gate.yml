@@ -55,6 +55,11 @@ jobs:
       - name: Exercise PLAN to VERIFY to FINALIZE on isolated service
         run: python scripts/smoke-teo-private-service.py
 
+      - name: Prove router VERIFY survives D1 quota exhaustion
+        run: |
+          node --test commercial/tests/teo-router-flow.test.mjs
+          node --test commercial/tests/teo-router-recovery.test.mjs
+
       - name: Run commercial regression suite
         run: python -m pytest commercial/tests -q
 
