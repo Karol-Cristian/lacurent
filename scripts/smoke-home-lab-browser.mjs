@@ -235,6 +235,7 @@ try {
     throw new Error("Editorial map selection did not produce a canonical locality token");
   }
 
+  await page.locator("#edHouseValuesConfirmed").check();
   await page.locator('[data-page="house"] [data-next]').click();
   await expectVisible('[data-page="envelope"].is-active');
   await page.locator('[data-page="envelope"] [data-next]').click();
