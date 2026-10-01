@@ -173,6 +173,14 @@ async function runOnce(browser, ordinal) {
 
     await page.locator("#openReportFromGoal").click();
     await page.locator('[data-page="report"].is-active').waitFor({state:"visible",timeout:10000});
+    await page.waitForFunction(
+      () => {
+        const bom = document.querySelector("#edCatalogBom");
+        return !bom || String(bom.getAttribute("data-state") || "") !== "loading";
+      },
+      null,
+      {timeout:15000},
+    );
     const rawReportText = (await page.locator("#reportBody").innerText()).replace(/\s+/g," ").trim();
     const semanticReportText = normalizeSemanticReport(rawReportText);
     const rawDigest = crypto.createHash("sha256").update(rawReportText).digest("hex");
