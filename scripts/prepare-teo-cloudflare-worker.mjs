@@ -52,7 +52,7 @@ for (const filename of TEO_APP_FILES) {
 }
 copyDirectory(path.join(commercialRoot, "data"), path.join(srcDir, "data"));
 fs.copyFileSync(
-  path.join(commercialRoot, "cloudflare-worker", "worker.py"),
+  path.join(configRoot, "worker.py"),
   path.join(srcDir, "worker.py"),
 );
 fs.copyFileSync(
