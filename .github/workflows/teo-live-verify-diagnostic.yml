@@ -1,0 +1,32 @@
+name: TEO Live Verify Diagnostic
+
+on:
+  push:
+    branches:
+      - codex/diagnose-teo-verify-live-20261001
+    paths:
+      - .github/workflows/teo-live-verify-diagnostic.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-teo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run one full production TEO flow
+        env:
+          HOME_LAB_BASE_URL: https://lacurent.com
+          TEO_SOAK_RUNS: "1"
+          TEO_REQUIRE_SHARDED_ROUTES: "1"
+        run: node scripts/soak-teo-production.mjs
