@@ -139,7 +139,15 @@ jobs:
 
           def post_json(path, payload):
               raw=json.dumps(payload).encode()
-              req=urllib.request.Request(base+path,data=raw,headers={"content-type":"application/json","accept":"application/json"})
+              req=urllib.request.Request(
+                  base+path,
+                  data=raw,
+                  headers={
+                      "content-type":"application/json",
+                      "accept":"application/json",
+                      "user-agent":"Mozilla/5.0 LaCurent-UAT-Diagnostic/1.0",
+                  },
+              )
               try:
                   with urllib.request.urlopen(req,timeout=90) as resp:
                       body=resp.read().decode()
