@@ -98,6 +98,9 @@ async function runOnce(browser, ordinal) {
     if (calc.status() !== 200) throw new Error("Baseline RBPE returned HTTP " + calc.status());
 
     for (const pageName of ["house","envelope","systems","renewables"]) {
+      if (pageName === "house") {
+        await page.locator("#edHouseValuesConfirmed").check();
+      }
       await page.locator('[data-page="' + pageName + '"] [data-next]').click();
       const nextName =
         pageName === "house" ? "envelope"
