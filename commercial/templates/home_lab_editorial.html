@@ -56,7 +56,7 @@
     </symbol>
   </svg>
   <header class="ed-header">
-    <a class="ed-brand" href="/home-lab-editorial" aria-label="LaCurent Home Lab">
+    <a class="ed-brand" href="/" aria-label="LaCurent — pagina principală">
       <span class="ed-mark">LC</span>
       <span>Home Lab <small>by LaCurent</small></span>
     </a>
@@ -250,7 +250,7 @@
 
           <div class="ed-intro-scope">
             <svg aria-hidden="true"><use href="#ed-i-info"></use></svg>
-            <p><b>Home Lab este instrumentul tău de decizie energetică.</b> RBPE și TEO rulează în spate pentru trasabilitate și optimizare. Planul rezultat nu înlocuiește documentele oficiale sau proiectarea de specialitate atunci când acestea sunt cerute.</p>
+            <p>RBPE și TEO rulează în spate pentru calcul, trasabilitate și optimizare. Planul rezultat nu înlocuiește documentele oficiale sau proiectarea de specialitate atunci când acestea sunt cerute.</p>
           </div>
 
           <button class="ed-primary" type="button" data-next>Începe cu casa mea <span>→</span></button>
@@ -261,7 +261,7 @@
         <div class="ed-form-page">
           <p class="ed-eyebrow">01 · Casa mea</p>
           <h2 class="ed-page-title"><svg aria-hidden="true"><use href="#ed-i-house"></use></svg><span>Casa mea, așa cum este acum.</span></h2>
-          <p class="ed-hint">Locația stabilește clima. Valorile afișate inițial sunt exemple de pornire, nu date măsurate ale casei tale. Verifică valorile marcate înainte de a continua.</p>
+          <p class="ed-hint">Locația stabilește clima. Completează toate valorile obligatorii înainte de a continua.</p>
 
           <div class="ed-location-picker">
             <label class="ed-field ed-wide">
@@ -277,12 +277,12 @@
           </div>
 
           <div class="ed-grid ed-top-gap">
-            <label class="ed-field"><span>Suprafață încălzită <small class="ed-field-review">obligatoriu · verifică</small></span><div><input type="text" inputmode="decimal" data-decimal-input data-house-critical name="heated_floor_area_m2" id="heatedArea" value="120" data-min="40" data-max="300" required><em>m²</em></div></label>
-            <label class="ed-field ed-choice-field"><span>Niveluri încălzite <small class="ed-field-review">obligatoriu · verifică</small></span><div><select name="heated_levels" id="heatedLevels" data-house-critical required><option value="1">1 nivel</option><option value="2" selected>2 niveluri</option><option value="3">3 niveluri</option></select></div><small class="ed-field-help">Include numai nivelurile aflate în volumul încălzit; o mansardă locuită și încălzită se numără ca nivel.</small></label>
-            <label class="ed-field"><span>Înălțime interioară <small class="ed-field-review">obligatoriu · verifică</small></span><div><input type="text" inputmode="decimal" data-decimal-input data-house-critical name="average_height_m" id="averageHeight" value="2,7" data-min="2.2" data-max="3.5" required><em>m</em></div></label>
-            <label class="ed-field ed-choice-field"><span>Temperatura interioară dorită iarna <small class="ed-field-review">obligatoriu · verifică</small></span><div><select name="indoor_design_temperature_c" data-house-critical aria-describedby="edIndoorTempHelp" required><option value="18">18 °C</option><option value="19">19 °C</option><option value="20">20 °C</option><option value="21" selected>21 °C</option><option value="22">22 °C</option><option value="23">23 °C</option><option value="24">24 °C</option></select></div><small class="ed-field-help" id="edIndoorTempHelp">Este setpointul interior ales de tine. Temperatura exterioară de calcul vine separat din localitate și profilul climatic.</small></label>
-            <label class="ed-field"><span>Anul construcției <small class="ed-field-review">obligatoriu · verifică</small></span><div><input type="number" name="construction_year" data-house-critical value="2005" min="1800" max="2100" step="1" required></div></label>
-            <label class="ed-field ed-choice-field"><span>Persoane în locuință <small class="ed-field-review">obligatoriu · verifică</small></span><div><select name="dhw_occupants" data-house-critical required><option value="1">1 persoană</option><option value="2">2 persoane</option><option value="3">3 persoane</option><option value="4" selected>4 persoane</option><option value="5">5 persoane</option><option value="6">6 persoane</option><option value="7">7 persoane</option><option value="8">8 persoane</option></select></div></label>
+            <label class="ed-field"><span>Suprafață încălzită <small class="ed-field-review">obligatoriu · verifică</small></span><div><input type="text" inputmode="decimal" data-decimal-input data-house-critical name="heated_floor_area_m2" id="heatedArea" value="" placeholder="ex. 120" data-min="40" data-max="300" required><em>m²</em></div></label>
+            <label class="ed-field ed-choice-field"><span>Niveluri încălzite <small class="ed-field-review">obligatoriu · verifică</small></span><div><select name="heated_levels" id="heatedLevels" data-house-critical required><option value="" selected disabled>Alege</option><option value="1">1 nivel</option><option value="2">2 niveluri</option><option value="3">3 niveluri</option></select></div><small class="ed-field-help">Include numai nivelurile aflate în volumul încălzit; o mansardă locuită și încălzită se numără ca nivel.</small></label>
+            <label class="ed-field"><span>Înălțime interioară <small class="ed-field-review">obligatoriu · verifică</small></span><div><input type="text" inputmode="decimal" data-decimal-input data-house-critical name="average_height_m" id="averageHeight" value="" placeholder="ex. 2,7" data-min="2.2" data-max="3.5" required><em>m</em></div></label>
+            <label class="ed-field ed-choice-field"><span>Temperatura interioară dorită iarna <small class="ed-field-review">obligatoriu · verifică</small></span><div><select name="indoor_design_temperature_c" data-house-critical aria-describedby="edIndoorTempHelp" required><option value="" selected disabled>Alege</option><option value="18">18 °C</option><option value="19">19 °C</option><option value="20">20 °C</option><option value="21">21 °C</option><option value="22">22 °C</option><option value="23">23 °C</option><option value="24">24 °C</option></select></div><small class="ed-field-help" id="edIndoorTempHelp">Este setpointul interior ales de tine. Temperatura exterioară de calcul vine separat din localitate și profilul climatic.</small></label>
+            <label class="ed-field"><span>Anul construcției <small class="ed-field-review">obligatoriu · verifică</small></span><div><input type="number" name="construction_year" data-house-critical value="" placeholder="ex. 2005" min="1800" max="2100" step="1" required></div></label>
+            <label class="ed-field ed-choice-field"><span>Persoane în locuință <small class="ed-field-review">obligatoriu · verifică</small></span><div><select name="dhw_occupants" data-house-critical required><option value="" selected disabled>Alege</option><option value="1">1 persoană</option><option value="2">2 persoane</option><option value="3">3 persoane</option><option value="4">4 persoane</option><option value="5">5 persoane</option><option value="6">6 persoane</option><option value="7">7 persoane</option><option value="8">8 persoane</option></select></div></label>
           </div>
 
           <details class="ed-details" id="geometryDetails">
@@ -304,11 +304,6 @@
             </div>
           </details>
 
-          <label class="ed-confirm-card" for="edHouseValuesConfirmed">
-            <input type="checkbox" id="edHouseValuesConfirmed" required>
-            <span><b>Datele de bază sunt corecte pentru acest calcul.</b><small>Aceasta nu salvează casa. Confirmă doar inputurile principale pe care RBPE și TEO le vor folosi; dacă le modifici, cerem reconfirmarea.</small></span>
-          </label>
-
           <div class="ed-actions"><button type="button" class="ed-back" data-back>Înapoi</button><button type="button" class="ed-primary" data-next>Continuă <span>→</span></button></div>
         </div>
       </section>
@@ -323,7 +318,7 @@
             <h3 class="ed-card-title"><svg aria-hidden="true"><use href="#ed-i-wall"></use></svg><span>Pereți</span></h3>
             <div class="ed-grid">
               <label class="ed-field"><span>Structură perete</span>
-                <select id="wallStructure">
+                <select id="wallStructure" required><option value="" selected disabled>Alege structura</option>
                   <option value="unknown">Nu știu</option>
                   <option value="solid_brick">Cărămidă plină</option>
                   <option value="efficient_brick">Cărămidă eficientă / cu goluri</option>
@@ -333,9 +328,9 @@
                   <option value="stone">Piatră</option>
                 </select>
               </label>
-              <label class="ed-field"><span>Grosime structură</span><div><input id="wallStructureThickness" type="text" inputmode="decimal" data-decimal-input data-min="5" data-max="80" value="30"><em>cm</em></div></label>
+              <label class="ed-field"><span>Grosime structură</span><div><input id="wallStructureThickness" type="text" inputmode="decimal" data-decimal-input data-min="5" data-max="80" value="" placeholder="ex. 30" required><em>cm</em></div></label>
               <label class="ed-field"><span>Material izolație</span>
-                <select id="wallInsulationMaterial">
+                <select id="wallInsulationMaterial" required><option value="" selected disabled>Alege materialul</option>
                   <option value="generic_040">Nu știu — λ 0,040</option>
                   <option value="eps">Polistiren EPS</option>
                   <option value="xps">Polistiren XPS</option>
@@ -344,7 +339,7 @@
                   <option value="wood_fiber">Fibră lemnoasă</option>
                 </select>
               </label>
-              <label class="ed-field"><span>Izolație pereți</span><div><input id="wallIns" type="text" inputmode="decimal" data-decimal-input data-min="0" data-max="40" value="5"><em>cm</em></div></label>
+              <label class="ed-field"><span>Izolație pereți</span><div><input id="wallIns" type="text" inputmode="decimal" data-decimal-input data-min="0" data-max="40" value="" placeholder="ex. 5" required><em>cm</em></div></label>
             </div>
             <details class="ed-details ed-advanced-details">
               <summary><span>Valori avansate / calculate</span><small>Calculat automat · editarea devine override</small></summary>
@@ -360,7 +355,7 @@
           <div class="ed-subsection ed-domain-card ed-tone-sand">
             <h3 class="ed-card-title"><svg aria-hidden="true"><use href="#ed-i-roof"></use></svg><span>Acoperiș / pod</span></h3>
             <label class="ed-field ed-wide"><span>Deasupra ultimului nivel încălzit</span>
-              <select id="topBoundary">
+              <select id="topBoundary" required><option value="" selected disabled>Alege configurația</option>
                 <option value="unknown">Nu știu</option>
                 <option value="cold_attic">Pod rece / neîncălzit</option>
                 <option value="heated_attic">Mansardă încălzită</option>
@@ -369,7 +364,7 @@
             </label>
             <div class="ed-grid ed-top-gap">
               <label class="ed-field"><span>Material izolație</span>
-                <select id="roofInsulationMaterial">
+                <select id="roofInsulationMaterial" required><option value="" selected disabled>Alege materialul</option>
                   <option value="generic_040">Nu știu — λ 0,040</option>
                   <option value="eps">Polistiren EPS</option>
                   <option value="xps">Polistiren XPS</option>
@@ -378,7 +373,7 @@
                   <option value="wood_fiber">Fibră lemnoasă</option>
                 </select>
               </label>
-              <label class="ed-field"><span>Izolație pod / acoperiș</span><div><input id="roofIns" type="text" inputmode="decimal" data-decimal-input data-min="0" data-max="50" value="10"><em>cm</em></div></label>
+              <label class="ed-field"><span>Izolație pod / acoperiș</span><div><input id="roofIns" type="text" inputmode="decimal" data-decimal-input data-min="0" data-max="50" value="" placeholder="ex. 10" required><em>cm</em></div></label>
             </div>
             <details class="ed-details ed-advanced-details">
               <summary><span>Valori avansate / calculate</span><small>Calculat automat · editarea devine override</small></summary>
@@ -393,7 +388,7 @@
           <div class="ed-subsection ed-domain-card ed-tone-sage">
             <h3 class="ed-card-title"><svg aria-hidden="true"><use href="#ed-i-floor"></use></svg><span>Pardoseală</span></h3>
             <label class="ed-field ed-wide"><span>Ce se află sub planșeul nivelului încălzit?</span>
-              <select id="floorBoundary" aria-describedby="edFloorBoundaryHelp">
+              <select id="floorBoundary" aria-describedby="edFloorBoundaryHelp" required><option value="" selected disabled>Alege configurația</option>
                 <option value="ground">Sol — placa este în contact cu terenul</option>
                 <option value="unheated_basement">Subsol / beci neîncălzit</option>
                 <option value="outside_air">Exterior — planșeu peste aer liber</option>
@@ -409,7 +404,7 @@
             </div>
             <div class="ed-grid ed-top-gap">
               <label class="ed-field"><span>Materialul stratului termoizolant</span>
-                <select id="floorInsulationMaterial">
+                <select id="floorInsulationMaterial" required><option value="" selected disabled>Alege materialul</option>
                   <option value="generic_040">Nu știu — λ 0,040</option>
                   <option value="eps">Polistiren EPS</option>
                   <option value="xps">Polistiren XPS</option>
@@ -418,7 +413,7 @@
                   <option value="wood_fiber">Fibră lemnoasă</option>
                 </select>
               </label>
-              <label class="ed-field"><span>Grosime termoizolație în ansamblul planșeului</span><div><input id="floorIns" type="text" inputmode="decimal" data-decimal-input data-min="0" data-max="30" value="5"><em>cm</em></div></label>
+              <label class="ed-field"><span>Grosime termoizolație în ansamblul planșeului</span><div><input id="floorIns" type="text" inputmode="decimal" data-decimal-input data-min="0" data-max="30" value="" placeholder="ex. 5" required><em>cm</em></div></label>
             </div>
             <div class="ed-floor-layer-note" aria-label="Poziția izolației din pardoseală">
               <span>spațiu încălzit</span><i>→</i><span>finisaj / șapă</span><i>→</i><strong>izolația introdusă aici</strong><i>→</i><span>placă / planșeu</span><i>→</i><span>frontiera aleasă</span>
@@ -438,17 +433,17 @@
           <div class="ed-subsection ed-domain-card ed-tone-lilac">
             <h3 class="ed-card-title"><svg aria-hidden="true"><use href="#ed-i-window"></use></svg><span>Ferestre și orientare</span></h3>
             <div class="ed-grid">
-              <label class="ed-field"><span>Suprafață ferestre</span><div><input type="text" inputmode="decimal" data-decimal-input name="window_area_m2" id="windowArea" data-min="2" data-max="60" value="18"><em>m²</em></div></label>
+              <label class="ed-field"><span>Suprafață ferestre</span><div><input type="text" inputmode="decimal" data-decimal-input name="window_area_m2" id="windowArea" data-min="2" data-max="60" value="" placeholder="ex. 18" required><em>m²</em></div></label>
               <label class="ed-field"><span>Tip vitraj</span>
-                <select id="glazing">
+                <select id="glazing" required><option value="" selected disabled>Alege vitrajul</option>
                   <option value="single_clear_glazing">Geam simplu</option>
                   <option value="double_clear_glazing">Geam dublu clar</option>
                   <option value="double_low_e_face_3">Geam dublu Low-E</option>
-                  <option value="triple_low_e_faces_2_and_5" selected>Tripan Low-E</option>
+                  <option value="triple_low_e_faces_2_and_5">Tripan Low-E</option>
                 </select>
               </label>
               <label class="ed-field"><span>Orientare principală</span>
-                <select id="orientation">
+                <select id="orientation" required><option value="" selected disabled>Alege orientarea</option>
                   <option value="south">Sud</option><option value="south_west">Sud-vest</option><option value="west">Vest</option><option value="north_west">Nord-vest</option>
                   <option value="north">Nord</option><option value="north_east">Nord-est</option><option value="east">Est</option><option value="south_east">Sud-est</option>
                 </select>
@@ -478,7 +473,7 @@
           <div class="ed-domain-card ed-tone-blue">
             <h3 class="ed-card-title"><svg aria-hidden="true"><use href="#ed-i-heat"></use></svg><span>Încălzire</span></h3>
             <label class="ed-field ed-wide"><span>Generator de încălzire</span>
-            <select name="heating_choice" id="heatingChoice">
+            <select name="heating_choice" id="heatingChoice" required><option value="" selected disabled>Alege generatorul</option>
               <option value="condensing_gas_boiler">Centrală gaz în condensare</option>
               <option value="gas_boiler">Centrală gaz convențională</option>
               <option value="heat_pump">Pompă de căldură</option>
@@ -493,19 +488,19 @@
 
           <div class="ed-grid ed-top-gap" id="heatingChain">
             <label class="ed-field" id="heatPumpSourceField"><span>Tip pompă de căldură</span>
-              <select id="heatPumpSource"><option value="heat_pump_air_water">Aer-apă</option><option value="heat_pump_ground_water">Sol-apă</option><option value="heat_pump_air_air">Aer-aer</option></select>
+              <select id="heatPumpSource" required><option value="" selected disabled>Alege tipul</option><option value="heat_pump_air_water">Aer-apă</option><option value="heat_pump_ground_water">Sol-apă</option><option value="heat_pump_air_air">Aer-aer</option></select>
             </label>
             <label class="ed-field" data-heating-chain-field><span>Emisie în încăperi</span>
-              <select id="heatingEmitter"><option value="radiators_high_temp">Calorifere clasice</option><option value="radiators_low_temp">Calorifere joasă temperatură</option><option value="underfloor">Încălzire în pardoseală</option><option value="fan_coils">Ventiloconvectoare</option><option value="air">Aer</option><option value="local">Sursă locală</option></select>
+              <select id="heatingEmitter" required><option value="" selected disabled>Alege emisia</option><option value="radiators_high_temp">Calorifere clasice</option><option value="radiators_low_temp">Calorifere joasă temperatură</option><option value="underfloor">Încălzire în pardoseală</option><option value="fan_coils">Ventiloconvectoare</option><option value="air">Aer</option><option value="local">Sursă locală</option></select>
             </label>
             <label class="ed-field" data-heating-chain-field><span>Distribuție</span>
-              <select id="heatingDistribution"><option value="hydronic_insulated">Conducte izolate</option><option value="hydronic_uninsulated">Conducte neizolate</option><option value="underfloor">Distribuție pardoseală</option><option value="air">Distribuție prin aer</option><option value="local">Fără rețea</option></select>
+              <select id="heatingDistribution" required><option value="" selected disabled>Alege distribuția</option><option value="hydronic_insulated">Conducte izolate</option><option value="hydronic_uninsulated">Conducte neizolate</option><option value="underfloor">Distribuție pardoseală</option><option value="air">Distribuție prin aer</option><option value="local">Fără rețea</option></select>
             </label>
             <label class="ed-field" data-heating-chain-field><span>Stocare termică</span>
-              <select id="heatingStorage"><option value="none">Fără puffer</option><option value="buffer_small">Puffer / buffer mic</option><option value="buffer_large">Puffer / acumulare mare</option></select>
+              <select id="heatingStorage" required><option value="" selected disabled>Alege stocarea</option><option value="none">Fără puffer</option><option value="buffer_small">Puffer / buffer mic</option><option value="buffer_large">Puffer / acumulare mare</option></select>
             </label>
             <label class="ed-field" data-heating-chain-field><span>Reglaj</span>
-              <select id="heatingControl"><option value="manual">Manual</option><option value="room_thermostat">Termostat de ambient</option><option value="thermostatic_valves">Robineți termostatici</option><option value="zoned">Control pe zone</option><option value="weather_compensated">Compensare climatică</option></select>
+              <select id="heatingControl" required><option value="" selected disabled>Alege reglajul</option><option value="manual">Manual</option><option value="room_thermostat">Termostat de ambient</option><option value="thermostatic_valves">Robineți termostatici</option><option value="zoned">Control pe zone</option><option value="weather_compensated">Compensare climatică</option></select>
             </label>
           </div>
             <details class="ed-details ed-advanced-details">
@@ -526,7 +521,7 @@
             <h3 class="ed-card-title"><svg aria-hidden="true"><use href="#ed-i-air"></use></svg><span>Apă, aer și răcire</span></h3>
             <div class="ed-grid">
               <label class="ed-field"><span>Apă caldă menajeră</span>
-                <select name="dhw_system_type" id="dhwSystem">
+                <select name="dhw_system_type" id="dhwSystem" required><option value="" selected disabled>Alege sistemul ACM</option>
                   <option value="same_as_heating">Același sistem ca încălzirea</option>
                   <option value="electric_boiler">Boiler electric</option>
                   <option value="gas_boiler">Centrală pe gaz</option>
@@ -535,10 +530,10 @@
                 </select>
               </label>
               <label class="ed-field"><span>Ventilație</span>
-                <select id="ventilation"><option value="natural">Naturală</option><option value="mechanical">Mecanică</option><option value="hrv">Cu recuperare de căldură</option></select>
+                <select id="ventilation" required><option value="" selected disabled>Alege ventilația</option><option value="natural">Naturală</option><option value="mechanical">Mecanică</option><option value="hrv">Cu recuperare de căldură</option></select>
               </label>
               <label class="ed-field"><span>Răcire</span>
-                <select id="cooling"><option value="none">Fără răcire</option><option value="split">Aer condiționat</option><option value="heat_pump">Pompă reversibilă</option></select>
+                <select id="cooling" required><option value="" selected disabled>Alege răcirea</option><option value="none">Fără răcire</option><option value="split">Aer condiționat</option><option value="heat_pump">Pompă reversibilă</option></select>
               </label>
             </div>
             <details class="ed-details ed-advanced-details">
@@ -623,6 +618,11 @@
               </div>
             </details>
           </div>
+
+          <label class="ed-confirm-card ed-final-input-confirmation" for="edHouseValuesConfirmed">
+            <input type="checkbox" id="edHouseValuesConfirmed" required>
+            <span><b>Am verificat datele introduse.</b><small>Confirmă configurația descrisă în pașii 1–4 înainte de optimizarea TEO. Dacă modifici datele, confirmarea se resetează.</small></span>
+          </label>
 
           <div class="ed-actions"><button type="button" class="ed-back" data-back>Înapoi</button><button type="button" class="ed-primary" data-next>Continuă <span>→</span></button></div>
         </div>
