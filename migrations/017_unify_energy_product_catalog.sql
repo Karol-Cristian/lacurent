@@ -1020,4 +1020,3 @@ INSERT OR REPLACE INTO energy_product_seasonal_performance (product_id,climate,a
 
 INSERT OR REPLACE INTO energy_product_import_batches (batch_id,source_name,source_url,category_id,imported_at,product_count,document_count,property_count,image_count,offer_count,status,note) VALUES ('energy-product-unified-2026-10-01','repo_unified_energy_product_catalog',NULL,NULL,CURRENT_TIMESTAMP,49,52,655,0,49,'imported','49-product unified catalog; heating legacy tables are shadow-only during parity validation.');
 
-COMMIT;
