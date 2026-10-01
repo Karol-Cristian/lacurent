@@ -11,6 +11,7 @@ on:
       - "migrations/015_energy_product_catalog.sql"
       - "migrations/016_energy_product_catalog_smoke_pack.sql"
       - "migrations/017_unify_energy_product_catalog.sql"
+      - "migrations/019_home_lab_account_persistence.sql"
       - "scripts/build-energy-product-catalog-d1-import.py"
       - "commercial/data/energy_product_catalog_source_pack_v2.json"
 
@@ -156,7 +157,7 @@ jobs:
           echo "Dedicated D1 staging Wrangler config:"
           sed 's/database_id = .*/database_id = "<verified-development-uuid>"/' "$D1_STAGING_CONFIG"
 
-      - name: Apply catalog migrations 015-017 to development D1
+      - name: Apply catalog and account schema to development D1
         run: |
           set -euo pipefail
           rm -rf /tmp/lacurent-d1-migration-chunks
@@ -166,6 +167,7 @@ jobs:
             migrations/015_energy_product_catalog.sql \
             /tmp/016_energy_product_catalog_generated.sql \
             migrations/017_unify_energy_product_catalog.sql
+            migrations/019_home_lab_account_persistence.sql
           do
             migration_name="$(basename "$migration" .sql)"
             out_dir="/tmp/lacurent-d1-migration-chunks/$migration_name"
@@ -198,6 +200,17 @@ jobs:
             (SELECT COUNT(*) FROM energy_product_seasonal_performance) AS seasonal_points,
             (SELECT COUNT(*) FROM energy_heat_pump_seasonal_performance_compat_v1) AS seasonal_view,
             (SELECT COUNT(*) FROM energy_product_value_metrics) AS value_metrics,
+            (
+              SELECT COUNT(*)
+              FROM sqlite_master
+              WHERE type = 'table'
+                AND name IN (
+                  'users',
+                  'user_sessions',
+                  'building_platform_projects',
+                  'building_platform_project_drafts'
+                )
+            ) AS account_persistence_tables,
             (
               SELECT COUNT(*)
               FROM energy_heat_pump_performance_points_compat_v1 AS pp
@@ -264,6 +277,7 @@ jobs:
               "seasonal_points": 2,
               "seasonal_view": 2,
               "value_metrics": 17,
+              "account_persistence_tables": 4,
               "public_performance_points": 30,
               "public_heating_products": 36,
               "derived_air_air_bundles": 4,
@@ -476,7 +490,7 @@ jobs:
             echo "## D1 catalog staging verification"
             echo
             echo "- dedicated lacurent-dev-db isolation from production UUID: PASS"
-            echo "- migrations 015-017 on remote Cloudflare D1: PASS"
+            echo "- catalog migrations + Home Lab account schema on remote Cloudflare D1: PASS"
             echo "- unified energy_products baseline >= 49: PASS"
             echo "- heating compatibility baseline >= 40: PASS"
             echo "- standalone public heating SKUs >= 36: PASS"
@@ -485,6 +499,7 @@ jobs:
             echo "- public standalone heat-pump operating points >= 30: PASS"
             echo "- seasonal performance rows >= 2: PASS"
             echo "- cross-category source pack materialized in remote D1: PASS"
+            echo "- account/project persistence tables present in remote D1: PASS"
             echo "- deployed Python Worker DB binding: PASS"
             echo "- /api/heating-products source=d1: PASS"
             echo "- /produse D1-backed runtime smoke: PASS"
