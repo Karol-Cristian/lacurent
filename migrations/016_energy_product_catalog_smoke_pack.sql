@@ -43,4 +43,3 @@ INSERT OR REPLACE INTO energy_product_offers (offer_id,product_id,supplier,suppl
 
 INSERT OR REPLACE INTO energy_product_import_batches (batch_id,source_name,source_url,category_id,imported_at,product_count,document_count,property_count,image_count,offer_count,status,note) VALUES ('energy-product-source-pack-v1:2026-09-30:smoke','repo_source_pack',NULL,NULL,CURRENT_TIMESTAMP,4,5,19,0,4,'imported','Initial cross-category staging smoke pack; 3 product(s) have complete category-local value metrics.');
 
-COMMIT;
