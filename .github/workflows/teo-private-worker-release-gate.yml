@@ -1,0 +1,61 @@
+name: TEO Private Worker Release Gate
+
+on:
+  push:
+    branches:
+      - lemnaru-karol/teo-verify-isolation-dev
+    paths:
+      - commercial/app/**
+      - commercial/data/**
+      - commercial/teo-worker/**
+      - scripts/prepare-teo-cloudflare-worker.mjs
+      - scripts/smoke-teo-private-service.py
+      - tests/teo-private-worker-bundle.mjs
+      - .github/workflows/teo-private-worker-release-gate.yml
+  pull_request:
+    paths:
+      - commercial/app/**
+      - commercial/data/**
+      - commercial/teo-worker/**
+      - scripts/prepare-teo-cloudflare-worker.mjs
+      - scripts/smoke-teo-private-service.py
+      - tests/teo-private-worker-bundle.mjs
+      - .github/workflows/teo-private-worker-release-gate.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  teo-private-release-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Python test dependencies
+        run: python -m pip install -r commercial/requirements.txt
+
+      - name: Build and verify slim TEO bundle contract
+        run: node tests/teo-private-worker-bundle.mjs
+
+      - name: Compile generated private TEO Python source
+        run: python -m compileall -q .wrangler/teo-worker/src
+
+      - name: Exercise PLAN to VERIFY to FINALIZE on isolated service
+        run: python scripts/smoke-teo-private-service.py
+
+      - name: Run commercial regression suite
+        run: python -m pytest commercial/tests -q
+
+      - name: Cloudflare Python Worker dry-run
+        working-directory: .wrangler/teo-worker
+        run: npx --yes wrangler@4.145.0 deploy --dry-run
