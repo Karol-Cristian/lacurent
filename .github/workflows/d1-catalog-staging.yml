@@ -2,20 +2,6 @@ name: D1 Catalog Staging Verification
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - codex/release-product-staging-integration
-    paths:
-      - ".github/workflows/d1-catalog-staging.yml"
-      - "migrations/015_energy_product_catalog.sql"
-      - "migrations/016_energy_product_catalog_smoke_pack.sql"
-      - "migrations/017_unify_energy_product_catalog.sql"
-      - "commercial/app/energy_product_catalog_store.py"
-      - "commercial/app/heating_catalog_store.py"
-      - "commercial/app/main.py"
-      - "commercial/data/energy_product_catalog_source_pack_v2.json"
-      - "commercial/data/heating-technology-planning.seed.json"
-      - "scripts/prepare-commercial-cloudflare-worker.mjs"
 
 concurrency:
   group: d1-catalog-staging-${{ github.ref }}
@@ -29,11 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_STAGING_API_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       WORKERS_DEV_SUBDOMAIN: lemnarukarol
       DB_NAME: lacurent-dev-db
-      PRODUCTION_DB_ID: 91b70c8a-3c11-4fe0-81ed-e3b64a075118
 
     steps:
       - name: Check out release staging
@@ -43,6 +28,7 @@ jobs:
         run: |
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
+          echo "Using dedicated D1 staging token when CLOUDFLARE_D1_STAGING_API_TOKEN is configured."
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -98,9 +84,19 @@ jobs:
           database_id = str(match.get("uuid") or match.get("id") or "").strip()
           if not database_id:
               raise SystemExit(f"Development D1 {target!r} has no UUID/id: {match!r}")
-          if database_id == os.environ["PRODUCTION_DB_ID"]:
+          import tomllib
+
+          wrangler = tomllib.loads(
+              Path("commercial/cloudflare-worker/wrangler.toml").read_text(encoding="utf-8")
+          )
+          production_ids = {
+              str(item.get("database_id") or "")
+              for item in wrangler.get("d1_databases", [])
+              if str(item.get("database_id") or "")
+          }
+          if database_id in production_ids:
               raise SystemExit(
-                  "Safety gate: lacurent-dev-db resolves to the production D1 UUID."
+                  "Safety gate: lacurent-dev-db resolves to a production D1 UUID."
               )
 
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as fh:
