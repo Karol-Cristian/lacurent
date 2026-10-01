@@ -1,7 +1,6 @@
 -- Unified LACURENT energy product catalog migration.
 -- energy_products is the single product namespace. Legacy heating tables remain shadow-only
 -- until runtime parity is proven, then can be removed in a later migration.
-BEGIN TRANSACTION;
 
 CREATE TABLE IF NOT EXISTS energy_product_heating_compat (
     product_id TEXT PRIMARY KEY,
@@ -57,7 +56,6 @@ CREATE TABLE IF NOT EXISTS energy_product_seasonal_performance (
     PRIMARY KEY(product_id, climate, application_temperature_c)
 );
 CREATE INDEX IF NOT EXISTS energy_product_seasonal_product_idx ON energy_product_seasonal_performance(product_id, climate, application_temperature_c);
-
 
 DROP VIEW IF EXISTS energy_heating_products_compat_v1;
 CREATE VIEW energy_heating_products_compat_v1 AS
