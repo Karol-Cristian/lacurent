@@ -24,8 +24,8 @@ on:
       - "scripts/configure-full-stack-staging.mjs"
 
 concurrency:
-  group: full-stack-uat-staging
-  cancel-in-progress: true
+  group: lacurent-shared-uat-deploy
+  cancel-in-progress: false
 
 permissions:
   contents: read
