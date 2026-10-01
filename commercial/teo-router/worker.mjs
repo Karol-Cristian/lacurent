@@ -5,6 +5,10 @@ const FLOW_COOLDOWN_MS = 1800;
 const FLOW_MAX_VERIFICATIONS = 3;
 const FLOW_STORAGE = "router-stateless";
 
+let cursor = 0;
+const disabledUntil = new Map();
+const consecutiveFailures = new Map();
+
 function shardCooldownMs(key) {
   const failures = Math.max(1, Number(consecutiveFailures.get(key) || 1));
   return Math.min(
