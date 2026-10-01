@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from types import SimpleNamespace
 
 import pytest
@@ -137,12 +138,13 @@ class FakeDB:
         return FakeStatement(sql)
 
 
-@pytest.mark.asyncio
-async def test_bounded_d1_loader_returns_only_teo_ready_candidates():
-    payload = await read_energy_product_candidate_window_d1(
-        FakeDB(),
-        "hrv_unit",
-        limit=2,
+def test_bounded_d1_loader_returns_only_teo_ready_candidates():
+    payload = asyncio.run(
+        read_energy_product_candidate_window_d1(
+            FakeDB(),
+            "hrv_unit",
+            limit=2,
+        )
     )
 
     assert payload["catalog_mode"] == "bounded_d1_category_window"
@@ -162,11 +164,12 @@ async def test_bounded_d1_loader_returns_only_teo_ready_candidates():
     ]
 
 
-@pytest.mark.asyncio
-async def test_d1_loader_caps_requested_window_at_100():
-    payload = await read_energy_product_candidate_window_d1(
-        FakeDB(),
-        "hrv_unit",
-        limit=1000,
+def test_d1_loader_caps_requested_window_at_100():
+    payload = asyncio.run(
+        read_energy_product_candidate_window_d1(
+            FakeDB(),
+            "hrv_unit",
+            limit=1000,
+        )
     )
     assert payload["loaded_products"] == 2
