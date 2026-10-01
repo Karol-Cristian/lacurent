@@ -99,7 +99,10 @@ async function runOnce(browser, ordinal) {
 
     for (const pageName of ["house","envelope","systems","renewables"]) {
       if (pageName === "house") {
-        await page.locator("#edHouseValuesConfirmed").check();
+        const confirmation = page.locator("#edHouseValuesConfirmed");
+        if (await confirmation.count()) {
+          await confirmation.check();
+        }
       }
       await page.locator('[data-page="' + pageName + '"] [data-next]').click();
       const nextName =
