@@ -38,6 +38,7 @@ from .models import (
     SolarThermalResult,
     TransmissionComponent,
     TransmissionComponentsResult,
+    VentilationSystemPerformanceResult,
 )
 
 
@@ -343,6 +344,67 @@ def ventilation_heat_transfer(building: BuildingInput) -> float:
     """Total Hve used by the energy balance, including explicit infiltration."""
 
     return ventilation_heat_transfer_components(building)["total_w_k"]
+
+
+def ventilation_system_performance(
+    building: BuildingInput,
+) -> VentilationSystemPerformanceResult:
+    """Return explicit ventilation fan electricity without inventing missing data.
+
+    The thermal ventilation stream is already represented by air_changes_per_hour.
+    Fan electricity is added only when source-backed specific fan power and an
+    explicit annual operating duration are both present on the BuildingInput.
+    """
+
+    ventilation = building.ventilation
+    airflow_m3h = (
+        float(ventilation.air_changes_per_hour)
+        * float(building.heated_volume_m3)
+    )
+    sfp = ventilation.specific_fan_power_w_per_m3h
+    operation_hours = ventilation.fan_operation_hours_per_year
+
+    if sfp is None or operation_hours is None or airflow_m3h <= 0:
+        return VentilationSystemPerformanceResult(
+            controlled_airflow_m3h=_round(airflow_m3h, 3),
+            heat_recovery_efficiency=_round(
+                ventilation.heat_recovery_efficiency,
+                4,
+            ),
+            specific_fan_power_w_per_m3h=None,
+            fan_operation_hours_per_year=None,
+            auxiliary_electricity_kwh=0.0,
+            status="not_applicable_no_fan_data",
+            performance_source="no_explicit_fan_auxiliary_contract",
+            assumptions=[
+                "Ventilation heat transfer remains calculated from the modeled air-change rate.",
+                "Fan electricity is not added because both source-backed specific fan power and explicit annual operating hours were not supplied.",
+            ],
+        )
+
+    auxiliary_kwh = (
+        float(sfp)
+        * airflow_m3h
+        * float(operation_hours)
+        / 1000.0
+    )
+    return VentilationSystemPerformanceResult(
+        controlled_airflow_m3h=_round(airflow_m3h, 3),
+        heat_recovery_efficiency=_round(
+            ventilation.heat_recovery_efficiency,
+            4,
+        ),
+        specific_fan_power_w_per_m3h=_round(sfp, 5),
+        fan_operation_hours_per_year=_round(operation_hours, 2),
+        auxiliary_electricity_kwh=_round(auxiliary_kwh, 3),
+        status="calculated_explicit_fan_data",
+        performance_source="explicit_source_backed_sfp_times_modeled_airflow_times_explicit_hours",
+        assumptions=[
+            "Fan electricity is calculated from source-backed specific fan power at the modeled operating condition.",
+            "Annual fan operating hours are explicit input; no ventilation schedule is inferred.",
+            "This auxiliary electricity is kept separate from useful heating/cooling demand and is added to regulated electricity final energy.",
+        ],
+    )
 
 
 def _monthly_utilization_parameter(building: BuildingInput, total_h_w_k: float, mode: str) -> float:
@@ -1173,6 +1235,7 @@ def renewable_energy_result(
     pv_pr: float,
     thermal_efficiency: float,
     heating_auxiliary_kwh_year: float = 0.0,
+    ventilation_auxiliary_kwh_year: float = 0.0,
 ) -> RenewableEnergyResult:
     pv = building.renewables.pv
     solar_thermal = building.renewables.solar_thermal
@@ -1186,6 +1249,12 @@ def renewable_energy_result(
 
     for balance, renewable in zip(monthly_balance, renewable_rows):
         regulated_electric_load = 0.0
+        if ventilation_auxiliary_kwh_year > 0:
+            regulated_electric_load += (
+                ventilation_auxiliary_kwh_year
+                * float(renewable.get("days") or 0.0)
+                / renewable_days
+            )
         if heating_auxiliary_kwh_year > 0:
             if annual_heating_useful > 0:
                 regulated_electric_load += heating_auxiliary_kwh_year * float(balance["useful_heating_kwh"]) / annual_heating_useful
@@ -1323,11 +1392,13 @@ def final_energy_by_service(
     cooling: EnergyServiceResult,
     dhw: EnergyServiceResult,
     heating_auxiliary_kwh: float = 0.0,
+    ventilation_auxiliary_kwh: float = 0.0,
 ) -> dict[str, float]:
     return {
         "heating": _round(heating.final_kwh + heating_auxiliary_kwh),
         "cooling": cooling.final_kwh,
         "dhw": dhw.final_kwh,
+        "ventilation": _round(ventilation_auxiliary_kwh),
     }
 
 
@@ -1545,6 +1616,7 @@ def _primary_specific_energy_scalar(building: BuildingInput) -> float:
         building,
         climate,
     )
+    ventilation_system = ventilation_system_performance(building)
     heating, heating_system = heating_system_performance(
         building,
         annual_heating,
@@ -1568,6 +1640,9 @@ def _primary_specific_energy_scalar(building: BuildingInput) -> float:
         heating_auxiliary_kwh_year=(
             heating_system.auxiliary_electricity_kwh
         ),
+        ventilation_auxiliary_kwh_year=(
+            ventilation_system.auxiliary_electricity_kwh
+        ),
     )
     gross_by_carrier = final_energy_by_carrier(
         heating,
@@ -1575,6 +1650,7 @@ def _primary_specific_energy_scalar(building: BuildingInput) -> float:
         dhw,
         additional_electricity_kwh=(
             heating_system.auxiliary_electricity_kwh
+            + ventilation_system.auxiliary_electricity_kwh
         ),
     )
     by_carrier = net_final_energy_by_carrier(
@@ -1628,6 +1704,7 @@ def calculate(building: BuildingInput, *, include_reference: bool = True) -> Cal
     annual_cooling = sum(row["useful_cooling_kwh"] for row in monthly)
 
     renewable_rows, pv_pr, thermal_efficiency = _renewable_resource_rows(building, climate)
+    ventilation_system = ventilation_system_performance(building)
     heating, heating_system = heating_system_performance(building, annual_heating)
     cooling = cooling_final_energy(building, annual_cooling)
     dhw_backup_useful = sum(float(row["dhw_backup_useful_kwh"]) for row in renewable_rows)
@@ -1643,6 +1720,7 @@ def calculate(building: BuildingInput, *, include_reference: bool = True) -> Cal
         pv_pr,
         thermal_efficiency,
         heating_auxiliary_kwh_year=heating_system.auxiliary_electricity_kwh,
+        ventilation_auxiliary_kwh_year=ventilation_system.auxiliary_electricity_kwh,
     )
 
     by_service = final_energy_by_service(
@@ -1650,12 +1728,16 @@ def calculate(building: BuildingInput, *, include_reference: bool = True) -> Cal
         cooling,
         dhw,
         heating_auxiliary_kwh=heating_system.auxiliary_electricity_kwh,
+        ventilation_auxiliary_kwh=ventilation_system.auxiliary_electricity_kwh,
     )
     gross_by_carrier = final_energy_by_carrier(
         heating,
         cooling,
         dhw,
-        additional_electricity_kwh=heating_system.auxiliary_electricity_kwh,
+        additional_electricity_kwh=(
+            heating_system.auxiliary_electricity_kwh
+            + ventilation_system.auxiliary_electricity_kwh
+        ),
     )
     by_carrier = net_final_energy_by_carrier(gross_by_carrier, renewables)
     rer = renewable_share(building, by_carrier, renewables)
@@ -1693,6 +1775,7 @@ def calculate(building: BuildingInput, *, include_reference: bool = True) -> Cal
         monthly=monthly,
         annual_heating_demand_kwh=_round(annual_heating),
         annual_cooling_demand_kwh=_round(annual_cooling),
+        ventilation_system=ventilation_system,
         heating=heating,
         heating_system=heating_system,
         cooling=cooling,
@@ -1709,7 +1792,11 @@ def calculate(building: BuildingInput, *, include_reference: bool = True) -> Cal
         energy_class=energy_class,
         reference=comparison,
         methodology_version=methodology()["version"],
-        assumptions=[*methodology()["assumptions"], *_boundary_assumptions(building)],
+        assumptions=[
+            *methodology()["assumptions"],
+            *_boundary_assumptions(building),
+            *ventilation_system.assumptions,
+        ],
     )
 
 
