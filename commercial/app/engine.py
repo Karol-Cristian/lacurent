@@ -1394,12 +1394,14 @@ def final_energy_by_service(
     heating_auxiliary_kwh: float = 0.0,
     ventilation_auxiliary_kwh: float = 0.0,
 ) -> dict[str, float]:
-    return {
+    services = {
         "heating": _round(heating.final_kwh + heating_auxiliary_kwh),
         "cooling": cooling.final_kwh,
         "dhw": dhw.final_kwh,
-        "ventilation": _round(ventilation_auxiliary_kwh),
     }
+    if ventilation_auxiliary_kwh > 1e-9:
+        services["ventilation"] = _round(ventilation_auxiliary_kwh)
+    return services
 
 
 def final_energy_by_carrier(
