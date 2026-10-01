@@ -1,0 +1,98 @@
+name: TEO Private Worker Gate
+
+on:
+  pull_request:
+    branches:
+      - codex/commercial-v2-cloudflare-python
+    paths:
+      - ".github/workflows/teo-private-worker-gate.yml"
+      - "commercial/app/teo_app.py"
+      - "commercial/app/engine.py"
+      - "commercial/app/methodology.py"
+      - "commercial/app/models.py"
+      - "commercial/app/optimization.py"
+      - "commercial/app/optimization_v2.py"
+      - "commercial/app/optimization_v3.py"
+      - "commercial/app/heating_optimization.py"
+      - "commercial/app/heating_catalog_store.py"
+      - "commercial/app/home_lab_payload.py"
+      - "commercial/app/teo_v4.py"
+      - "commercial/app/pricing.py"
+      - "commercial/teo-worker/**"
+      - "commercial/teo-router/**"
+      - "commercial/tests/test_teo_private_minimal_app.py"
+      - "commercial/tests/test_teo_v4.py"
+      - "commercial/tests/test_optimization_v3.py"
+      - "commercial/tests/test_teo_worker_flow.py"
+      - "commercial/tests/test_routes.py"
+      - "scripts/prepare-teo-cloudflare-worker.mjs"
+
+permissions:
+  contents: read
+
+jobs:
+  private-teo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip uv
+          python -m pip install -r commercial/requirements.txt
+
+      - name: Verify minimal TEO source boundary
+        run: |
+          node --check scripts/prepare-teo-cloudflare-worker.mjs
+          node scripts/prepare-teo-cloudflare-worker.mjs
+          python -m compileall -q .wrangler/teo-worker/src
+          python - <<'PY'
+          from pathlib import Path
+          root = Path(".wrangler/teo-worker/src")
+          forbidden = [
+              root / "static",
+              root / "templates",
+              root / "app" / "main.py",
+              root / "app" / "account.py",
+              root / "app" / "impact.py",
+              root / "app" / "energy_product_teo_adapter.py",
+          ]
+          found = [str(path) for path in forbidden if path.exists()]
+          if found:
+              raise SystemExit(f"Forbidden public-app files in TEO bundle: {found}")
+          worker = (root / "worker.py").read_text(encoding="utf-8")
+          if "from app.teo_app import app" not in worker:
+              raise SystemExit("Private TEO bundle is not using app.teo_app.")
+          print("TEO minimal boundary PASS")
+          PY
+
+      - name: Sync Cloudflare Python bundle
+        working-directory: .wrangler/teo-worker
+        run: |
+          npm install --save-dev wrangler@latest
+          mkdir -p .bin
+          printf '#!/usr/bin/env bash\nexec npx wrangler "$@"\n' > .bin/wrangler
+          chmod +x .bin/wrangler
+          export PATH="$PWD/.bin:$PWD/node_modules/.bin:$PATH"
+          uvx --from workers-py pywrangler sync --force
+
+      - name: Run TEO regression and determinism suite
+        run: |
+          python -m pytest \
+            commercial/tests/test_teo_private_minimal_app.py \
+            commercial/tests/test_teo_v4.py \
+            commercial/tests/test_optimization_v3.py \
+            commercial/tests/test_teo_worker_flow.py \
+            -q
+          node --test commercial/tests/teo-router-flow.test.mjs
+          node --test commercial/tests/teo-router-recovery.test.mjs
