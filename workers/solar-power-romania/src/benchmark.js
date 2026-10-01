@@ -43,13 +43,23 @@ function dayPath(iso) {
   return { date, stamp };
 }
 
-async function putR2(env, key, value) {
-  if (!env.ARCHIVE_R2) return null;
-  await env.ARCHIVE_R2.put(key, JSON.stringify(value), {
-    httpMetadata: { contentType: 'application/json' },
-    customMetadata: { format: 'solar-power-v1' },
+async function persistCurve(env, kind, timestamp, partition, data, resolutionMinutes = 15) {
+  const response = await archiveStub(env).fetch('https://archive/curve', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ kind, timestamp, partition, resolution_minutes: resolutionMinutes, data }),
   });
-  return key;
+  const stored = await response.json();
+  if (env.ARCHIVE_R2) {
+    const safeStamp = timestamp.replaceAll(':', '').replaceAll('-', '');
+    const key = `${kind}-runs/${timestamp.slice(0,10).replaceAll('-', '/')}/${safeStamp}-${partition}.json`;
+    await env.ARCHIVE_R2.put(key, JSON.stringify(data), {
+      httpMetadata: { contentType: 'application/json' },
+      customMetadata: { format: 'solar-power-v1' },
+    });
+    return { durable_object_key: stored.key, r2_key: key };
+  }
+  return { durable_object_key: stored.key, r2_key: null };
 }
 
 function compactCurve(block) {
@@ -106,17 +116,19 @@ async function storePredictions(env, issuedAtMs) {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ issued_at: issuedAt, rows: scoreRows }),
   });
-  const path = dayPath(issuedAt);
-  const r2Key = await putR2(env, `forecast-runs/${path.date}/${path.stamp}Z.json`, {
-    issued_at: issuedAt,
-    resolution_minutes: 15,
-    retention_intent: 'immutable forecast curve for audit and later re-scoring',
-    cells: BENCHMARK_CELLS,
-    models: archiveModels,
-  });
+  const curveArchive = {};
+  for (const [modelKey, cells] of Object.entries(archiveModels)) {
+    curveArchive[modelKey] = await persistCurve(env, 'forecast', issuedAt, modelKey, {
+      issued_at: issuedAt,
+      model: modelKey,
+      resolution_minutes: 15,
+      retention_intent: 'immutable forecast curve for audit and later re-scoring',
+      cells,
+    }, 15);
+  }
   return {
     stored_for_scoring: scoreRows.length,
-    full_curve_r2_key: r2Key,
+    full_curve_archive: curveArchive,
     models: modelResults.map((x) => ({ model: x.modelKey, ok: Boolean(x.result), error: x.error || null })),
     archive: await response.json(),
   };
@@ -186,15 +198,14 @@ async function scoreSatelliteTruth(env, nowMs) {
       rows: scoreRows,
     }),
   });
-  const path = dayPath(observedAt);
-  const r2Key = await putR2(env, `truth-runs/${path.date}/${path.stamp}Z.json`, {
+  const truthArchive = await persistCurve(env, 'truth', observedAt, 'satellite', {
     observed_at: observedAt,
     source: truth.source,
     native_resolution_minutes: nativeResolutionMinutes,
     benchmark_resolution_minutes: 15,
     rows: rawTruth,
-  });
-  return { observations: scoreRows.length, native_resolution_minutes: nativeResolutionMinutes, truth_r2_key: r2Key, archive: await response.json() };
+  }, nativeResolutionMinutes || 10);
+  return { observations: scoreRows.length, native_resolution_minutes: nativeResolutionMinutes, truth_archive: truthArchive, archive: await response.json() };
 }
 
 export async function getBenchmarkMetrics(env) {
