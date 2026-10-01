@@ -7,7 +7,7 @@
   <title>Home Lab — plan energetic pentru casa ta | LaCurent</title>
   <meta name="robots" content="noindex,nofollow">
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=6">
-  <link rel="stylesheet" href="/static/home-lab-editorial.css?v=36">
+  <link rel="stylesheet" href="/static/home-lab-editorial.css?v=37">
   <link rel="stylesheet" href="/static/privacy-consent.css?v=privacy1">
 </head>
 <body>
@@ -260,7 +260,7 @@
         <div class="ed-form-page">
           <p class="ed-eyebrow">01 · Casa mea</p>
           <h2 class="ed-page-title"><svg aria-hidden="true"><use href="#ed-i-house"></use></svg><span>Casa mea, așa cum este acum.</span></h2>
-          <p class="ed-hint">Locația stabilește clima. Geometria este dedusă din suprafață, niveluri și înălțime, exact ca în Home Lab-ul actual.</p>
+          <p class="ed-hint">Locația stabilește clima. Valorile afișate inițial sunt exemple de pornire, nu date măsurate ale casei tale. Verifică valorile marcate înainte de a continua.</p>
 
           <div class="ed-location-picker">
             <label class="ed-field ed-wide">
@@ -276,12 +276,12 @@
           </div>
 
           <div class="ed-grid ed-top-gap">
-            <label class="ed-field"><span>Suprafață încălzită</span><div><input type="text" inputmode="decimal" data-decimal-input name="heated_floor_area_m2" id="heatedArea" value="120" data-min="40" data-max="300" required><em>m²</em></div></label>
-            <label class="ed-field ed-choice-field"><span>Niveluri încălzite</span><div><select name="heated_levels" id="heatedLevels" required><option value="1">1 nivel</option><option value="2" selected>2 niveluri</option><option value="3">3 niveluri</option></select></div></label>
-            <label class="ed-field"><span>Înălțime interioară</span><div><input type="text" inputmode="decimal" data-decimal-input name="average_height_m" id="averageHeight" value="2,7" data-min="2.2" data-max="3.5" required><em>m</em></div></label>
-            <label class="ed-field ed-choice-field"><span>Temperatură iarna</span><div><select name="indoor_design_temperature_c" required><option value="18">18 °C</option><option value="19">19 °C</option><option value="20">20 °C</option><option value="21" selected>21 °C</option><option value="22">22 °C</option><option value="23">23 °C</option><option value="24">24 °C</option></select></div></label>
-            <label class="ed-field"><span>Anul construcției</span><div><input type="number" name="construction_year" value="2005" min="1800" max="2100" step="1" required></div></label>
-            <label class="ed-field ed-choice-field"><span>Persoane în locuință</span><div><select name="dhw_occupants" required><option value="1">1 persoană</option><option value="2">2 persoane</option><option value="3">3 persoane</option><option value="4" selected>4 persoane</option><option value="5">5 persoane</option><option value="6">6 persoane</option><option value="7">7 persoane</option><option value="8">8 persoane</option></select></div></label>
+            <label class="ed-field"><span>Suprafață încălzită <small class="ed-field-review">obligatoriu · verifică</small></span><div><input type="text" inputmode="decimal" data-decimal-input data-house-critical name="heated_floor_area_m2" id="heatedArea" value="120" data-min="40" data-max="300" required><em>m²</em></div></label>
+            <label class="ed-field ed-choice-field"><span>Niveluri încălzite <small class="ed-field-review">obligatoriu · verifică</small></span><div><select name="heated_levels" id="heatedLevels" data-house-critical required><option value="1">1 nivel</option><option value="2" selected>2 niveluri</option><option value="3">3 niveluri</option></select></div><small class="ed-field-help">Include numai nivelurile aflate în volumul încălzit; o mansardă locuită și încălzită se numără ca nivel.</small></label>
+            <label class="ed-field"><span>Înălțime interioară <small class="ed-field-review">obligatoriu · verifică</small></span><div><input type="text" inputmode="decimal" data-decimal-input data-house-critical name="average_height_m" id="averageHeight" value="2,7" data-min="2.2" data-max="3.5" required><em>m</em></div></label>
+            <label class="ed-field ed-choice-field"><span>Temperatura interioară dorită iarna <small class="ed-field-review">obligatoriu · verifică</small></span><div><select name="indoor_design_temperature_c" data-house-critical aria-describedby="edIndoorTempHelp" required><option value="18">18 °C</option><option value="19">19 °C</option><option value="20">20 °C</option><option value="21" selected>21 °C</option><option value="22">22 °C</option><option value="23">23 °C</option><option value="24">24 °C</option></select></div><small class="ed-field-help" id="edIndoorTempHelp">Este setpointul interior ales de tine. Temperatura exterioară de calcul vine separat din localitate și profilul climatic.</small></label>
+            <label class="ed-field"><span>Anul construcției <small class="ed-field-review">obligatoriu · verifică</small></span><div><input type="number" name="construction_year" data-house-critical value="2005" min="1800" max="2100" step="1" required></div></label>
+            <label class="ed-field ed-choice-field"><span>Persoane în locuință <small class="ed-field-review">obligatoriu · verifică</small></span><div><select name="dhw_occupants" data-house-critical required><option value="1">1 persoană</option><option value="2">2 persoane</option><option value="3">3 persoane</option><option value="4" selected>4 persoane</option><option value="5">5 persoane</option><option value="6">6 persoane</option><option value="7">7 persoane</option><option value="8">8 persoane</option></select></div></label>
           </div>
 
           <details class="ed-details" id="geometryDetails">
@@ -302,6 +302,11 @@
               <button type="button" class="ed-link ed-reset-geometry" id="resetGeometry">Reia geometria calculată</button>
             </div>
           </details>
+
+          <label class="ed-confirm-card" for="edHouseValuesConfirmed">
+            <input type="checkbox" id="edHouseValuesConfirmed" required>
+            <span><b>Am verificat datele principale ale casei.</b><small>Confirm că suprafața, nivelurile, înălțimea, temperatura interioară, anul și numărul de persoane descriu locuința mea. Modificarea lor cere reconfirmare.</small></span>
+          </label>
 
           <div class="ed-actions"><button type="button" class="ed-back" data-back>Înapoi</button><button type="button" class="ed-primary" data-next>Continuă <span>→</span></button></div>
         </div>
@@ -386,16 +391,23 @@
 
           <div class="ed-subsection ed-domain-card ed-tone-sage">
             <h3 class="ed-card-title"><svg aria-hidden="true"><use href="#ed-i-floor"></use></svg><span>Pardoseală</span></h3>
-            <label class="ed-field ed-wide"><span>Sub pardoseala nivelului încălzit</span>
-              <select id="floorBoundary">
-                <option value="ground">Placă / pardoseală pe sol</option>
+            <label class="ed-field ed-wide"><span>Ce se află sub planșeul nivelului încălzit?</span>
+              <select id="floorBoundary" aria-describedby="edFloorBoundaryHelp">
+                <option value="ground">Sol — placa este în contact cu terenul</option>
                 <option value="unheated_basement">Subsol / beci neîncălzit</option>
-                <option value="outside_air">Exterior / spațiu deschis</option>
-                <option value="heated_space">Spațiu încălzit</option>
+                <option value="outside_air">Exterior — planșeu peste aer liber</option>
+                <option value="heated_space">Alt spațiu încălzit</option>
               </select>
             </label>
+            <div class="ed-floor-boundary-help" id="edFloorBoundaryHelp">
+              <p><b>Sol:</b> parter direct pe teren, cu placă/radier și straturile pardoselii.</p>
+              <p><b>Subsol neîncălzit:</b> sub cameră există beci, subsol sau garaj care nu este încălzit.</p>
+              <p><b>Exterior:</b> planșeul este deasupra aerului liber, de exemplu peste un pasaj sau o zonă pe stâlpi.</p>
+              <p><b>Alt spațiu încălzit:</b> sub acest planșeu există un volum menținut la temperatură interioară.</p>
+              <small>Alegerea stabilește condiția de frontieră și modelul de transfer termic folosit de RBPE.</small>
+            </div>
             <div class="ed-grid ed-top-gap">
-              <label class="ed-field"><span>Material izolație</span>
+              <label class="ed-field"><span>Materialul stratului termoizolant</span>
                 <select id="floorInsulationMaterial">
                   <option value="generic_040">Nu știu — λ 0,040</option>
                   <option value="eps">Polistiren EPS</option>
@@ -405,7 +417,11 @@
                   <option value="wood_fiber">Fibră lemnoasă</option>
                 </select>
               </label>
-              <label class="ed-field"><span>Izolație pardoseală</span><div><input id="floorIns" type="text" inputmode="decimal" data-decimal-input data-min="0" data-max="30" value="5"><em>cm</em></div></label>
+              <label class="ed-field"><span>Grosime termoizolație în ansamblul planșeului</span><div><input id="floorIns" type="text" inputmode="decimal" data-decimal-input data-min="0" data-max="30" value="5"><em>cm</em></div></label>
+            </div>
+            <div class="ed-floor-layer-note" aria-label="Poziția izolației din pardoseală">
+              <span>spațiu încălzit</span><i>→</i><span>finisaj / șapă</span><i>→</i><strong>izolația introdusă aici</strong><i>→</i><span>placă / planșeu</span><i>→</i><span>frontiera aleasă</span>
+              <small>Home Lab folosește grosimea ca strat termoizolant echivalent al ansamblului inferior. Modelul curent nu diferențiază separat izolația montată deasupra față de cea de sub placă.</small>
             </div>
             <details class="ed-details ed-advanced-details">
               <summary><span>Valori avansate / calculate</span><small>Calculat automat unde există date · editabil</small></summary>
@@ -787,6 +803,16 @@
           <p id="reportIntro">Rezultatele apar aici după calcul.</p>
         </header>
         <div id="reportBody"></div>
+        <section class="ed-report-next" aria-labelledby="edReportNextTitle">
+          <p class="ed-eyebrow">CE URMEAZĂ</p>
+          <h2 id="edReportNextTitle">Alege următorul pas.</h2>
+          <div class="ed-report-next-grid">
+            <button type="button" id="edReportEditHouse"><b>Revizuiește casa</b><span>Revino la datele de intrare fără să pierzi configurația curentă.</span></button>
+            <button type="button" id="edReportSaveProject"><b>Salvează casa în cont</b><span>Păstrează configurația și redeschide-o ulterior, inclusiv de pe alt dispozitiv.</span></button>
+            <button type="button" id="edReportBom"><b>Vezi lista tehnică</b><span>Mergi la BOM-ul preliminar generat după optimizarea TEO.</span></button>
+          </div>
+          <p class="ed-report-next-note">Pentru certificat energetic, audit oficial sau proiect de execuție este necesar separat specialistul competent; Home Lab nu emite aceste documente.</p>
+        </section>
         <footer class="ed-report-footer">
           <button type="button" class="ed-back" id="reportBack">← Înapoi la rezumat</button>
           <p>Metodologia, ipotezele și sursele rămân vizibile în plan pentru ca rezultatul să poată fi verificat.</p>
@@ -866,6 +892,6 @@
   {% include "_legal_footer.html" %}
   {% include "_privacy_controls.html" %}
   <script src="/static/privacy-consent.js?v=privacy2"></script>
-  <script src="/static/home-lab-editorial.js?v=67"></script>
+  <script src="/static/home-lab-editorial.js?v=68"></script>
 </body>
 </html>
