@@ -7,17 +7,23 @@ JS = ROOT / "commercial" / "static" / "home-lab-editorial.js"
 CSS = ROOT / "commercial" / "static" / "home-lab-editorial.css"
 
 
-def test_house_prefill_requires_explicit_confirmation() -> None:
+def test_pages_one_to_three_start_without_silent_defaults_and_confirmation_is_pre_teo() -> None:
     html = HTML.read_text(encoding="utf-8")
     js = JS.read_text(encoding="utf-8")
 
-    assert "Valorile afișate inițial sunt exemple de pornire" in html
+    assert "Home Lab nu presupune date despre casă" in html
+    assert 'id="heatedArea" value=""' in html
+    assert 'id="averageHeight" value=""' in html
+    assert 'name="construction_year" data-house-critical data-baseline-required value=""' in html
+    assert '<option value="" selected disabled>Alege nivelurile</option>' in html
+    assert '<option value="" selected disabled>Alege structura</option>' in html
+    assert '<option value="" selected disabled>Alege generatorul</option>' in html
+    assert html.count("data-baseline-required") >= 20
     assert 'id="edHouseValuesConfirmed"' in html
-    assert html.count("data-house-critical") >= 6
-    assert "obligatoriu · verifică" in html
-    assert "Confirmă că ai verificat valorile principale ale casei" in js
-    assert "Aceasta nu salvează casa." in html
-    assert 'matches?.("[data-house-critical]")' in js
+    assert html.index('data-page="renewables"') < html.index('id="edHouseValuesConfirmed"') < html.index('data-page="goal"')
+    assert "Confirmă datele introduse înainte de a continua la obiectivul TEO." in js
+    assert "Completează datele obligatorii din pașii 1–3" in js
+    assert '.ed-page[data-page="house"],.ed-page[data-page="envelope"],.ed-page[data-page="systems"]' in js
 
 
 def test_winter_temperature_is_explicitly_indoor_setpoint() -> None:
