@@ -174,3 +174,25 @@ def test_underfloor_system_route_loads_only_required_bounded_categories():
     assert '"stage": "underfloor_system_finalist_bom_recheck"' in section
     assert "run_parametric_optimization(" not in section
     assert "run_physics_informed_optimization(" not in section
+
+
+
+def test_wall_finalist_catalog_route_uses_d1_products_downstream_of_teo():
+    source = MAIN.read_text(encoding="utf-8")
+    section = source.split(
+        '@app.post("/api/optimization/commercialize/wall-finalist-catalog")',
+        1,
+    )[1].split(
+        '@app.post("/api/optimization/commercialize/hrv-finalist")',
+        1,
+    )[0]
+
+    assert '"wall_insulation"' in section
+    assert 'limit=payload.category_limit' in section
+    assert "wall_products_from_catalog_window(window)" in section
+    assert "WallCommercializationRequestV1(" in section
+    assert "commercialize_wall_candidate(" in section
+    assert "payload.nonmaterial_installed_cost_per_m2_lei" in section
+    assert '"stage": "wall_finalist_catalog_discretization"' in section
+    assert "run_parametric_optimization(" not in section
+    assert "run_physics_informed_optimization(" not in section
