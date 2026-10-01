@@ -12,6 +12,7 @@ on:
       - "migrations/016_energy_product_catalog_smoke_pack.sql"
       - "migrations/017_unify_energy_product_catalog.sql"
       - "scripts/build-energy-product-catalog-d1-import.py"
+      - "commercial/data/energy_product_catalog_source_pack_v2.json"
 
 concurrency:
   group: d1-catalog-staging-${{ github.ref }}
@@ -56,6 +57,29 @@ jobs:
           npm install --no-save wrangler@latest
           python -m pip install uv
           npx wrangler --version
+
+      - name: Generate catalog import from current source pack
+        run: |
+          set -euo pipefail
+          python scripts/build-energy-product-catalog-d1-import.py \
+            commercial/data/energy_product_catalog_source_pack_v2.json \
+            /tmp/016_energy_product_catalog_generated.sql \
+            --summary /tmp/energy-product-catalog-summary.json
+          cat /tmp/energy-product-catalog-summary.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          summary = json.loads(Path("/tmp/energy-product-catalog-summary.json").read_text())
+          products = int(summary.get("products") or 0)
+          metrics = int(summary.get("value_metric_ready") or 0)
+          if products != 49:
+              raise SystemExit(f"Expected 49 canonical products, generated {products}.")
+          if metrics < 17:
+              raise SystemExit(
+                  f"Expected at least 17 category-local value metrics, generated {metrics}."
+              )
+          print(f"Generated canonical source pack PASS: products={products}, value_metrics={metrics}")
+          PY
 
       - name: Resolve dedicated development D1 and prove production isolation
         run: |
@@ -140,7 +164,7 @@ jobs:
 
           for migration in \
             migrations/015_energy_product_catalog.sql \
-            migrations/016_energy_product_catalog_smoke_pack.sql \
+            /tmp/016_energy_product_catalog_generated.sql \
             migrations/017_unify_energy_product_catalog.sql
           do
             migration_name="$(basename "$migration" .sql)"
