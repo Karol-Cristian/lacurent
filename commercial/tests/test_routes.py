@@ -947,6 +947,12 @@ def test_private_teo_topology_is_sharded_and_route_isolated() -> None:
     assert "Deploy private TEO router" in workflow
     assert "Run 10-pass production TEO reliability soak" in workflow
     assert 'TEO_SOAK_RUNS: "10"' in workflow
+    assert workflow.index("Run production Home Lab / TEO browser smoke") < workflow.index(
+        "Verify production custom domain"
+    )
+    assert workflow.index("Run 10-pass production TEO reliability soak") < workflow.index(
+        "Verify production custom domain"
+    )
     assert "private-teo-sharded" in soak
     assert "serverErrors.length" in soak
     assert "TEO semantic report is non-deterministic" in soak
