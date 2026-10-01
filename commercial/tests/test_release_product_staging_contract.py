@@ -23,12 +23,15 @@ def test_monthly_bill_profile_remains_client_side() -> None:
     assert "maxProductPasses:0" in source
 
 
-def test_visual_report_labels_scaled_monthly_profile_honestly() -> None:
+def test_visual_report_uses_exact_monthly_costs_when_available_and_labels_fallback() -> None:
     source = JS_PATH.read_text(encoding="utf-8")
+    profile = _function_block(source, "monthlyBillProfile", "renderMonthlyBillSection")
     section = _function_block(source, "renderMonthlyBillSection", "reportComparisonBar")
+    assert "monthly_costs" in profile
+    assert "cost_lei" in profile
     assert "Înainte vs. după investiție" in section
-    assert "Totalurile anuale sunt cele verificate de motor" in section
-    assert "scalează la factura anuală TEO" in section
+    assert "Profilul lunar actual folosește costurile lunare RBPE" in section
+    assert "totalul anual este verificat" in section
 
 
 def test_teo_result_opens_real_post_teo_catalog_bom() -> None:
