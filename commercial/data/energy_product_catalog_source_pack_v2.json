@@ -1,7 +1,7 @@
 {
   "schema_version": "energy-product-source-pack-v1",
-  "observed_on": "2026-09-30",
-  "note": "Initial evidence-backed cross-category smoke pack. Technical facts and commercial offers are kept as separate provenance streams. Product images remain link-only until redistribution rights are established.",
+  "observed_on": "2026-10-01",
+  "note": "Evidence-backed cross-category smoke pack. Technical facts and commercial offers are separate provenance streams. Images remain link-only until redistribution rights are established.",
   "products": [
     {
       "id": "austrotherm-eps-a100-af-plus-160",
@@ -17,18 +17,18 @@
           "url": "https://www.austrotherm.ro/produse/austrotherm-eps/austrotherm-eps-a100-af-plus-grafitat",
           "properties": {
             "thickness_mm": 160,
-            "lambda_w_mk": 0.030,
-            "package_area_m2": 1.50,
-            "plate_area_m2": 0.50
+            "lambda_w_mk": 0.03,
+            "package_area_m2": 1.5,
+            "plate_area_m2": 0.5
           }
         }
       ],
       "offers": [
         {
           "supplier": "Filge",
-          "price_lei": 114.90,
+          "price_lei": 114.9,
           "price_basis": "lei_package",
-          "quantity": 1.50,
+          "quantity": 1.5,
           "quantity_unit": "m2",
           "vat_included": true,
           "source_url": "https://filge.ro/produs/polistiren-grafitat-austrotherm-eps100-af-plus-16cm/",
@@ -73,7 +73,7 @@
         {
           "supplier": "Dedeman",
           "supplier_sku": "2017064",
-          "price_lei": 509.00,
+          "price_lei": 509,
           "price_basis": "lei_unit",
           "quantity": 1,
           "quantity_unit": "unit",
@@ -121,7 +121,7 @@
       "offers": [
         {
           "supplier": "Shop-Einstal",
-          "price_lei": 5.00,
+          "price_lei": 5,
           "price_basis": "lei_per_m",
           "quantity": 1,
           "quantity_unit": "m",
@@ -161,7 +161,7 @@
           "kind": "manufacturer_technical_catalog",
           "url": "https://newsletter.zehnder-systems.com/upload/prj/datasheet/ZehnderComfosystems_Technik-Katalog04-2022-it_lores.pdf",
           "properties": {
-            "sfp_wh_m3_at_350_m3h_100pa": 0.30,
+            "sfp_wh_m3_at_350_m3h_100pa": 0.3,
             "electrical_power_w_at_350_m3h_100pa": 106
           }
         }
@@ -169,7 +169,7 @@
       "offers": [
         {
           "supplier": "ventilatiecurecuperarecaldura.ro",
-          "price_lei": 21713.00,
+          "price_lei": 21713,
           "price_basis": "lei_unit",
           "quantity": 1,
           "quantity_unit": "unit",
@@ -190,6 +190,223 @@
           "heat_recovery_efficiency_at_declared_condition"
         ],
         "note": "Retail pages advertise recovery efficiency, but the first TEO-backed import should parse the manufacturer Ecodesign/technical declaration instead of trusting marketing copy."
+      }
+    },
+    {
+      "id": "rockwool-frontrock-casa-100",
+      "category_id": "wall_insulation",
+      "manufacturer": "ROCKWOOL",
+      "model": "Frontrock Casa 100 mm",
+      "label": "ROCKWOOL Frontrock Casa 100 mm",
+      "evidence_status": "document_backed",
+      "technical_sources": [
+        {
+          "kind": "manufacturer_product_page",
+          "url": "https://www.rockwool.com/ro/produse/frontrock-casa/",
+          "properties": {
+            "thickness_mm": 100,
+            "lambda_w_mk": 0.034
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Dedeman",
+          "supplier_sku": "6053535",
+          "price_lei": 223.06,
+          "price_basis": "lei_package",
+          "quantity": 2.88,
+          "quantity_unit": "m2",
+          "vat_included": true,
+          "source_url": "https://www.dedeman.ro/ro/vata-minerala-bazaltica-pentru-fatada-rockwool-frontrock-casa-1200-x-600-x-100-mm/p/6053535",
+          "observed_on": "2026-10-01"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.rockwool.com/ro/produse/frontrock-casa/",
+        "rights_basis": "link_only",
+        "status": "manufacturer_page_contains_product_image"
+      },
+      "teo": {
+        "role": "planning_curve",
+        "status": "ready_after_offer_normalization",
+        "normalized_price_basis": "lei_per_m2"
+      }
+    },
+    {
+      "id": "jinko-tiger-neo-jkm440n-54hl4r-v",
+      "category_id": "pv_module",
+      "manufacturer": "JinkoSolar",
+      "model": "Tiger Neo JKM440N-54HL4R-V",
+      "label": "JinkoSolar Tiger Neo 440 W JKM440N-54HL4R-V",
+      "evidence_status": "document_backed",
+      "technical_sources": [
+        {
+          "kind": "manufacturer_datasheet",
+          "url": "https://www.jinkosolar.com/uploads/JKM420-440N-54HL4R-B-F4-CN%281%29.pdf",
+          "properties": {
+            "module_power_wp": 440
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Sud Solar",
+          "price_lei": 339,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "module",
+          "vat_included": true,
+          "source_url": "https://sudsolar.ro/produs/panou-fotovoltaic-jinko-tiger-neo-440w-rama-neagra-jkm440n-54hl4r-v-n-type/",
+          "observed_on": "2026-10-01"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.jinkosolar.com/",
+        "rights_basis": "link_only",
+        "status": "manufacturer_or_supplier_page_contains_product_image"
+      },
+      "teo": {
+        "role": "planning_curve",
+        "status": "ready_for_pv_cost_curve"
+      }
+    },
+    {
+      "id": "grundfos-alpha2-25-60-180-99411175",
+      "category_id": "circulation_pump",
+      "manufacturer": "Grundfos",
+      "model": "ALPHA2 25-60 180",
+      "label": "Grundfos ALPHA2 25-60 180",
+      "manufacturer_sku": "99411175",
+      "gtin": "5713828675248",
+      "evidence_status": "source_backed",
+      "technical_sources": [
+        {
+          "kind": "manufacturer_product_reference",
+          "url": "https://product-selection.grundfos.com/products/alpha/alpha2/alpha2-25-60-180-99411175?tab=variant-curves",
+          "properties": {}
+        },
+        {
+          "kind": "market_technical_page",
+          "url": "https://www.melindainstal.ro/pompa-de-circulatie-25-60-180-grundfos-alpha2-11510341",
+          "properties": {
+            "max_flow_m3h": 3.4,
+            "max_head_m": 6,
+            "electrical_input_w": 34
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Melinda Instal",
+          "supplier_sku": "11510341",
+          "price_lei": 1959,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "stock_status": "in_stock",
+          "source_url": "https://www.melindainstal.ro/pompa-de-circulatie-25-60-180-grundfos-alpha2-11510341",
+          "observed_on": "2026-10-01"
+        }
+      ],
+      "image": {
+        "source_page": "https://product-selection.grundfos.com/products/alpha/alpha2/alpha2-25-60-180-99411175",
+        "rights_basis": "link_only",
+        "status": "manufacturer_product_page_reference"
+      },
+      "teo": {
+        "role": "finalist_match",
+        "status": "hydraulic_preselection_only",
+        "note": "Flow/head proxy is not a hydraulic design substitute."
+      }
+    },
+    {
+      "id": "uponor-vario-m-fm-6-1085948",
+      "category_id": "underfloor_manifold",
+      "manufacturer": "Uponor",
+      "model": "Vario M FM 6xG3/4 Euro",
+      "label": "Uponor Vario M distribuitor cu debitmetre 6 circuite",
+      "manufacturer_sku": "1085948",
+      "evidence_status": "document_backed",
+      "technical_sources": [
+        {
+          "kind": "manufacturer_product_page",
+          "url": "https://www.uponor.com/en-en/s/uponor-vario-m-manifold-with-flowmeter-fm-6xg3-4-euro-1085948",
+          "properties": {
+            "circuit_count": 6
+          }
+        },
+        {
+          "kind": "manufacturer_product_datasheet",
+          "url": "https://www.uponor.com/ro-ro/product/getproductdatapdf?code=1085948",
+          "properties": {
+            "max_working_pressure_bar": 6,
+            "max_temperature_c": 60
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Automatic Flow",
+          "price_lei": 1995.88,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://automaticflow.ro/brand/uponor/",
+          "observed_on": "2026-10-01"
+        }
+      ],
+      "image": {
+        "source_page": "https://www.uponor.com/en-en/s/uponor-vario-m-manifold-with-flowmeter-fm-6xg3-4-euro-1085948",
+        "rights_basis": "link_only",
+        "status": "manufacturer_page_contains_product_image"
+      },
+      "teo": {
+        "role": "bill_of_materials",
+        "status": "ready_after_required_circuit_count_is_known"
+      }
+    },
+    {
+      "id": "salus-kl08nsb-8-zone",
+      "category_id": "heating_control",
+      "manufacturer": "SALUS Controls",
+      "model": "KL08NSB",
+      "label": "SALUS KL08NSB centru de cablare 8 zone",
+      "manufacturer_sku": "KL08NSB",
+      "evidence_status": "document_backed",
+      "technical_sources": [
+        {
+          "kind": "manufacturer_product_page",
+          "url": "https://saluscontrols.com/ro/produs/kl08nsb-centru-de-cablare-pentru-8-zone/",
+          "properties": {
+            "controlled_zone_count": 8,
+            "max_actuators": 32,
+            "max_actuators_per_zone": 4
+          }
+        }
+      ],
+      "offers": [
+        {
+          "supplier": "Price.ro observed market minimum",
+          "price_lei": 428.99,
+          "price_basis": "lei_unit",
+          "quantity": 1,
+          "quantity_unit": "unit",
+          "vat_included": true,
+          "source_url": "https://www.price.ro/preturi-salus-kl08nsb-2905901",
+          "observed_on": "2026-10-01"
+        }
+      ],
+      "image": {
+        "source_page": "https://saluscontrols.com/ro/produs/kl08nsb-centru-de-cablare-pentru-8-zone/",
+        "rights_basis": "link_only",
+        "status": "manufacturer_page_contains_product_image"
+      },
+      "teo": {
+        "role": "bill_of_materials",
+        "status": "ready_after_zone_count_is_known"
       }
     }
   ]
