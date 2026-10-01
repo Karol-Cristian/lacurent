@@ -72,11 +72,6 @@ main = "worker.mjs"
 compatibility_date = "2026-10-01"
 workers_dev = false
 
-[[d1_databases]]
-binding = "DB"
-database_name = "lacurent-dev-db"
-database_id = "${dbId}"
-
 [[services]]
 binding = "TEO_A"
 service = "lacurent-staging-teo-shard-a"
