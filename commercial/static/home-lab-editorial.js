@@ -1465,7 +1465,7 @@
   document.querySelectorAll("[data-next]").forEach(button => {
     button.addEventListener("click", () => {
       if (!validatePage(current)) return;
-      syncTechnicalForm();
+      if (requiredCoreInputsComplete()) syncTechnicalForm();
       const i = wizardOrder.indexOf(current);
       if (i >= 0 && i < wizardOrder.length - 1) showPage(wizardOrder[i + 1]);
     });
