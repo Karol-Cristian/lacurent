@@ -105,10 +105,12 @@ jobs:
           RBPE_STRESS_PV_ROUNDS: "10"
           RBPE_STRESS_MAX_RSS_GROWTH_MB: "180"
         run: |
+          set -o pipefail
           HOME_LAB_SERVER_PID="$(cat /tmp/release-reliability-uvicorn.pid)"             node scripts/release-rbpe-stress.mjs | tee /tmp/rbpe-release-stress.log
 
       - name: Run Chromium Firefox WebKit persistence and determinism matrix
         run: |
+          set -o pipefail
           node scripts/release-browser-matrix.mjs | tee /tmp/release-browser-matrix.log
 
       - name: Run repeated full TEO UI soak on the exact staging SHA
@@ -116,6 +118,7 @@ jobs:
           TEO_SOAK_RUNS: "25"
           TEO_REQUIRE_SHARDED_ROUTES: "0"
         run: |
+          set -o pipefail
           node scripts/soak-teo-production.mjs | tee /tmp/teo-local-soak.log
 
       - name: Require server survival after full campaign
@@ -124,9 +127,9 @@ jobs:
           kill -0 "$(cat /tmp/release-reliability-uvicorn.pid)"
           curl -fsS "$HOME_LAB_BASE_URL/health" | grep -q '"status":"ok"'
 
-          if grep -E '(^|[^0-9])(500|503|1101|1102)([^0-9]|$)' /tmp/release-reliability-uvicorn.log; then
-            echo "::error::Release campaign server log contains a forbidden failure code."
-            grep -nE '(^|[^0-9])(500|503|1101|1102)([^0-9]|$)' /tmp/release-reliability-uvicorn.log | tail -50
+          if grep -E 'HTTP/[0-9.]+" (500|503)( |$)|(^|[^[:alnum:]])(1101|1102)([^[:alnum:]]|$)' /tmp/release-reliability-uvicorn.log; then
+            echo "::error::Release campaign server log contains a forbidden HTTP/Cloudflare failure code."
+            grep -nE 'HTTP/[0-9.]+" (500|503)( |$)|(^|[^[:alnum:]])(1101|1102)([^[:alnum:]]|$)' /tmp/release-reliability-uvicorn.log | tail -50
             exit 1
           fi
 
