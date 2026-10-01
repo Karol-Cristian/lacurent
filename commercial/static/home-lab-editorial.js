@@ -722,16 +722,16 @@
       rememberCurrentProject(result.projectId);
       markDraftDirty();
       persistEditorialDraft({force:true});
-      setAccountState(projectSaveState, "Casa este salvată în cont.", "ok");
+      setAccountState(projectSaveState, "Proiectul Home Lab este salvat în cont.", "ok");
       if (accountQuickSave) accountQuickSave.textContent = "Salvat ✓";
       await refreshAccountProjects();
       window.setTimeout(() => {
-        if (accountQuickSave) accountQuickSave.textContent = "Salvează";
+        if (accountQuickSave) accountQuickSave.textContent = "Salvează proiectul";
       }, 1400);
       return true;
     } catch (error) {
       setAccountState(projectSaveState, error?.message || "Salvarea nu a reușit.", "error");
-      if (accountQuickSave) accountQuickSave.textContent = "Salvează";
+      if (accountQuickSave) accountQuickSave.textContent = "Salvează proiectul";
       return false;
     } finally {
       if (accountQuickSave) accountQuickSave.disabled = false;
@@ -751,7 +751,7 @@
       setAccountSession(result);
       source.reset();
       setAccountState(accountSignedOutState, "", "");
-      setAccountState(projectSaveState, "Cont conectat. Poți salva casa.", "ok");
+      setAccountState(projectSaveState, "Cont conectat. Poți salva proiectul Home Lab.", "ok");
       await refreshAccountProjects();
     } catch (error) {
       setAccountState(accountSignedOutState, error?.message || "Autentificarea nu a reușit.", "error");
