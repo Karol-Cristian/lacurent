@@ -1,16 +1,19 @@
 name: Commercial v2 Cloudflare Worker
 
 on:
+  push:
+    branches:
+      - codex/commercial-v2-cloudflare-python
   workflow_dispatch:
     inputs:
       release_sha:
-        description: "Exact commit SHA to deploy. Promotion must equal production HEAD; rollback must be an ancestor of production HEAD."
+        description: "Exact production commit for an emergency promotion or rollback."
         required: true
         type: string
       promotion_mode:
-        description: "Production action"
+        description: "Emergency production action"
         required: true
-        default: "promote"
+        default: "rollback"
         type: choice
         options:
           - promote
@@ -26,6 +29,7 @@ concurrency:
 permissions:
   contents: read
   pull-requests: read
+  actions: read
 
 jobs:
   worker-runtime:
@@ -41,11 +45,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Validate explicit production promotion or rollback
+      - name: Validate UAT-approved automatic promotion or explicit rollback
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_SHA: ${{ inputs.release_sha }}
-          PROMOTION_MODE: ${{ inputs.promotion_mode }}
+          RELEASE_SHA: ${{ github.event_name == 'push' && github.sha || inputs.release_sha }}
+          PROMOTION_MODE: ${{ github.event_name == 'push' && 'promote' || inputs.promotion_mode }}
           PRODUCTION_BRANCH: codex/commercial-v2-cloudflare-python
         run: |
           set -euo pipefail
@@ -54,6 +58,7 @@ jobs:
           import os
           import re
           import subprocess
+          import urllib.parse
           import urllib.request
 
           repo = os.environ["GITHUB_REPOSITORY"]
@@ -92,30 +97,98 @@ jobs:
                       f"requested={release_sha}, head={production_head}"
                   )
 
-              pulls_request = urllib.request.Request(
-                  f"https://api.github.com/repos/{repo}/commits/{release_sha}/pulls",
-                  headers={
-                      "Authorization": f"Bearer {token}",
-                      "Accept": "application/vnd.github+json",
-                      "X-GitHub-Api-Version": "2022-11-28",
-                  },
-              )
-              with urllib.request.urlopen(pulls_request, timeout=30) as response:
-                  pull_requests = json.loads(response.read().decode("utf-8"))
+              def api_json(path):
+                  request = urllib.request.Request(
+                      f"https://api.github.com/repos/{repo}{path}",
+                      headers={
+                          "Authorization": f"Bearer {token}",
+                          "Accept": "application/vnd.github+json",
+                          "X-GitHub-Api-Version": "2022-11-28",
+                      },
+                  )
+                  with urllib.request.urlopen(request, timeout=30) as response:
+                      return json.loads(response.read().decode("utf-8"))
+
+              pull_requests = api_json(f"/commits/{release_sha}/pulls")
               valid = [
                   pr for pr in pull_requests
                   if pr.get("merged_at")
                   and pr.get("base", {}).get("ref") == production_branch
                   and pr.get("merge_commit_sha") == release_sha
               ]
-              if not valid:
+              if len(valid) != 1:
                   raise SystemExit(
-                      "Promotion SHA is not the merge commit of a merged PR "
+                      "Automatic promotion requires exactly one merged PR "
                       "targeting the production branch."
                   )
+
+              pr = valid[0]
+              labels = {
+                  str(item.get("name") or "")
+                  for item in (pr.get("labels") or [])
+              }
+              if "uat-approved" not in labels:
+                  raise SystemExit(
+                      f"PR #{pr['number']} is not UAT-approved. "
+                      "Test the persistent staging environment, then add the "
+                      "'uat-approved' label before merging."
+                  )
+
+              candidate_sha = str(pr.get("head", {}).get("sha") or "")
+              if not re.fullmatch(r"[0-9a-fA-F]{40}", candidate_sha):
+                  raise SystemExit("Merged PR is missing a valid candidate head SHA.")
+
+              release_commit = api_json(f"/commits/{release_sha}")
+              candidate_commit = api_json(f"/commits/{candidate_sha}")
+              release_tree = str(release_commit.get("commit", {}).get("tree", {}).get("sha") or "")
+              candidate_tree = str(candidate_commit.get("commit", {}).get("tree", {}).get("sha") or "")
+              if not release_tree or release_tree != candidate_tree:
+                  raise SystemExit(
+                      "Merged production tree differs from the UAT-tested PR head. "
+                      "Rebase/update staging on the latest production branch and "
+                      "rerun the release gates before promotion."
+                  )
+
+              required_workflows = {
+                  "Release Reliability Staging",
+                  "Commercial PR Checks",
+                  "TEO Blackbox 1000",
+                  "Editorial UI Preview",
+              }
+              encoded_sha = urllib.parse.quote(candidate_sha, safe="")
+              runs_payload = api_json(
+                  f"/actions/runs?head_sha={encoded_sha}&per_page=100"
+              )
+              latest = {}
+              for run in runs_payload.get("workflow_runs", []):
+                  name = str(run.get("name") or "")
+                  if name not in required_workflows or name in latest:
+                      continue
+                  latest[name] = run
+
+              missing = sorted(required_workflows - set(latest))
+              if missing:
+                  raise SystemExit(
+                      "Missing release gates on UAT candidate "
+                      f"{candidate_sha}: {', '.join(missing)}"
+                  )
+              failed = {
+                  name: str(run.get("conclusion") or run.get("status") or "unknown")
+                  for name, run in latest.items()
+                  if run.get("conclusion") != "success"
+              }
+              if failed:
+                  raise SystemExit(
+                      "Release gates are not all green on the UAT candidate: "
+                      + json.dumps(failed, sort_keys=True)
+                  )
+
               print(
-                  "Promotion authorized for", release_sha,
-                  "from", ", ".join(f"PR #{pr['number']}" for pr in valid),
+                  "Automatic production promotion authorized:",
+                  f"PR #{pr['number']}",
+                  f"candidate={candidate_sha}",
+                  f"merge={release_sha}",
+                  "UAT label present and all release gates green.",
               )
           elif mode == "rollback":
               ancestor = subprocess.run(
@@ -137,7 +210,7 @@ jobs:
       - name: Check out exact release SHA
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.release_sha }}
+          ref: ${{ github.event_name == 'push' && github.sha || inputs.release_sha }}
           fetch-depth: 0
 
       - name: Validate production deployment credentials
