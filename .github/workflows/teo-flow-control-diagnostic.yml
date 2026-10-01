@@ -1,0 +1,40 @@
+name: TEO Flow Control Diagnostic
+
+on:
+  push:
+    branches:
+      - codex/diagnose-teo-verify-live-20261001
+    paths:
+      - .github/workflows/teo-flow-control-diagnostic.yml
+
+permissions:
+  contents: read
+
+jobs:
+  flow-control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Exercise production TEO D1 flow control
+        shell: bash
+        run: |
+          set -euo pipefail
+          RUN_ID="diag-$(date +%s)-${RANDOM}"
+          BASE="https://lacurent.com/api/optimization/home-lab/v4/flow"
+          echo "RUN_ID=$RUN_ID"
+          echo "--- START"
+          curl --fail-with-body -sS -D /tmp/start.h -H 'content-type: application/json' -d "{\"runId\":\"$RUN_ID\",\"plannedVerifications\":3}" "$BASE/start" | tee /tmp/start.json
+          echo
+          cat /tmp/start.h
+          echo "--- STATUS"
+          curl --fail-with-body -sS -D /tmp/status.h "$BASE/$RUN_ID" | tee /tmp/status.json
+          echo
+          cat /tmp/status.h
+          echo "--- FINISH"
+          curl --fail-with-body -sS -D /tmp/finish.h -X POST "$BASE/$RUN_ID/finish" | tee /tmp/finish.json
+          echo
+          cat /tmp/finish.h
+          echo "--- FINAL STATUS"
+          curl --fail-with-body -sS -D /tmp/final.h "$BASE/$RUN_ID" | tee /tmp/final.json
+          echo
+          cat /tmp/final.h
