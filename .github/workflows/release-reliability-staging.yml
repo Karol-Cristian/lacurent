@@ -1,3 +1,4 @@
+# Exact-SHA rerun marker for the production D1 release-materialization fix.
 name: Release Reliability Staging
 
 on:
