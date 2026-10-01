@@ -15,6 +15,7 @@ from commercial.app.energy_product_catalog import (  # noqa: E402
     CATEGORY_DEFINITIONS,
     compute_primary_value_metric,
     missing_teo_properties,
+    normalize_teo_properties,
 )
 
 
@@ -56,26 +57,6 @@ def _flatten_properties(product: dict[str, Any]) -> tuple[dict[str, Any], list[d
                 }
             )
     return merged, rows
-
-
-def _metric_properties(category_id: str, properties: dict[str, Any]) -> dict[str, Any]:
-    adapted = dict(properties)
-    if category_id == "radiator" and "heat_output_w_dt50" not in adapted:
-        # 75/65/20 => mean water 70°C, room 20°C => ΔT50.
-        if "heat_output_w_75_65_20" in adapted:
-            adapted["heat_output_w_dt50"] = adapted["heat_output_w_75_65_20"]
-    if category_id == "hrv_unit":
-        if "max_airflow_m3h" not in adapted and "max_airflow_m3h_at_200_pa" in adapted:
-            adapted["max_airflow_m3h"] = adapted["max_airflow_m3h_at_200_pa"]
-        if (
-            "specific_power_input_w_m3h" not in adapted
-            and "sfp_wh_m3_at_350_m3h_100pa" in adapted
-        ):
-            # Wh/m³ is dimensionally W/(m³/h).
-            adapted["specific_power_input_w_m3h"] = adapted[
-                "sfp_wh_m3_at_350_m3h_100pa"
-            ]
-    return adapted
 
 
 def _normalized_metric_offer(
@@ -129,7 +110,7 @@ def validate(payload: dict[str, Any]) -> dict[str, Any]:
             raise ValueError(f"{product_id} has no technical source.")
 
         properties, property_rows = _flatten_properties(product)
-        adapted = _metric_properties(category_id, properties)
+        adapted = normalize_teo_properties(category_id, properties)
         missing = missing_teo_properties(category_id, adapted)
         metric = None
         normalized_offer = _normalized_metric_offer(
