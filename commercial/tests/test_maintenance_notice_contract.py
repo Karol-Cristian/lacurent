@@ -29,5 +29,5 @@ def test_home_lab_has_controlled_service_downtime_notice() -> None:
 
 def test_editorial_assets_are_cache_busted_for_downtime_ui() -> None:
     html = HTML.read_text(encoding="utf-8")
-    assert "home-lab-editorial.css?v=36" in html
-    assert "home-lab-editorial.js?v=67" in html
+    assert "home-lab-editorial.css?v=37" in html
+    assert "home-lab-editorial.js?v=68" in html
