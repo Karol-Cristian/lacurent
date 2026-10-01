@@ -25,7 +25,7 @@ def test_monthly_bill_profile_remains_client_side() -> None:
 
 def test_visual_report_labels_scaled_monthly_profile_honestly() -> None:
     source = JS_PATH.read_text(encoding="utf-8")
-    section = _function_block(source, "renderMonthlyBillSection", "technicalBomRows")
+    section = _function_block(source, "renderMonthlyBillSection", "reportComparisonBar")
     assert "Înainte vs. după investiție" in section
     assert "Totalurile anuale sunt cele verificate de motor" in section
     assert "scalează la factura anuală TEO" in section
