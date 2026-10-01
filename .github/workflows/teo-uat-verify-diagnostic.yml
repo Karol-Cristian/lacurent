@@ -17,8 +17,8 @@ on:
       - "scripts/soak-teo-production.mjs"
 
 concurrency:
-  group: teo-uat-verify-diagnostic
-  cancel-in-progress: true
+  group: lacurent-shared-uat-deploy
+  cancel-in-progress: false
 
 permissions:
   contents: read
