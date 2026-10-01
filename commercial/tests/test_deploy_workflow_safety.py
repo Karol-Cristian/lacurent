@@ -20,14 +20,16 @@ def test_production_deploys_are_serialized_in_fifo_queue() -> None:
     assert concurrency_index < jobs_index
 
 
-def test_production_deploy_is_manual_only_and_builds_catalog_before_deploy() -> None:
+def test_production_deploy_auto_starts_on_production_merge_and_keeps_manual_rollback() -> None:
     workflow = PRODUCTION_WORKFLOW.read_text(encoding="utf-8")
     trigger_section = workflow.split("concurrency:", 1)[0]
 
     assert "workflow_dispatch:" in trigger_section
-    assert "\n  push:" not in trigger_section
+    assert "\n  push:" in trigger_section
+    assert "codex/commercial-v2-cloudflare-python" in trigger_section
     assert "release_sha:" in trigger_section
     assert "promotion_mode:" in trigger_section
+    assert "uat-approved" in workflow
 
     script = "scripts/build-heating-catalog-d1-import.py"
     assert script in workflow
