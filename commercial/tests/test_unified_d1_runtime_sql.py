@@ -193,3 +193,23 @@ def test_unified_d1_runtime_never_requires_legacy_heating_product_reads() -> Non
     assert "FROM energy_heat_pump_seasonal_performance_compat_v1" in runtime
     assert "FROM heating_products" not in runtime
     assert "INNER JOIN heating_products AS p" not in runtime
+
+
+def test_unified_d1_runtime_does_not_bootstrap_or_write_legacy_heating_catalog() -> None:
+    source = (
+        ROOT / "commercial" / "app" / "heating_catalog_store.py"
+    ).read_text(encoding="utf-8")
+    start = source.index("async def _ensure_heating_catalog_d1(")
+    end = source.index("def _catalog_payload_from_rows(", start)
+    ensure = source[start:end]
+
+    assert "energy_heating_products_compat_v1" in source[
+        source.index("async def _ensure_parametric_heating_nodes_d1("):start
+    ]
+    assert "HEATING_PARAMETRIC_NODES_CREATE_SQL" in ensure
+    assert "_ensure_parametric_heating_nodes_d1(db)" in ensure
+    assert "_create_heating_catalog_tables(db)" not in ensure
+    assert "HEATING_PRODUCT_UPSERT_SQL" not in ensure
+    assert "HEAT_PUMP_POINT_UPSERT_SQL" not in ensure
+    assert "HEAT_PUMP_SEASONAL_UPSERT_SQL" not in ensure
+    assert "FROM heating_products" not in ensure
