@@ -21,7 +21,7 @@ def test_collective_impact_lives_on_landing_not_home_lab_intro():
     assert 'id="lcImpactPayback"' in landing
     assert "potențial modelat" in landing.lower()
     assert "nu economii măsurate" in landing.lower()
-    assert "/static/lacurent-landing.css?v=5" in landing
+    assert "/static/lacurent-landing.css?v=6" in landing
     assert "/static/lacurent-landing.js?v=1" in landing
 
     assert 'id="edImpactOverview"' not in editorial
