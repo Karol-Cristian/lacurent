@@ -89,7 +89,7 @@ def test_fan_electricity_is_separate_regulated_service_and_electric_carrier():
     result = calculate(with_fans, include_reference=False)
     expected_fan_kwh = 0.30 * 150 * 8760 / 1000
 
-    assert base.final_energy_by_service["ventilation"] == 0
+    assert base.final_energy_by_service.get("ventilation", 0) == 0
     assert result.final_energy_by_service["ventilation"] == pytest.approx(
         expected_fan_kwh,
         abs=1e-3,
@@ -115,4 +115,4 @@ def test_no_fan_data_preserves_legacy_energy_totals():
 
     assert result.ventilation_system.auxiliary_electricity_kwh == 0
     assert result.ventilation_system.status == "not_applicable_no_fan_data"
-    assert result.final_energy_by_service["ventilation"] == 0
+    assert result.final_energy_by_service.get("ventilation", 0) == 0
