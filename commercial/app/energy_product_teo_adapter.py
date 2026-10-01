@@ -7,7 +7,7 @@ from typing import Any, Iterable
 from pydantic import BaseModel, Field
 
 from .engine import calculate, design_heat_load_breakdown
-from .models import BuildingInput, model_to_dict
+from .models import BuildingInput, HeatingEmitterType, model_to_dict
 from .optimization import CandidateEvaluationV1, CostLineV1
 from .pricing import estimate_energy_cost
 
@@ -17,6 +17,23 @@ class HrvFinalistCommercializationRequestV1(BaseModel):
     fan_operation_hours_per_year: float = Field(gt=0, le=8784)
     installation_allowance_lei: float = Field(default=0, ge=0)
     max_specific_power_input_w_m3h: float | None = Field(default=None, gt=0)
+    category_limit: int = Field(default=24, ge=1, le=100)
+
+
+class RadiatorFinalistCommercializationRequestV1(BaseModel):
+    raw_candidate: CandidateEvaluationV1
+    installation_allowance_lei_per_unit: float = Field(default=0, ge=0)
+    category_limit: int = Field(default=24, ge=1, le=100)
+
+
+class UnderfloorPipeFinalistBomRequestV1(BaseModel):
+    raw_candidate: CandidateEvaluationV1
+    active_area_m2: float = Field(gt=0)
+    spacing_mm: float = Field(gt=0)
+    max_loop_length_m: float = Field(gt=0)
+    connection_allowance_m: float = Field(default=0, ge=0)
+    verified_available_heat_output_w_m2: float = Field(gt=0)
+    installation_allowance_lei: float = Field(default=0, ge=0)
     category_limit: int = Field(default=24, ge=1, le=100)
 
 
@@ -453,6 +470,9 @@ class UnderfloorDesignRequirement:
     required_pipe_length_m: float
     max_loop_length_m: float
     required_loop_count: int
+    required_heat_output_w: float | None = None
+    required_heat_flux_w_m2: float | None = None
+    verified_available_heat_output_w_m2: float | None = None
 
 
 def design_underfloor_pipe_requirement(
@@ -461,6 +481,8 @@ def design_underfloor_pipe_requirement(
     spacing_mm: float,
     max_loop_length_m: float,
     connection_allowance_m: float = 0.0,
+    required_heat_output_w: float | None = None,
+    verified_available_heat_output_w_m2: float | None = None,
 ) -> UnderfloorDesignRequirement:
     """Convert explicit UFH design geometry into a pipe-length/loop requirement.
 
@@ -481,6 +503,35 @@ def design_underfloor_pipe_requirement(
     if not math.isfinite(allowance) or allowance < 0:
         raise ValueError("connection_allowance_m must be finite and non-negative.")
 
+    required_output = None
+    required_flux = None
+    verified_output = None
+    if (
+        required_heat_output_w is None
+        and verified_available_heat_output_w_m2 is not None
+    ) or (
+        required_heat_output_w is not None
+        and verified_available_heat_output_w_m2 is None
+    ):
+        raise ValueError(
+            "Required heat output and verified available floor output must be supplied together."
+        )
+    if required_heat_output_w is not None:
+        required_output = float(required_heat_output_w)
+        verified_output = float(verified_available_heat_output_w_m2)
+        if not math.isfinite(required_output) or required_output <= 0:
+            raise ValueError("required_heat_output_w must be finite and positive.")
+        if not math.isfinite(verified_output) or verified_output <= 0:
+            raise ValueError(
+                "verified_available_heat_output_w_m2 must be finite and positive."
+            )
+        required_flux = required_output / area
+        if required_flux > verified_output + 1e-9:
+            raise ValueError(
+                "The explicit underfloor design cannot cover the finalist design load "
+                f"({required_flux:.2f} W/m2 required > {verified_output:.2f} W/m2 verified available)."
+            )
+
     required = area / spacing + allowance
     loop_count = max(1, int(math.ceil(required / max_loop)))
     return UnderfloorDesignRequirement(
@@ -489,6 +540,15 @@ def design_underfloor_pipe_requirement(
         required_pipe_length_m=round(required, 2),
         max_loop_length_m=round(max_loop, 2),
         required_loop_count=loop_count,
+        required_heat_output_w=(
+            None if required_output is None else round(required_output, 2)
+        ),
+        required_heat_flux_w_m2=(
+            None if required_flux is None else round(required_flux, 3)
+        ),
+        verified_available_heat_output_w_m2=(
+            None if verified_output is None else round(verified_output, 3)
+        ),
     )
 
 
@@ -650,3 +710,120 @@ def add_underfloor_pipe_bom_to_finalist(
         }
     )
     return CandidateEvaluationV1(**data), match
+
+
+def commercialize_radiator_bom_from_finalist(
+    candidate: CandidateEvaluationV1,
+    products: Iterable[ProductCandidate],
+    *,
+    installation_allowance_lei_per_unit: float = 0.0,
+) -> tuple[CandidateEvaluationV1, RadiatorMatch]:
+    """Derive the aggregate radiator requirement from the canonical finalist."""
+
+    if candidate.resulting_configuration is None:
+        raise ValueError("Radiator BOM requires a finalist building configuration.")
+    result = calculate(
+        candidate.resulting_configuration,
+        include_reference=False,
+    )
+    if result.heating_system.emitter_type not in {
+        HeatingEmitterType.radiators_high_temp,
+        HeatingEmitterType.radiators_low_temp,
+    }:
+        raise ValueError(
+            "Radiator product matching is only valid for a radiator-based finalist."
+        )
+    flow = result.heating_system.design_flow_temperature_c
+    ret = result.heating_system.design_return_temperature_c
+    if flow is None or ret is None:
+        raise ValueError(
+            "Radiator finalist has no explicit/derived hydronic flow and return temperatures."
+        )
+    load = design_heat_load_breakdown(
+        result.input,
+        result.transmission_components,
+        result.h_ve_w_k,
+        result.climate,
+    )
+    required_kw = load.get("total_kw")
+    if required_kw is None or float(required_kw) <= 0:
+        raise ValueError("Radiator finalist has no positive canonical design heat load.")
+
+    commercial, match = add_radiator_bom_to_finalist(
+        candidate,
+        products,
+        required_output_w=float(required_kw) * 1000.0,
+        flow_temperature_c=float(flow),
+        return_temperature_c=float(ret),
+        room_temperature_c=float(result.input.indoor_design_temperature_c),
+        installation_allowance_lei_per_unit=(
+            installation_allowance_lei_per_unit
+        ),
+    )
+    commercial.assumptions.append(
+        "Radiator BOM is an aggregate whole-building emitter capacity check; room-by-room emitter allocation remains a downstream design task."
+    )
+    return commercial, match
+
+
+def commercialize_underfloor_pipe_bom_from_finalist(
+    candidate: CandidateEvaluationV1,
+    products: Iterable[ProductCandidate],
+    *,
+    active_area_m2: float,
+    spacing_mm: float,
+    max_loop_length_m: float,
+    connection_allowance_m: float,
+    verified_available_heat_output_w_m2: float,
+    installation_allowance_lei: float = 0.0,
+) -> tuple[
+    CandidateEvaluationV1,
+    UnderfloorPipeMatch,
+    UnderfloorDesignRequirement,
+]:
+    """Derive a traceable pipe BOM from an underfloor-heating finalist.
+
+    The floor-output capacity at the selected design condition is explicit
+    upstream evidence. The catalog never invents a floor construction curve.
+    """
+
+    if candidate.resulting_configuration is None:
+        raise ValueError("Underfloor BOM requires a finalist building configuration.")
+    result = calculate(
+        candidate.resulting_configuration,
+        include_reference=False,
+    )
+    if result.heating_system.emitter_type != HeatingEmitterType.underfloor:
+        raise ValueError(
+            "Underfloor pipe matching is only valid for an underfloor-heating finalist."
+        )
+    load = design_heat_load_breakdown(
+        result.input,
+        result.transmission_components,
+        result.h_ve_w_k,
+        result.climate,
+    )
+    required_kw = load.get("total_kw")
+    if required_kw is None or float(required_kw) <= 0:
+        raise ValueError("Underfloor finalist has no positive canonical design heat load.")
+
+    design = design_underfloor_pipe_requirement(
+        active_area_m2=active_area_m2,
+        spacing_mm=spacing_mm,
+        max_loop_length_m=max_loop_length_m,
+        connection_allowance_m=connection_allowance_m,
+        required_heat_output_w=float(required_kw) * 1000.0,
+        verified_available_heat_output_w_m2=(
+            verified_available_heat_output_w_m2
+        ),
+    )
+    commercial, match = add_underfloor_pipe_bom_to_finalist(
+        candidate,
+        products,
+        design=design,
+        installation_allowance_lei=installation_allowance_lei,
+    )
+    commercial.assumptions.append(
+        "Underfloor BOM heat-flux feasibility is checked against an explicit verified available W/m2 value at the chosen design condition; no floor-output curve is invented."
+    )
+    return commercial, match, design
