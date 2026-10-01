@@ -7,7 +7,7 @@
   <title>Home Lab — plan energetic pentru casa ta | LaCurent</title>
   <meta name="robots" content="noindex,nofollow">
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=6">
-  <link rel="stylesheet" href="/static/home-lab-editorial.css?v=35">
+  <link rel="stylesheet" href="/static/home-lab-editorial.css?v=36">
   <link rel="stylesheet" href="/static/privacy-consent.css?v=privacy1">
 </head>
 <body>
@@ -73,8 +73,59 @@
         <span id="edStepNumber">—</span><i></i><span id="edStepName">Start</span>
       </div>
     </nav>
-    <button type="button" class="ed-new-house" id="edNewHouse" title="Șterge starea locală și pornește de la o casă curată">Casă nouă</button>
+    <div class="ed-header-actions">
+      <button type="button" class="ed-account-save" id="edProjectQuickSave" hidden>Salvează</button>
+      <button type="button" class="ed-account-open" id="edAccountOpen" aria-haspopup="dialog" aria-controls="edAccountDialog">Cont</button>
+      <button type="button" class="ed-new-house" id="edNewHouse" title="Șterge starea locală și pornește de la o casă curată">Casă nouă</button>
+    </div>
   </header>
+
+  <dialog class="ed-account-dialog" id="edAccountDialog" aria-labelledby="edAccountDialogTitle">
+    <div class="ed-account-shell">
+      <header>
+        <div>
+          <p class="ed-eyebrow">HOME LAB · CONT</p>
+          <h2 id="edAccountDialogTitle">Casele mele</h2>
+        </div>
+        <button type="button" id="edAccountClose" aria-label="Închide">×</button>
+      </header>
+
+      <section id="edAccountSignedOut">
+        <p class="ed-account-intro">Conectează-te ca să salvezi casa în D1 și să o redeschizi de pe alt dispozitiv.</p>
+        <form id="edLoginForm" class="ed-account-form">
+          <label><span>Email</span><input type="email" name="email" autocomplete="email" required></label>
+          <label><span>Parolă</span><input type="password" name="password" autocomplete="current-password" minlength="10" required></label>
+          <button type="submit" class="ed-primary">Intră în cont</button>
+        </form>
+        <details class="ed-account-register">
+          <summary>Creează cont</summary>
+          <form id="edRegisterForm" class="ed-account-form">
+            <label><span>Nume</span><input type="text" name="name" autocomplete="name" minlength="2" maxlength="100" required></label>
+            <label><span>Email</span><input type="email" name="email" autocomplete="email" required></label>
+            <label><span>Parolă</span><input type="password" name="password" autocomplete="new-password" minlength="10" required></label>
+            <button type="submit" class="ed-primary">Creează cont</button>
+          </form>
+        </details>
+        <small id="edAccountSignedOutState" class="ed-account-state"></small>
+      </section>
+
+      <section id="edAccountSignedIn" hidden>
+        <div class="ed-account-user">
+          <div><small>Conectat ca</small><strong id="edAccountUserName">—</strong><span id="edAccountUserEmail">—</span></div>
+          <button type="button" class="ed-link" id="edAccountLogout">Ieși din cont</button>
+        </div>
+        <div class="ed-account-save-box">
+          <label><span>Numele casei</span><input type="text" id="edProjectName" maxlength="120" value="Casa mea"></label>
+          <button type="button" class="ed-primary" id="edProjectSave">Salvează casa</button>
+          <small id="edProjectSaveState" class="ed-account-state"></small>
+        </div>
+        <div class="ed-account-projects">
+          <div class="ed-account-projects-head"><strong>Case salvate</strong><button type="button" class="ed-link" id="edProjectsRefresh">Actualizează</button></div>
+          <div id="edProjectsList"><p class="ed-hint">Se încarcă…</p></div>
+        </div>
+      </section>
+    </div>
+  </dialog>
 
   <aside class="ed-baseline-bar" aria-live="polite" aria-label="Rezumat energetic curent">
     <div class="ed-baseline-inner">
@@ -815,6 +866,6 @@
   {% include "_legal_footer.html" %}
   {% include "_privacy_controls.html" %}
   <script src="/static/privacy-consent.js?v=privacy2"></script>
-  <script src="/static/home-lab-editorial.js?v=66"></script>
+  <script src="/static/home-lab-editorial.js?v=67"></script>
 </body>
 </html>
