@@ -10,7 +10,12 @@ class Default(WorkerEntrypoint):
         except Exception as exc:
             print(f"[LaCurent TEO] unhandled request exception: {type(exc).__name__}")
             return Response(
-                '{"error":"TEO este temporar indisponibil.","stage":"private-teo-worker"}',
+                (
+                    '{"error":"TEO este temporar indisponibil.",'
+                    '"stage":"private-teo-worker",'
+                    f'"errorType":"{type(exc).__name__}"'
+                    '}'
+                ),
                 status=503,
                 headers={
                     "content-type": "application/json; charset=utf-8",
