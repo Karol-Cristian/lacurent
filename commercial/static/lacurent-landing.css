@@ -755,18 +755,24 @@ main{overflow:hidden;background:#fff}
   100%{transform:scale(1.34);opacity:0}
 }
 .lc-renewable-wind{
-  right:17%;bottom:11%;width:170px;height:230px;
+  left:7%;right:auto;bottom:9%;width:170px;height:230px;
+  filter:blur(.35px);
+  transform-origin:20% 100%;
+}
+.lc-renewable-stage>.lc-renewable-wind.is-visible{
+  opacity:.72;
+  transform:translateY(0) scale(1.30);
 }
 .lc-renewable-wind b{
   position:absolute;left:82px;top:77px;width:4px;height:145px;border-radius:999px;
-  background:linear-gradient(to bottom,rgba(157,166,174,.72),rgba(190,198,204,.42));
-  box-shadow:0 0 8px rgba(157,166,174,.12);
+  background:linear-gradient(to bottom,rgba(157,166,174,.58),rgba(190,198,204,.30));
+  box-shadow:0 0 11px rgba(157,166,174,.16);
 }
 .lc-renewable-wind i{
   --blade-angle:-18deg;
   position:absolute;left:84px;top:75px;width:76px;height:4px;border-radius:999px;
-  background:linear-gradient(to right,rgba(153,162,170,.70),rgba(183,191,198,.44) 72%,rgba(198,205,211,.18));
-  box-shadow:0 0 7px rgba(155,164,172,.13);
+  background:linear-gradient(to right,rgba(153,162,170,.56),rgba(183,191,198,.32) 72%,rgba(198,205,211,.12));
+  box-shadow:0 0 10px rgba(155,164,172,.16);
   transform-origin:0 50%;
   transform:rotate(var(--blade-angle));
   animation:lc-wind-turn 52s linear infinite;
@@ -820,7 +826,7 @@ main{overflow:hidden;background:#fff}
   .lc-hero{min-height:680px;padding:94px 30px 88px}
   .lc-hero-copy{width:min(880px,86vw)}
   .lc-renewable-sun{right:-12%;top:-2%;width:340px;height:340px}
-  .lc-renewable-wind{right:4%;bottom:8%;transform:scale(.82)}
+  .lc-renewable-wind{left:5%;right:auto;bottom:8%}\n  .lc-renewable-stage>.lc-renewable-wind.is-visible{transform:translateY(0) scale(1.12);opacity:.68}
 }
 @media(max-width:720px){
   .lc-top-login{display:none}
@@ -832,7 +838,7 @@ main{overflow:hidden;background:#fff}
   .lc-hero h1{font-size:clamp(4rem,18vw,6.4rem)}
   .lc-lead{max-width:92%;font-size:.98rem}
   .lc-renewable-sun{right:-118px;top:4%;width:280px;height:280px;opacity:.68}
-  .lc-renewable-wind{right:-42px;bottom:5%;transform:scale(.58)}
+  .lc-renewable-wind{left:-58px;right:auto;bottom:4%;filter:blur(.4px)}\n  .lc-renewable-stage>.lc-renewable-wind.is-visible{transform:translateY(0) scale(.72);opacity:.60}
   .lc-renewable-grid{right:-70%;width:500px}
   .lc-impact-strip{grid-template-columns:1fr;gap:18px;margin-top:58px}
   .lc-impact-metrics{grid-template-columns:1fr 1fr}
