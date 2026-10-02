@@ -16,7 +16,7 @@ def test_landing_is_database_independent_and_does_not_publish_catalog_counts():
     assert "product_categories" not in landing
     assert "<span>D1</span>" not in landing
     assert "/api/home-lab/impact/summary" not in source
-    assert "/static/lacurent-landing.css?v=21" in landing
+    assert "/static/lacurent-landing.css?v=22" in landing
     assert "/static/lacurent-landing.js?v=9" in landing
 
 
@@ -30,6 +30,9 @@ def test_landing_keeps_the_ambient_renewable_story_without_backend_data():
     assert "filter:blur(3px)" in css
     assert "font-weight:600;" in css
     assert ".lc-renewable-wind{" in css
+    assert "left:7%;right:auto;bottom:9%" in css
+    assert "scale(1.30)" in css
+    assert "filter:blur(.35px)" in css
     assert ".lc-renewable-grid{" in css
     assert "@keyframes lc-sun-radiate" in css
     assert "@keyframes lc-sun-breathe" in css
