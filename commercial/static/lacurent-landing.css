@@ -690,14 +690,8 @@ main{overflow:hidden;background:#fff}
 
 .lc-renewable-stage{
   position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:0;
+  transform:translateY(var(--renewable-pin-y,0px));
   transition:opacity .7s ease;
-}
-.lc-renewable-stage.is-scroll-pinned{
-  position:fixed;
-  top:64px;left:50%;right:auto;bottom:0;
-  width:min(100vw,1540px);
-  transform:translateX(-50%) translateY(var(--renewable-release-y,0px));
-  z-index:0;
 }
 .lc-intro{position:relative;z-index:1}
 .lc-renewable-stage>*{
@@ -821,13 +815,8 @@ main{overflow:hidden;background:#fff}
 @media(max-width:720px){
   .lc-top-login{display:none}
   .lc-hero{min-height:620px;padding:72px 18px 74px;overflow:visible}
-  .lc-renewable-stage,
-  .lc-renewable-stage.is-scroll-pinned{
-    position:absolute;
-    inset:0;
+  .lc-renewable-stage{
     width:100%;
-    transform:translateY(var(--renewable-pin-y,0px));
-    z-index:0;
   }
   .lc-hero-copy{width:100%}
   .lc-hero h1{font-size:clamp(4rem,18vw,6.4rem)}
