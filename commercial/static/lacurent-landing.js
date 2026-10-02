@@ -49,47 +49,25 @@
   }
 
   function updatePinnedRenewables() {
-    if (!stage || !hero || !intro || reducedMotion.matches) {
+    if (!stage || !intro || reducedMotion.matches) {
       stage?.classList.remove("is-scroll-pinned");
       if (stage) {
         stage.style.opacity = "";
         stage.style.removeProperty("--renewable-pin-y");
-    stage.style.removeProperty("--renewable-release-y");
+        stage.style.removeProperty("--renewable-release-y");
       }
       return;
     }
 
     const y = window.scrollY;
-    const isDesktop = desktopScene.matches;
+    const topOffset = Math.max(0, topbar?.offsetHeight || 0);
+    const releaseStart = Math.max(0, intro.offsetTop - topOffset);
+    const pinY = Math.max(0, Math.min(y, releaseStart));
 
-    if (!isDesktop) {
-      const topOffset = Math.max(0, topbar?.offsetHeight || 0);
-      const releaseStart = Math.max(0, intro.offsetTop - topOffset);
-      const pinY = Math.max(0, Math.min(y, releaseStart));
-
-      stage.classList.remove("is-scroll-pinned");
-      stage.style.opacity = "1";
-      stage.style.removeProperty("--renewable-release-y");
-      stage.style.setProperty("--renewable-pin-y", `${pinY}px`);
-      return;
-    }
-
+    stage.classList.remove("is-scroll-pinned");
+    stage.style.opacity = "1";
     stage.style.removeProperty("--renewable-release-y");
-    const pinStart = hero.offsetTop + hero.offsetHeight * 0.28;
-    const releaseStart = intro.offsetTop + intro.offsetHeight * 0.22;
-    const releaseEnd = intro.offsetTop + intro.offsetHeight * 0.56;
-    const pinned = y >= pinStart && y <= releaseEnd;
-
-    stage.classList.toggle("is-scroll-pinned", pinned);
-
-    if (y <= releaseStart) {
-      stage.style.opacity = "1";
-    } else if (y < releaseEnd) {
-      const progress = (y - releaseStart) / Math.max(1, releaseEnd - releaseStart);
-      stage.style.opacity = String(Math.max(0, 1 - progress));
-    } else {
-      stage.style.opacity = "0";
-    }
+    stage.style.setProperty("--renewable-pin-y", `${pinY}px`);
   }
 
   let scrollFrame = 0;
