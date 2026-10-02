@@ -700,22 +700,32 @@ main{overflow:hidden;background:#fff}
 }
 .lc-renewable-stage>*.is-visible{opacity:1;transform:translateY(0)}
 .lc-renewable-sun{
-  right:7%;top:18%;width:150px;height:150px;border:1px solid rgba(14,116,86,.18);border-radius:50%;
+  right:-7%;top:-5%;width:440px;height:440px;border:0;border-radius:50%;
+  opacity:.76;
+  filter:blur(.25px);
 }
 .lc-renewable-sun::before{
-  content:"";position:absolute;inset:27%;border-radius:50%;
-  background:radial-gradient(circle at 38% 35%,rgba(255,224,123,.78),rgba(245,189,64,.28) 46%,rgba(245,189,64,0) 72%);
+  content:"";position:absolute;inset:18%;border-radius:50%;
+  background:radial-gradient(
+    circle at 38% 35%,
+    rgba(255,229,148,.62) 0%,
+    rgba(249,205,102,.30) 30%,
+    rgba(245,189,64,.12) 56%,
+    rgba(245,189,64,0) 78%
+  );
+  filter:blur(3px);
   animation:lc-sun-breathe 12s ease-in-out infinite;
 }
 .lc-renewable-sun::after{
-  content:"";position:absolute;inset:-84px;border-radius:50%;
+  content:"";position:absolute;inset:-118px;border-radius:50%;
   background:
-    radial-gradient(circle,transparent 44%,rgba(14,116,86,.135) 44.6%,transparent 45.4%),
-    radial-gradient(circle,transparent 56%,rgba(14,116,86,.105) 56.5%,transparent 57.3%),
-    radial-gradient(circle,transparent 68%,rgba(14,116,86,.08) 68.5%,transparent 69.2%),
-    radial-gradient(circle,transparent 80%,rgba(14,116,86,.055) 80.4%,transparent 81%);
+    radial-gradient(circle,transparent 43%,rgba(14,116,86,.085) 43.7%,transparent 44.6%),
+    radial-gradient(circle,transparent 56%,rgba(14,116,86,.065) 56.6%,transparent 57.6%),
+    radial-gradient(circle,transparent 69%,rgba(14,116,86,.045) 69.5%,transparent 70.5%),
+    radial-gradient(circle,transparent 81%,rgba(14,116,86,.03) 81.4%,transparent 82.2%);
+  filter:blur(1.4px);
   transform:scale(.78);
-  opacity:.20;
+  opacity:.18;
   animation:lc-sun-radiate 14s cubic-bezier(.2,.55,.25,1) infinite;
 }
 @keyframes lc-sun-radiate{
@@ -809,7 +819,7 @@ main{overflow:hidden;background:#fff}
   .lc-top-actions{gap:12px}
   .lc-hero{min-height:680px;padding:94px 30px 88px}
   .lc-hero-copy{width:min(880px,86vw)}
-  .lc-renewable-sun{right:2%;top:16%;width:120px;height:120px}
+  .lc-renewable-sun{right:-12%;top:-2%;width:340px;height:340px}
   .lc-renewable-wind{right:4%;bottom:8%;transform:scale(.82)}
 }
 @media(max-width:720px){
@@ -821,7 +831,7 @@ main{overflow:hidden;background:#fff}
   .lc-hero-copy{width:100%}
   .lc-hero h1{font-size:clamp(4rem,18vw,6.4rem)}
   .lc-lead{max-width:92%;font-size:.98rem}
-  .lc-renewable-sun{right:-42px;top:13%;width:110px;height:110px}
+  .lc-renewable-sun{right:-118px;top:4%;width:280px;height:280px;opacity:.68}
   .lc-renewable-wind{right:-42px;bottom:5%;transform:scale(.58)}
   .lc-renewable-grid{right:-70%;width:500px}
   .lc-impact-strip{grid-template-columns:1fr;gap:18px;margin-top:58px}
