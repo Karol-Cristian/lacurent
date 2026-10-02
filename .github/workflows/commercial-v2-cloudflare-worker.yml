@@ -1309,6 +1309,7 @@ jobs:
           PY
 
       - name: Verify sharded TEO production route
+        id: verify_teo_route
         run: |
           python - <<'PY'
           import json
@@ -2028,11 +2029,14 @@ jobs:
           PY
 
       - name: Install Chromium for production Home Lab / TEO smoke
+        if: ${{ always() && steps.verify_teo_route.outcome == 'success' }}
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
 
       - name: Run production Home Lab / TEO browser smoke
+        id: production_browser_smoke
+        if: ${{ always() && steps.verify_teo_route.outcome == 'success' }}
         env:
           HOME_LAB_BASE_URL: https://lacurent.com
         run: |
@@ -2040,6 +2044,7 @@ jobs:
           echo "Production Home Lab / TEO browser smoke PASS"
 
       - name: Run 10-pass production TEO reliability soak
+        if: ${{ always() && steps.production_browser_smoke.outcome == 'success' }}
         env:
           HOME_LAB_BASE_URL: https://lacurent.com
           TEO_SOAK_RUNS: "10"
