@@ -21,10 +21,8 @@
   });
 
   const stage = document.querySelector(".lc-renewable-stage");
-  const hero = document.querySelector(".lc-hero");
   const intro = document.querySelector(".lc-intro");
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-  const desktopScene = window.matchMedia("(min-width: 721px)");
   const topbar = document.querySelector(".lc-topbar");
 
   const sun = document.querySelector(".lc-renewable-sun");
@@ -50,7 +48,6 @@
 
   function updatePinnedRenewables() {
     if (!stage || !intro || reducedMotion.matches) {
-      stage?.classList.remove("is-scroll-pinned");
       if (stage) {
         stage.style.opacity = "";
         stage.style.removeProperty("--renewable-pin-y");
@@ -64,7 +61,6 @@
     const releaseStart = Math.max(0, intro.offsetTop - topOffset);
     const pinY = Math.max(0, Math.min(y, releaseStart));
 
-    stage.classList.remove("is-scroll-pinned");
     stage.style.opacity = "1";
     stage.style.removeProperty("--renewable-release-y");
     stage.style.setProperty("--renewable-pin-y", `${pinY}px`);
@@ -82,7 +78,6 @@
   window.addEventListener("scroll", schedulePinnedRenewables, {passive:true});
   window.addEventListener("resize", schedulePinnedRenewables);
   reducedMotion.addEventListener?.("change", schedulePinnedRenewables);
-  desktopScene.addEventListener?.("change", schedulePinnedRenewables);
 
   window.addEventListener("pageshow", triggerSunReentry);
   document.addEventListener("visibilitychange", () => {
