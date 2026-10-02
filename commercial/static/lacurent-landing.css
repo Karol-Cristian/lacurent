@@ -756,7 +756,7 @@ main{overflow:hidden;background:#fff}
 }
 .lc-renewable-wind{
   left:7%;right:auto;bottom:9%;width:170px;height:230px;
-  filter:blur(.35px);
+  filter:blur(.45px);
   transform-origin:20% 100%;
 }
 .lc-renewable-stage>.lc-renewable-wind.is-visible{
@@ -764,15 +764,16 @@ main{overflow:hidden;background:#fff}
   transform:translateY(0) scale(1.30);
 }
 .lc-renewable-wind b{
-  position:absolute;left:82px;top:77px;width:4px;height:145px;border-radius:999px;
-  background:linear-gradient(to bottom,rgba(157,166,174,.58),rgba(190,198,204,.30));
-  box-shadow:0 0 11px rgba(157,166,174,.16);
+  position:absolute;left:82px;top:77px;width:5px;height:145px;border-radius:999px;
+  background:linear-gradient(to bottom,rgba(157,166,174,.60),rgba(190,198,204,.34));
+  box-shadow:0 0 14px rgba(157,166,174,.18);
 }
 .lc-renewable-wind i{
   --blade-angle:-18deg;
-  position:absolute;left:84px;top:75px;width:76px;height:4px;border-radius:999px;
-  background:linear-gradient(to right,rgba(153,162,170,.56),rgba(183,191,198,.32) 72%,rgba(198,205,211,.12));
-  box-shadow:0 0 10px rgba(155,164,172,.16);
+  position:absolute;left:84px;top:75px;width:76px;height:5px;border-radius:999px;
+  background:linear-gradient(to right,rgba(153,162,170,.60),rgba(183,191,198,.36) 72%,rgba(198,205,211,.14));
+  box-shadow:0 0 12px rgba(155,164,172,.18);
+  filter:blur(.12px);
   transform-origin:0 50%;
   transform:rotate(var(--blade-angle));
   animation:lc-wind-turn 52s linear infinite;
