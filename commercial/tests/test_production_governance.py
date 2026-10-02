@@ -29,10 +29,13 @@ def test_production_workflow_auto_promotes_only_after_uat_and_green_release_gate
     assert "Validate UAT-approved automatic promotion or explicit rollback" in source
     assert "Promotion SHA must equal current production branch HEAD" in source
     assert "Rollback SHA must be an ancestor of current production HEAD" in source
-    assert "/commits/{release_sha}/pulls" in source
+    assert "/commits/{approval_sha}/pulls" in source
+    assert "CI-contract-only follow-up detected" in source
     assert "merge_commit_sha" in source
     assert "uat-approved" in source
     assert "/actions/runs?head_sha=" in source
+    assert "Full Stack UAT Staging" in source
+    assert "TEO Private Worker Gate" in source
     assert "Merged production tree differs from the UAT-tested PR head" in source
     assert "pull-requests: read" in source
     assert "actions: read" in source
