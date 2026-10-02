@@ -5,44 +5,57 @@ ROOT = Path(__file__).resolve().parents[2]
 LANDING = ROOT / "commercial" / "templates" / "landing.html"
 LANDING_JS = ROOT / "commercial" / "static" / "lacurent-landing.js"
 LANDING_CSS = ROOT / "commercial" / "static" / "lacurent-landing.css"
-EDITORIAL = ROOT / "commercial" / "templates" / "home_lab_editorial.html"
 
 
-def test_collective_impact_lives_on_landing_not_home_lab_intro():
+def test_landing_is_database_independent_and_does_not_publish_catalog_counts():
     landing = LANDING.read_text(encoding="utf-8")
-    editorial = EDITORIAL.read_text(encoding="utf-8")
-
-    assert 'id="impact"' in landing
-    assert "IMPACT CALCULAT" in landing
-    assert 'id="lcImpactEnergy"' in landing
-    assert 'id="lcImpactHomes"' in landing
-    assert 'id="lcImpactMoney"' in landing
-    assert 'id="lcImpactCapex"' in landing
-    assert 'id="lcImpactPayback"' in landing
-    assert "potențial modelat" in landing.lower()
-    assert "nu economii măsurate" in landing.lower()
-    assert "/static/lacurent-landing.css?v=5" in landing
-    assert "/static/lacurent-landing.js?v=1" in landing
-
-    assert 'id="edImpactOverview"' not in editorial
-
-
-def test_landing_impact_reads_live_aggregate_and_respects_cohort_suppression():
     source = LANDING_JS.read_text(encoding="utf-8")
 
-    assert 'fetch("/api/home-lab/impact/summary"' in source
-    assert "summary.suppressed" in source
-    assert "minimumCohortSize" in source
-    assert "potentialSavingKwhYear" in source
-    assert "potentialSavingLeiYear" in source
-    assert "estimatedCapexLei" in source
-    assert "globalSimplePaybackYears" in source
+    assert 'id="impact"' not in landing
+    assert "catalog_product_count" not in landing
+    assert "product_categories" not in landing
+    assert "<span>D1</span>" not in landing
+    assert "/api/home-lab/impact/summary" not in source
+    assert "/static/lacurent-landing.css?v=18" in landing
+    assert "/static/lacurent-landing.js?v=8" in landing
 
 
-def test_landing_impact_is_presented_as_primary_visual_story():
+def test_landing_keeps_the_ambient_renewable_story_without_backend_data():
+    landing = LANDING.read_text(encoding="utf-8")
     css = LANDING_CSS.read_text(encoding="utf-8")
+    source = LANDING_JS.read_text(encoding="utf-8")
 
-    assert ".lc-hero-impact{" in css
-    assert ".lc-hero-impact-main{" in css
-    assert ".lc-hero-impact-mini{" in css
-    assert "grid-template-columns:repeat(4,minmax(0,1fr))" in css
+    assert ".lc-renewable-sun{" in css
+    assert "font-weight:600;" in css
+    assert ".lc-renewable-wind{" in css
+    assert ".lc-renewable-grid{" in css
+    assert "@keyframes lc-sun-radiate" in css
+    assert "@keyframes lc-sun-breathe" in css
+    assert "@keyframes lc-sun-entry-core" in css
+    assert "@keyframes lc-sun-entry-radiate" in css
+    assert ".lc-renewable-sun.is-reentering::before" in css
+    assert "pageshow" in source
+    assert 'document.visibilityState === "visible"' in source
+    assert "triggerSunReentry();" in source
+    assert "@keyframes lc-wind-turn" in css
+    assert "52s linear infinite" in css
+    assert "height:4px;border-radius:999px" in css
+    assert "rgba(153,162,170,.70)" in css
+    assert ".lc-renewable-wind::before" not in css
+    assert ".lc-renewable-stage.is-scroll-pinned" in css
+    assert "--renewable-pin-y" in css
+    assert "releaseStart" in source
+    assert "releaseEnd" in source
+    assert "topbar?.offsetHeight" in source
+    assert "const pinY = Math.max(0, Math.min(y, releaseStart));" in source
+    assert 'stage.classList.remove("is-scroll-pinned")' in source
+    assert "prefers-reduced-motion:reduce" in css
+    assert "IntersectionObserver" in source
+    assert "[data-scroll-symbol]" in source
+    assert 'href="/produse"' in landing
+    assert ">Surse și metodologie<" in landing
+    assert 'id="metoda"' not in landing
+    assert "RBPE" not in landing
+    assert "TEO" not in landing
+    assert "MC001" not in landing
+    assert "CAPEX" not in landing

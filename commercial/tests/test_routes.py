@@ -606,7 +606,7 @@ def test_public_product_routes_do_not_load_optimizer_planning_catalog() -> None:
     assert "heat_pump_seasonal_performance" not in products_only_section
 
 
-def test_landing_uses_compact_heating_summary_not_full_catalog() -> None:
+def test_landing_does_not_load_catalog_or_database_data() -> None:
     source = Path("commercial/app/main.py").read_text(encoding="utf-8")
     section = source.split(
         'async def index(request: Request) -> HTMLResponse:',
@@ -615,15 +615,9 @@ def test_landing_uses_compact_heating_summary_not_full_catalog() -> None:
         '@app.get("/produse"',
         1,
     )[0]
-    assert "_optimizer_heating_catalog_summary(request)" in section
+    assert "_optimizer_heating_catalog_summary(request)" not in section
     assert "_optimizer_heating_catalog(request)" not in section
-
-    store = Path("commercial/app/heating_catalog_store.py").read_text(
-        encoding="utf-8"
-    )
-    assert "_heating_catalog_cached_payload" not in store
-    assert "request-scoped" in store
-
+    assert "_public_catalog_context" not in section
 
 def test_company_home_is_commercial_landing() -> None:
     response = client.get("/")
@@ -631,20 +625,25 @@ def test_company_home_is_commercial_landing() -> None:
     assert "data-lacurent-landing" in response.text
     assert "Nu promitem." in response.text
     assert "Calculăm." in response.text
-    assert "Spune-ne cum este casa ta." in response.text
-    assert "MC001" in response.text
-    assert "Rapid Building Physics Engine" in response.text
-    assert "Techno-Economic Optimizer" in response.text
-    assert "regretul investiției" in response.text
-    assert "Planul nu trebuie să se oprească la un calcul." in response.text
-    assert "Nu optimizăm doar consumul. Optimizăm decizia." in response.text
+    assert "Vezi unde se pierde energia, ce merită schimbat" in response.text
+    assert "Energia și investiția, evaluate împreună." in response.text
+    assert "Vezi și cu ce poate fi realizată soluția." in response.text
     assert 'href="/home-lab-editorial"' in response.text
-    assert "/static/lacurent-landing.css?v=5" in response.text
+    assert "/static/lacurent-landing.css?v=18" in response.text
     assert 'href="/static/favicon.svg?v=6"' in response.text
-    assert 'class="lc-snap-page"' in response.text
+    assert 'href="/home-lab-editorial?account=1"' in response.text
+    assert 'class="lc-snap-page"' not in response.text
     assert 'href="/produse"' in response.text
     assert "produse reale" in response.text
-
+    assert "catalog_product_count" not in response.text
+    assert ">D1<" not in response.text
+    assert 'id="impact"' not in response.text
+    assert "RBPE" not in response.text
+    assert "TEO" not in response.text
+    assert "MC001" not in response.text
+    assert "CAPEX" not in response.text
+    assert "Rapid Building Physics Engine" not in response.text
+    assert "Techno-Economic Optimizer" not in response.text
 
 def test_public_product_catalog_exposes_real_commercial_products() -> None:
     response = client.get("/produse")

@@ -3357,15 +3357,11 @@ def _public_catalog_context(payload: dict[str, Any]) -> dict[str, Any]:
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
-    # The landing page needs only counts/family metadata. Loading the complete
-    # product + performance + 1000-node planning catalog here used to pin a
-    # large Python object graph in every Worker isolate and could exhaust the
-    # Cloudflare Python memory budget after ordinary browsing.
-    catalog = await _optimizer_heating_catalog_summary(request)
+    # Keep the public landing independent from catalog/database availability.
     return templates.TemplateResponse(
         request,
         "landing.html",
-        {"request": request, **_public_catalog_context(catalog)},
+        {"request": request},
     )
 
 
