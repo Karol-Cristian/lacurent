@@ -629,7 +629,7 @@ def test_company_home_is_commercial_landing() -> None:
     assert "Energia și investiția, evaluate împreună." in response.text
     assert "Vezi și cu ce poate fi realizată soluția." in response.text
     assert 'href="/home-lab-editorial"' in response.text
-    assert "/static/lacurent-landing.css?v=23" in response.text
+    assert "/static/lacurent-landing.css?v=24" in response.text
     assert 'href="/static/favicon.svg?v=6"' in response.text
     assert 'href="/home-lab-editorial?account=1"' in response.text
     assert 'class="lc-snap-page"' not in response.text
