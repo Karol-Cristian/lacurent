@@ -45,7 +45,7 @@ def test_landing_keeps_the_ambient_renewable_story_without_backend_data():
     assert "@keyframes lc-wind-turn" in css
     assert "52s linear infinite" in css
     assert "height:7px;border-radius:999px" in css
-    assert "rgba(153,162,170,.60)" in css
+    assert "rgba(153,162,170,.54)" in css
     assert ".lc-renewable-wind::before" not in css
     assert ".lc-renewable-stage.is-scroll-pinned" not in css
     assert "--renewable-pin-y" in css
