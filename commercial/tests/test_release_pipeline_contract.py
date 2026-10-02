@@ -22,10 +22,12 @@ def test_production_deploy_auto_promotes_only_uat_approved_green_merge() -> None
     assert "Promotion SHA must equal current production branch HEAD" in source
     assert "Rollback SHA must be an ancestor of current production HEAD" in source
     assert "uat-approved" in source
-    assert "Release Reliability Staging" in source
     assert "Commercial PR Checks" in source
+    assert "Full Stack UAT Staging" in source
     assert "TEO Blackbox 1000" in source
+    assert "TEO Private Worker Gate" in source
     assert "Editorial UI Preview" in source
+    assert "Applicable release gates:" in source
     assert "Merged production tree differs from the UAT-tested PR head" in source
 
     assert "Check out exact release SHA" in source
