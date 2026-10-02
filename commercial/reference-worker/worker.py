@@ -16,6 +16,10 @@ from app.rbpe_service import (
     calculate_home_lab_result_json,
     calculate_render_context_json,
 )
+from app.teo_rbpe_service import (
+    commercialize_teo_candidate_json as _commercialize_teo_candidate_json,
+    verify_teo_candidate_json as _verify_teo_candidate_json,
+)
 
 
 CORS_HEADERS = {
@@ -104,6 +108,40 @@ class Default(WorkerEntrypoint):
             )
         finally:
             gc.collect()
+
+    async def verify_teo_candidate_json(
+        self,
+        optimization_request_payload,
+        fast_candidate_payload,
+        branch_id,
+        catalog_payload,
+        heating_catalog_payload,
+        baseline_annual_bill_lei,
+    ):
+        """Run one canonical TEO finalist in the RBPE shard."""
+        return _verify_teo_candidate_json(
+            optimization_request_payload,
+            fast_candidate_payload,
+            str(branch_id),
+            catalog_payload,
+            heating_catalog_payload,
+            None if baseline_annual_bill_lei is None else float(baseline_annual_bill_lei),
+        )
+
+    async def commercialize_teo_candidate_json(
+        self,
+        candidate_payload,
+        original_building_payload,
+        heating_catalog_payload,
+        branch_id,
+    ):
+        """Run PRODUCT's exact equipment-backed physics in the RBPE shard."""
+        return _commercialize_teo_candidate_json(
+            candidate_payload,
+            original_building_payload,
+            heating_catalog_payload,
+            str(branch_id),
+        )
 
     async def build_product_wall_insulation_scenario_json(
         self,

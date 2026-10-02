@@ -86,9 +86,20 @@ jobs:
           curl -fsS "$HOME_LAB_BASE_URL/health" | grep -q '"status":"ok"'
           node scripts/smoke-home-lab-browser.mjs
 
-      - name: Verify production TEO semantic determinism
+      - name: Verify exact PR SHA TEO semantic determinism
         env:
-          HOME_LAB_BASE_URL: https://lacurent.com
-          TEO_SOAK_RUNS: 10
+          HOME_LAB_BASE_URL: http://127.0.0.1:8766
+          TEO_SOAK_RUNS: "10"
+          TEO_REQUIRE_SHARDED_ROUTES: "0"
         run: |
+          python -m uvicorn app.main:app --app-dir commercial --host 127.0.0.1 --port 8766 > /tmp/teo-pr-uvicorn.log 2>&1 &
+          server_pid=$!
+          trap 'kill $server_pid || true; cat /tmp/teo-pr-uvicorn.log || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS "$HOME_LAB_BASE_URL/health" | grep -q '"status":"ok"'; then
+              break
+            fi
+            sleep 1
+          done
+          curl -fsS "$HOME_LAB_BASE_URL/health" | grep -q '"status":"ok"'
           node scripts/soak-teo-production.mjs

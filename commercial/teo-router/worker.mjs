@@ -21,6 +21,121 @@ let cursor = 0;
 const disabledUntil = new Map();
 const consecutiveFailures = new Map();
 let flowSchemaPromise = null;
+const fallbackFlows = new Map();
+
+function cleanupFallbackFlows(now = Date.now()) {
+  for (const [runId, row] of fallbackFlows.entries()) {
+    if (now - Number(row.updated_at_ms || 0) > 60 * 60 * 1000) {
+      fallbackFlows.delete(runId);
+    }
+  }
+}
+
+function fallbackFlowState(runId, plannedRaw = FLOW_MAX_VERIFICATIONS) {
+  cleanupFallbackFlows();
+  let row = fallbackFlows.get(runId);
+  if (!row) {
+    const planned = Math.max(
+      1,
+      Math.min(Number(plannedRaw || FLOW_MAX_VERIFICATIONS), FLOW_MAX_VERIFICATIONS),
+    );
+    row = {
+      run_id:runId,
+      status:"ready",
+      planned_verifications:planned,
+      verified_count:0,
+      next_allowed_at_ms:0,
+      in_flight:0,
+      lease_token:null,
+      lease_expires_at_ms:0,
+      updated_at_ms:Date.now(),
+    };
+    fallbackFlows.set(runId, row);
+  }
+  return row;
+}
+
+function startFallbackFlow(runId, plannedRaw) {
+  const planned = Math.max(
+    1,
+    Math.min(Number(plannedRaw || FLOW_MAX_VERIFICATIONS), FLOW_MAX_VERIFICATIONS),
+  );
+  const row = {
+    run_id:runId,
+    status:"ready",
+    planned_verifications:planned,
+    verified_count:0,
+    next_allowed_at_ms:0,
+    in_flight:0,
+    lease_token:null,
+    lease_expires_at_ms:0,
+    updated_at_ms:Date.now(),
+  };
+  fallbackFlows.set(runId, row);
+  return publicFlowState(row, "router-memory-fallback");
+}
+
+function acquireFallbackFlow(runId, plannedRaw = FLOW_MAX_VERIFICATIONS) {
+  const row = fallbackFlowState(runId, plannedRaw);
+  const state = publicFlowState(row, "router-memory-fallback");
+  if (!state.ready) {
+    return {acquired:false, leaseToken:null, state, storage:"router-memory-fallback"};
+  }
+  const now = Date.now();
+  const leaseToken = `memory:${runId}:${crypto.randomUUID()}`;
+  Object.assign(row, {
+    status:"running",
+    in_flight:1,
+    lease_token:leaseToken,
+    lease_expires_at_ms:now + FLOW_LEASE_MS,
+    updated_at_ms:now,
+  });
+  return {
+    acquired:true,
+    leaseToken,
+    state:publicFlowState(row, "router-memory-fallback"),
+    storage:"router-memory-fallback",
+  };
+}
+
+function completeFallbackFlow(runId, leaseToken, plannedRaw = FLOW_MAX_VERIFICATIONS) {
+  const row = fallbackFlowState(runId, plannedRaw);
+  if (!row.lease_token || row.lease_token === leaseToken || String(leaseToken || "").startsWith("d1:")) {
+    row.verified_count = Number(row.verified_count || 0) + 1;
+    row.status = row.verified_count >= Number(row.planned_verifications || 1)
+      ? "complete"
+      : "cooldown";
+    row.next_allowed_at_ms = Date.now() + FLOW_COOLDOWN_MS;
+    row.in_flight = 0;
+    row.lease_token = null;
+    row.lease_expires_at_ms = 0;
+    row.updated_at_ms = Date.now();
+  }
+  return publicFlowState(row, "router-memory-fallback");
+}
+
+function releaseFallbackFlow(runId, leaseToken, plannedRaw = FLOW_MAX_VERIFICATIONS) {
+  const row = fallbackFlowState(runId, plannedRaw);
+  if (!row.lease_token || row.lease_token === leaseToken || String(leaseToken || "").startsWith("d1:")) {
+    row.status = "cooldown";
+    row.next_allowed_at_ms = Date.now() + FLOW_COOLDOWN_MS;
+    row.in_flight = 0;
+    row.lease_token = null;
+    row.lease_expires_at_ms = 0;
+    row.updated_at_ms = Date.now();
+  }
+  return publicFlowState(row, "router-memory-fallback");
+}
+
+function finishFallbackFlow(runId, plannedRaw = FLOW_MAX_VERIFICATIONS) {
+  const row = fallbackFlowState(runId, plannedRaw);
+  row.status = "complete";
+  row.in_flight = 0;
+  row.lease_token = null;
+  row.lease_expires_at_ms = 0;
+  row.updated_at_ms = Date.now();
+  return publicFlowState(row, "router-memory-fallback");
+}
 
 function shardCooldownMs(key) {
   const failures = Math.max(1, Number(consecutiveFailures.get(key) || 1));
@@ -282,9 +397,18 @@ async function handleFlowEndpoint(request, env, url) {
     const raw = await request.json();
     const runId = String(raw?.runId || "").trim();
     if (!runId || runId.length > 160) return Response.json({error:"Run ID TEO invalid.",stage:"teo-flow-start"},{status:422});
+    let state;
+    let flowHeader = "router-flow-d1";
+    try {
+      state = await startFlow(env, runId, raw?.plannedVerifications);
+    } catch (error) {
+      state = startFallbackFlow(runId, raw?.plannedVerifications);
+      state.degradedReason = String(error?.message || error || "").slice(0, 240);
+      flowHeader = "router-flow-memory-fallback";
+    }
     return Response.json(
-      await startFlow(env, runId, raw?.plannedVerifications),
-      {headers:{"cache-control":"no-store","x-lacurent-teo":"router-flow-d1"}},
+      state,
+      {headers:{"cache-control":"no-store","x-lacurent-teo":flowHeader}},
     );
   }
 
@@ -292,16 +416,37 @@ async function handleFlowEndpoint(request, env, url) {
   if (!runId || runId.length > 160) return null;
 
   if (request.method === "GET" && !url.pathname.endsWith("/finish")) {
-    return Response.json(
-      publicFlowState(await flowRow(env, runId)),
-      {headers:{"cache-control":"no-store","x-lacurent-teo":"router-flow-d1"}},
-    );
+    try {
+      return Response.json(
+        publicFlowState(await flowRow(env, runId)),
+        {headers:{"cache-control":"no-store","x-lacurent-teo":"router-flow-d1"}},
+      );
+    } catch (error) {
+      const state = publicFlowState(
+        fallbackFlowState(runId),
+        "router-memory-fallback",
+      );
+      state.degradedReason = String(error?.message || error || "").slice(0, 240);
+      return Response.json(
+        state,
+        {headers:{"cache-control":"no-store","x-lacurent-teo":"router-flow-memory-fallback"}},
+      );
+    }
   }
   if (request.method === "POST" && url.pathname.endsWith("/finish")) {
-    return Response.json(
-      await finishFlow(env, runId),
-      {headers:{"cache-control":"no-store","x-lacurent-teo":"router-flow-d1"}},
-    );
+    try {
+      return Response.json(
+        await finishFlow(env, runId),
+        {headers:{"cache-control":"no-store","x-lacurent-teo":"router-flow-d1"}},
+      );
+    } catch (error) {
+      const state = finishFallbackFlow(runId);
+      state.degradedReason = String(error?.message || error || "").slice(0, 240);
+      return Response.json(
+        state,
+        {headers:{"cache-control":"no-store","x-lacurent-teo":"router-flow-memory-fallback"}},
+      );
+    }
   }
   return null;
 }
@@ -311,6 +456,7 @@ async function routeAcrossShards(request, env, bodyBytes, extraHeaders = {}) {
   const start = cursor++ % SHARDS.length;
   const attempts = [];
   let lastError = null;
+  let lastUpstream = null;
 
   const ordered = Array.from(
     {length:SHARDS.length},
@@ -333,6 +479,17 @@ async function routeAcrossShards(request, env, bodyBytes, extraHeaders = {}) {
       const response = await callShard(env, key, request, bodyBytes, extraHeaders);
       attempts.push(key + ":" + response.status);
       if (response.status >= 500) {
+        let upstreamBody = {};
+        try {
+          upstreamBody = await response.clone().json();
+        } catch (_) {}
+        lastUpstream = {
+          shard:key,
+          status:response.status,
+          stage:String(upstreamBody?.stage || ""),
+          errorType:String(upstreamBody?.errorType || ""),
+          error:String(upstreamBody?.error || "").slice(0, 240),
+        };
         markShardFailure(key);
         lastError = new Error("upstream_http_" + response.status);
         continue;
@@ -350,7 +507,7 @@ async function routeAcrossShards(request, env, bodyBytes, extraHeaders = {}) {
     (a,b) => (disabledUntil.get(a) || 0) - (disabledUntil.get(b) || 0)
   )[0];
   const retryAfterMs = Math.max(500, (disabledUntil.get(earliest) || 0) - Date.now());
-  return {response:null, shard:null, attempts, lastError, retryAfterMs};
+  return {response:null, shard:null, attempts, lastError, lastUpstream, retryAfterMs};
 }
 
 async function routeVerify(request, env) {
@@ -363,9 +520,19 @@ async function routeVerify(request, env) {
   }
   const runId = String(payload?.runId || payload?.form?._optimizer_run_id || "").trim();
   let leaseToken = null;
+  let flowStorage = "router-d1";
+  let plannedVerifications = FLOW_MAX_VERIFICATIONS;
 
   if (runId) {
-    const gate = await acquireFlow(env, runId);
+    let gate;
+    try {
+      gate = await acquireFlow(env, runId);
+    } catch (error) {
+      gate = acquireFallbackFlow(runId);
+      gate.state.degradedReason = String(error?.message || error || "").slice(0, 240);
+    }
+    flowStorage = String(gate.storage || gate.state?.storage || "router-d1");
+    plannedVerifications = Number(gate.state?.plannedVerifications || FLOW_MAX_VERIFICATIONS);
     if (!gate.acquired) {
       const retryAfterMs = Number(gate.state?.retryAfterMs || FLOW_COOLDOWN_MS);
       return Response.json(
@@ -380,7 +547,9 @@ async function routeVerify(request, env) {
           headers:{
             "cache-control":"no-store",
             "retry-after":String(Math.max(1, Math.ceil(retryAfterMs / 1000))),
-            "x-lacurent-teo":"router-flow-d1",
+            "x-lacurent-teo":flowStorage === "router-memory-fallback"
+              ? "router-flow-memory-fallback"
+              : "router-flow-d1",
           },
         },
       );
@@ -396,13 +565,24 @@ async function routeVerify(request, env) {
   );
 
   if (!routed.response) {
-    if (runId && leaseToken) await releaseFlow(env, runId, leaseToken);
+    if (runId && leaseToken) {
+      if (flowStorage === "router-memory-fallback") {
+        releaseFallbackFlow(runId, leaseToken, plannedVerifications);
+      } else {
+        try {
+          await releaseFlow(env, runId, leaseToken);
+        } catch (_) {
+          releaseFallbackFlow(runId, "d1:" + leaseToken, plannedVerifications);
+        }
+      }
+    }
     return Response.json(
       {
         error:"TEO este temporar indisponibil.",
         stage:"private-teo-router",
         attempts:routed.attempts,
         errorType:routed.lastError?.name || "Error",
+        upstream:routed.lastUpstream || null,
       },
       {
         status:503,
@@ -416,7 +596,21 @@ async function routeVerify(request, env) {
   }
 
   if (routed.response.status === 200 && runId && leaseToken) {
-    const state = await completeFlow(env, runId, leaseToken);
+    let state;
+    if (flowStorage === "router-memory-fallback") {
+      state = completeFallbackFlow(runId, leaseToken, plannedVerifications);
+    } else {
+      try {
+        state = await completeFlow(env, runId, leaseToken);
+      } catch (error) {
+        state = completeFallbackFlow(
+          runId,
+          "d1:" + leaseToken,
+          plannedVerifications,
+        );
+        state.degradedReason = String(error?.message || error || "").slice(0, 240);
+      }
+    }
     return await jsonResponseWithRouteHeaders(
       routed.response,
       routed.shard,
@@ -424,7 +618,17 @@ async function routeVerify(request, env) {
     );
   }
 
-  if (runId && leaseToken) await releaseFlow(env, runId, leaseToken);
+  if (runId && leaseToken) {
+    if (flowStorage === "router-memory-fallback") {
+      releaseFallbackFlow(runId, leaseToken, plannedVerifications);
+    } else {
+      try {
+        await releaseFlow(env, runId, leaseToken);
+      } catch (_) {
+        releaseFallbackFlow(runId, "d1:" + leaseToken, plannedVerifications);
+      }
+    }
+  }
   return responseWithRouteHeaders(routed.response, routed.shard);
 }
 

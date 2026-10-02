@@ -4,10 +4,28 @@ on:
   pull_request:
     branches:
       - codex/commercial-v2-cloudflare-python
+    paths:
+      - ".github/workflows/teo-blackbox-stress.yml"
+      - "commercial/app/engine.py"
+      - "commercial/app/methodology.py"
+      - "commercial/app/models.py"
+      - "commercial/app/optimization.py"
+      - "commercial/app/optimization_v2.py"
+      - "commercial/app/optimization_v3.py"
+      - "commercial/app/heating_optimization.py"
+      - "commercial/app/teo_v4.py"
+      - "commercial/app/teo_app.py"
+      - "commercial/app/teo_rbpe_service.py"
+      - "commercial/reference-worker/**"
+      - "commercial/rbpe-router/**"
+      - "commercial/teo-worker/**"
+      - "commercial/teo-router/**"
+      - "commercial/static/teo-v4-worker.js"
+      - "commercial/stress/teo_blackbox_1000.py"
+      - "scripts/prepare-teo-cloudflare-worker.mjs"
 
 jobs:
   blackbox:
-    if: github.head_ref == 'lemnaru-karol/teo-blackbox-1000' || github.head_ref == 'codex/release-product-staging-integration'
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
