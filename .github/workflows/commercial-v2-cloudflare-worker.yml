@@ -118,50 +118,54 @@ jobs:
                   and pr.get("merge_commit_sha") == approval_sha
               ]
 
-              # Allow a workflow-only follow-up commit after an already UAT-approved
-              # merge. This lets CI gate fixes unblock deployment without changing
-              # any application/runtime code that was validated in UAT.
-              if len(valid) != 1:
+              # Allow a short chain of CI-contract-only follow-up commits after an
+              # already UAT-approved merge. Application/runtime code must remain
+              # byte-for-byte at the approved merge.
+              allowed_followup_files = {
+                  ".github/workflows/commercial-v2-cloudflare-worker.yml",
+                  "commercial/tests/test_production_governance.py",
+                  "commercial/tests/test_release_pipeline_contract.py",
+              }
+              while len(valid) != 1:
                   parents = subprocess.check_output(
-                      ["git", "show", "-s", "--format=%P", release_sha],
+                      ["git", "show", "-s", "--format=%P", approval_sha],
                       text=True,
                   ).strip().split()
                   changed = {
                       line.strip()
                       for line in subprocess.check_output(
-                          ["git", "diff-tree", "--no-commit-id", "--name-only", "-r", release_sha],
+                          ["git", "diff-tree", "--no-commit-id", "--name-only", "-r", approval_sha],
                           text=True,
                       ).splitlines()
                       if line.strip()
                   }
-                  allowed_followup_files = {
-                      ".github/workflows/commercial-v2-cloudflare-worker.yml",
-                  }
-                  if (
+                  if not (
                       len(parents) == 1
                       and changed
                       and changed.issubset(allowed_followup_files)
                   ):
-                      approval_sha = parents[0]
-                      pull_requests = api_json(f"/commits/{approval_sha}/pulls")
-                      valid = [
-                          pr for pr in pull_requests
-                          if pr.get("merged_at")
-                          and pr.get("base", {}).get("ref") == production_branch
-                          and pr.get("merge_commit_sha") == approval_sha
-                      ]
-                      print(
-                          "Workflow-only follow-up detected:",
-                          f"release={release_sha}",
-                          f"approval_parent={approval_sha}",
-                          f"files={sorted(changed)}",
-                      )
+                      break
+                  previous = approval_sha
+                  approval_sha = parents[0]
+                  pull_requests = api_json(f"/commits/{approval_sha}/pulls")
+                  valid = [
+                      pr for pr in pull_requests
+                      if pr.get("merged_at")
+                      and pr.get("base", {}).get("ref") == production_branch
+                      and pr.get("merge_commit_sha") == approval_sha
+                  ]
+                  print(
+                      "CI-contract-only follow-up detected:",
+                      f"commit={previous}",
+                      f"approval_parent={approval_sha}",
+                      f"files={sorted(changed)}",
+                  )
 
               if len(valid) != 1:
                   raise SystemExit(
                       "Automatic promotion requires exactly one merged PR "
                       "targeting the production branch, or a workflow-only follow-up "
-                      "commit whose parent is such a merge."
+                      "commit chain whose ancestor is such a merge."
                   )
 
               pr = valid[0]
