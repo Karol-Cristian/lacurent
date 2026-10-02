@@ -16,7 +16,7 @@ def test_landing_is_database_independent_and_does_not_publish_catalog_counts():
     assert "product_categories" not in landing
     assert "<span>D1</span>" not in landing
     assert "/api/home-lab/impact/summary" not in source
-    assert "/static/lacurent-landing.css?v=20" in landing
+    assert "/static/lacurent-landing.css?v=21" in landing
     assert "/static/lacurent-landing.js?v=9" in landing
 
 
