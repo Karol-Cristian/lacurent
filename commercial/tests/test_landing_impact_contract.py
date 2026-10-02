@@ -16,7 +16,7 @@ def test_landing_is_database_independent_and_does_not_publish_catalog_counts():
     assert "product_categories" not in landing
     assert "<span>D1</span>" not in landing
     assert "/api/home-lab/impact/summary" not in source
-    assert "/static/lacurent-landing.css?v=22" in landing
+    assert "/static/lacurent-landing.css?v=23" in landing
     assert "/static/lacurent-landing.js?v=9" in landing
 
 
@@ -44,8 +44,8 @@ def test_landing_keeps_the_ambient_renewable_story_without_backend_data():
     assert "triggerSunReentry();" in source
     assert "@keyframes lc-wind-turn" in css
     assert "52s linear infinite" in css
-    assert "height:4px;border-radius:999px" in css
-    assert "rgba(153,162,170,.70)" in css
+    assert "height:5px;border-radius:999px" in css
+    assert "rgba(153,162,170,.60)" in css
     assert ".lc-renewable-wind::before" not in css
     assert ".lc-renewable-stage.is-scroll-pinned" not in css
     assert "--renewable-pin-y" in css
