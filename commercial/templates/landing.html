@@ -1,130 +1,63 @@
 <!doctype html>
-<html lang="ro" class="lc-snap-page">
+<html lang="ro">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <script src="/static/no-zoom.js?v=2" defer></script>
-  <meta name="description" content="LaCurent te ajută să decizi ce investiții energetice merită pentru casa ta: cât costă, cât economisești și în cât timp se recuperează.">
+  <meta name="description" content="LaCurent calculează consumul, costurile și impactul investițiilor energetice pentru clădiri rezidențiale.">
   <meta name="robots" content="index,follow">
   <meta property="og:title" content="LaCurent — Nu promitem. Calculăm.">
-  <meta property="og:description" content="Descrii casa. LaCurent calculează situația actuală, compară investițiile și îți construiește un plan energetic explicabil.">
+  <meta property="og:description" content="Compară consumul, costurile și investițiile energetice înainte să iei o decizie.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://lacurent.com/">
   <title>LaCurent — Nu promitem. Calculăm.</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=6">
-  <link rel="stylesheet" href="/static/lacurent-landing.css?v=5">
+  <link rel="stylesheet" href="/static/lacurent-landing.css?v=18">
 </head>
 <body data-lacurent-landing>
   <header class="lc-topbar">
     <a class="lc-brand" href="/" aria-label="LaCurent">
       <span class="lc-brand-mark">LC</span>
-      <span class="lc-brand-copy"><strong>LaCurent</strong><small>Decizii energetice pentru locuințe</small></span>
+      <span class="lc-brand-copy"><strong>LaCurent</strong><small>Energie · cost · investiție</small></span>
     </a>
     <nav class="lc-nav" aria-label="Navigare principală">
       <a href="#model">Cum funcționează</a>
       <a href="#buget">Ce primești</a>
-      <a href="#metoda">Metodă</a>
-      <a href="/produse">Produse <span class="lc-nav-count">{{ catalog_product_count }}</span></a>
+      <a href="/produse">Produse</a>
     </nav>
-    <a class="lc-top-cta" href="/home-lab-editorial">Analizează casa <span>→</span></a>
+    <div class="lc-top-actions"><a class="lc-top-login" href="/home-lab-editorial?account=1">Cont</a><a class="lc-top-cta" href="/home-lab-editorial">Home Lab <span>→</span></a></div>
   </header>
 
   <main>
     <section class="lc-hero">
-      <div class="lc-hero-copy">
-        <p class="lc-eyebrow"><span></span> Decizii energetice pentru locuințe</p>
-        <h1>Nu promitem.<br><em>Calculăm.</em></h1>
-        <p class="lc-lead">
-          Spune-ne cum este casa ta. Îți calculăm <strong>unde ești acum</strong>, ce merită să schimbi,
-          <strong>cât te costă, cât economisești</strong> și în cât timp îți recuperezi investiția.
-          Pentru locuințe existente sau construcții noi.
-        </p>
-        <div class="lc-hero-actions">
-          <a class="lc-button lc-button-primary" href="/home-lab-editorial">Analizează casa <span>→</span></a>
-          <a class="lc-button lc-button-ghost" href="#model">Vezi cum funcționează</a>
+      <div class="lc-renewable-stage" aria-hidden="true">
+        <div class="lc-renewable-sun" data-scroll-symbol="sun"></div>
+        <div class="lc-renewable-wind" data-scroll-symbol="wind">
+          <i></i><i></i><i></i><b></b>
         </div>
-        <div class="lc-proofline" aria-label="Principii de calcul">
-          <span>Fizică verificabilă</span>
-          <i></i>
-          <span>Optimizare tehnico-economică</span>
-          <i></i>
-          <span>Surse și produse reale</span>
-          <i></i>
-          <span>Pas profesional când este necesar</span>
-        </div>
-
-        <aside class="lc-hero-impact" id="impact" aria-label="Impact calculat din casele salvate">
-          <div class="lc-hero-impact-main">
-            <span>IMPACT CALCULAT</span>
-            <strong id="lcImpactEnergy">—</strong>
-            <b>MWh/an potențial</b>
-          </div>
-          <div class="lc-hero-impact-mini">
-            <span><b id="lcImpactHomes">—</b><small>case</small></span>
-            <span><b id="lcImpactMoney">—</b><small>lei/an</small></span>
-            <span><b id="lcImpactCapex">—</b><small>CAPEX lei</small></span>
-            <span><b id="lcImpactPayback">—</b><small>ani</small></span>
-          </div>
-          <p id="lcImpactStatus">Potențial modelat din analize salvate, nu economii măsurate.</p>
-        </aside>
+        <div class="lc-renewable-grid" data-scroll-symbol="grid"></div>
       </div>
+      <div class="lc-hero-copy">
+        <p class="lc-eyebrow"><span></span> ENERGIE · COST · INVESTIȚIE</p>
+        <h1>Nu promitem.<br><em>Calculăm.</em></h1>
+        <p class="lc-lead">Vezi unde se pierde energia, ce merită schimbat și în cât timp se recuperează investiția.</p>
+        <div class="lc-hero-actions">
+          <a class="lc-button lc-button-primary" href="/home-lab-editorial">Home Lab <span>→</span></a>
+          <a class="lc-button lc-button-ghost" href="/home-lab-editorial?account=1">Cont</a>
+        </div>
 
-      <aside class="lc-model-card" aria-label="Cum ajunge Home Lab de la casă la plan">
-        <div class="lc-model-head">
-          <div>
-            <small>HOME LAB</small>
-            <strong>De la casă la plan</strong>
-          </div>
-          <span class="lc-live-dot">calcul explicabil</span>
-        </div>
-        <div class="lc-model-flow">
-          <article>
-            <b>01</b>
-            <div><strong>Descrii casa</strong><small>locație · anvelopă · instalații · comportament</small></div>
-            <span>↘</span>
-          </article>
-          <article>
-            <b>02</b>
-            <div><strong>Vedem unde ești</strong><small>necesar · consum · cost · clasă energetică</small></div>
-            <span>↘</span>
-          </article>
-          <article>
-            <b>03</b>
-            <div><strong>Comparăm ce merită</strong><small>investiție · economie · recuperare · constrângeri</small></div>
-            <span>↘</span>
-          </article>
-          <article>
-            <b>04</b>
-            <div><strong>Primești planul</strong><small>intervenții · ordine · efect energetic și financiar</small></div>
-            <span>↘</span>
-          </article>
-          <article class="is-result">
-            <b>05</b>
-            <div><strong>Continui spre implementare</strong><small>produse și specialist, acolo unde sunt necesare</small></div>
-            <span>✓</span>
-          </article>
-        </div>
-        <div class="lc-model-equation">
-          <span>casa ta</span><b>→</b><span>calcul</span><b>→</b><span>decizie</span><b>→</b><span>plan</span>
-        </div>
-      </aside>
+      </div>
     </section>
 
     <section class="lc-intro" id="model">
       <div class="lc-section-kicker">01 / CUM FUNCȚIONEAZĂ</div>
       <div class="lc-intro-grid">
         <div>
-          <h2>De la „ce fac cu casa mea?” la un plan calculat.</h2>
+          <h2>Introduci clădirea. Compari variantele.</h2>
         </div>
         <div class="lc-intro-copy">
-          <p>
-            Home Lab pornește de la casa ta, nu de la un produs pe care vrem să ți-l vindem.
-            Mai întâi construim situația actuală, apoi comparăm intervențiile posibile pe aceeași bază de calcul.
-          </p>
-          <p>
-            Rezultatul trebuie să răspundă simplu la patru întrebări:
-            <strong>unde sunt acum, ce merită să schimb, cât mă costă și ce obțin în schimb.</strong>
-          </p>
+          <p>Calculăm situația actuală, apoi comparăm intervențiile pe aceeași bază energetică și financiară.</p>
+          <p><strong>Consum. Cost. Investiție. Economie. Recuperare.</strong> Vezi diferența dintre variante înainte să alegi.</p>
         </div>
       </div>
 
@@ -152,106 +85,45 @@
           </ul>
         </article>
       </div>
+
     </section>
 
     <section class="lc-budget" id="buget">
       <div class="lc-budget-copy">
         <p class="lc-section-kicker">02 / CE PRIMEȘTI</p>
-        <h2>Nu optimizăm doar consumul. Optimizăm decizia.</h2>
-        <p>
-          Scopul este să reducem <strong>regretul investiției</strong>:
-          să nu cumperi o soluție doar pentru că este populară, fără să știi dacă este potrivită pentru casa și bugetul tău.
-        </p>
-        <p>
-          Planul pune în aceeași imagine situația actuală, investiția, costul anual după intervenții,
-          economia estimată și timpul de recuperare. O recuperare rapidă nu este automat cea mai bună decizie,
-          iar consumul minim nu justifică automat orice investiție.
-        </p>
+        <h2>Energia și investiția, evaluate împreună.</h2>
+        <p>Fiecare variantă este comparată prin aceiași indicatori: situația actuală, investiția, costul anual după intervenții, economia și timpul de recuperare.</p>
+        <p>Astfel vezi nu doar cât economisești, ci și ce presupune investiția pentru fiecare variantă.</p>
       </div>
       <div class="lc-budget-metrics">
         <article><span>ACUM</span><strong>lei/an</strong><small>situația actuală</small></article>
-        <article><span>INVESTIȚIE</span><strong>CAPEX</strong><small>ce presupune planul</small></article>
+        <article><span>INVESTIȚIE</span><strong>lei</strong><small>ce presupune planul</small></article>
         <article><span>DUPĂ</span><strong>lei/an</strong><small>costul estimat după intervenții</small></article>
         <article><span>RECUPERARE</span><strong>ani</strong><small>când investiția se întoarce</small></article>
       </div>
     </section>
 
-    <section class="lc-method" id="metoda">
-      <div class="lc-method-title">
-        <p class="lc-section-kicker">03 / METODA</p>
-        <h2>O recomandare trebuie să poată fi explicată.</h2>
-        <p>
-          Tehnologia rămâne în spate, dar rezultatul trebuie să fie trasabil. Separăm fizica, optimizarea și datele comerciale ca să putem verifica fiecare strat.
-        </p>
-      </div>
-      <div class="lc-method-grid">
-        <article>
-          <span>01</span>
-          <h3>RBPE — motorul fizic</h3>
-          <p>
-            <strong>Rapid Building Physics Engine</strong> calculează comportarea clădirii:
-            anvelopă, climă, ventilație, infiltrații, punți termice, necesar de putere,
-            consum și instalații. Metodologii precum <strong>MC001</strong> intră în calcul acolo unde sunt aplicabile.
-          </p>
-        </article>
-        <article>
-          <span>02</span>
-          <h3>TEO — optimizerul tehnico-economic</h3>
-          <p>
-            <strong>Techno-Economic Optimizer</strong> orchestrează RBPE, testează configurații,
-            respectă constrângeri și compară investiția, consumul, costul anual și valoarea în timp.
-            Scopul nu este soluția cu un singur indicator bun, ci compromisul complet.
-          </p>
-        </article>
-        <article>
-          <span>03</span>
-          <h3>Din parametri în produse reale</h3>
-          <p>
-            După ce soluția tehnică este dimensionată, o mapăm pe echipamente și materiale comerciale:
-            puteri, dimensiuni, compatibilități și cantități. Direcția finală este un
-            <strong>coș complet, coerent și gata de ofertare.</strong>
-          </p>
-        </article>
-      </div>
-      <div class="lc-method-note">
-        <strong>Principiu de proiectare</strong>
-        <p>Optimizerul nu trebuie doar să găsească o soluție. Trebuie să poată explica de ce soluția respectivă merită în fața alternativelor evaluate.</p>
-      </div>
-    </section>
-
     <section class="lc-catalog-promo" id="catalog">
       <div class="lc-catalog-promo-copy">
-        <p class="lc-section-kicker">DIN PLAN SPRE IMPLEMENTARE</p>
-        <h2>Planul nu trebuie să se oprească la un calcul.</h2>
+        <p class="lc-section-kicker">DIN CALCUL ÎN REALITATE</p>
+        <h2>Vezi și cu ce poate fi realizată soluția.</h2>
         <p>
-          Unde avem date comerciale suficiente, legăm soluția tehnică de produse reale:
-          puteri, dimensiuni, prețuri de referință și sursa datelor. Catalogul activ are în prezent
-          <strong>{{ catalog_product_count }} produse comerciale</strong>.
-        </p>
-        <p>
-          Catalogul este un strat de implementare, nu motivul recomandării.
-          <strong>Mai întâi calculăm ce merită; apoi căutăm cu ce poate fi realizat.</strong>
+          Când există date suficiente, rezultatul poate fi legat de produse reale,
+          dimensiuni și prețuri de referință.
         </p>
         <a class="lc-button lc-button-primary" href="/produse">Explorează produsele <span>→</span></a>
-      </div>
-      <div class="lc-catalog-promo-stat">
-        <small>CATALOG ACTIV</small>
-        <strong>{{ catalog_product_count }}</strong>
-        <span>produse comerciale</span>
-        <b>{{ product_categories|length }} familii de produse</b>
-        <i>actualizat {{ catalog_observed_on or "—" }}</i>
       </div>
     </section>
 
     <section class="lc-close">
       <div>
-        <p class="lc-section-kicker">PLANUL TĂU</p>
-        <h2>Nu încă un calculator.<br>Un plan pentru casa ta.</h2>
+        <p class="lc-section-kicker">HOME LAB</p>
+        <h2>Calcul. Comparație.<br>Implementare.</h2>
       </div>
       <div class="lc-close-action">
-        <p>Home Lab îți dă baza tehnică și economică pentru decizie. Când planul intră în proiectare, documentație oficială sau execuție, continui cu specialistul potrivit.</p>
-        <a class="lc-button lc-button-primary" href="/home-lab-editorial">Construiește planul casei <span>→</span></a>
-        <a class="lc-text-link" href="/home-lab/facts">Vezi rezultate publice din calcule →</a>
+        <p>Introdu datele clădirii, compară variantele și vezi efectul energetic și financiar înainte de următorul pas.</p>
+        <a class="lc-button lc-button-primary" href="/home-lab-editorial">Deschide Home Lab <span>→</span></a>
+        <a class="lc-text-link" href="/home-lab-editorial?account=1">Cont / creare cont →</a>
       </div>
     </section>
   </main>
@@ -264,13 +136,13 @@
     <div>
       <a href="/home-lab-editorial">Home Lab</a>
       <a href="/produse">Produse</a>
-      <a href="/home-lab/facts">Facts</a>
+      <a href="/home-lab/facts">Surse și metodologie</a>
       <a href="/privacy">Confidențialitate</a>
       <a href="/terms">Termeni</a>
       <a href="mailto:karol@lacurent.com">Contact</a>
     </div>
     <small>© 2026 LaCurent</small>
   </footer>
-  <script src="/static/lacurent-landing.js?v=1"></script>
+  <script src="/static/lacurent-landing.js?v=8"></script>
 </body>
 </html>
