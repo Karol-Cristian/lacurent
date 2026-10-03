@@ -19,6 +19,9 @@ function project() {
           "id:localityInput":{value:"Cluj-Napoca"},
           "id:heatedArea":{value:"145"},
           "id:heatedLevels":{value:"2"},
+          "id:heatingChoice":{value:"wood_boiler"},
+          "id:cooling":{value:"none"},
+          "id:ventilation":{value:"hrv"},
           "id:windowArea":{value:"21,5"},
           "id:orientation":{value:"south_west"},
           "id:glazing":{value:"triple_low_e_faces_2_and_5"},
@@ -47,6 +50,8 @@ test("Editorial saved project maps to Casa mea without assuming missing Qsol", (
   assert.equal(model.project_name,"Casa Cluj");
   assert.equal(model.location.ready,true);
   assert.equal(model.pv.forecast_ready,true);
+  assert.equal(model.systems.heating,"wood_boiler");
+  assert.equal(model.systems.ventilation,"hrv");
   assert.equal(model.pv.installed_kwp,7.2);
   assert.equal(model.pv.azimuth_deg,45);
   assert.equal(model.solar_thermal.collector_area_m2,4);
