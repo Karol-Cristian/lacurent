@@ -94,11 +94,29 @@ function renderStatic(model) {
   setText("hdHomeName", model.project_name);
   setText("hdHomeLocation",
     [model.location.locality_name, model.location.county].filter(Boolean).join(", ") || "Localizare incompletă");
-  const house = document.getElementById("hdHouse");
-  house.dataset.pv = String(Boolean(model.pv.enabled));
-  setText("hdTwinLabel", model.pv.enabled
-    ? `Digital twin · ${model.pv.installed_kwp.toLocaleString("ro-RO", { maximumFractionDigits: 1 })} kWp PV`
-    : "Digital twin al proiectului salvat");
+  const visualState = {
+    focus: "home",
+    orientation: model.building.window_orientation || model.pv.orientation || "south",
+    glazing: model.building.glazing || null,
+    heating: model.systems.heating,
+    cooling: model.systems.cooling,
+    ventilation: model.systems.ventilation,
+    pvEnabled: Boolean(model.pv.enabled),
+    pvKwp: Number(model.pv.installed_kwp || 0),
+    solarThermalEnabled: Boolean(model.solar_thermal.enabled),
+    solarThermalArea: Number(model.solar_thermal.collector_area_m2 || 0),
+    measures: [],
+  };
+  window.__homeLabVisualState = visualState;
+  window.dispatchEvent(new CustomEvent("hln:visual-state", { detail: visualState }));
+  const activeVisuals = [
+    model.pv.enabled ? "PV" : null,
+    model.solar_thermal.enabled ? "solar termic" : null,
+    ["condensing_gas_boiler","gas_boiler","wood_stove","wood_boiler","pellet_boiler"].includes(model.systems.heating) ? "coș activ" : null,
+  ].filter(Boolean);
+  setText("hdTwinLabel", activeVisuals.length
+    ? `Casa mea · ${activeVisuals.join(" · ")}`
+    : "Casa energetică salvată");
   pill("hdAnalysisStatus",
     model.analysis.optimization_available ? "Plan TEO salvat" : model.analysis.baseline_available ? "Analiză salvată" : "Fără calcul",
     model.analysis.baseline_available ? "ok" : "warn");
