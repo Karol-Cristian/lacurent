@@ -6,7 +6,8 @@
   <script src="/static/no-zoom.js?v=2" defer></script>\n  <title>Casa mea — LaCurent</title>
   <meta name="robots" content="noindex,nofollow">
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=6">
-  <link rel="stylesheet" href="/static/home-dashboard.css?v=1">
+  <link rel="stylesheet" href="/static/home-dashboard.css?v=2">
+  <link rel="stylesheet" href="/static/home-lab-3d.css?v=3d56">
 </head>
 <body class="home-dashboard">
   <main class="hd-shell" id="hdRoot">
@@ -26,13 +27,9 @@
 
     <section class="hd-grid" id="hdContent" hidden>
       <article class="hd-card hd-wide hd-hero">
-        <div class="hd-twin">
-          <div class="hd-house" id="hdHouse" data-pv="false">
-            <div class="hd-wall"></div><div class="hd-roof"></div>
-            <span class="hd-window a"></span><span class="hd-window b"></span><span class="hd-door"></span>
-            <span class="hd-pv" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
-          </div>
-          <div class="hd-twin-label" id="hdTwinLabel">Digital twin al proiectului salvat</div>
+        <div class="hd-twin hln-house-visual hln-house-visual-home">
+          <div class="hln-3d-stage" data-hln-3d-stage="dashboard" aria-label="Casa 3D a proiectului salvat"></div>
+          <div class="hd-twin-label" id="hdTwinLabel">Casa energetică salvată</div>
         </div>
         <div class="hd-hero-info">
           <div class="hd-card-head">
@@ -97,6 +94,15 @@
       <a id="hdEmptyAction" href="/home-lab-editorial">Mergi la Home Lab</a>
     </section>
   </main>
-  <script type="module" src="/static/home-dashboard.js?v=1"></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module" src="/static/home-lab-3d.js?v=3d56"></script>
+  <script type="module" src="/static/home-dashboard.js?v=2"></script>
 </body>
 </html>
