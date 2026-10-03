@@ -235,11 +235,39 @@ try {
     throw new Error("Editorial map selection did not produce a canonical locality token");
   }
 
-  await page.locator("#edHouseValuesConfirmed").check();
+  await page.locator("#heatedArea").fill("120");
+  await page.locator("#heatedLevels").selectOption("2");
+  await page.locator("#averageHeight").fill("2.7");
+  await page.locator('[name="indoor_design_temperature_c"]').selectOption("21");
+  await page.locator('[name="construction_year"]').fill("2005");
+  await page.locator('[name="dhw_occupants"]').selectOption("4");
   await page.locator('[data-page="house"] [data-next]').click();
   await expectVisible('[data-page="envelope"].is-active');
+
+  await page.locator("#wallStructure").selectOption("efficient_brick");
+  await page.locator("#wallStructureThickness").fill("30");
+  await page.locator("#wallInsulationMaterial").selectOption("eps");
+  await page.locator("#wallIns").fill("5");
+  await page.locator("#topBoundary").selectOption("cold_attic");
+  await page.locator("#roofInsulationMaterial").selectOption("mineral_wool");
+  await page.locator("#roofIns").fill("10");
+  await page.locator("#floorBoundary").selectOption("ground");
+  await page.locator("#floorInsulationMaterial").selectOption("xps");
+  await page.locator("#floorIns").fill("5");
+  await page.locator("#windowArea").fill("18");
+  await page.locator("#glazing").selectOption("triple_low_e_faces_2_and_5");
+  await page.locator("#orientation").selectOption("south");
   await page.locator('[data-page="envelope"] [data-next]').click();
   await expectVisible('[data-page="systems"].is-active');
+
+  await page.locator("#heatingChoice").selectOption("condensing_gas_boiler");
+  await page.locator("#heatingEmitter").selectOption("radiators_high_temp");
+  await page.locator("#heatingDistribution").selectOption("hydronic_insulated");
+  await page.locator("#heatingStorage").selectOption("none");
+  await page.locator("#heatingControl").selectOption("room_thermostat");
+  await page.locator("#dhwSystem").selectOption("same_as_heating");
+  await page.locator("#ventilation").selectOption("natural");
+  await page.locator("#cooling").selectOption("none");
   await page.locator('[data-page="systems"] [data-next]').click();
   await expectVisible('[data-page="renewables"].is-active');
 
@@ -385,6 +413,7 @@ try {
     await page.setViewportSize(editorialDesktopViewport);
   }
 
+  await page.locator("#edHouseValuesConfirmed").check();
   await page.locator('[data-page="renewables"] [data-next]').click();
   await expectVisible('[data-page="goal"].is-active');
 
