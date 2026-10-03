@@ -7,17 +7,26 @@ JS = ROOT / "commercial" / "static" / "home-lab-editorial.js"
 CSS = ROOT / "commercial" / "static" / "home-lab-editorial.css"
 
 
-def test_house_prefill_requires_explicit_confirmation() -> None:
+def test_steps_1_to_3_start_empty_and_require_explicit_input() -> None:
     html = HTML.read_text(encoding="utf-8")
     js = JS.read_text(encoding="utf-8")
 
-    assert "Valorile afișate inițial sunt exemple de pornire" in html
+    assert "Valorile afișate inițial sunt exemple de pornire" not in html
+    assert 'id="heatedArea" value=""' in html
+    assert 'id="averageHeight" value=""' in html
+    assert 'name="construction_year" data-house-critical value=""' in html
+    assert '<option value="" selected disabled>Alege</option>' in html
+    assert '<select id="wallStructure" required><option value="" selected disabled>' in html
+    assert '<select name="heating_choice" id="heatingChoice" required><option value="" selected disabled>' in html
+    assert "function requiredCoreInputsComplete()" in js
+    assert 'for (const pageName of ["house","envelope","systems"])' in js
+    assert 'if (!validatePage(current)) return;' in js
     assert 'id="edHouseValuesConfirmed"' in html
-    assert html.count("data-house-critical") >= 6
-    assert "obligatoriu · verifică" in html
-    assert "Confirmă că ai verificat valorile principale ale casei" in js
-    assert "Aceasta nu salvează casa." in html
-    assert 'matches?.("[data-house-critical]")' in js
+    assert html.index('id="edHouseValuesConfirmed"') > html.index('data-page="renewables"')
+    assert html.index('id="edHouseValuesConfirmed"') < html.index('data-page="goal"')
+    assert "Confirmă că ai verificat datele introduse în pașii 1–4" in js
+    assert 'href="/" aria-label="LaCurent — pagina principală"' in html
+    assert "Home Lab este instrumentul tău de decizie energetică." not in html
 
 
 def test_winter_temperature_is_explicitly_indoor_setpoint() -> None:
