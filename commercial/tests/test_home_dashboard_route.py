@@ -17,7 +17,7 @@ def test_casa_mea_route_serves_current_editorial_dashboard() -> None:
 
 
 def test_compact_locality_endpoint_returns_coordinates() -> None:
-    response = client.get("/api/locality/cluj_napoca")
+    response = client.get("/api/locality/Cluj-Napoca")
     assert response.status_code == 200
     payload = response.json()
     assert payload["name"]
