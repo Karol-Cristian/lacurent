@@ -1479,6 +1479,25 @@ async def render_calculation_from_form(
     )
 
 
+@app.get("/api/locality/{locality_id}")
+async def locality_summary_api(locality_id: str) -> JSONResponse:
+    try:
+        item = resolve_locality(locality_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Localitatea nu a fost găsită.") from exc
+    return JSONResponse(
+        {
+            "id": item.get("id"),
+            "name": item.get("name"),
+            "county": item.get("county"),
+            "uatName": item.get("uatName"),
+            "lat": item.get("lat"),
+            "lon": item.get("lon"),
+        },
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
+
+
 @app.get("/api/location-data")
 async def location_data_api() -> StreamingResponse:
     # Pure-ASGI fallback for local/Uvicorn execution. The Cloudflare bundle
@@ -3600,6 +3619,17 @@ async def sitemap_xml(request: Request) -> Response:
         body,
         media_type="application/xml",
         headers={"Cache-Control": "public, max-age=900"},
+    )
+
+
+@app.get("/casa-mea", response_class=HTMLResponse)
+async def home_dashboard(request: Request) -> HTMLResponse:
+    """Persistent post-analysis dashboard for saved Home Lab projects."""
+    return templates.TemplateResponse(
+        request,
+        "home_dashboard.html",
+        {"request": request},
+        headers={"Cache-Control": "no-store"},
     )
 
 
