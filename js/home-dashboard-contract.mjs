@@ -35,6 +35,8 @@ export function extractHomeDashboardModel(project) {
   const lon = finite(values.location?.lon);
   const pvEnabled = Boolean(values.renewables?.photovoltaic?.enabled);
   const pvKWp = firstFinite(values.renewables?.photovoltaic?.installedPowerKWp, 0) || 0;
+  const pvTiltDeg = firstFinite(values.renewables?.photovoltaic?.tiltDeg);
+  const pvOrientation = values.renewables?.photovoltaic?.orientation || null;
   const solarThermalEnabled = Boolean(values.renewables?.solarThermal?.enabled);
   const solarAnnualKWh = resultSolarAnnualKWh(result);
   const solarBlocked = hasDiagnostic(result, SOLAR_BLOCKER);
@@ -57,10 +59,15 @@ export function extractHomeDashboardModel(project) {
     pv: {
       enabled: pvEnabled,
       installed_kwp: pvKWp,
+      tilt_deg: pvTiltDeg,
+      orientation: pvOrientation,
       forecast_ready: pvEnabled && pvKWp > 0 && lat !== null && lon !== null,
     },
     solar_thermal: {
       enabled: solarThermalEnabled,
+      collector_area_m2: firstFinite(values.renewables?.solarThermal?.collectorAreaM2),
+      tilt_deg: firstFinite(values.renewables?.solarThermal?.tiltDeg),
+      orientation: values.renewables?.solarThermal?.orientation || null,
       model_status: solarThermalEnabled ? 'configured_future_forecast' : 'not_configured',
     },
     envelope_solar: {
@@ -81,15 +88,21 @@ export function extractHomeDashboardModel(project) {
   };
 }
 
+function orientationAzimuth(orientation) {
+  return ({ south: 0, east: -90, west: 90, north: 180 })[orientation] ?? 0;
+}
+
 export function buildSolarPowerForecastUrl(model, base = 'https://api.solarpowerapi.com') {
   if (!model?.location?.ready) return null;
   const capacityMwp = model.pv?.forecast_ready ? model.pv.installed_kwp / 1000 : 0.001;
+  const tilt = model.pv?.forecast_ready && Number.isFinite(model.pv.tilt_deg) ? model.pv.tilt_deg : 30;
+  const azimuth = model.pv?.forecast_ready ? orientationAzimuth(model.pv.orientation) : 0;
   const params = new URLSearchParams({
     lat: String(model.location.latitude),
     lon: String(model.location.longitude),
     capacity_mwp: String(Math.max(0.001, capacityMwp)),
-    tilt: '30',
-    azimuth: '0',
+    tilt: String(tilt),
+    azimuth: String(azimuth),
   });
   return `${String(base).replace(/\/$/, '')}/api/v1/pv/forecast?${params.toString()}`;
 }
@@ -98,4 +111,4 @@ export function dashboardRefreshMs() {
   return 15 * 60 * 1000;
 }
 
-export { SOLAR_BLOCKER };
+export { SOLAR_BLOCKER, orientationAzimuth };
