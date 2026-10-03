@@ -861,3 +861,42 @@ main{overflow:hidden;background:#fff}
 /* Diffuse-sun staging candidate v21 */
 
 /* Approved landing laptop-scroll + ambient renewables release candidate */
+
+
+/* Mobile staging experiment — full-screen hero + oversized diffuse turbine. */
+@media(max-width:720px){
+  .lc-hero{
+    min-height:calc(100svh - 64px);
+    min-height:calc(100dvh - 64px);
+    padding:clamp(54px,8vh,82px) 18px clamp(48px,7vh,72px);
+    display:flex;
+    align-items:center;
+  }
+  .lc-hero-copy{
+    width:100%;
+    max-width:100%;
+  }
+  .lc-renewable-stage{
+    inset:0;
+  }
+  .lc-renewable-wind{
+    left:-22%;
+    bottom:2%;
+    width:170px;
+    height:230px;
+    filter:blur(2.2px);
+  }
+  .lc-renewable-stage>.lc-renewable-wind.is-visible{
+    opacity:.34;
+    transform:translateY(0) scale(4.2);
+  }
+  .lc-renewable-wind b{
+    opacity:.72;
+    box-shadow:0 0 34px rgba(157,166,174,.20);
+  }
+  .lc-renewable-wind i{
+    opacity:.68;
+    filter:blur(.7px);
+    box-shadow:0 0 30px rgba(155,164,172,.20);
+  }
+}
