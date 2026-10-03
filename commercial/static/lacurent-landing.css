@@ -1372,25 +1372,25 @@ main{overflow:hidden;background:#fff}
 
   /* Hub, not the tower base, is anchored in the lower-left corner. */
   .lc-renewable-wind{
-    left:-59px;
-    bottom:-88px;
+    left:-42px;
+    bottom:-72px;
     width:170px;
     height:230px;
-    filter:blur(.78px);
+    filter:blur(.60px);
     transform-origin:84px 77px;
   }
   .lc-renewable-stage>.lc-renewable-wind.is-visible{
-    opacity:.62;
+    opacity:.70;
     transform:translateY(0) scale(4.05);
   }
   .lc-renewable-wind b{
-    opacity:.90;
-    box-shadow:0 0 20px rgba(157,166,174,.18);
+    opacity:.94;
+    box-shadow:0 0 18px rgba(157,166,174,.16);
   }
   .lc-renewable-wind i{
-    opacity:.90;
-    filter:blur(.24px);
-    box-shadow:0 0 18px rgba(155,164,172,.16);
+    opacity:.94;
+    filter:blur(.16px);
+    box-shadow:0 0 16px rgba(155,164,172,.14);
   }
 }
 
