@@ -702,7 +702,7 @@ async function saveProject() {
       workspace: state
     });
     blockerPanel.hidden = false;
-    blockerPanel.innerHTML = "<strong>Proiect salvat in cont.</strong>";
+    blockerPanel.innerHTML = `<strong>Proiect salvat in cont.</strong><span><a href="/pages/casa-mea.html?project=${encodeURIComponent(state.projectId)}">Deschide Casa mea</a></span>`;
   } catch (error) {
     blockerPanel.hidden = false;
     blockerPanel.innerHTML = `<strong>Salvarea a esuat.</strong><span>${escapeHtml(error.message)}</span>`;
