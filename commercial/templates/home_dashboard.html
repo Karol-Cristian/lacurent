@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Casa mea — LaCurent</title>
+  <meta name="robots" content="noindex,nofollow">
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=6">
+  <link rel="stylesheet" href="/static/home-dashboard.css?v=1">
+</head>
+<body class="home-dashboard">
+  <main class="hd-shell" id="hdRoot">
+    <header class="hd-head">
+      <div>
+        <a class="hd-brand" href="/home-lab-editorial"><b>LC</b><span>LaCurent</span></a>
+        <p class="hd-kicker">Dashboard energetic</p>
+        <h1>Casa mea</h1>
+        <p id="hdSubtitle">Casa salvată, urmărită pe o axă de 15 minute.</p>
+      </div>
+      <div class="hd-actions">
+        <span class="hd-live">refresh 15 min</span>
+        <select id="hdProjectSelect" aria-label="Alege casa"></select>
+        <a href="/home-lab-editorial">Editează analiza</a>
+      </div>
+    </header>
+
+    <section class="hd-grid" id="hdContent" hidden>
+      <article class="hd-card hd-wide hd-hero">
+        <div class="hd-twin">
+          <div class="hd-house" id="hdHouse" data-pv="false">
+            <div class="hd-wall"></div><div class="hd-roof"></div>
+            <span class="hd-window a"></span><span class="hd-window b"></span><span class="hd-door"></span>
+            <span class="hd-pv" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+          </div>
+          <div class="hd-twin-label" id="hdTwinLabel">Digital twin al proiectului salvat</div>
+        </div>
+        <div class="hd-hero-info">
+          <div class="hd-card-head">
+            <div><h2 id="hdHomeName">Casa mea</h2><p id="hdHomeLocation">—</p></div>
+            <span class="hd-pill" id="hdAnalysisStatus">Analiză</span>
+          </div>
+          <div class="hd-kpis">
+            <div class="hd-kpi"><span>PV acum</span><strong id="hdPvNow">—</strong><small id="hdPvNowNote">—</small></div>
+            <div class="hd-kpi"><span>PV peste 1 h</span><strong id="hdPvHour">—</strong><small>SolarPowerAPI</small></div>
+            <div class="hd-kpi"><span>Energie azi</span><strong id="hdPvToday">—</strong><small>curba forecast curentă</small></div>
+            <div class="hd-kpi"><span>Radiație acum</span><strong id="hdRadiationNow">—</strong><small id="hdRadiationNote">GTI</small></div>
+          </div>
+        </div>
+      </article>
+
+      <article class="hd-card hd-wide">
+        <div class="hd-card-head">
+          <div><h2>Următoarele 24 de ore</h2><p>Puterea fotovoltaică estimată la rezoluție de 15 minute.</p></div>
+          <span class="hd-pill" id="hdForecastStatus">Se încarcă</span>
+        </div>
+        <div class="hd-chart">
+          <svg id="hdPvChart" viewBox="0 0 900 180" preserveAspectRatio="none" role="img" aria-label="Forecast fotovoltaic 24 ore">
+            <line x1="0" x2="900" y1="45" y2="45" class="hd-gridline"></line>
+            <line x1="0" x2="900" y1="90" y2="90" class="hd-gridline"></line>
+            <line x1="0" x2="900" y1="135" y2="135" class="hd-gridline"></line>
+            <path id="hdPvArea" class="hd-area"></path>
+            <path id="hdPvLine" class="hd-line"></path>
+          </svg>
+        </div>
+      </article>
+
+      <article class="hd-card">
+        <div class="hd-card-head">
+          <div><h3>Solar termic / apă caldă</h3><p>Sistemul salvat în Home Lab.</p></div>
+          <span class="hd-pill" id="hdThermalStatus">Neconfigurat</span>
+        </div>
+        <div class="hd-three">
+          <div class="hd-tile"><span>Colector</span><strong id="hdThermalArea">—</strong><small id="hdThermalGeometry">—</small></div>
+          <div class="hd-tile"><span>Aport acum</span><strong id="hdThermalNow">În pregătire</strong><small>nu presupunem randamentul</small></div>
+          <div class="hd-tile"><span>Peste 1 h</span><strong>În pregătire</strong><small>aceeași axă de 15 minute</small></div>
+        </div>
+        <div class="hd-note" id="hdThermalNote">Forecastul termic va fi activat numai după ce contractul fizic al colectorului este complet.</div>
+      </article>
+
+      <article class="hd-card">
+        <div class="hd-card-head">
+          <div><h3>Aport solar prin anvelopă</h3><p>Ferestre și elemente opace, separat de producția PV.</p></div>
+          <span class="hd-pill" id="hdEnvelopeStatus">Model</span>
+        </div>
+        <div class="hd-three">
+          <div class="hd-tile"><span>Ferestre</span><strong id="hdWindowArea">—</strong><small id="hdWindowOrientation">—</small></div>
+          <div class="hd-tile"><span>Factor solar g</span><strong id="hdSolarG">—</strong><small>din proiect, dacă este explicit</small></div>
+          <div class="hd-tile"><span>Live 15 min</span><strong id="hdEnvelopeLive">În pregătire</strong><small>Qsol nu este inferat</small></div>
+        </div>
+        <div class="hd-note" id="hdEnvelopeNote">Hsol poate fi source-backed, dar Qsky/Qsol și toate proprietățile elementelor trebuie să fie complete înainte de un aport termic live.</div>
+      </article>
+    </section>
+
+    <section class="hd-empty" id="hdEmpty" hidden>
+      <h2 id="hdEmptyTitle">Autentificare necesară</h2>
+      <p id="hdEmptyText">Conectează-te în Home Lab și salvează o casă.</p>
+      <a id="hdEmptyAction" href="/home-lab-editorial">Mergi la Home Lab</a>
+    </section>
+  </main>
+  <script type="module" src="/static/home-dashboard.js?v=1"></script>
+</body>
+</html>
