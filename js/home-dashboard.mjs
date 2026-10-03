@@ -200,7 +200,13 @@ async function boot() {
       showEmpty('Nu ai încă o casă salvată', 'Completează analiza și salvează proiectul; apoi Casa mea devine dashboard-ul lui permanent.', '/pages/analiza-casa.html', 'Începe analiza');
       return;
     }
-    select.innerHTML = projects.map((p) => `<option value="${p.project_id}">${String(p.project_name || 'Proiect LaCurent').replaceAll('<','&lt;').replaceAll('>','&gt;')}</option>`).join('');
+    select.replaceChildren();
+    projects.forEach((p) => {
+      const option = document.createElement('option');
+      option.value = p.project_id;
+      option.textContent = p.project_name || 'Proiect LaCurent';
+      select.append(option);
+    });
     const requested = new URLSearchParams(location.search).get('project');
     if (requested && projects.some((p) => p.project_id === requested)) select.value = requested;
     select.addEventListener('change', () => loadProject(select.value));
