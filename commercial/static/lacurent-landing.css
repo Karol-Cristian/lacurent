@@ -1143,3 +1143,253 @@ main{overflow:hidden;background:#fff}
     padding-top:24px;
   }
 }
+
+
+/* Staging refinement v26 — editorial cards, full-bleed close, stronger navigation. */
+.lc-eyebrow{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:22px;
+  color:#5f6d76;
+  font-size:12px;
+  font-weight:690;
+  letter-spacing:.01em;
+  text-transform:none;
+}
+.lc-eyebrow>b{font-weight:690}
+.lc-eyebrow>i{
+  width:4px;
+  height:4px;
+  border-radius:50%;
+  background:#9aa7af;
+}
+.lc-eyebrow>span{display:none}
+
+.lc-top-actions{gap:10px}
+.lc-top-login,
+.lc-top-cta{
+  min-height:44px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0 16px;
+  border-radius:10px;
+  font-size:12px;
+  font-weight:780;
+}
+.lc-top-login{
+  border:1px solid #cfd7dd;
+  background:#fff;
+  color:#27323a;
+}
+.lc-top-cta{
+  border:1px solid #0b1117;
+  background:#0b1117;
+  color:#fff;
+}
+.lc-top-cta span{color:#73e0b8}
+.lc-hero-actions{gap:12px;margin-top:38px}
+.lc-hero-actions .lc-button{
+  min-height:54px;
+  padding:14px 24px;
+  font-size:13px;
+  font-weight:780;
+}
+
+.lc-building-grid{
+  gap:48px;
+  margin-top:62px;
+}
+.lc-building-grid article,
+.lc-building-grid article:last-child{
+  position:relative;
+  min-height:0;
+  padding:34px 0 38px 72px;
+  border:0;
+  border-top:1px solid #dfe5ea;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+}
+.lc-building-grid article::after{
+  content:"";
+  position:absolute;
+  left:72px;
+  right:0;
+  bottom:0;
+  height:1px;
+  background:#edf0f2;
+}
+.lc-card-index{
+  left:0;
+  right:auto;
+  top:32px;
+  color:#9da9b1;
+  font-size:1.05rem;
+  font-weight:800;
+  letter-spacing:.04em;
+}
+.lc-card-kicker{
+  margin-bottom:18px;
+  color:#6c7881;
+  font-size:10px;
+  letter-spacing:.08em;
+}
+.lc-building-grid h3{
+  max-width:620px;
+  font-size:clamp(1.8rem,2.5vw,2.45rem);
+  line-height:1.08;
+}
+.lc-building-grid article>p:not(.lc-card-kicker){
+  max-width:640px;
+  margin-top:18px;
+  color:#5e6a73;
+  font-size:.98rem;
+}
+.lc-building-grid ul{margin-top:22px;gap:10px}
+.lc-building-grid li{
+  padding-left:15px;
+  color:#44515a;
+  font-size:11px;
+  font-weight:650;
+}
+
+.lc-close{
+  margin:0;
+  border-radius:0;
+  padding:112px max(64px,calc((100vw - 1412px)/2));
+  background:#0b1117;
+}
+.lc-close h2{max-width:820px}
+.lc-close-action p{
+  max-width:560px;
+  font-size:1.02rem;
+  line-height:1.72;
+}
+.lc-close .lc-button-primary{
+  min-height:52px;
+  padding:14px 22px;
+  font-size:12px;
+}
+.lc-close .lc-text-link{font-size:11px}
+
+.lc-footer{
+  max-width:none;
+  grid-template-columns:minmax(220px,1fr) minmax(420px,1.4fr) auto;
+  gap:56px;
+  align-items:start;
+  padding:58px max(42px,calc((100vw - 1412px)/2)) 68px;
+  border-top:1px solid #e6ebee;
+  background:#fff;
+}
+.lc-footer>div{
+  display:grid;
+  grid-template-columns:repeat(3,max-content);
+  gap:16px 28px;
+  align-content:start;
+}
+.lc-footer>div a{
+  color:#54616a;
+  font-size:11px;
+  font-weight:680;
+}
+.lc-footer>small{
+  padding-top:5px;
+  color:#7e8991;
+  font-size:10px;
+}
+
+@media(max-width:1050px){
+  .lc-footer{
+    grid-template-columns:1fr;
+    gap:32px;
+  }
+  .lc-footer>div{
+    grid-template-columns:repeat(3,minmax(0,max-content));
+  }
+}
+
+@media(max-width:720px){
+  .lc-topbar{
+    padding:12px 14px;
+  }
+  .lc-top-actions{gap:7px}
+  .lc-top-login,
+  .lc-top-cta{
+    min-height:42px;
+    padding:0 13px;
+    font-size:11px;
+  }
+  .lc-hero{
+    min-height:calc(100svh - 62px);
+    min-height:calc(100dvh - 62px);
+    padding:clamp(48px,7vh,74px) 18px clamp(44px,6vh,66px);
+    display:flex;
+    align-items:center;
+  }
+  .lc-eyebrow{
+    gap:8px;
+    margin-bottom:20px;
+    font-size:11px;
+  }
+  .lc-eyebrow>i{width:3px;height:3px}
+  .lc-hero-actions .lc-button{
+    min-height:52px;
+    font-size:13px;
+  }
+
+  .lc-building-grid{
+    grid-template-columns:1fr;
+    gap:8px;
+    margin-top:46px;
+  }
+  .lc-building-grid article,
+  .lc-building-grid article:last-child{
+    padding:28px 0 32px 52px;
+  }
+  .lc-building-grid article::after{left:52px}
+  .lc-card-index{top:27px;font-size:.95rem}
+  .lc-building-grid h3{font-size:1.75rem}
+
+  .lc-close{
+    margin:0;
+    padding:76px 18px 82px;
+    border-radius:0;
+  }
+
+  .lc-footer{
+    grid-template-columns:1fr;
+    gap:30px;
+    padding:48px 18px 56px;
+  }
+  .lc-footer>div{
+    grid-template-columns:1fr 1fr;
+    gap:18px 24px;
+  }
+  .lc-footer>div a{font-size:12px}
+  .lc-footer>small{font-size:10px}
+
+  /* Hub, not the tower base, is anchored in the lower-left corner. */
+  .lc-renewable-wind{
+    left:-59px;
+    bottom:-88px;
+    width:170px;
+    height:230px;
+    filter:blur(1.05px);
+    transform-origin:84px 77px;
+  }
+  .lc-renewable-stage>.lc-renewable-wind.is-visible{
+    opacity:.52;
+    transform:translateY(0) scale(4.05);
+  }
+  .lc-renewable-wind b{
+    opacity:.82;
+    box-shadow:0 0 22px rgba(157,166,174,.20);
+  }
+  .lc-renewable-wind i{
+    opacity:.82;
+    filter:blur(.35px);
+    box-shadow:0 0 20px rgba(155,164,172,.18);
+  }
+}
