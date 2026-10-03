@@ -472,26 +472,7 @@
             <div class="form-grid two">
               <label><span>Productie anuala declarata (kWh/an)</span><input name="renewables.photovoltaic.annualProductionKWh" type="number" min="0" step="1" data-unit="kWh/an" data-category="PRODUCT_DATA"></label>
               <label><span>Putere instalata (kWp)</span><input name="renewables.photovoltaic.installedPowerKWp" type="number" min="0" step="0.1" data-unit="kWp" data-category="PRODUCT_DATA"></label>
-              <label><span>Inclinare panouri (°)</span><input name="renewables.photovoltaic.tiltDeg" type="number" min="0" max="90" step="1" data-unit="deg" data-category="USER_FACT"></label>
-              <label><span>Orientare panouri</span><select name="renewables.photovoltaic.orientation" data-category="USER_FACT"><option value="">Alege orientarea</option><option value="south">Sud</option><option value="east">Est</option><option value="west">Vest</option><option value="north">Nord</option></select></label>
             </div>
-          </article>
-          <article class="system-card equipment-panel">
-            <div class="system-card-header">
-              <h3>Solar termic</h3>
-              <label class="checkbox-row"><input name="renewables.solarThermal.enabled" type="checkbox" data-category="USER_FACT"> <span>Panouri solare pentru apa calda</span></label>
-            </div>
-            <div class="equipment-flow compact" aria-label="Sistem solar termic">
-              <div class="flow-source">Soare</div>
-              <div class="flow-node">Colector</div>
-              <div class="flow-source">ACM</div>
-            </div>
-            <div class="form-grid two">
-              <label><span>Arie colectoare (m2)</span><input name="renewables.solarThermal.collectorAreaM2" type="number" min="0" step="0.1" data-unit="m2" data-category="PRODUCT_DATA"></label>
-              <label><span>Inclinare colector (°)</span><input name="renewables.solarThermal.tiltDeg" type="number" min="0" max="90" step="1" data-unit="deg" data-category="USER_FACT"></label>
-              <label><span>Orientare colector</span><select name="renewables.solarThermal.orientation" data-category="USER_FACT"><option value="">Alege orientarea</option><option value="south">Sud</option><option value="east">Est</option><option value="west">Vest</option><option value="north">Nord</option></select></label>
-            </div>
-            <p class="muted">Dashboard-ul va estima aportul la 15 minute doar dupa ce modelul colectorului are parametrii fizici necesari. Prezenta sistemului nu implica automat un randament presupus.</p>
           </article>
         </div>
         <div class="info-strip">
