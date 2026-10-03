@@ -70,5 +70,18 @@ def test_editorial_account_backend_routes_and_schema_exist() -> None:
 
 def test_editorial_account_assets_are_cache_busted() -> None:
     html = HTML.read_text(encoding="utf-8")
-    assert "home-lab-editorial.css?v=38" in html
-    assert "home-lab-editorial.js?v=72" in html
+    assert "home-lab-editorial.css?v=39" in html
+    assert "home-lab-editorial.js?v=74" in html
+
+
+def test_landing_account_link_opens_existing_login_and_signup_dialog() -> None:
+    landing = (ROOT / "commercial" / "templates" / "landing.html").read_text(encoding="utf-8")
+    script = JS.read_text(encoding="utf-8")
+    html = HTML.read_text(encoding="utf-8")
+
+    assert 'href="/home-lab-editorial?account=1"' in landing
+    assert 'new URLSearchParams(window.location.search).get("account")' in script
+    assert "openAccountDialog" in script
+    assert 'id="edLoginForm"' in html
+    assert 'id="edRegisterForm"' in html
+    assert "Creează cont" in html
