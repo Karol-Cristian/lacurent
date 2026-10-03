@@ -103,6 +103,11 @@ export function extractEditorialHomeDashboard(project, locality = null) {
       glazing: fieldValue(draft, "glazing", "") || null,
       solar_g_value: numberValue(draft, "advSolarGn"),
     },
+    systems: {
+      heating: fieldValue(draft, "heatingChoice", "") || fieldValue(draft, "heating_choice", "") || null,
+      cooling: fieldValue(draft, "cooling", "") || null,
+      ventilation: fieldValue(draft, "ventilation", "") || null,
+    },
     pv: {
       enabled: pvEnabled,
       installed_kwp: pvKwp,
