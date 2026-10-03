@@ -29,6 +29,38 @@
   let sunReentryTimer = 0;
   let lastSunPulseAt = 0;
 
+  const revealGroups = [
+    [".lc-intro-grid > *", 0, 90],
+    [".lc-budget-copy > *", 0, 85],
+    [".lc-budget-metrics article", 0, 70],
+    [".lc-catalog-promo-copy > *", 0, 85],
+    [".lc-close > div", 0, 110],
+    [".lc-close-action > *", 80, 80],
+    [".lc-footer > *", 0, 90],
+  ];
+
+  const revealTargets = [];
+  revealGroups.forEach(([selector, startDelay, step]) => {
+    document.querySelectorAll(selector).forEach((node, index) => {
+      node.dataset.lcReveal = "";
+      node.style.setProperty("--lc-motion-delay", `${startDelay + index * step}ms`);
+      revealTargets.push(node);
+    });
+  });
+
+  if ("IntersectionObserver" in window && !reducedMotion.matches) {
+    const revealObserver = new IntersectionObserver((entries, observer) => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add("is-revealed");
+        observer.unobserve(entry.target);
+      });
+    }, { threshold: 0.14, rootMargin: "0px 0px -7% 0px" });
+    revealTargets.forEach(node => revealObserver.observe(node));
+  } else {
+    revealTargets.forEach(node => node.classList.add("is-revealed"));
+  }
+
   function triggerSunReentry() {
     if (!sun || reducedMotion.matches) return;
 
